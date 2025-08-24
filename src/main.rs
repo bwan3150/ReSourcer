@@ -272,7 +272,7 @@ async fn get_files() -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().json(files))
 }
 
-// 移动文件到指定分类（支持重命名）
+// 移动文件到指定分类（支持重命名和移回原位置）
 async fn move_file(req: web::Json<MoveRequest>) -> Result<HttpResponse> {
     let state_str = fs::read_to_string("app_state.json")
         .unwrap_or_else(|_| serde_json::to_string(&get_default_state()).unwrap());
@@ -285,7 +285,13 @@ async fn move_file(req: web::Json<MoveRequest>) -> Result<HttpResponse> {
         })));
     }
     
-    let target_dir = Path::new(&state.source_folder).join(&req.category);
+    // 如果category为空，表示移回源文件夹根目录
+    let target_dir = if req.category.is_empty() {
+        Path::new(&state.source_folder).to_path_buf()
+    } else {
+        Path::new(&state.source_folder).join(&req.category)
+    };
+    
     if !target_dir.exists() {
         fs::create_dir_all(&target_dir)?;
     }

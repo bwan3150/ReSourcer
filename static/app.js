@@ -10,6 +10,9 @@ let processedCount = 0;
 let isClassifying = false;
 let currentFileExtension = '';
 
+// 添加历史记录栈
+let operationHistory = [];
+
 // 初始化
 async function init() {
     await loadAppState();
@@ -33,10 +36,13 @@ async function loadAppState() {
         const response = await fetch('/api/state');
         appState = await response.json();
         
-        // 更新界面
+        // 更新界面 - 显示源文件夹（可能是自动填入的当前目录）
         if (appState.source_folder) {
             document.getElementById('folderInput').value = appState.source_folder;
-            document.getElementById('setupBtn').textContent = 'Edit Categories';
+            document.getElementById('setupBtn').textContent = 'Setup Categories';
+            
+            // 如果有源文件夹，允许设置分类
+            document.getElementById('setupBtn').disabled = false;
         }
         
         // 构建预设选择器
@@ -47,6 +53,9 @@ async function loadAppState() {
             const preset = appState.presets.find(p => p.name === appState.current_preset);
             if (preset) {
                 renderCategories(preset.categories);
+                if (preset.categories.length > 0) {
+                    document.getElementById('startBtn').disabled = false;
+                }
             }
         }
         
@@ -311,42 +320,65 @@ function handleFolderInputKeydown(event) {
 async function setSourceFolder() {
     const folderPath = document.getElementById('folderInput').value.trim();
     
-    if (!folderPath) return;
+    if (!folderPath) {
+        alert('Please enter a folder path');
+        return;
+    }
     
-    appState.source_folder = folderPath;
-    
-    try {
-        const response = await fetch('/api/folder', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                source_folder: folderPath
-            })
-        });
+    // 如果路径改变了，更新它
+    if (folderPath !== appState.source_folder) {
+        appState.source_folder = folderPath;
         
-        if (response.ok) {
-            document.getElementById('setupBtn').textContent = 'Edit Categories';
-            document.getElementById('categoriesSetup').style.display = 'block';
+        try {
+            const response = await fetch('/api/folder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    source_folder: folderPath
+                })
+            });
             
-            const categories = getCurrentCategories();
-            if (categories.length > 0) {
-                document.getElementById('startBtn').disabled = false;
+            if (response.ok) {
+                console.log('Source folder updated to:', folderPath);
+            } else {
+                alert('Failed to update source folder');
+                return;
             }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to update source folder');
+            return;
         }
-    } catch (error) {
-        console.error('Error:', error);
+    }
+    
+    // 显示分类设置区域
+    document.getElementById('categoriesSetup').style.display = 'block';
+    document.getElementById('setupBtn').textContent = 'Edit Categories';
+    
+    const categories = getCurrentCategories();
+    if (categories.length > 0) {
+        document.getElementById('startBtn').disabled = false;
     }
 }
 
 // 设置分类
 function setupCategories() {
-    document.getElementById('categoriesSetup').style.display = 'block';
-    
+    // 先确保源文件夹已设置
     const folderPath = document.getElementById('folderInput').value.trim();
-    if (folderPath && appState.source_folder !== folderPath) {
+    if (!folderPath) {
+        alert('Please enter source folder path first');
+        document.getElementById('folderInput').focus();
+        return;
+    }
+    
+    // 如果路径变了，先更新
+    if (folderPath !== appState.source_folder) {
         setSourceFolder();
+    } else {
+        // 直接显示分类设置
+        document.getElementById('categoriesSetup').style.display = 'block';
     }
 }
 
@@ -369,6 +401,20 @@ function handleKeyPress(e) {
     if (files.length === 0 || currentIndex >= files.length) return;
     
     const categories = getCurrentCategories();
+    
+    // 撤销快捷键 - Cmd+Z 或 Ctrl+Z
+    if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+        e.preventDefault();
+        undoLastOperation();
+        return;
+    }
+    
+    // U 键也可以撤销
+    if (e.key === 'u' || e.key === 'U') {
+        e.preventDefault();
+        undoLastOperation();
+        return;
+    }
     
     if (e.key >= '1' && e.key <= '9') {
         const index = parseInt(e.key) - 1;
@@ -393,6 +439,71 @@ function handleKeyPress(e) {
     }
 }
 
+// 撤销上一步操作
+async function undoLastOperation() {
+    if (operationHistory.length === 0) {
+        console.log('No operation to undo');
+        return;
+    }
+    
+    const lastOp = operationHistory.pop();
+    
+    try {
+        // 移回原位置
+        const response = await fetch('/api/move', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                file_path: lastOp.newPath,
+                category: '',  // 移回源文件夹根目录
+                new_name: lastOp.originalName
+            })
+        });
+        
+        if (response.ok) {
+            // 恢复文件到列表
+            files.splice(lastOp.fileIndex, 0, lastOp.file);
+            
+            // 调整索引
+            if (currentIndex > lastOp.fileIndex) {
+                currentIndex = lastOp.fileIndex;
+            }
+            
+            processedCount--;
+            
+            // 更新显示
+            showCurrentFile();
+            updateProgress();
+            updateUndoButton();
+            
+            console.log(`Undone: ${lastOp.file.name} from ${lastOp.category}`);
+        } else {
+            // 如果撤销失败，把操作放回历史
+            operationHistory.push(lastOp);
+            alert('Failed to undo operation. The file might have been manually moved.');
+        }
+    } catch (error) {
+        console.error('Error undoing operation:', error);
+        operationHistory.push(lastOp);
+        alert('Failed to undo operation');
+    }
+}
+
+// 更新撤销按钮状态
+function updateUndoButton() {
+    const undoBtn = document.getElementById('undoBtn');
+    if (undoBtn) {
+        if (operationHistory.length > 0) {
+            undoBtn.style.display = 'inline-flex';
+            undoBtn.textContent = `Undo (${operationHistory.length})`;
+        } else {
+            undoBtn.style.display = 'none';
+        }
+    }
+}
+
 // 开始分类
 async function startClassification() {
     const categories = getCurrentCategories();
@@ -406,6 +517,9 @@ async function startClassification() {
         return;
     }
     
+    // 清空历史记录
+    operationHistory = [];
+    
     await loadFiles();
 }
 
@@ -416,7 +530,7 @@ async function loadFiles() {
         files = await response.json();
         
         if (files.length === 0) {
-            alert('No files found in the specified folder');
+            alert('No supported files found in: ' + appState.source_folder);
             return;
         }
         
@@ -435,9 +549,11 @@ async function loadFiles() {
         showCurrentFile();
         updateProgress();
         updateCategoriesGrid();
+        updateUndoButton();
         
     } catch (error) {
         console.error('Error loading files:', error);
+        alert('Error loading files from: ' + appState.source_folder);
     }
 }
 
@@ -522,6 +638,18 @@ function updateCategoriesGrid() {
     const categories = getCurrentCategories();
     
     let html = '';
+    
+    // 添加撤销按钮
+    html += `
+        <button id="undoBtn" 
+                class="category-btn" 
+                style="background: #fafafa; border: 2px dashed #d4d4d4; display: none;"
+                onclick="undoLastOperation()">
+            <span>Undo</span>
+            <span class="shortcut-key">Cmd+Z / U</span>
+        </button>
+    `;
+    
     for (let i = 0; i < categories.length; i++) {
         const category = categories[i];
         const shortcut = getShortcutKey(i);
@@ -535,6 +663,7 @@ function updateCategoriesGrid() {
     }
     
     grid.innerHTML = html;
+    updateUndoButton();
 }
 
 async function moveToCategory(category) {
@@ -561,10 +690,32 @@ async function moveToCategory(category) {
         });
         
         if (response.ok) {
+            const result = await response.json();
+            
+            // 保存到历史记录
+            operationHistory.push({
+                file: file,
+                fileIndex: currentIndex,
+                category: category,
+                originalName: getFileNameWithoutExtension(file.name),
+                newPath: result.moved_to,
+                timestamp: Date.now()
+            });
+            
+            // 限制历史记录数量（最多保留20条）
+            if (operationHistory.length > 20) {
+                operationHistory.shift();
+            }
+            
+            // 从文件列表中移除已处理的文件
+            files.splice(currentIndex, 1);
+            
             processedCount++;
-            currentIndex++;
+            // 不需要增加currentIndex，因为删除了当前文件后，下一个文件自动变成当前索引
+            
             updateProgress();
             showCurrentFile();
+            updateUndoButton();
         }
     } catch (error) {
         console.error('Error moving file:', error);
@@ -598,8 +749,9 @@ function updateProgress() {
     const progressText = document.getElementById('progressText');
     const progressFill = document.getElementById('progressFill');
     
-    progressText.textContent = `${processedCount} / ${files.length}`;
-    const percentage = files.length > 0 ? (processedCount / files.length) * 100 : 0;
+    const totalFiles = processedCount + files.length - currentIndex;
+    progressText.textContent = `${processedCount} / ${totalFiles}`;
+    const percentage = totalFiles > 0 ? (processedCount / totalFiles) * 100 : 0;
     progressFill.style.width = `${percentage}%`;
 }
 
