@@ -15,6 +15,9 @@ let operationHistory = [];
 
 // 初始化
 async function init() {
+    // 初始化多语言
+    i18nManager.updateUI();
+    
     await loadAppState();
     setupEventListeners();
     
@@ -39,7 +42,7 @@ async function loadAppState() {
         // 更新界面 - 显示源文件夹（可能是自动填入的当前目录）
         if (appState.source_folder) {
             document.getElementById('folderInput').value = appState.source_folder;
-            document.getElementById('setupBtn').textContent = 'Setup Categories';
+            document.getElementById('setupBtn').textContent = i18nManager.t('editCategories');
             
             // 如果有源文件夹，允许设置分类
             document.getElementById('setupBtn').disabled = false;
@@ -90,14 +93,14 @@ async function loadSelectedPreset() {
     document.getElementById('categoriesSetup').style.display = 'block';
     
     if (selectedValue === '__new__') {
-        const name = prompt('Enter preset name:');
+        const name = prompt(i18nManager.t('enterPresetName', 'Enter preset name:'));
         if (!name) {
             select.value = appState.current_preset || '';
             return;
         }
         
         if (appState.presets.some(p => p.name === name)) {
-            alert('Preset name already exists');
+            alert(i18nManager.t('presetExists', 'Preset name already exists'));
             select.value = appState.current_preset || '';
             return;
         }
@@ -146,7 +149,7 @@ function renderCategories(categories) {
     const container = document.getElementById('categoriesList');
     
     if (categories.length === 0) {
-        container.innerHTML = '<div style="text-align: center; color: #a3a3a3; padding: 20px;">No categories yet</div>';
+        container.innerHTML = `<div style="text-align: center; color: #a3a3a3; padding: 20px;">${i18nManager.t('noCategoriesYet', 'No categories yet')}</div>`;
         document.getElementById('startBtn').disabled = true;
         return;
     }
@@ -174,24 +177,24 @@ async function saveCurrentAsPreset() {
     const categories = getCurrentCategories();
     
     if (categories.length === 0) {
-        alert('Please add some categories first');
+        alert(i18nManager.t('pleaseAddCategories'));
         return;
     }
     
     let name = document.getElementById('presetSelect').value;
     
     if (!name || name === '__new__') {
-        name = prompt('Enter preset name:');
+        name = prompt(i18nManager.t('enterPresetName', 'Enter preset name:'));
         if (!name) return;
     } else {
-        if (!confirm(`Update preset "${name}" with current categories?`)) {
-            name = prompt('Save as new preset with name:');
+        if (!confirm(i18nManager.t('updatePreset', {name}))) {
+            name = prompt(i18nManager.t('saveAsNewPreset'));
             if (!name) return;
         }
     }
     
     await savePresetToServer(name, categories);
-    alert(`Preset "${name}" saved successfully`);
+    alert(i18nManager.t('presetSaved', {name}));
 }
 
 // 保存预设到服务器
@@ -227,11 +230,11 @@ async function deleteSelectedPreset() {
     const selectedValue = select.value;
     
     if (!selectedValue || selectedValue === '__new__') {
-        alert('Please select a preset to delete');
+        alert(i18nManager.t('selectPresetToDelete', 'Please select a preset to delete'));
         return;
     }
     
-    if (!confirm(`Delete preset "${selectedValue}"?`)) return;
+    if (!confirm(i18nManager.t('confirmDelete', {name: selectedValue}))) return;
     
     try {
         const response = await fetch('/api/preset/delete', {
@@ -254,7 +257,7 @@ async function deleteSelectedPreset() {
                 renderCategories([]);
             }
             
-            alert(`Preset "${selectedValue}" deleted`);
+            alert(i18nManager.t('presetDeleted', {name: selectedValue}));
         }
     } catch (error) {
         console.error('Error deleting preset:', error);
@@ -272,7 +275,7 @@ function addCategoryInSetup() {
         const preset = appState.presets.find(p => p.name === appState.current_preset);
         if (preset) {
             if (preset.categories.includes(categoryName)) {
-                alert('Category already exists');
+                alert(i18nManager.t('categoryExists', 'Category already exists'));
                 return;
             }
             preset.categories.push(categoryName);
@@ -309,10 +312,15 @@ function removeCategoryInSetup(index) {
 // 处理文件夹输入框回车
 function handleFolderInputKeydown(event) {
     if (event.key === 'Enter') {
-        const folderPath = document.getElementById('folderInput').value.trim();
-        if (folderPath) {
-            setSourceFolder();
-        }
+        updateSourceFolder();
+    }
+}
+
+// 更新源文件夹（通过勾号按钮或回车键）
+async function updateSourceFolder() {
+    const folderPath = document.getElementById('folderInput').value.trim();
+    if (folderPath) {
+        setSourceFolder();
     }
 }
 
@@ -321,7 +329,7 @@ async function setSourceFolder() {
     const folderPath = document.getElementById('folderInput').value.trim();
     
     if (!folderPath) {
-        alert('Please enter a folder path');
+        alert(i18nManager.t('enterFolderPath', 'Please enter a folder path'));
         return;
     }
     
@@ -343,7 +351,7 @@ async function setSourceFolder() {
             if (response.ok) {
                 console.log('Source folder updated to:', folderPath);
             } else {
-                alert('Failed to update source folder');
+                alert(i18nManager.t('failedUpdateFolder', 'Failed to update source folder'));
                 return;
             }
         } catch (error) {
@@ -368,7 +376,7 @@ function setupCategories() {
     // 先确保源文件夹已设置
     const folderPath = document.getElementById('folderInput').value.trim();
     if (!folderPath) {
-        alert('Please enter source folder path first');
+        alert(i18nManager.t('enterSourceFolderFirst', 'Please enter source folder path first'));
         document.getElementById('folderInput').focus();
         return;
     }
@@ -482,12 +490,12 @@ async function undoLastOperation() {
         } else {
             // 如果撤销失败，把操作放回历史
             operationHistory.push(lastOp);
-            alert('Failed to undo operation. The file might have been manually moved.');
+            alert(i18nManager.t('failedUndoMoved', 'Failed to undo operation. The file might have been manually moved.'));
         }
     } catch (error) {
         console.error('Error undoing operation:', error);
         operationHistory.push(lastOp);
-        alert('Failed to undo operation');
+        alert(i18nManager.t('failedUndo', 'Failed to undo operation'));
     }
 }
 
@@ -510,9 +518,9 @@ async function startClassification() {
     
     if (!appState.source_folder || categories.length === 0) {
         if (!appState.source_folder) {
-            alert('Please set source folder first');
+            alert(i18nManager.t('setSourceFolderFirst', 'Please set source folder first'));
         } else {
-            alert('Please add categories first');
+            alert(i18nManager.t('pleaseAddCategories'));
         }
         return;
     }
@@ -530,7 +538,7 @@ async function loadFiles() {
         files = await response.json();
         
         if (files.length === 0) {
-            alert('No supported files found in: ' + appState.source_folder);
+            alert(i18nManager.t('noFilesFound', 'No supported files found in: {folder}').replace('{folder}', appState.source_folder));
             return;
         }
         
@@ -553,7 +561,7 @@ async function loadFiles() {
         
     } catch (error) {
         console.error('Error loading files:', error);
-        alert('Error loading files from: ' + appState.source_folder);
+        alert(i18nManager.t('errorLoadingFiles', 'Error loading files from: {folder}').replace('{folder}', appState.source_folder));
     }
 }
 
@@ -577,9 +585,9 @@ function showCurrentFile() {
         isClassifying = false;
         viewer.innerHTML = `
             <div class="complete-message">
-                <h1 class="complete-title">Classification Complete</h1>
-                <p class="complete-stats">${processedCount} files processed</p>
-                <p class="complete-path">${appState.source_folder}</p>
+                <h1 class="complete-title">${i18nManager.t('allDone')}</h1>
+                <p class="complete-stats">${i18nManager.t('filesProcessed', {count: processedCount})}</p>
+                <p class="complete-path">${i18nManager.t('outputFolder')} ${appState.source_folder}</p>
             </div>
         `;
         document.querySelector('.sidebar').style.display = 'none';
@@ -608,7 +616,7 @@ function showCurrentFile() {
         </div>
         <div class="file-info">
             <div class="file-name">${file.name}</div>
-            <div class="file-counter">File ${currentIndex + 1} of ${files.length}</div>
+            <div class="file-counter">${i18nManager.t('fileCounter', {current: currentIndex + 1, total: files.length})}</div>
         </div>
         <div class="rename-area">
             <div class="rename-input-group">
