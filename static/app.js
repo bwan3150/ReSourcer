@@ -363,7 +363,7 @@ async function setSourceFolder() {
     
     // 显示分类设置区域
     document.getElementById('categoriesSetup').style.display = 'block';
-    document.getElementById('setupBtn').textContent = 'Edit Categories';
+    document.getElementById('setupBtn').textContent = i18nManager.t('editCategories');
     
     const categories = getCurrentCategories();
     if (categories.length > 0) {
@@ -505,7 +505,10 @@ function updateUndoButton() {
     if (undoBtn) {
         if (operationHistory.length > 0) {
             undoBtn.style.display = 'inline-flex';
-            undoBtn.textContent = `Undo (${operationHistory.length})`;
+            const undoText = undoBtn.querySelector('span:first-child');
+            if (undoText) {
+                undoText.textContent = `${i18nManager.t('undo')} (${operationHistory.length})`;
+            }
         } else {
             undoBtn.style.display = 'none';
         }
@@ -549,6 +552,9 @@ async function loadFiles() {
         // 切换到主界面
         document.getElementById('setupContainer').style.display = 'none';
         document.getElementById('mainContainer').style.display = 'block';
+        
+        // 隐藏语言切换按钮
+        document.querySelector('.lang-switcher').style.display = 'none';
         
         // 显示文件夹路径和预设名称
         const presetInfo = appState.current_preset ? ` | ${appState.current_preset}` : '';
@@ -646,17 +652,6 @@ function updateCategoriesGrid() {
     const categories = getCurrentCategories();
     
     let html = '';
-    
-    // 添加撤销按钮
-    html += `
-        <button id="undoBtn" 
-                class="category-btn" 
-                style="background: #fafafa; border: 2px dashed #d4d4d4; display: none;"
-                onclick="undoLastOperation()">
-            <span>Undo</span>
-            <span class="shortcut-key">Cmd+Z / U</span>
-        </button>
-    `;
     
     for (let i = 0; i < categories.length; i++) {
         const category = categories[i];

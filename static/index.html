@@ -262,6 +262,46 @@
             margin-bottom: 12px;
         }
         
+        .progress-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .undo-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            padding: 10px 16px;
+            background: white;
+            border: 2px solid #e5e5e5;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .undo-btn:hover {
+            background: #fafafa;
+            border-color: #171717;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .undo-btn .shortcut {
+            font-size: 12px;
+            color: #a3a3a3;
+            font-family: monospace;
+            padding: 2px 6px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+        
         .progress-text {
             font-size: 14px;
             color: #525252;
@@ -595,6 +635,12 @@
                 <div id="mediaViewer" class="media-viewer">
                     <!-- 动态内容 -->
                 </div>
+                
+                <!-- Undo按钮放在左下角 -->
+                <button id="undoBtn" class="undo-btn" onclick="undoLastOperation()">
+                    <span data-i18n="undo">Undo</span>
+                    <span class="shortcut">Cmd+Z / U</span>
+                </button>
             </div>
             
             <!-- 右侧分类区 -->
