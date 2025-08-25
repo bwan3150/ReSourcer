@@ -1,6 +1,6 @@
 [package]
-name = "resource-classifier"
-version = "0.1.0"
+name = "Toolkit-ReClassifier"
+version = "0.1.1"
 edition = "2021"
 
 [dependencies]
@@ -12,3 +12,4 @@ tokio = { version = "1", features = ["full"] }
 mime_guess = "2.0"
 percent-encoding = "2.3"
 open = "5.0"
+rust-embed = { version = "8.0", features = ["debug-embed"] }

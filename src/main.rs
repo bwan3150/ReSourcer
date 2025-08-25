@@ -1,9 +1,14 @@
-use actix_files::Files;
-use actix_web::{middleware, web, App, HttpResponse, HttpServer, Result};
+use actix_web::{middleware, web, App, HttpResponse, HttpServer, Result, HttpRequest};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 use std::env;
+use rust_embed::RustEmbed;
+
+// 嵌入static目录中的所有文件
+#[derive(RustEmbed)]
+#[folder = "static/"]
+struct Asset;
 
 #[derive(Serialize, Deserialize)]
 struct AppState {
@@ -349,6 +354,25 @@ async fn serve_file(path: web::Path<String>) -> Result<HttpResponse> {
         .body(content))
 }
 
+// 从嵌入的资源中提供静态文件
+async fn serve_static(req: HttpRequest) -> Result<HttpResponse> {
+    let path = req.match_info().query("filename");
+    let path = if path.is_empty() { "index.html" } else { path };
+    
+    match Asset::get(path) {
+        Some(content) => {
+            let mime_type = mime_guess::from_path(path)
+                .first_or_octet_stream()
+                .to_string();
+            
+            Ok(HttpResponse::Ok()
+                .content_type(mime_type)
+                .body(content.data.into_owned()))
+        }
+        None => Ok(HttpResponse::NotFound().body("404 Not Found")),
+    }
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // 获取当前目录
@@ -357,7 +381,7 @@ async fn main() -> std::io::Result<()> {
         .unwrap_or_else(|_| "Unknown".to_string());
     
     println!("====================================");
-    println!("    Resource Classifier");
+    println!("  Toolkit ReClassifier");
     println!("====================================");
     println!("Current directory: {}", current_dir);
     println!("Starting server at: http://localhost:1234");
@@ -384,9 +408,11 @@ async fn main() -> std::io::Result<()> {
             .route("/api/preset/load", web::post().to(load_preset))
             .route("/api/preset/delete", web::delete().to(delete_preset))
             .route("/api/file/{path:.*}", web::get().to(serve_file))
-            .service(Files::new("/", "./static").index_file("index.html"))
+            // 使用嵌入的静态资源
+            .route("/", web::get().to(serve_static))
+            .route("/{filename:.*}", web::get().to(serve_static))
     })
-    .bind("127.0.0.1:1234")?
+    .bind("0.0.0.0:1234")?
     .run()
     .await
 }
