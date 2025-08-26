@@ -268,6 +268,86 @@
             gap: 12px;
         }
         
+        .recent-history {
+            position: fixed;
+            bottom: 70px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 999;
+        }
+        
+        @keyframes slideUpFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes slideDownFadeOut {
+            from {
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+        }
+        
+        .history-item {
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #171717;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+            white-space: nowrap;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transform-origin: bottom center;
+        }
+        
+        .history-item.slide-up {
+            animation: slideUpFadeIn 0.4s ease-out forwards;
+        }
+        
+        .history-item.slide-down {
+            animation: slideDownFadeOut 0.3s ease-in forwards;
+        }
+        
+        .history-item-1 {
+            opacity: 0.35;
+        }
+        
+        .history-item-1.slide-up {
+            animation: slideUpFadeIn 0.5s ease-out forwards;
+            animation-delay: 0s;
+        }
+        
+        .history-item-2 {
+            opacity: 0.55;
+        }
+        
+        .history-item-2.slide-up {
+            animation: slideUpFadeIn 0.45s ease-out forwards;
+            animation-delay: 0.1s;
+        }
+        
+        .history-item-3 {
+            opacity: 0.75;
+        }
+        
+        .history-item-3.slide-up {
+            animation: slideUpFadeIn 0.4s ease-out forwards;
+            animation-delay: 0.2s;
+        }
+        
         .undo-btn {
             position: fixed;
             bottom: 20px;
@@ -634,6 +714,11 @@
                 
                 <div id="mediaViewer" class="media-viewer">
                     <!-- 动态内容 -->
+                </div>
+                
+                <!-- 历史记录显示区域 -->
+                <div id="recentHistory" class="recent-history">
+                    <!-- 动态显示最近3次分类历史 -->
                 </div>
                 
                 <!-- Undo按钮放在左下角 -->

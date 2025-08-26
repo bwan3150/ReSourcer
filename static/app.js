@@ -499,9 +499,11 @@ async function undoLastOperation() {
     }
 }
 
-// 更新撤销按钮状态
+// 更新撤销按钮和历史记录显示
 function updateUndoButton() {
     const undoBtn = document.getElementById('undoBtn');
+    const recentHistory = document.getElementById('recentHistory');
+    
     if (undoBtn) {
         if (operationHistory.length > 0) {
             undoBtn.style.display = 'inline-flex';
@@ -511,6 +513,77 @@ function updateUndoButton() {
             }
         } else {
             undoBtn.style.display = 'none';
+        }
+    }
+    
+    // 更新历史记录显示
+    if (recentHistory) {
+        const existingItems = recentHistory.querySelectorAll('.history-item');
+        
+        // 获取最近3次操作
+        const recentOps = operationHistory.slice(-3);
+        
+        // 获取上次的类别列表（用于判断内容是否变化）
+        const lastCategories = recentHistory.dataset.lastCategories ? 
+                              JSON.parse(recentHistory.dataset.lastCategories) : [];
+        const currentCategories = recentOps.map(op => op.category);
+        
+        // 判断是新增还是撤销
+        const isAdding = operationHistory.length > 0 && 
+                        (!recentHistory.dataset.lastCount || 
+                         parseInt(recentHistory.dataset.lastCount) < operationHistory.length);
+        const isRemoving = recentHistory.dataset.lastCount && 
+                          parseInt(recentHistory.dataset.lastCount) > operationHistory.length;
+        
+        // 判断内容是否有变化（用于处理超过3个的情况）
+        const contentChanged = JSON.stringify(lastCategories) !== JSON.stringify(currentCategories);
+        
+        // 保存当前状态
+        recentHistory.dataset.lastCount = operationHistory.length.toString();
+        recentHistory.dataset.lastCategories = JSON.stringify(currentCategories);
+        
+        if (isAdding || (contentChanged && operationHistory.length > 0 && !isRemoving)) {
+            // 新增操作或内容变化，添加向上滑入动画
+            recentHistory.innerHTML = '';
+            
+            // 从旧到新显示（最旧的在顶部，最新的在底部）
+            recentOps.forEach((op, index) => {
+                const historyItem = document.createElement('div');
+                // index=0是最旧的(倒数第三)，index=2是最新的(倒数第一)
+                historyItem.className = `history-item history-item-${index + 1} slide-up`;
+                historyItem.textContent = `→ ${op.category}`;
+                
+                recentHistory.appendChild(historyItem);
+            });
+        } else if (isRemoving && recentOps.length > 0) {
+            // 撤销操作，添加向下滑出动画
+            const lastItem = existingItems[existingItems.length - 1];
+            if (lastItem) {
+                lastItem.classList.add('slide-down');
+                // 动画结束后重新渲染列表
+                setTimeout(() => {
+                    recentHistory.innerHTML = '';
+                    recentOps.forEach((op, index) => {
+                        const historyItem = document.createElement('div');
+                        historyItem.className = `history-item history-item-${index + 1}`;
+                        historyItem.textContent = `→ ${op.category}`;
+                        recentHistory.appendChild(historyItem);
+                    });
+                }, 300); // 与slide-down动画时长一致
+            }
+        } else if (isRemoving && recentOps.length === 0) {
+            // 如果撤销到没有历史记录，全部向下滑出
+            existingItems.forEach((item, index) => {
+                item.classList.add('slide-down');
+                item.style.animationDelay = `${index * 0.05}s`;
+            });
+            // 动画结束后清空
+            setTimeout(() => {
+                recentHistory.innerHTML = '';
+            }, 400);
+        } else if (recentOps.length === 0) {
+            // 清空状态
+            recentHistory.innerHTML = '';
         }
     }
 }
@@ -530,6 +603,7 @@ async function startClassification() {
     
     // 清空历史记录
     operationHistory = [];
+    updateUndoButton();  // 更新UI显示
     
     await loadFiles();
 }
@@ -714,7 +788,6 @@ async function moveToCategory(category) {
             files.splice(currentIndex, 1);
             
             processedCount++;
-            // 不需要增加currentIndex，因为删除了当前文件后，下一个文件自动变成当前索引
             
             updateProgress();
             showCurrentFile();
