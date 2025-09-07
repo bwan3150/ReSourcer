@@ -188,12 +188,20 @@ pub async fn move_file(req: web::Json<MoveRequest>) -> Result<HttpResponse> {
     }
     
     // 如果category为空，表示移回源文件夹根目录
-    let target_dir = if req.category.is_empty() {
+    let mut target_dir = if req.category.is_empty() {
         Path::new(&state.source_folder).to_path_buf()
     } else {
         Path::new(&state.source_folder).join(&req.category)
     };
     
+    // 文件名如已存在，则添加后缀
+    let mut dir_counter = 1;
+    while target_dir.exists() && !target_dir.is_dir() {
+        target_dir = Path::new(&state.source_folder).join(format!("{}_{}", req.category, dir_counter));
+        dir_counter += 1;
+    }
+    
+    // 如不存在则创建目录
     if !target_dir.exists() {
         fs::create_dir_all(&target_dir)?;
     }
@@ -210,16 +218,22 @@ pub async fn move_file(req: web::Json<MoveRequest>) -> Result<HttpResponse> {
     
     let target_path = target_dir.join(&target_file_name);
     
-    // 如果目标文件已存在，添加序号
+    // 使用括号加数字别名
     let mut final_path = target_path.clone();
-    let mut counter = 1;
-    while final_path.exists() {
+    if final_path.exists() {
         let stem = Path::new(&target_file_name).file_stem().unwrap().to_string_lossy();
         let ext = Path::new(&target_file_name).extension()
             .map(|e| format!(".{}", e.to_string_lossy()))
             .unwrap_or_default();
-        final_path = target_dir.join(format!("{}_{}{}", stem, counter, ext));
-        counter += 1;
+        
+        let mut counter = 1;
+        loop {
+            final_path = target_dir.join(format!("{} ({}){}", stem, counter, ext));
+            if !final_path.exists() {
+                break;
+            }
+            counter += 1;
+        }
     }
     
     fs::rename(&source_path, &final_path)?;
