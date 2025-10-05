@@ -52,8 +52,9 @@ async function loadFolders() {
 
         const foldersScroll = document.getElementById('foldersScroll');
 
-        // 保留 Root 选项
+        // 保留源文件夹和添加按钮
         const rootChip = foldersScroll.querySelector('[data-folder=""]');
+        const addButton = foldersScroll.querySelector('.add-folder');
         foldersScroll.innerHTML = '';
         foldersScroll.appendChild(rootChip);
 
@@ -68,6 +69,9 @@ async function loadFolders() {
                 foldersScroll.appendChild(chip);
             }
         });
+
+        // 添加按钮放在最后
+        foldersScroll.appendChild(addButton);
     } catch (error) {
         console.error('Failed to load folders:', error);
     }
@@ -474,6 +478,37 @@ async function clearHistory() {
     } catch (error) {
         console.error('Failed to clear history:', error);
         alert('Failed to clear history');
+    }
+}
+
+// 创建新文件夹
+async function createNewFolder() {
+    const folderName = prompt(i18nManager.t('addNewFolder') + ':');
+
+    if (!folderName || !folderName.trim()) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/downloader/create-folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder_name: folderName.trim() })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            // 重新加载文件夹列表
+            await loadFolders();
+            // 自动选择新创建的文件夹
+            selectFolder(folderName.trim());
+        } else {
+            alert(result.error || 'Failed to create folder');
+        }
+    } catch (error) {
+        console.error('Failed to create folder:', error);
+        alert('Failed to create folder');
     }
 }
 

@@ -136,30 +136,8 @@ async fn create_task(
     let downloader = req.downloader.clone()
         .unwrap_or(detect_result.downloader.clone());
 
-    // 3. 如果需要认证，检查是否有认证信息
-    if detect_result.requires_auth {
-        match detect_result.platform {
-            Platform::X => {
-                if !super::auth::x::has_cookies() {
-                    return Ok(HttpResponse::BadRequest().json(serde_json::json!({
-                        "error": "X 平台需要认证，请先上传 cookies",
-                        "platform": "x",
-                        "requires_auth": true
-                    })));
-                }
-            },
-            Platform::Pixiv => {
-                if !super::auth::pixiv::has_token() {
-                    return Ok(HttpResponse::BadRequest().json(serde_json::json!({
-                        "error": "Pixiv 平台需要认证，请先上传 token",
-                        "platform": "pixiv",
-                        "requires_auth": true
-                    })));
-                }
-            },
-            _ => {}
-        }
-    }
+    // 3. 认证信息检查（可选，有就用，没有就直接下载）
+    // 不再强制要求认证，让下载器自己处理认证失败的情况
 
     // 4. 验证 save_folder（如果非空）
     if !req.save_folder.is_empty() {
@@ -448,6 +426,49 @@ async fn clear_history() -> Result<HttpResponse> {
     })))
 }
 
+/// POST /api/downloader/create-folder
+/// 创建新文件夹
+async fn create_folder(req: web::Json<serde_json::Value>) -> Result<HttpResponse> {
+    let folder_name = req["folder_name"]
+        .as_str()
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("Missing folder_name"))?;
+
+    // 验证文件夹名称
+    if folder_name.is_empty() || folder_name.contains('/') || folder_name.contains('\\') {
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "无效的文件夹名称"
+        })));
+    }
+
+    let config = super::config::load_config()
+        .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+
+    if config.source_folder.is_empty() {
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "请先在设置中配置源文件夹"
+        })));
+    }
+
+    let target_folder = Path::new(&config.source_folder).join(folder_name);
+
+    if target_folder.exists() {
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "文件夹已存在"
+        })));
+    }
+
+    fs::create_dir_all(&target_folder)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(
+            format!("无法创建文件夹: {}", e)
+        ))?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "status": "success",
+        "message": "文件夹创建成功",
+        "folder_name": folder_name
+    })))
+}
+
 // ============================================================================
 // 路由注册
 // ============================================================================
@@ -474,5 +495,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(web::resource("/file/{path:.*}").route(web::get().to(serve_file)))
         .service(web::resource("/open-folder").route(web::post().to(open_folder)))
         // 历史记录
-        .service(web::resource("/history").route(web::delete().to(clear_history)));
+        .service(web::resource("/history").route(web::delete().to(clear_history)))
+        // 文件夹管理
+        .service(web::resource("/create-folder").route(web::post().to(create_folder)));
 }

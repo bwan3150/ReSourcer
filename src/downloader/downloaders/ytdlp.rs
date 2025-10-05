@@ -94,13 +94,22 @@ where
         cmd.arg("-f").arg("best"); // 默认最佳质量
     }
 
-    // 根据平台添加 cookies（仅 X 需要）
+    // 根据平台添加 cookies（可选，有就用，没有就不加）
     if platform == Platform::X {
         if let Ok(cookies_path) = super::super::auth::x::get_cookies_path() {
             if cookies_path.exists() {
                 cmd.arg("--cookies").arg(cookies_path);
-            } else {
-                return Err("X 平台需要 cookies，但 cookies 文件不存在".to_string());
+            }
+            // 如果没有 cookies，不报错，让 yt-dlp 自己尝试下载
+        }
+    }
+
+    // Pixiv 平台的 token（如果需要的话）
+    if platform == Platform::Pixiv {
+        if let Ok(token_path) = super::super::auth::pixiv::get_token_path() {
+            if token_path.exists() {
+                // Pixiv 可能需要特殊参数，这里暂时跳过
+                // 如果 yt-dlp 需要 token，可以在这里添加
             }
         }
     }
