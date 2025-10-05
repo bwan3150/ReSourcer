@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Toolkit ReClassifier</title>
+    <title>ReSourcer</title>
+    <link rel="stylesheet" href="/material-icons.css">
     <style>
         /* 语言切换按钮 */
         .lang-switcher {
@@ -17,7 +18,7 @@
             padding: 4px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
-        
+
         .lang-btn {
             padding: 8px 12px;
             background: transparent;
@@ -29,727 +30,166 @@
             color: #525252;
             transition: all 0.2s;
         }
-        
+
         .lang-btn:hover {
             background: #f5f5f5;
         }
-        
+
         .lang-btn.active {
             background: #171717;
             color: white;
         }
-        
-        /* 图标按钮 */
-        .icon-btn {
-            padding: 8px;
-            background: transparent;
-            border: 1px solid #e5e5e5;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 36px;
-            height: 36px;
-        }
-        
-        .icon-btn:hover {
-            background: #fafafa;
-            border-color: #171717;
-        }
-        
-        .icon-btn svg {
-            width: 18px;
-            height: 18px;
-            fill: #525252;
-        }
-        
-        .icon-btn:hover svg {
-            fill: #171717;
-        }
-        
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif;
             background: #fafafa;
             color: #171717;
             line-height: 1.5;
             min-height: 100vh;
-        }
-        
-        /* 初始设置界面 */
-        .setup-container {
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
             padding: 20px;
         }
-        
-        .setup-card {
-            background: white;
-            border-radius: 12px;
-            padding: 48px;
-            max-width: 600px;
+
+        .container {
+            max-width: 800px;
             width: 100%;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1);
         }
-        
-        .setup-title {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 40px;
+
+        .header {
             text-align: center;
-            letter-spacing: -0.5px;
+            margin-bottom: 48px;
         }
-        
-        .input-group {
-            margin-bottom: 24px;
-        }
-        
-        .input-label {
-            display: block;
-            font-size: 14px;
-            font-weight: 500;
-            color: #525252;
+
+        .header h1 {
+            font-size: 48px;
+            font-weight: 700;
+            letter-spacing: -1px;
             margin-bottom: 8px;
         }
-        
-        .text-input {
-            width: 100%;
-            padding: 12px 16px;
-            font-size: 14px;
-            border: 1px solid #e5e5e5;
-            border-radius: 8px;
-            transition: all 0.2s;
-            background: white;
-        }
-        
-        .text-input:focus {
-            outline: none;
-            border-color: #171717;
-            box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
-        }
-        
-        .btn {
-            padding: 12px 24px;
-            font-size: 14px;
-            font-weight: 500;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        
-        .btn-primary {
-            background: #171717;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #404040;
-        }
-        
-        .btn-secondary {
-            background: white;
-            color: #171717;
-            border: 1px solid #e5e5e5;
-        }
-        
-        .btn-secondary:hover {
-            background: #fafafa;
-            border-color: #d4d4d4;
-        }
-        
-        .btn-group {
-            display: flex;
-            gap: 12px;
-            margin-top: 32px;
-        }
-        
-        .btn-group .btn {
-            flex: 1;
-        }
-        
-        /* 分类管理 */
-        .categories-list {
-            max-height: 300px;
-            overflow-y: auto;
-            margin: 20px 0;
-            border: 1px solid #e5e5e5;
-            border-radius: 8px;
-            padding: 8px;
-        }
-        
-        .category-item {
-            display: flex;
-            align-items: center;
-            padding: 8px 12px;
-            margin-bottom: 4px;
-            border-radius: 6px;
-            transition: background 0.2s;
-        }
-        
-        .category-item:hover {
-            background: #f5f5f5;
-        }
-        
-        .category-item input {
-            flex: 1;
-            padding: 6px 10px;
-            border: 1px solid #e5e5e5;
-            border-radius: 4px;
-            font-size: 14px;
-            margin-right: 8px;
-        }
-        
-        .category-item .delete-btn {
-            padding: 4px 8px;
-            background: transparent;
-            color: #a3a3a3;
-            border: none;
-            cursor: pointer;
-            font-size: 18px;
-            line-height: 1;
-            transition: color 0.2s;
-        }
-        
-        .category-item .delete-btn:hover {
-            color: #ef4444;
-        }
-        
-        /* 主界面 */
-        .main-container {
-            display: none;
-            height: 100vh;
-            background: white;
-        }
-        
-        .main-layout {
-            display: flex;
-            height: 100%;
-        }
-        
-        /* 左侧内容区 */
-        .content-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid #e5e5e5;
-        }
-        
-        .top-bar {
-            padding: 20px 24px;
-            border-bottom: 1px solid #e5e5e5;
-            background: white;
-        }
-        
-        .progress-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-        
-        .progress-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .recent-history {
-            position: fixed;
-            bottom: 70px;
-            left: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            z-index: 999;
-        }
-        
-        @keyframes slideUpFadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                transform: translateY(0);
-            }
-        }
-        
-        @keyframes slideDownFadeOut {
-            from {
-                transform: translateY(0);
-            }
-            to {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-        }
-        
-        .history-item {
-            padding: 6px 12px;
-            background: white;
-            border: 1px solid #e5e5e5;
-            border-radius: 6px;
-            font-size: 13px;
-            color: #171717;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-            white-space: nowrap;
-            max-width: 200px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            transform-origin: bottom center;
-        }
-        
-        .history-item.slide-up {
-            animation: slideUpFadeIn 0.4s ease-out forwards;
-        }
-        
-        .history-item.slide-down {
-            animation: slideDownFadeOut 0.3s ease-in forwards;
-        }
-        
-        .history-item-1 {
-            opacity: 0.35;
-        }
-        
-        .history-item-1.slide-up {
-            animation: slideUpFadeIn 0.5s ease-out forwards;
-            animation-delay: 0s;
-        }
-        
-        .history-item-2 {
-            opacity: 0.55;
-        }
-        
-        .history-item-2.slide-up {
-            animation: slideUpFadeIn 0.45s ease-out forwards;
-            animation-delay: 0.1s;
-        }
-        
-        .history-item-3 {
-            opacity: 0.75;
-        }
-        
-        .history-item-3.slide-up {
-            animation: slideUpFadeIn 0.4s ease-out forwards;
-            animation-delay: 0.2s;
-        }
-        
-        .undo-btn {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            padding: 10px 16px;
-            background: white;
-            border: 2px solid #e5e5e5;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            display: none;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.2s;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            z-index: 1000;
-        }
-        
-        .undo-btn:hover {
-            background: #fafafa;
-            border-color: #171717;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-        
-        .undo-btn .shortcut {
-            font-size: 12px;
-            color: #a3a3a3;
-            font-family: monospace;
-            padding: 2px 6px;
-            background: #f5f5f5;
-            border-radius: 4px;
-        }
-        
-        .progress-text {
-            font-size: 14px;
-            color: #525252;
-        }
-        
-        .progress-track {
-            height: 4px;
-            background: #e5e5e5;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: #171717;
-            transition: width 0.3s ease;
-        }
-        
-        .media-viewer {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 40px;
-            background: #fafafa;
-        }
-        
-        .media-container {
-            max-width: 100%;
-            max-height: 60vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 24px;
-        }
-        
-        .media-container img,
-        .media-container video {
-            max-width: 100%;
-            max-height: 60vh;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.1);
-        }
-        
-        .file-info {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        
-        .file-name {
+
+        .header p {
+            color: #737373;
             font-size: 16px;
-            font-weight: 500;
-            color: #171717;
-            margin-bottom: 4px;
         }
-        
-        .file-counter {
-            font-size: 14px;
-            color: #a3a3a3;
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
         }
-        
-        .rename-area {
-            width: 100%;
-            max-width: 400px;
-            padding: 16px;
-            background: white;
-            border-radius: 8px;
-            border: 1px solid #e5e5e5;
-        }
-        
-        .rename-input-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .rename-input {
-            flex: 1;
-            padding: 8px 12px;
-            font-size: 14px;
-            border: 1px solid #e5e5e5;
-            border-radius: 6px;
-            background: white;
-        }
-        
-        .rename-input:focus {
-            outline: none;
-            border-color: #171717;
-        }
-        
-        .file-extension {
-            color: #a3a3a3;
-            font-size: 14px;
-        }
-        
-        /* 右侧分类区 */
-        .sidebar {
-            width: 320px;
-            display: flex;
-            flex-direction: column;
-            background: white;
-        }
-        
-        .sidebar-header {
-            padding: 20px 24px;
-            border-bottom: 1px solid #e5e5e5;
-        }
-        
-        .sidebar-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #525252;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .categories-grid {
-            flex: 1;
-            padding: 16px;
-            overflow-y: auto;
-        }
-        
-        .category-btn {
-            width: 100%;
-            padding: 12px 16px;
-            margin-bottom: 8px;
+
+        .tool-card {
             background: white;
             border: 1px solid #e5e5e5;
-            border-radius: 8px;
-            text-align: left;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 14px;
+            border-radius: 12px;
+            padding: 24px;
+            text-decoration: none;
+            color: inherit;
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-        
-        .category-btn:hover {
-            background: #fafafa;
-            border-color: #171717;
-            transform: translateX(2px);
-        }
-        
-        .category-btn:active {
-            transform: translateX(0);
-        }
-        
-        .shortcut-key {
-            font-size: 12px;
-            color: #a3a3a3;
-            font-family: monospace;
-            padding: 2px 6px;
-            background: #f5f5f5;
-            border-radius: 4px;
-        }
-        
-        .add-category-area {
-            padding: 16px;
-            border-top: 1px solid #e5e5e5;
-        }
-        
-        .add-category-input {
-            width: 100%;
-            padding: 8px 12px;
-            font-size: 14px;
-            border: 1px solid #e5e5e5;
-            border-radius: 6px;
-            margin-bottom: 8px;
-        }
-        
-        .add-category-btn {
-            width: 100%;
-            padding: 8px 16px;
-            background: #fafafa;
-            border: 1px solid #e5e5e5;
-            border-radius: 6px;
-            font-size: 14px;
-            cursor: pointer;
             transition: all 0.2s;
         }
-        
-        .add-category-btn:hover {
-            background: #f5f5f5;
-            border-color: #d4d4d4;
+
+        .tool-card:hover {
+            border-color: #171717;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
-        
-        /* 完成界面 */
-        .complete-message {
-            text-align: center;
-            padding: 60px;
+
+        .tool-card.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
-        
-        .complete-title {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 16px;
+
+        .tool-card.disabled:hover {
+            border-color: #e5e5e5;
+            box-shadow: none;
         }
-        
-        .complete-stats {
+
+        .tool-info h2 {
             font-size: 18px;
-            color: #525252;
-            margin-bottom: 8px;
+            font-weight: 600;
+            margin-bottom: 4px;
         }
-        
-        .complete-path {
+
+        .tool-info p {
             font-size: 14px;
+            color: #737373;
+        }
+
+        .tool-badge {
+            font-size: 12px;
+            color: #737373;
+            background: #f5f5f5;
+            padding: 4px 12px;
+            border-radius: 6px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 48px;
             color: #a3a3a3;
-        }
-        
-        /* 滚动条样式 */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: #d4d4d4;
-            border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: #a3a3a3;
-        }
-        
-        /* 响应式 */
-        @media (max-width: 768px) {
-            .main-layout {
-                flex-direction: column;
-            }
-            
-            .sidebar {
-                width: 100%;
-                height: 40vh;
-                border-right: none;
-                border-top: 1px solid #e5e5e5;
-            }
-            
-            .content-area {
-                border-right: none;
-            }
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <!-- 语言切换器 -->
+    <!-- 语言切换 -->
     <div class="lang-switcher">
-        <button class="lang-btn" onclick="i18nManager.setLanguage('en')" data-lang="en">EN</button>
-        <button class="lang-btn" onclick="i18nManager.setLanguage('zh')" data-lang="zh">中文</button>
+        <button class="lang-btn active" data-lang="en" onclick="i18nManager.setLang('en')">EN</button>
+        <button class="lang-btn" data-lang="zh" onclick="i18nManager.setLang('zh')">中文</button>
     </div>
-    
-    <!-- 初始设置界面 -->
-    <div id="setupContainer" class="setup-container">
-        <div class="setup-card">
-            <h1 class="setup-title" data-i18n="title">Toolkit ReClassifier</h1>
-            
-            <div class="input-group">
-                <label class="input-label" data-i18n="sourceFolder">Source Folder</label>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <input type="text" 
-                           id="folderInput" 
-                           class="text-input" 
-                           placeholder="/path/to/your/folder"
-                           data-i18n="folderPlaceholder"
-                           onkeydown="handleFolderInputKeydown(event)"
-                           style="flex: 1;">
-                    <button class="icon-btn" onclick="updateSourceFolder()" title="Save">
-                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
-                        </svg>
-                    </button>
+
+    <div class="container">
+        <div class="header">
+            <h1 data-i18n="homeTitle">ReSourcer</h1>
+        </div>
+
+        <div class="tools-grid">
+
+            <a href="/settings/" class="tool-card">
+                <div class="tool-info">
+                    <h2 data-i18n="settings">Settings</h2>
                 </div>
-            </div>
-            
-            <div class="input-group">
-                <label class="input-label" data-i18n="categoryPreset">Category Preset</label>
-                <div style="display: flex; gap: 8px;">
-                    <select id="presetSelect" class="text-input" style="flex: 1;" onchange="loadSelectedPreset()">
-                        <!-- Presets will be loaded here -->
-                    </select>
-                    <button class="btn btn-secondary" onclick="saveCurrentAsPreset()" data-i18n="save">Save</button>
-                    <button class="btn btn-secondary" onclick="deleteSelectedPreset()" data-i18n="delete">Delete</button>
+            </a>
+
+            <a href="/classifier/" class="tool-card">
+                <div class="tool-info">
+                    <h2 data-i18n="classifier">Classifier</h2>
                 </div>
-            </div>
-            
-            <div id="categoriesSetup" style="display: none;">
-                <label class="input-label" data-i18n="categories">Categories</label>
-                <div id="categoriesList" class="categories-list"></div>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" 
-                           id="newCategoryInput" 
-                           class="text-input" 
-                           placeholder="Add new category"
-                           data-i18n="addNewCategory"
-                           onkeydown="if(event.key==='Enter') addCategoryInSetup()">
-                    <button class="icon-btn" onclick="addCategoryInSetup()" title="Add">
-                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                        </svg>
-                    </button>
+            </a>
+
+            <a href="/downloader/" class="tool-card disabled" onclick="return false;">
+                <div class="tool-info">
+                    <h2 data-i18n="downloader">Downloader</h2>
                 </div>
-            </div>
-            
-            <div class="btn-group">
-                <button id="setupBtn" class="btn btn-secondary" onclick="setupCategories()" data-i18n="editCategories">Edit Categories</button>
-                <button id="startBtn" class="btn btn-primary" onclick="startClassification()" disabled data-i18n="startClassification">Start Classification</button>
-            </div>
+                <span class="tool-badge" data-i18n="comingSoon">coming soon</span>
+            </a>
+
+            <a href="/uploader/" class="tool-card disabled" onclick="return false;">
+                <div class="tool-info">
+                    <h2 data-i18n="transmitter">Transmitter</h2>
+                </div>
+                <span class="tool-badge" data-i18n="comingSoon">coming soon</span>
+            </a>
+        </div>
+
+        <div class="footer">
+            ReSourcer v0.2.0
         </div>
     </div>
-    
-    <!-- 主界面 -->
-    <div id="mainContainer" class="main-container">
-        <div class="main-layout">
-            <!-- 左侧内容区 -->
-            <div class="content-area">
-                <div class="top-bar">
-                    <div class="progress-info">
-                        <span class="progress-text" id="progressText">0 / 0</span>
-                        <span class="progress-text" id="folderPath" style="color: #a3a3a3;"></span>
-                    </div>
-                    <div class="progress-track">
-                        <div id="progressFill" class="progress-fill" style="width: 0%;"></div>
-                    </div>
-                </div>
-                
-                <div id="mediaViewer" class="media-viewer">
-                    <!-- 动态内容 -->
-                </div>
-                
-                <!-- 历史记录显示区域 -->
-                <div id="recentHistory" class="recent-history">
-                    <!-- 动态显示最近3次分类历史 -->
-                </div>
-                
-                <!-- Undo按钮放在左下角 -->
-                <button id="undoBtn" class="undo-btn" onclick="undoLastOperation()">
-                    <span data-i18n="undo">Undo</span>
-                    <span class="shortcut">Cmd+Z / U</span>
-                </button>
-            </div>
-            
-            <!-- 右侧分类区 -->
-            <div class="sidebar">
-                <div class="sidebar-header">
-                    <div class="sidebar-title" data-i18n="categoriesTitle">Categories</div>
-                </div>
-                <div id="categoriesGrid" class="categories-grid">
-                    <!-- 分类按钮 -->
-                </div>
-                <div class="add-category-area">
-                    <input type="text" 
-                           id="quickAddCategory" 
-                           class="add-category-input" 
-                           placeholder="Quick add category"
-                           data-i18n="quickAddCategory"
-                           onkeydown="if(event.key==='Enter') quickAddNewCategory()">
-                    <button class="add-category-btn" onclick="quickAddNewCategory()" data-i18n="addCategory">Add Category</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <script src="i18n.js"></script>
-    <script src="app.js"></script>
+
+    <script src="/common-i18n.js"></script>
+    <script>
+        i18nManager.updateUI();
+    </script>
 </body>
 </html>

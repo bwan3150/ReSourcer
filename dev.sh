@@ -1,0 +1,81 @@
+#!/bin/bash
+
+set -e
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+print_status() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+update_dependencies() {
+    print_status "Checking dependencies..."
+
+    # 检查 yt-dlp 版本
+    if command -v yt-dlp &> /dev/null; then
+        YTDLP_VERSION=$(yt-dlp --version 2>/dev/null || echo "unknown")
+        print_status "yt-dlp version: $YTDLP_VERSION"
+    else
+        YTDLP_VERSION="not found"
+        print_warning "yt-dlp not found"
+    fi
+
+    # 获取当前时间戳
+    TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    # 更新 config/dependencies.json
+    cat > config/dependencies.json << EOF
+{
+  "yt-dlp": {
+    "version": "$YTDLP_VERSION",
+    "last_checked": "$TIMESTAMP"
+  }
+}
+EOF
+
+    print_status "Dependencies config updated"
+}
+
+main() {
+    print_status "Starting re-sourcer rebuild process..."
+
+    print_status "Looking for and terminating existing re-sourcer processes..."
+    if pkill -f re-sourcer; then
+        print_status "Terminated existing processes"
+        sleep 1
+    else
+        print_warning "No running re-sourcer processes found"
+    fi
+
+    # 更新依赖版本信息
+    update_dependencies
+
+    print_status "Building project (release mode)..."
+    if cargo build --release; then
+        print_status "Build successful"
+    else
+        print_error "Build failed"
+        exit 1
+    fi
+
+    print_status "Launching re-sourcer..."
+    if [ -f "./target/release/re-sourcer" ]; then
+        ./target/release/re-sourcer
+    else
+        print_error "Executable not found: ./target/release/re-sourcer"
+        exit 1
+    fi
+}
+
+main "$@"

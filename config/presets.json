@@ -1,0 +1,35 @@
+[
+  {
+    "name": "Art Resources",
+    "categories": [
+      "Character Design",
+      "Backgrounds",
+      "Color Reference",
+      "Composition",
+      "Anatomy",
+      "Lighting"
+    ]
+  },
+  {
+    "name": "Photography",
+    "categories": [
+      "Portraits",
+      "Landscapes",
+      "Street",
+      "Architecture",
+      "Nature",
+      "Black & White"
+    ]
+  },
+  {
+    "name": "Design Assets",
+    "categories": [
+      "UI/UX",
+      "Icons",
+      "Patterns",
+      "Textures",
+      "Mockups",
+      "Fonts"
+    ]
+  }
+]
