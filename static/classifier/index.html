@@ -229,9 +229,34 @@
             color: #ef4444;
         }
         
+        /* 返回按钮 */
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            color: #525252;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .back-btn:hover {
+            background: #fafafa;
+            border-color: #171717;
+            color: #171717;
+        }
+
         /* 主界面 */
         .main-container {
-            display: none;
             height: 100vh;
             background: white;
         }
@@ -632,71 +657,20 @@
     </style>
 </head>
 <body>
+    <!-- 返回主页按钮 -->
+    <a href="/" class="back-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span data-i18n="backToHome">Back to Home</span>
+    </a>
+
     <!-- 语言切换器 -->
     <div class="lang-switcher">
         <button class="lang-btn" onclick="i18nManager.setLanguage('en')" data-lang="en">EN</button>
         <button class="lang-btn" onclick="i18nManager.setLanguage('zh')" data-lang="zh">中文</button>
     </div>
-    
-    <!-- 初始设置界面 -->
-    <div id="setupContainer" class="setup-container">
-        <div class="setup-card">
-            <h1 class="setup-title" data-i18n="title">Toolkit ReClassifier</h1>
-            
-            <div class="input-group">
-                <label class="input-label" data-i18n="sourceFolder">Source Folder</label>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <input type="text" 
-                           id="folderInput" 
-                           class="text-input" 
-                           placeholder="/path/to/your/folder"
-                           data-i18n="folderPlaceholder"
-                           onkeydown="handleFolderInputKeydown(event)"
-                           style="flex: 1;">
-                    <button class="icon-btn" onclick="updateSourceFolder()" title="Save">
-                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            
-            <div class="input-group">
-                <label class="input-label" data-i18n="categoryPreset">Category Preset</label>
-                <div style="display: flex; gap: 8px;">
-                    <select id="presetSelect" class="text-input" style="flex: 1;" onchange="loadSelectedPreset()">
-                        <!-- Presets will be loaded here -->
-                    </select>
-                    <button class="btn btn-secondary" onclick="saveCurrentAsPreset()" data-i18n="save">Save</button>
-                    <button class="btn btn-secondary" onclick="deleteSelectedPreset()" data-i18n="delete">Delete</button>
-                </div>
-            </div>
-            
-            <div id="categoriesSetup" style="display: none;">
-                <label class="input-label" data-i18n="categories">Categories</label>
-                <div id="categoriesList" class="categories-list"></div>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" 
-                           id="newCategoryInput" 
-                           class="text-input" 
-                           placeholder="Add new category"
-                           data-i18n="addNewCategory"
-                           onkeydown="if(event.key==='Enter') addCategoryInSetup()">
-                    <button class="icon-btn" onclick="addCategoryInSetup()" title="Add">
-                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            
-            <div class="btn-group">
-                <button id="setupBtn" class="btn btn-secondary" onclick="setupCategories()" data-i18n="editCategories">Edit Categories</button>
-                <button id="startBtn" class="btn btn-primary" onclick="startClassification()" disabled data-i18n="startClassification">Start Classification</button>
-            </div>
-        </div>
-    </div>
-    
+
     <!-- 主界面 -->
     <div id="mainContainer" class="main-container">
         <div class="main-layout">

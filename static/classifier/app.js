@@ -17,14 +17,12 @@ let operationHistory = [];
 async function init() {
     // 初始化多语言
     i18nManager.updateUI();
-    
+
     await loadAppState();
     setupEventListeners();
-    
-    // 初始化时如果有文件夹路径，显示分类设置区域
-    if (appState.source_folder) {
-        document.getElementById('categoriesSetup').style.display = 'block';
-    }
+
+    // 直接开始分类
+    await startClassification();
 }
 
 // 设置事件监听器
@@ -38,105 +36,11 @@ async function loadAppState() {
     try {
         const response = await fetch('/api/classifier/state');
         appState = await response.json();
-        
-        // 更新界面 - 显示源文件夹（可能是自动填入的当前目录）
-        if (appState.source_folder) {
-            document.getElementById('folderInput').value = appState.source_folder;
-            document.getElementById('setupBtn').textContent = i18nManager.t('editCategories');
-            
-            // 如果有源文件夹，允许设置分类
-            document.getElementById('setupBtn').disabled = false;
-        }
-        
-        // 构建预设选择器
-        updatePresetSelector();
-        
-        // 显示当前预设的分类
-        if (appState.current_preset) {
-            const preset = appState.presets.find(p => p.name === appState.current_preset);
-            if (preset) {
-                renderCategories(preset.categories);
-                if (preset.categories.length > 0) {
-                    document.getElementById('startBtn').disabled = false;
-                }
-            }
-        }
-        
     } catch (error) {
         console.error('Error loading state:', error);
     }
 }
 
-// 更新预设选择器
-function updatePresetSelector() {
-    const select = document.getElementById('presetSelect');
-    
-    let options = '<option value="">Custom (No Preset)</option>';
-    
-    options += appState.presets.map(preset => 
-        `<option value="${preset.name}" ${preset.name === appState.current_preset ? 'selected' : ''}>
-            ${preset.name} (${preset.categories.length} categories)
-        </option>`
-    ).join('');
-    
-    options += '<option value="__new__">+ Create New Preset</option>';
-    
-    select.innerHTML = options;
-}
-
-// 加载选中的预设
-async function loadSelectedPreset() {
-    const select = document.getElementById('presetSelect');
-    const selectedValue = select.value;
-    
-    // 显示分类设置区域
-    document.getElementById('categoriesSetup').style.display = 'block';
-    
-    if (selectedValue === '__new__') {
-        const name = prompt(i18nManager.t('enterPresetName', 'Enter preset name:'));
-        if (!name) {
-            select.value = appState.current_preset || '';
-            return;
-        }
-        
-        if (appState.presets.some(p => p.name === name)) {
-            alert(i18nManager.t('presetExists', 'Preset name already exists'));
-            select.value = appState.current_preset || '';
-            return;
-        }
-        
-        // 创建新预设
-        const newPreset = {
-            name: name,
-            categories: []
-        };
-        appState.presets.push(newPreset);
-        appState.current_preset = name;
-        
-        await savePresetToServer(name, []);
-        updatePresetSelector();
-        renderCategories([]);
-        return;
-    }
-    
-    if (selectedValue === '') {
-        // Custom - 不关联预设
-        appState.current_preset = '';
-        renderCategories([]);
-        return;
-    }
-    
-    // 加载选中预设的分类
-    const preset = appState.presets.find(p => p.name === selectedValue);
-    if (preset) {
-        appState.current_preset = selectedValue;
-        renderCategories(preset.categories);
-        
-        if (preset.categories.length > 0 && appState.source_folder) {
-            document.getElementById('startBtn').disabled = false;
-        }
-    }
-}
 
 // 获取当前分类
 function getCurrentCategories() {
@@ -591,20 +495,22 @@ function updateUndoButton() {
 // 开始分类
 async function startClassification() {
     const categories = getCurrentCategories();
-    
+
     if (!appState.source_folder || categories.length === 0) {
+        // 如果没有配置,显示提示并跳转到设置页面
         if (!appState.source_folder) {
-            alert(i18nManager.t('setSourceFolderFirst', 'Please set source folder first'));
+            alert(i18nManager.t('setSourceFolderFirst', 'Please go to Settings to configure source folder first'));
         } else {
-            alert(i18nManager.t('pleaseAddCategories'));
+            alert(i18nManager.t('pleaseAddCategories', 'Please go to Settings to configure categories first'));
         }
+        window.location.href = '/settings/';
         return;
     }
-    
+
     // 清空历史记录
     operationHistory = [];
     updateUndoButton();  // 更新UI显示
-    
+
     await loadFiles();
 }
 
@@ -622,14 +528,7 @@ async function loadFiles() {
         currentIndex = 0;
         processedCount = 0;
         isClassifying = true;
-        
-        // 切换到主界面
-        document.getElementById('setupContainer').style.display = 'none';
-        document.getElementById('mainContainer').style.display = 'block';
-        
-        // 隐藏语言切换按钮
-        document.querySelector('.lang-switcher').style.display = 'none';
-        
+
         // 显示文件夹路径和预设名称
         const presetInfo = appState.current_preset ? ` | ${appState.current_preset}` : '';
         document.getElementById('folderPath').textContent = appState.source_folder + presetInfo;
