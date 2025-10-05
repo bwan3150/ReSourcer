@@ -38,7 +38,14 @@ async function loadConfig() {
     try {
         const response = await fetch('/api/downloader/config');
         const data = await response.json();
-        // 可用于显示认证状态等
+
+        // 检查是否配置了源文件夹
+        if (!data.source_folder || data.source_folder.trim() === '') {
+            // 跳转到设置页面
+            if (confirm(i18nManager.translate('pleaseConfigureSourceFolder') || '请先在设置页面配置源文件夹')) {
+                window.location.href = '/settings/';
+            }
+        }
     } catch (error) {
         console.error('Failed to load config:', error);
     }

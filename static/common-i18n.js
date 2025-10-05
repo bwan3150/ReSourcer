@@ -7,6 +7,7 @@ const i18nManager = {
             // 首页
             homeTitle: 'ReSourcer',
             homeSubtitle: '个人资源管理工具',
+            scanToAccess: '同局域网下扫描访问',
             settings: '设置',
             classifier: '分类器',
             downloader: '下载器',
@@ -101,6 +102,7 @@ const i18nManager = {
         en: {
             // Home
             homeTitle: 'ReSourcer',
+            scanToAccess: 'Scan to access on LAN',
             settings: 'Settings',
             classifier: 'Classifier',
             downloader: 'Downloader',

@@ -1,5 +1,6 @@
 use actix_web::{middleware, web, App, HttpServer};
 use serde::Deserialize;
+use std::net::UdpSocket;
 
 mod classifier;
 mod downloader;
@@ -22,6 +23,15 @@ struct Dependencies {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    // 获取本机局域网 IP
+    fn get_local_ip() -> Option<String> {
+        let socket = UdpSocket::bind("0.0.0.0:0").ok()?;
+        socket.connect("8.8.8.8:80").ok()?;
+        socket.local_addr().ok().map(|addr| addr.ip().to_string())
+    }
+
+    let local_ip = get_local_ip().unwrap_or_else(|| "0.0.0.0".to_string());
+
     // 打印启动信息
     println!();
     println!(r#"  ____       ____                              "#);
@@ -45,21 +55,23 @@ async fn main() -> std::io::Result<()> {
     };
 
     // 服务信息框
-    println!("  ┌─────────────────────────────────────────┐");
-    println!("  │ Service URL: http://localhost:1234     │");
+    println!("  ┌──────────────────────────────────────────────┐");
+    let service_line = format!("  │ Service URL:    http://{}:1234   ", local_ip);
+    println!("{:<47}│", service_line);
 
-    let version_line = format!("  │ yt-dlp version: {:<24}│", ytdlp_version);
+    let version_line = format!("  │ yt-dlp version: {:<29}│", ytdlp_version);
     println!("{}", version_line);
 
-    println!("  └─────────────────────────────────────────┘");
+    println!("  └──────────────────────────────────────────────┘");
     println!();
 
     // 延迟打开浏览器
-    tokio::spawn(async {
+    let browser_url = format!("http://{}:1234", local_ip);
+    tokio::spawn(async move {
         tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
-        if let Err(e) = open::that("http://localhost:1234") {
+        if let Err(e) = open::that(&browser_url) {
             eprintln!("  Failed to open browser: {}", e);
-            println!("  Please visit manually: http://localhost:1234");
+            println!("  Please visit manually: {}", browser_url);
         }
     });
 
