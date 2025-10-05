@@ -36,7 +36,7 @@ pub async fn get_state() -> Result<HttpResponse> {
 
 
 // 保存预设 - 现在预设是只读的，从 config/presets.json 读取，不再支持保存
-pub async fn save_preset(_req: web::Json<SavePresetRequest>) -> Result<HttpResponse> {
+pub async fn save_preset(_req: web::Json<PresetRequest>) -> Result<HttpResponse> {
     Ok(HttpResponse::BadRequest().json(serde_json::json!({
         "error": "Presets are read-only and loaded from config/presets.json"
     })))

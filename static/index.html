@@ -6,11 +6,42 @@
     <title>ReSourcer</title>
     <link rel="stylesheet" href="/material-icons.css">
     <style>
-        /* 语言切换按钮 */
-        .lang-switcher {
-            position: absolute;
+        /* 右上角工具栏 */
+        .top-toolbar {
+            position: fixed;
             top: 20px;
             right: 20px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .settings-icon-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            color: #525252;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .settings-icon-btn:hover {
+            background: #f5f5f5;
+            color: #171717;
+        }
+
+        .settings-icon-btn .material-symbols-outlined {
+            font-size: 20px;
+        }
+
+        /* 语言切换按钮 */
+        .lang-switcher {
             display: flex;
             gap: 8px;
             background: white;
@@ -66,6 +97,7 @@
         .header {
             text-align: center;
             margin-bottom: 48px;
+            margin-top: 40px;
         }
 
         .header h1 {
@@ -80,10 +112,41 @@
             font-size: 16px;
         }
 
+        /* 二维码容器 */
+        .qr-section {
+            text-align: center;
+            margin-bottom: 40px;
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .qr-hint {
+            font-size: 13px;
+            color: #737373;
+            margin-bottom: 16px;
+        }
+
+        #qrcode {
+            display: inline-block;
+            padding: 16px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .server-url {
+            margin-top: 12px;
+            font-size: 13px;
+            color: #a3a3a3;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+
         .tools-grid {
             display: grid;
             grid-template-columns: 1fr;
             gap: 16px;
+            margin-bottom: 32px;
         }
 
         .tool-card {
@@ -114,15 +177,20 @@
             box-shadow: none;
         }
 
+        .tool-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .tool-icon {
+            font-size: 24px;
+            color: #525252;
+        }
+
         .tool-info h2 {
             font-size: 18px;
             font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .tool-info p {
-            font-size: 14px;
-            color: #737373;
         }
 
         .tool-badge {
@@ -142,10 +210,15 @@
     </style>
 </head>
 <body>
-    <!-- 语言切换 -->
-    <div class="lang-switcher">
-        <button class="lang-btn active" data-lang="en" onclick="i18nManager.setLang('en')">EN</button>
-        <button class="lang-btn" data-lang="zh" onclick="i18nManager.setLang('zh')">中文</button>
+    <!-- 右上角工具栏 -->
+    <div class="top-toolbar">
+        <a href="/settings/" class="settings-icon-btn" title="Settings">
+            <span class="material-symbols-outlined">settings</span>
+        </a>
+        <div class="lang-switcher">
+            <button class="lang-btn active" data-lang="en" onclick="i18nManager.setLang('en')">EN</button>
+            <button class="lang-btn" data-lang="zh" onclick="i18nManager.setLang('zh')">中文</button>
+        </div>
     </div>
 
     <div class="container">
@@ -153,29 +226,32 @@
             <h1 data-i18n="homeTitle">ReSourcer</h1>
         </div>
 
+        <!-- 二维码区域 -->
+        <div class="qr-section">
+            <div class="qr-hint" data-i18n="scanToAccess">同局域网下扫描访问</div>
+            <div id="qrcode"></div>
+            <div class="server-url" id="serverUrl">Loading...</div>
+        </div>
+
+        <!-- 工具列表 -->
         <div class="tools-grid">
-
-            <a href="/settings/" class="tool-card">
-                <div class="tool-info">
-                    <h2 data-i18n="settings">Settings</h2>
-                </div>
-            </a>
-
             <a href="/classifier/" class="tool-card">
                 <div class="tool-info">
+                    <span class="material-symbols-outlined tool-icon">folder_open</span>
                     <h2 data-i18n="classifier">Classifier</h2>
                 </div>
             </a>
 
-            <a href="/downloader/" class="tool-card disabled" onclick="return false;">
+            <a href="/downloader/" class="tool-card">
                 <div class="tool-info">
+                    <span class="material-symbols-outlined tool-icon">download</span>
                     <h2 data-i18n="downloader">Downloader</h2>
                 </div>
-                <span class="tool-badge" data-i18n="comingSoon">coming soon</span>
             </a>
 
             <a href="/uploader/" class="tool-card disabled" onclick="return false;">
                 <div class="tool-info">
+                    <span class="material-symbols-outlined tool-icon">upload</span>
                     <h2 data-i18n="transmitter">Transmitter</h2>
                 </div>
                 <span class="tool-badge" data-i18n="comingSoon">coming soon</span>
@@ -187,9 +263,35 @@
         </div>
     </div>
 
+    <!-- QRCode.js -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="/common-i18n.js"></script>
     <script>
         i18nManager.updateUI();
+
+        // 生成二维码
+        async function generateQRCode() {
+            try {
+                const currentUrl = window.location.href;
+                const serverUrl = currentUrl.replace(/\/$/, '');
+
+                document.getElementById('serverUrl').textContent = serverUrl;
+
+                new QRCode(document.getElementById("qrcode"), {
+                    text: serverUrl,
+                    width: 200,
+                    height: 200,
+                    colorDark: "#171717",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            } catch (error) {
+                console.error('Failed to generate QR code:', error);
+                document.getElementById('serverUrl').textContent = window.location.href;
+            }
+        }
+
+        window.addEventListener('load', generateQRCode);
     </script>
 </body>
 </html>

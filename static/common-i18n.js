@@ -7,6 +7,7 @@ const i18nManager = {
             // 首页
             homeTitle: 'ReSourcer',
             homeSubtitle: '个人资源管理工具',
+            scanToAccess: '同局域网下扫描访问',
             settings: '设置',
             classifier: '分类器',
             downloader: '下载器',
@@ -68,6 +69,30 @@ const i18nManager = {
             errorLoadingFiles: '从 {folder} 加载文件时出错',
             failedCreateFolder: '创建文件夹失败',
 
+            // Downloader 页面
+            downloaderTitle: '下载器',
+            downloaderSubtitle: '从各个平台下载媒体内容',
+            urlLabel: 'URL 地址',
+            urlPlaceholder: 'https://...',
+            folderLabel: '保存文件夹',
+            sourceFolder: '源文件夹',
+            downloadBtn: '下载',
+            tasksTitle: '任务列表',
+            noTasks: '暂无任务',
+            cancelBtn: '取消',
+            openFolder: '打开',
+            previewBtn: '预览',
+            openUrl: '打开网址',
+            clearHistory: '清空历史',
+            settingsLink: '设置',
+            authBtn: '认证',
+            authTitle: '认证管理',
+            authActive: '已配置',
+            authInactive: '未配置',
+            authUploadFile: '上传文件',
+            authInput: '输入',
+            authDelete: '删除',
+
             // 通用
             save: '保存',
             delete: '删除',
@@ -77,6 +102,7 @@ const i18nManager = {
         en: {
             // Home
             homeTitle: 'ReSourcer',
+            scanToAccess: 'Scan to access on LAN',
             settings: 'Settings',
             classifier: 'Classifier',
             downloader: 'Downloader',
@@ -137,6 +163,30 @@ const i18nManager = {
             noFilesFound: 'No supported files found in: {folder}',
             errorLoadingFiles: 'Error loading files from: {folder}',
             failedCreateFolder: 'Failed to create folder',
+
+            // Downloader page
+            downloaderTitle: 'Downloader',
+            downloaderSubtitle: 'Download media from various platforms',
+            urlLabel: 'URL',
+            urlPlaceholder: 'https://...',
+            folderLabel: 'Folder',
+            sourceFolder: 'Source Folder',
+            downloadBtn: 'Download',
+            tasksTitle: 'Tasks',
+            noTasks: 'No tasks',
+            cancelBtn: 'Cancel',
+            openFolder: 'Open',
+            previewBtn: 'Preview',
+            openUrl: 'Open URL',
+            clearHistory: 'Clear History',
+            settingsLink: 'Settings',
+            authBtn: 'Auth',
+            authTitle: 'Authentication',
+            authActive: 'Configured',
+            authInactive: 'Not configured',
+            authUploadFile: 'Upload File',
+            authInput: 'Input',
+            authDelete: 'Delete',
 
             // Common
             save: 'Save',

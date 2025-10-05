@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toolkit Downloader</title>
+    <link rel="stylesheet" href="/material-icons.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif;
+            background: #fafafa;
+            color: #171717;
+            line-height: 1.5;
+            min-height: 100vh;
+            padding: 80px 20px 40px;
+        }
+
+        /* 返回按钮 */
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            color: #525252;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .back-btn:hover {
+            background: #fafafa;
+            border-color: #171717;
+            color: #171717;
+        }
+
+        /* 右上角按钮组 */
+        .top-right-buttons {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        /* 语言切换按钮 */
+        .lang-switcher {
+            display: flex;
+            gap: 8px;
+            background: white;
+            border-radius: 8px;
+            padding: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* 认证按钮 */
+        .auth-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 12px;
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            color: #525252;
+        }
+
+        .auth-btn:hover {
+            background: #fafafa;
+            border-color: #171717;
+            color: #171717;
+        }
+
+        .lang-btn {
+            padding: 8px 12px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #525252;
+            transition: all 0.2s;
+        }
+
+        .lang-btn:hover {
+            background: #f5f5f5;
+        }
+
+        .lang-btn.active {
+            background: #171717;
+            color: white;
+        }
+
+        /* 主容器 */
+        .container {
+            max-width: 680px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            color: #737373;
+            font-size: 14px;
+        }
+
+        /* 输入区域 */
+        .input-section {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 24px;
+            border: 1px solid #e5e5e5;
+        }
+
+        .url-input-wrapper {
+            margin-bottom: 20px;
+        }
+
+        .url-input {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 15px;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .url-input:focus {
+            outline: none;
+            border-color: #171717;
+            box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+        }
+
+        /* 检测结果 */
+        .detect-result {
+            padding: 10px 14px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            margin-top: 10px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #525252;
+        }
+
+        .detect-result.show {
+            display: flex;
+        }
+
+        .detect-platform {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .detect-platform .material-symbols-outlined {
+            font-size: 16px;
+        }
+
+        .downloader-select {
+            padding: 4px 10px;
+            font-size: 12px;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .downloader-select:focus {
+            outline: none;
+            border-color: #171717;
+        }
+
+        /* 文件夹选择（横向滚动） */
+        .folders-section {
+            margin-bottom: 24px;
+        }
+
+        .section-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #525252;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .section-label .material-symbols-outlined {
+            font-size: 16px;
+        }
+
+        .folders-scroll {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 4px 0;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .folders-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .folder-chip {
+            flex-shrink: 0;
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .folder-chip:hover {
+            background: #fafafa;
+            border-color: #d4d4d4;
+        }
+
+        .folder-chip.selected {
+            background: #171717;
+            color: white;
+            border-color: #171717;
+        }
+
+        .folder-chip.add-folder {
+            border-style: dashed;
+            color: #737373;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .folder-chip.add-folder:hover {
+            border-color: #171717;
+            color: #171717;
+        }
+
+        /* 格式选项 */
+        .format-input-wrapper {
+            margin-bottom: 24px;
+        }
+
+        .format-input {
+            width: 100%;
+            padding: 10px 14px;
+            font-size: 14px;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .format-input:focus {
+            outline: none;
+            border-color: #171717;
+        }
+
+        /* 下载按钮 */
+        .download-btn {
+            width: 100%;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            background: #171717;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .download-btn:hover {
+            background: #404040;
+        }
+
+        .download-btn:disabled {
+            background: #e5e5e5;
+            color: #a3a3a3;
+            cursor: not-allowed;
+        }
+
+        .download-btn .material-symbols-outlined {
+            font-size: 18px;
+        }
+
+        /* 任务区域（可折叠） */
+        .tasks-section {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e5e5e5;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .tasks-header {
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-bottom: 1px solid #e5e5e5;
+        }
+
+        .tasks-header:hover {
+            background: #fafafa;
+        }
+
+        .tasks-header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tasks-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #171717;
+        }
+
+        .tasks-count {
+            font-size: 12px;
+            color: #737373;
+            background: #f5f5f5;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .tasks-toggle {
+            transition: transform 0.2s;
+        }
+
+        .tasks-toggle.expanded {
+            transform: rotate(180deg);
+        }
+
+        .tasks-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .tasks-content.expanded {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .tasks-list {
+            padding: 12px;
+        }
+
+        .task-card {
+            background: #fafafa;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 8px;
+        }
+
+        .task-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .task-url {
+            font-size: 13px;
+            color: #171717;
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            margin-right: 12px;
+        }
+
+        .task-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            padding: 4px 6px;
+            border-radius: 4px;
+        }
+
+        .task-status .material-symbols-outlined {
+            font-size: 14px;
+        }
+
+        /* 准备中动画 - 圆形加载器 */
+        .loader-pending {
+            width: 18px;
+            height: 18px;
+            aspect-ratio: 1;
+            border-radius: 50%;
+            padding: 1px;
+            background: conic-gradient(#0000 10%, #171717) content-box;
+            -webkit-mask:
+                repeating-conic-gradient(#0000 0deg, #000 1deg 20deg, #0000 21deg 36deg),
+                radial-gradient(farthest-side, #0000 calc(100% - 3px - 1px), #000 calc(100% - 3px));
+            -webkit-mask-composite: destination-in;
+            mask-composite: intersect;
+            animation: l4 1s infinite steps(10);
+        }
+
+        @keyframes l4 {
+            to {
+                transform: rotate(1turn);
+            }
+        }
+
+        /* 下载中动画 - 弹跳块 */
+        .loader-downloading {
+            width: 36px;
+            height: 6px;
+            box-shadow: 0 1.5px 0 #525252;
+            position: relative;
+            clip-path: inset(-16px 0 -2px);
+        }
+
+        .loader-downloading:before {
+            content: "";
+            position: absolute;
+            inset: auto calc(50% - 6.5px) 0;
+            height: 22px;
+            --g: no-repeat linear-gradient(#171717 0 0);
+            background: var(--g), var(--g), var(--g), var(--g);
+            background-size: 6.5px 6px;
+            animation:
+                l7-1 2s infinite linear,
+                l7-2 2s infinite linear;
+        }
+
+        @keyframes l7-1 {
+            0%, 100% {
+                background-position: 0 -22px, 100% -22px;
+            }
+            17.5% {
+                background-position: 0 100%, 100% -22px, 0 -22px, 100% -22px;
+            }
+            35% {
+                background-position: 0 100%, 100% 100%, 0 -22px, 100% -22px;
+            }
+            52.5% {
+                background-position: 0 100%, 100% 100%, 0 calc(100% - 6.5px), 100% -22px;
+            }
+            70%, 98% {
+                background-position: 0 100%, 100% 100%, 0 calc(100% - 6.5px), 100% calc(100% - 6.5px);
+            }
+        }
+
+        @keyframes l7-2 {
+            0%, 70% {
+                transform: translate(0);
+            }
+            100% {
+                transform: translate(200%);
+            }
+        }
+
+        .status-pending {
+            background: transparent;
+        }
+
+        .status-downloading {
+            background: transparent;
+        }
+
+        .status-completed {
+            background: transparent;
+            color: #171717;
+        }
+
+        .status-failed {
+            background: transparent;
+            color: #171717;
+        }
+
+        .status-cancelled {
+            background: transparent;
+            color: #171717;
+        }
+
+        .task-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+            color: #737373;
+            margin-bottom: 8px;
+        }
+
+        .task-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .task-meta .material-symbols-outlined {
+            font-size: 14px;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: #e5e5e5;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #171717;
+            transition: width 0.3s ease;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 11px;
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+            color: #525252;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-small:hover {
+            background: #fafafa;
+            border-color: #d4d4d4;
+        }
+
+        .btn-small .material-symbols-outlined {
+            font-size: 12px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #a3a3a3;
+            font-size: 13px;
+        }
+
+        /* 设置链接 */
+        .settings-link {
+            text-align: center;
+        }
+
+        .settings-link a {
+            color: #737373;
+            font-size: 13px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: color 0.2s;
+        }
+
+        .settings-link a:hover {
+            color: #171717;
+        }
+
+        .settings-link .material-symbols-outlined {
+            font-size: 16px;
+        }
+
+        /* 预览模态框 */
+        .preview-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-modal.show {
+            display: flex;
+        }
+
+        .preview-content {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .preview-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: background 0.2s;
+        }
+
+        .preview-close:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .preview-container {
+            max-width: 90vw;
+            max-height: 90vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-container img,
+        .preview-container video {
+            max-width: 100%;
+            max-height: 90vh;
+            object-fit: contain;
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #d4d4d4;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a3a3a3;
+        }
+
+        /* 认证弹窗 */
+        .auth-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auth-modal.show {
+            display: flex;
+        }
+
+        .auth-modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .auth-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .auth-modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .auth-item {
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .auth-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .auth-item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .auth-item-platform {
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .auth-item-downloader {
+            font-size: 12px;
+            color: #737373;
+        }
+
+        .auth-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .auth-status.active {
+            color: #171717;
+        }
+
+        .auth-status.inactive {
+            color: #a3a3a3;
+        }
+
+        /* 认证状态指示点 */
+        .auth-status-dot {
+            width: 10px;
+            height: 10px;
+            aspect-ratio: 1;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        .auth-status-dot.inactive {
+            background: #d4d4d4;
+            box-shadow: none;
+            animation: none;
+        }
+
+        @keyframes pulse-dot {
+            100% {
+                box-shadow: 0 0 0 12px rgba(34, 197, 94, 0);
+            }
+        }
+
+        .auth-upload-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            background: #171717;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .auth-upload-btn:hover {
+            background: #404040;
+        }
+
+        .auth-delete-btn {
+            padding: 6px 12px;
+            background: transparent;
+            color: #dc2626;
+            border: 1px solid #dc2626;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .auth-delete-btn:hover {
+            background: #dc2626;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- 返回主页按钮 -->
+    <a href="/" class="back-btn">
+        <span class="material-symbols-outlined">arrow_back</span>
+    </a>
+
+    <!-- 右上角按钮组 -->
+    <div class="top-right-buttons">
+        <a href="/settings/" class="auth-btn" style="text-decoration: none;">
+            <span class="material-symbols-outlined" style="font-size: 16px;">settings</span>
+        </a>
+        <button class="auth-btn" onclick="openAuthModal()">
+            <span class="material-symbols-outlined" style="font-size: 16px;">key</span>
+            <span data-i18n="authBtn">Auth</span>
+        </button>
+        <div class="lang-switcher">
+            <button class="lang-btn" onclick="i18nManager.setLang('en')" data-lang="en">EN</button>
+            <button class="lang-btn" onclick="i18nManager.setLang('zh')" data-lang="zh">中文</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1 data-i18n="downloaderTitle">Downloader</h1>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="input-section">
+            <!-- URL 输入 -->
+            <div class="url-input-wrapper">
+                <input type="text"
+                       id="urlInput"
+                       class="url-input"
+                       placeholder="https://..."
+                       data-i18n-placeholder="urlPlaceholder">
+                <div id="detectResult" class="detect-result">
+                    <div class="detect-platform">
+                        <span class="material-symbols-outlined">public</span>
+                        <span id="detectPlatform"></span>
+                    </div>
+                    <select id="downloaderSelect" class="downloader-select">
+                        <option value="ytdlp">yt-dlp</option>
+                        <option value="pixiv_toolkit">pixiv-toolkit</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 文件夹选择（横向滚动） -->
+            <div class="folders-section">
+                <div class="section-label">
+                    <span class="material-symbols-outlined">folder</span>
+                    <span data-i18n="folderLabel">Folder</span>
+                </div>
+                <div class="folders-scroll" id="foldersScroll">
+                    <div class="folder-chip selected" data-folder="" onclick="selectFolder('')" data-i18n="sourceFolder">Source Folder</div>
+                    <div class="folder-chip add-folder" onclick="createNewFolder()">
+                        <span class="material-symbols-outlined" style="font-size: 16px;">add</span>
+                        <span data-i18n="addNewFolder">Add folder</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 下载按钮 -->
+            <button id="downloadBtn" class="download-btn" onclick="startDownload()">
+                <span class="material-symbols-outlined">download</span>
+                <span data-i18n="downloadBtn">Download</span>
+            </button>
+        </div>
+
+        <!-- 下载历史区域（可折叠） -->
+        <div class="tasks-section">
+            <div class="tasks-header" onclick="toggleTasks()">
+                <div class="tasks-header-left">
+                    <span class="tasks-title" data-i18n="tasksTitle">Tasks</span>
+                    <span class="tasks-count" id="tasksCount">0</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="btn-small" onclick="event.stopPropagation(); clearHistory()" style="border: none; background: transparent; padding: 4px 8px;">
+                        <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+                        <span data-i18n="clearHistory">Clear</span>
+                    </button>
+                    <span class="material-symbols-outlined tasks-toggle" id="tasksToggle">expand_more</span>
+                </div>
+            </div>
+            <div class="tasks-content" id="tasksContent">
+                <div class="tasks-list" id="tasksList">
+                    <div class="empty-state" data-i18n="noTasks">No tasks</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 预览模态框 -->
+        <div id="previewModal" class="preview-modal" onclick="closePreview()">
+            <div class="preview-content" onclick="event.stopPropagation()">
+                <button class="preview-close" onclick="closePreview()">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+                <div id="previewContainer" class="preview-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 认证弹窗 -->
+    <div id="authModal" class="auth-modal" onclick="closeAuthModal()">
+        <div class="auth-modal-content" onclick="event.stopPropagation()">
+            <div class="auth-modal-header">
+                <h2 class="auth-modal-title" data-i18n="authTitle">认证管理</h2>
+                <button onclick="closeAuthModal()" style="background: none; border: none; cursor: pointer;">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div id="authList">
+                <!-- 认证项将通过JavaScript动态加载 -->
+            </div>
+
+            <!-- 隐藏的文件上传input -->
+            <input type="file" id="authFileInput" style="display: none;" accept=".txt,.json,.cookies">
+        </div>
+    </div>
+
+    <script src="/common-i18n.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

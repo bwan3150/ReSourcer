@@ -13,3 +13,10 @@ mime_guess = "2.0"
 percent-encoding = "2.3"
 open = "5.0"
 rust-embed = { version = "8.0", features = ["debug-embed"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1.10"
+reqwest = { version = "0.11", features = ["json"] }
+zip = "0.6"
+image = "0.24"
+gif = "0.12"

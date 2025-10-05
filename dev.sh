@@ -22,13 +22,32 @@ print_warning() {
 update_dependencies() {
     print_status "Checking dependencies..."
 
+    # 根据当前操作系统选择对应的 yt-dlp 二进制文件
+    OS_TYPE=$(uname -s)
+    case "$OS_TYPE" in
+        Linux*)
+            YTDLP_BIN="bin/yt-dlp-linux"
+            ;;
+        Darwin*)
+            YTDLP_BIN="bin/yt-dlp-macos"
+            ;;
+        MINGW*|MSYS*|CYGWIN*)
+            YTDLP_BIN="bin/yt-dlp-windows.exe"
+            ;;
+        *)
+            print_error "Unsupported OS: $OS_TYPE"
+            YTDLP_VERSION="unsupported OS"
+            YTDLP_BIN=""
+            ;;
+    esac
+
     # 检查 yt-dlp 版本
-    if command -v yt-dlp &> /dev/null; then
-        YTDLP_VERSION=$(yt-dlp --version 2>/dev/null || echo "unknown")
-        print_status "yt-dlp version: $YTDLP_VERSION"
+    if [ -n "$YTDLP_BIN" ] && [ -f "$YTDLP_BIN" ]; then
+        YTDLP_VERSION=$($YTDLP_BIN --version 2>/dev/null || echo "unknown")
+        print_status "yt-dlp version: $YTDLP_VERSION (from $YTDLP_BIN)"
     else
         YTDLP_VERSION="not found"
-        print_warning "yt-dlp not found"
+        print_warning "yt-dlp binary not found at $YTDLP_BIN"
     fi
 
     # 获取当前时间戳
