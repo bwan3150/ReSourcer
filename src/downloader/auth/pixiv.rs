@@ -41,18 +41,8 @@ pub fn load_token() -> Result<String, String> {
     let content = fs::read_to_string(&path)
         .map_err(|e| format!("无法读取 token: {}", e))?;
 
-    // 提取纯 token 值（兼容旧格式带 PHPSESSID= 前缀）
-    let token = if content.contains("PHPSESSID=") {
-        content.lines()
-            .find(|line| line.contains("PHPSESSID="))
-            .and_then(|line| line.split("PHPSESSID=").nth(1))
-            .map(|s| s.trim().to_string())
-            .ok_or_else(|| "无法解析 PHPSESSID".to_string())?
-    } else {
-        content.trim().to_string()
-    };
-
-    Ok(token)
+    // 直接返回用户保存的原始内容
+    Ok(content.trim().to_string())
 }
 
 // 保存 token
@@ -62,18 +52,8 @@ pub fn save_token(token: &str) -> Result<(), String> {
     let path = get_token_path()?;
     eprintln!("[Pixiv Auth] 保存路径: {}", path.display());
 
-    // 提取纯 token 值（去掉可能存在的 PHPSESSID= 前缀）
-    let clean_token = if token.contains("PHPSESSID=") {
-        token.split("PHPSESSID=")
-            .nth(1)
-            .unwrap_or(token)
-            .trim()
-    } else {
-        token.trim()
-    };
-
-    // 只保存纯 token 值，不加前缀
-    fs::write(&path, format!("{}\n", clean_token))
+    // 直接保存用户输入的原始内容，不做任何处理
+    fs::write(&path, token.trim())
         .map_err(|e| format!("无法保存 token: {}", e))?;
     eprintln!("[Pixiv Auth] token 已写入文件");
     Ok(())

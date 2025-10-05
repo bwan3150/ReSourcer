@@ -86,16 +86,28 @@ impl PixivParser {
         )
     }
 
+    /// 从 PHPSESSID 中提取用户 ID
+    fn extract_user_id(token: &str) -> Option<String> {
+        token.split('_').next().map(|s| s.to_string())
+    }
+
     /// 获取作品信息
     pub async fn fetch_illust_info(&self, token: &str) -> Result<PixivIllustMeta, String> {
         let client = reqwest::Client::new();
 
+        // 从 token 中提取 user_id
+        let user_id = Self::extract_user_id(token)
+            .unwrap_or_default();
+
         // 获取基本信息
-        let info_url = self.build_illust_info_url();
+        let info_url = format!("{}?lang=zh", self.build_illust_info_url());
         let response = client
             .get(&info_url)
             .header("Cookie", format!("PHPSESSID={}", token))
             .header("Referer", "https://www.pixiv.net/")
+            .header("x-user-id", &user_id)
+            .header("Accept", "application/json")
+            .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
             .send()
             .await
             .map_err(|e| format!("请求作品信息失败: {}", e))?;
@@ -136,6 +148,7 @@ impl PixivParser {
             .get(&pages_url)
             .header("Cookie", format!("PHPSESSID={}", token))
             .header("Referer", "https://www.pixiv.net/")
+            .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
             .send()
             .await
             .map_err(|e| format!("请求页面信息失败: {}", e))?;
@@ -165,14 +178,23 @@ impl PixivParser {
     /// 获取动图元数据
     pub async fn fetch_ugoira_meta(&self, token: &str) -> Result<UgoiraMeta, String> {
         let client = reqwest::Client::new();
-        let url = self.build_ugoira_meta_url();
+
+        // 从 token 中提取 user_id
+        let user_id = Self::extract_user_id(token).unwrap_or_default();
+
+        // 添加 ?lang=zh 参数
+        let url = format!("{}?lang=zh", self.build_ugoira_meta_url());
 
         eprintln!("[Pixiv] 请求动图元数据: {}", url);
+        eprintln!("[Pixiv] 使用 user_id: {}", user_id);
 
         let response = client
             .get(&url)
             .header("Cookie", format!("PHPSESSID={}", token))
             .header("Referer", "https://www.pixiv.net/")
+            .header("x-user-id", &user_id)
+            .header("Accept", "application/json")
+            .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
             .send()
             .await
             .map_err(|e| format!("请求动图元数据失败: {}", e))?;
