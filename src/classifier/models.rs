@@ -33,25 +33,8 @@ pub struct PresetRequest {
 }
 
 #[derive(Deserialize)]
-pub struct SavePresetRequest {
-    pub name: String,
-    pub categories: Vec<String>,
-}
-
-#[derive(Deserialize)]
-pub struct UpdateFolderRequest {
-    pub source_folder: String,
-}
-
-#[derive(Deserialize)]
 pub struct CreateFolderRequest {
     pub folder_name: String,
-}
-
-#[derive(Deserialize)]
-pub struct ToggleFolderRequest {
-    pub folder_name: String,
-    pub hidden: bool,
 }
 
 #[derive(Serialize)]

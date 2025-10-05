@@ -30,13 +30,6 @@ pub fn has_cookies() -> bool {
         .unwrap_or(false)
 }
 
-// 读取 cookies 内容
-pub fn load_cookies() -> Result<String, String> {
-    let path = get_cookies_path()?;
-    fs::read_to_string(&path)
-        .map_err(|e| format!("无法读取 cookies: {}", e))
-}
-
 // 保存 cookies
 pub fn save_cookies(content: &str) -> Result<(), String> {
     eprintln!("[X Auth] 开始保存 cookies, 内容长度: {} bytes", content.len());

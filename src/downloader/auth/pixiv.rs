@@ -59,23 +59,6 @@ pub fn save_token(token: &str) -> Result<(), String> {
     Ok(())
 }
 
-// 读取刷新令牌
-pub fn load_refresh_token() -> Result<String, String> {
-    let path = get_refresh_token_path()?;
-    fs::read_to_string(&path)
-        .map(|s| s.trim().to_string())
-        .map_err(|e| format!("无法读取刷新令牌: {}", e))
-}
-
-// 保存刷新令牌
-pub fn save_refresh_token(token: &str) -> Result<(), String> {
-    ensure_dir()?;
-    let path = get_refresh_token_path()?;
-    fs::write(&path, token.trim())
-        .map_err(|e| format!("无法保存刷新令牌: {}", e))?;
-    Ok(())
-}
-
 // 删除所有认证信息
 pub fn delete_all() -> Result<(), String> {
     let token_path = get_token_path()?;

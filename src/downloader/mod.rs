@@ -7,6 +7,5 @@ mod downloaders;
 mod task_manager;
 mod handlers;
 
-pub use models::*;
 pub use handlers::routes;
 pub use task_manager::TaskManager;

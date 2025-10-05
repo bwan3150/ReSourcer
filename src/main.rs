@@ -12,7 +12,6 @@ use static_files::{serve_static, ConfigAsset};
 #[derive(Deserialize)]
 struct DependencyInfo {
     version: String,
-    last_checked: String,
 }
 
 #[derive(Deserialize)]

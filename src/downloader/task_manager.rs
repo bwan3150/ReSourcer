@@ -78,46 +78,6 @@ impl TaskManager {
         self.tasks.lock().await.values().cloned().collect()
     }
 
-    /// 更新任务进度
-    pub async fn update_progress(
-        &self,
-        task_id: &str,
-        progress: f32,
-        speed: Option<String>,
-        eta: Option<String>,
-    ) {
-        if let Some(task) = self.tasks.lock().await.get_mut(task_id) {
-            task.progress = progress;
-            task.speed = speed;
-            task.eta = eta;
-        }
-    }
-
-    /// 更新任务状态
-    pub async fn update_status(&self, task_id: &str, status: TaskStatus) {
-        if let Some(task) = self.tasks.lock().await.get_mut(task_id) {
-            task.status = status;
-        }
-    }
-
-    /// 设置任务完成
-    pub async fn complete_task(&self, task_id: &str, file_name: String, file_path: String) {
-        if let Some(task) = self.tasks.lock().await.get_mut(task_id) {
-            task.status = TaskStatus::Completed;
-            task.progress = 100.0;
-            task.file_name = Some(file_name);
-            task.file_path = Some(file_path);
-        }
-    }
-
-    /// 设置任务失败
-    pub async fn fail_task(&self, task_id: &str, error: String) {
-        if let Some(task) = self.tasks.lock().await.get_mut(task_id) {
-            task.status = TaskStatus::Failed;
-            task.error = Some(error);
-        }
-    }
-
     /// 取消任务（基础版本：只更新状态，不杀进程）
     pub async fn cancel_task(&self, task_id: &str) -> Result<(), String> {
         if let Some(task) = self.tasks.lock().await.get_mut(task_id) {

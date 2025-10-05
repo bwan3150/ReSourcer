@@ -20,32 +20,6 @@ pub fn get_ytdlp_path() -> PathBuf {
     PathBuf::from("bin").join(binary_name)
 }
 
-/// 检查 yt-dlp 是否可用
-pub fn check_available() -> bool {
-    let path = get_ytdlp_path();
-    path.exists()
-}
-
-/// 获取 yt-dlp 版本信息
-pub fn get_version() -> Result<String, String> {
-    let ytdlp_path = get_ytdlp_path();
-
-    if !ytdlp_path.exists() {
-        return Err(format!("yt-dlp 不存在: {}", ytdlp_path.display()));
-    }
-
-    let output = std::process::Command::new(&ytdlp_path)
-        .arg("--version")
-        .output()
-        .map_err(|e| format!("执行失败: {}", e))?;
-
-    if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
-    } else {
-        Err(String::from_utf8_lossy(&output.stderr).to_string())
-    }
-}
-
 /// 下载视频/音频（核心函数）
 ///
 /// # 参数

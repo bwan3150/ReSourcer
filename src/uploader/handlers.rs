@@ -1,5 +1,4 @@
 use actix_web::{web, HttpResponse, Result};
-use super::models::*;
 
 // 注册所有上传器相关路由
 pub fn routes(cfg: &mut web::ServiceConfig) {
