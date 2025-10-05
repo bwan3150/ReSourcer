@@ -84,6 +84,13 @@ const i18nManager = {
             openUrl: '打开网址',
             clearHistory: '清空历史',
             settingsLink: '设置',
+            authBtn: '认证',
+            authTitle: '认证管理',
+            authActive: '已配置',
+            authInactive: '未配置',
+            authUploadFile: '上传文件',
+            authInput: '输入',
+            authDelete: '删除',
 
             // 通用
             save: '保存',
@@ -171,6 +178,13 @@ const i18nManager = {
             openUrl: 'Open URL',
             clearHistory: 'Clear History',
             settingsLink: 'Settings',
+            authBtn: 'Auth',
+            authTitle: 'Authentication',
+            authActive: 'Configured',
+            authInactive: 'Not configured',
+            authUploadFile: 'Upload File',
+            authInput: 'Input',
+            authDelete: 'Delete',
 
             // Common
             save: 'Save',

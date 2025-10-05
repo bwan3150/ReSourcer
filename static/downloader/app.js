@@ -512,3 +512,164 @@ async function createNewFolder() {
     }
 }
 
+// 认证管理
+const authConfigs = [
+    { platform: 'X (Twitter)', key: 'x', downloader: 'yt-dlp', type: 'cookies' },
+    { platform: 'Pixiv', key: 'pixiv', downloader: 'gallery-dl', type: 'token' }
+];
+
+// 打开认证弹窗
+async function openAuthModal() {
+    const authModal = document.getElementById('authModal');
+    await loadAuthStatus();
+    authModal.classList.add('show');
+}
+
+// 关闭认证弹窗
+function closeAuthModal() {
+    const authModal = document.getElementById('authModal');
+    authModal.classList.remove('show');
+}
+
+// 加载认证状态
+async function loadAuthStatus() {
+    try {
+        const response = await fetch('/api/downloader/config');
+        const data = await response.json();
+
+        const authList = document.getElementById('authList');
+        authList.innerHTML = authConfigs.map(config => {
+            const hasAuth = data.auth_status?.[config.key] || false;
+
+            return `
+                <div class="auth-item">
+                    <div class="auth-item-header">
+                        <div class="auth-item-info">
+                            <div class="auth-item-platform">${config.platform}</div>
+                            <div class="auth-item-downloader">${config.downloader}</div>
+                        </div>
+                        <div class="auth-status ${hasAuth ? 'active' : 'inactive'}">
+                            <div class="auth-status-dot ${hasAuth ? '' : 'inactive'}"></div>
+                            <span data-i18n="${hasAuth ? 'authActive' : 'authInactive'}">
+                                ${hasAuth ? i18nManager.t('authActive') : i18nManager.t('authInactive')}
+                            </span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="auth-upload-btn" onclick="uploadAuthFile('${config.key}', '${config.type}')">
+                            <span class="material-symbols-outlined" style="font-size: 14px;">upload_file</span>
+                            <span data-i18n="authUploadFile">上传文件</span>
+                        </button>
+                        <button class="auth-upload-btn" onclick="uploadAuthText('${config.key}', '${config.type}')">
+                            <span class="material-symbols-outlined" style="font-size: 14px;">edit</span>
+                            <span data-i18n="authInput">输入</span>
+                        </button>
+                        ${hasAuth ? `
+                        <button class="auth-delete-btn" onclick="deleteAuth('${config.key}')" data-i18n="authDelete">
+                            ${i18nManager.t('authDelete')}
+                        </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        i18nManager.updateUI();
+    } catch (error) {
+        console.error('Failed to load auth status:', error);
+    }
+}
+
+// 上传认证文件
+async function uploadAuthFile(platform, type) {
+    const fileInput = document.getElementById('authFileInput');
+
+    // 创建一个 Promise 来处理文件选择
+    const content = await new Promise((resolve) => {
+        fileInput.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) {
+                resolve(null);
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                resolve(event.target.result);
+            };
+            reader.readAsText(file);
+        };
+
+        // 触发文件选择
+        fileInput.click();
+    });
+
+    // 重置 file input
+    fileInput.value = '';
+
+    if (!content) {
+        return;
+    }
+
+    await submitAuth(platform, content);
+}
+
+// 手动输入认证信息
+async function uploadAuthText(platform, type) {
+    const content = prompt(`请输入 ${platform} 的 ${type}:`);
+
+    if (!content || !content.trim()) {
+        return;
+    }
+
+    await submitAuth(platform, content.trim());
+}
+
+// 提交认证信息
+async function submitAuth(platform, content) {
+    try {
+        const response = await fetch(`/api/downloader/credentials/${platform}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: content
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert('认证信息上传成功');
+            await loadAuthStatus();
+        } else {
+            alert(result.error || 'Failed to upload credentials');
+        }
+    } catch (error) {
+        console.error('Failed to upload credentials:', error);
+        alert('Failed to upload credentials');
+    }
+}
+
+// 删除认证信息
+async function deleteAuth(platform) {
+    if (!confirm('确定要删除认证信息吗？')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/downloader/credentials/${platform}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert('认证信息已删除');
+            await loadAuthStatus();
+        } else {
+            alert(result.error || 'Failed to delete credentials');
+        }
+    } catch (error) {
+        console.error('Failed to delete credentials:', error);
+        alert('Failed to delete credentials');
+    }
+}
+

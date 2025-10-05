@@ -55,11 +55,14 @@ pub fn load_token() -> Result<String, String> {
 
 // 保存 token
 pub fn save_token(token: &str) -> Result<(), String> {
+    eprintln!("[Pixiv Auth] 开始保存 token, 内容长度: {} bytes", token.len());
     ensure_dir()?;
     let path = get_token_path()?;
+    eprintln!("[Pixiv Auth] 保存路径: {}", path.display());
     let content = format!("PHPSESSID={}\n", token.trim());
     fs::write(&path, content)
         .map_err(|e| format!("无法保存 token: {}", e))?;
+    eprintln!("[Pixiv Auth] token 已写入文件");
     Ok(())
 }
 

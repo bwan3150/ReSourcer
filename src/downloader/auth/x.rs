@@ -39,10 +39,13 @@ pub fn load_cookies() -> Result<String, String> {
 
 // 保存 cookies
 pub fn save_cookies(content: &str) -> Result<(), String> {
+    eprintln!("[X Auth] 开始保存 cookies, 内容长度: {} bytes", content.len());
     ensure_dir()?;
     let path = get_cookies_path()?;
+    eprintln!("[X Auth] 保存路径: {}", path.display());
     fs::write(&path, content)
         .map_err(|e| format!("无法保存 cookies: {}", e))?;
+    eprintln!("[X Auth] cookies 已写入文件");
     Ok(())
 }
 

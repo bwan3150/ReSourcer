@@ -287,17 +287,30 @@ async fn upload_credentials(
     platform: web::Path<String>,
     body: String,
 ) -> Result<HttpResponse> {
+    eprintln!("[上传认证] 平台: {}, 内容长度: {} bytes", platform, body.len());
+
     match platform.as_str() {
         "x" => {
+            eprintln!("[上传认证] 保存 X cookies...");
             super::auth::x::save_cookies(&body)
-                .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+                .map_err(|e| {
+                    eprintln!("[上传认证] 保存失败: {}", e);
+                    actix_web::error::ErrorInternalServerError(e)
+                })?;
+            eprintln!("[上传认证] X cookies 保存成功");
         },
         "pixiv" => {
+            eprintln!("[上传认证] 保存 Pixiv token...");
             // 假设 body 就是 token
             super::auth::pixiv::save_token(&body)
-                .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+                .map_err(|e| {
+                    eprintln!("[上传认证] 保存失败: {}", e);
+                    actix_web::error::ErrorInternalServerError(e)
+                })?;
+            eprintln!("[上传认证] Pixiv token 保存成功");
         },
         _ => {
+            eprintln!("[上传认证] 不支持的平台: {}", platform);
             return Ok(HttpResponse::BadRequest().json(serde_json::json!({
                 "error": "不支持的平台"
             })));
