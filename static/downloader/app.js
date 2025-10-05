@@ -2,10 +2,15 @@
 
 let currentTasks = [];
 let selectedFolder = '';
+let selectedDownloader = 'ytdlp'; // 默认 yt-dlp
 let pollingInterval = null;
+let downloadHistory = JSON.parse(localStorage.getItem('downloadHistory') || '[]');
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', async () => {
+    // 初始化 i18n
+    i18nManager.updateUI();
+
     await loadConfig();
     await loadFolders();
     await loadTasks();
@@ -103,10 +108,15 @@ async function detectURL(url) {
 function showDetectResult(result) {
     const detectResult = document.getElementById('detectResult');
     const detectPlatform = document.getElementById('detectPlatform');
-    const detectDownloader = document.getElementById('detectDownloader');
+    const downloaderSelect = document.getElementById('downloaderSelect');
 
     detectPlatform.textContent = result.platform_name;
-    detectDownloader.textContent = result.downloader;
+
+    // 自动设置推荐的下载器
+    const recommendedDownloader = result.downloader === 'ytdlp' ? 'ytdlp' :
+                                 result.downloader === 'gallery_dl' ? 'gallery_dl' : 'ytdlp';
+    downloaderSelect.value = recommendedDownloader;
+    selectedDownloader = recommendedDownloader;
 
     detectResult.classList.add('show');
 }
@@ -120,16 +130,17 @@ function hideDetectResult() {
 // 开始下载
 async function startDownload() {
     const urlInput = document.getElementById('urlInput');
-    const formatInput = document.getElementById('formatInput');
+    const downloaderSelect = document.getElementById('downloaderSelect');
     const downloadBtn = document.getElementById('downloadBtn');
 
     const url = urlInput.value.trim();
     if (!url) {
-        alert('Please enter a URL');
+        alert(i18nManager.t('urlPlaceholder'));
         return;
     }
 
-    const format = formatInput.value.trim() || null;
+    // 使用选中的下载器
+    const downloader = downloaderSelect.value;
 
     // 禁用按钮
     downloadBtn.disabled = true;
@@ -140,9 +151,9 @@ async function startDownload() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 url,
-                downloader: null, // 使用自动检测
+                downloader,
                 save_folder: selectedFolder,
-                format
+                format: 'best' // 固定使用 best 格式
             })
         });
 
@@ -151,7 +162,6 @@ async function startDownload() {
         if (response.ok) {
             // 成功创建任务
             urlInput.value = '';
-            formatInput.value = '';
             hideDetectResult();
 
             // 立即刷新任务列表
@@ -180,26 +190,62 @@ async function loadTasks() {
         currentTasks = data.tasks || [];
         renderTasks();
         updateTasksCount();
+
+        // 将完成的任务添加到历史记录
+        currentTasks.forEach(task => {
+            if (task.status === 'completed' && task.file_path) {
+                addToHistory(task);
+            }
+        });
     } catch (error) {
         console.error('Failed to load tasks:', error);
     }
 }
 
-// 渲染任务列表
+// 获取状态图标
+function getStatusIcon(status) {
+    const icons = {
+        'pending': 'schedule',
+        'downloading': 'download',
+        'completed': 'check_circle',
+        'failed': 'error',
+        'cancelled': 'cancel'
+    };
+    return icons[status] || 'help';
+}
+
+// 渲染任务列表（合并任务和历史）
 function renderTasks() {
     const tasksList = document.getElementById('tasksList');
 
-    if (currentTasks.length === 0) {
+    // 合并当前任务和历史记录
+    const allTasks = [...currentTasks];
+
+    // 添加历史记录中不在当前任务中的项
+    downloadHistory.forEach(historyItem => {
+        const existsInCurrent = allTasks.some(task => task.id === historyItem.id);
+        if (!existsInCurrent) {
+            allTasks.push({
+                ...historyItem,
+                status: 'completed',
+                progress: 100
+            });
+        }
+    });
+
+    if (allTasks.length === 0) {
         tasksList.innerHTML = '<div class="empty-state" data-i18n="noTasks">No tasks</div>';
         i18nManager.updateUI();
         return;
     }
 
-    tasksList.innerHTML = currentTasks.map(task => `
+    tasksList.innerHTML = allTasks.map(task => `
         <div class="task-card" data-task-id="${task.id}">
             <div class="task-header">
                 <div class="task-url" title="${task.url}">${task.url}</div>
-                <span class="task-status status-${task.status}">${task.status}</span>
+                <span class="task-status status-${task.status}">
+                    <span class="material-symbols-outlined">${getStatusIcon(task.status)}</span>
+                </span>
             </div>
 
             <div class="task-meta">
@@ -244,9 +290,9 @@ function renderTasks() {
                 ` : ''}
 
                 ${task.status === 'completed' && task.file_path ? `
-                <button class="btn-small" onclick="openFolder('${task.file_path}')">
-                    <span class="material-symbols-outlined">folder_open</span>
-                    <span data-i18n="openFolder">Open</span>
+                <button class="btn-small" onclick="previewFile('${task.file_path}', '${task.url}')">
+                    <span class="material-symbols-outlined">visibility</span>
+                    <span data-i18n="openFolder">Preview</span>
                 </button>
                 ` : ''}
             </div>
@@ -259,7 +305,9 @@ function renderTasks() {
 // 更新任务计数
 function updateTasksCount() {
     const tasksCount = document.getElementById('tasksCount');
-    tasksCount.textContent = currentTasks.length;
+    // 统计所有任务（包括历史）
+    const uniqueIds = new Set([...currentTasks.map(t => t.id), ...downloadHistory.map(h => h.id)]);
+    tasksCount.textContent = uniqueIds.size;
 }
 
 // 切换任务列表展开/折叠
@@ -310,9 +358,48 @@ async function cancelTask(taskId) {
     }
 }
 
-// 打开文件夹（仅提示，无法直接打开本地文件夹）
-function openFolder(filePath) {
-    alert(`File saved to: ${filePath}`);
+// 预览文件
+function previewFile(filePath, url) {
+    const previewModal = document.getElementById('previewModal');
+    const previewContainer = document.getElementById('previewContainer');
+
+    // URL 编码文件路径
+    const encodedPath = encodeURIComponent(filePath);
+    const apiUrl = `/api/downloader/file/${encodedPath}`;
+
+    // 判断文件类型
+    const ext = filePath.split('.').pop().toLowerCase();
+    const isVideo = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v'].includes(ext);
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext);
+
+    if (isVideo) {
+        previewContainer.innerHTML = `
+            <video controls autoplay style="max-width: 100%; max-height: 90vh;">
+                <source src="${apiUrl}" type="video/${ext}">
+                Your browser does not support the video tag.
+            </video>
+        `;
+    } else if (isImage) {
+        previewContainer.innerHTML = `
+            <img src="${apiUrl}" alt="Preview" style="max-width: 100%; max-height: 90vh; object-fit: contain;">
+        `;
+    } else {
+        previewContainer.innerHTML = `
+            <div style="padding: 40px; text-align: center; color: #525252;">
+                <span class="material-symbols-outlined" style="font-size: 48px; margin-bottom: 16px;">insert_drive_file</span>
+                <p style="margin-bottom: 8px;">File saved to:</p>
+                <p style="font-size: 13px; word-break: break-all;">${filePath}</p>
+            </div>
+        `;
+    }
+
+    previewModal.classList.add('show');
+}
+
+// 关闭预览
+function closePreview() {
+    const previewModal = document.getElementById('previewModal');
+    previewModal.classList.remove('show');
 }
 
 // 开始轮询任务状态
@@ -336,3 +423,48 @@ window.addEventListener('beforeunload', () => {
         clearInterval(pollingInterval);
     }
 });
+
+// 添加到历史记录
+function addToHistory(task) {
+    // 检查是否已存在
+    const exists = downloadHistory.some(item => item.id === task.id);
+    if (exists) return;
+
+    // 添加到历史记录
+    downloadHistory.unshift({
+        id: task.id,
+        url: task.url,
+        platform: task.platform,
+        file_name: task.file_name,
+        file_path: task.file_path,
+        created_at: task.created_at
+    });
+
+    // 限制历史记录数量（最多100条）
+    if (downloadHistory.length > 100) {
+        downloadHistory = downloadHistory.slice(0, 100);
+    }
+
+    // 保存到 localStorage
+    localStorage.setItem('downloadHistory', JSON.stringify(downloadHistory));
+}
+
+// 清空历史记录（只清除已完成的，保留进行中的）
+function clearHistory() {
+    if (!confirm(i18nManager.t('clearHistory') + '?')) {
+        return;
+    }
+
+    // 获取当前正在下载的任务ID
+    const activeTaskIds = currentTasks
+        .filter(task => task.status === 'downloading' || task.status === 'pending')
+        .map(task => task.id);
+
+    // 只保留正在下载的任务
+    downloadHistory = downloadHistory.filter(item => activeTaskIds.includes(item.id));
+
+    localStorage.setItem('downloadHistory', JSON.stringify(downloadHistory));
+    renderTasks();
+    updateTasksCount();
+}
+

@@ -68,6 +68,23 @@ const i18nManager = {
             errorLoadingFiles: '从 {folder} 加载文件时出错',
             failedCreateFolder: '创建文件夹失败',
 
+            // Downloader 页面
+            downloaderTitle: '下载器',
+            downloaderSubtitle: '从各个平台下载媒体内容',
+            urlLabel: 'URL 地址',
+            urlPlaceholder: 'https://...',
+            folderLabel: '保存文件夹',
+            sourceFolder: '源文件夹',
+            downloadBtn: '下载',
+            tasksTitle: '任务列表',
+            historyTitle: '历史记录',
+            noTasks: '暂无任务',
+            noHistory: '暂无历史记录',
+            cancelBtn: '取消',
+            openFolder: '打开',
+            clearHistory: '清空历史',
+            settingsLink: '设置',
+
             // 通用
             save: '保存',
             delete: '删除',
@@ -137,6 +154,23 @@ const i18nManager = {
             noFilesFound: 'No supported files found in: {folder}',
             errorLoadingFiles: 'Error loading files from: {folder}',
             failedCreateFolder: 'Failed to create folder',
+
+            // Downloader page
+            downloaderTitle: 'Downloader',
+            downloaderSubtitle: 'Download media from various platforms',
+            urlLabel: 'URL',
+            urlPlaceholder: 'https://...',
+            folderLabel: 'Folder',
+            sourceFolder: 'Source Folder',
+            downloadBtn: 'Download',
+            tasksTitle: 'Tasks',
+            historyTitle: 'History',
+            noTasks: 'No tasks',
+            noHistory: 'No history',
+            cancelBtn: 'Cancel',
+            openFolder: 'Open',
+            clearHistory: 'Clear History',
+            settingsLink: 'Settings',
 
             // Common
             save: 'Save',

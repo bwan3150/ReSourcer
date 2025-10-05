@@ -321,6 +321,31 @@ async fn delete_credentials(platform: web::Path<String>) -> Result<HttpResponse>
 }
 
 // ============================================================================
+// 文件服务
+// ============================================================================
+
+/// GET /api/downloader/file/{path}
+/// 提供文件服务（用于预览）
+async fn serve_file(path: web::Path<String>) -> Result<HttpResponse> {
+    let file_path = percent_encoding::percent_decode_str(&path)
+        .decode_utf8_lossy()
+        .to_string();
+
+    if !Path::new(&file_path).exists() {
+        return Ok(HttpResponse::NotFound().body("File not found"));
+    }
+
+    let content = fs::read(&file_path)?;
+    let mime_type = mime_guess::from_path(&file_path)
+        .first_or_octet_stream()
+        .to_string();
+
+    Ok(HttpResponse::Ok()
+        .content_type(mime_type)
+        .body(content))
+}
+
+// ============================================================================
 // 路由注册
 // ============================================================================
 
@@ -341,5 +366,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(web::resource("/task/{id}").route(web::delete().to(cancel_task)))
         // 认证管理
         .service(web::resource("/credentials/{platform}").route(web::post().to(upload_credentials)))
-        .service(web::resource("/credentials/{platform}").route(web::delete().to(delete_credentials)));
+        .service(web::resource("/credentials/{platform}").route(web::delete().to(delete_credentials)))
+        // 文件服务
+        .service(web::resource("/file/{path:.*}").route(web::get().to(serve_file)));
 }
