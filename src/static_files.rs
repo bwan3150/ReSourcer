@@ -6,6 +6,11 @@ use rust_embed::RustEmbed;
 #[folder = "static/"]
 pub struct Asset;
 
+// 嵌入config目录中的所有文件
+#[derive(RustEmbed)]
+#[folder = "config/"]
+pub struct ConfigAsset;
+
 // 从嵌入的资源中提供静态文件
 pub async fn serve_static(req: HttpRequest) -> Result<HttpResponse> {
     let raw_path = req.match_info().query("filename");

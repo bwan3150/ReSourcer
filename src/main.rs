@@ -1,47 +1,62 @@
 use actix_web::{middleware, web, App, HttpServer};
+use serde::Deserialize;
 
 mod classifier;
 mod downloader;
 mod uploader;
 mod static_files;
 
-use static_files::serve_static;
+use static_files::{serve_static, ConfigAsset};
+
+#[derive(Deserialize)]
+struct DependencyInfo {
+    version: String,
+    last_checked: String,
+}
+
+#[derive(Deserialize)]
+struct Dependencies {
+    #[serde(rename = "yt-dlp")]
+    yt_dlp: DependencyInfo,
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // 打印启动信息
-    println!("====================================");
-    println!("  🛠️  Personal Toolkit Server");
-    println!("====================================");
-    println!("📍 服务地址: http://localhost:1234");
     println!();
-    println!("📦 可用模块:");
-    println!("  - 📁 资源分类器 /classifier/");
-    println!("  - ⬇️  视频下载器 /downloader/");
-    println!("  - 📱 文件上传器 /uploader/");
+    println!(r#"  ____       ____                              "#);
+    println!(r#" |  _ \ ___ / ___|  ___  _   _ _ __ ___ ___ _ __"#);
+    println!(r#" | |_) / _ \\___ \ / _ \| | | | '__/ __/ _ \ '__|"#);
+    println!(r#" |  _ <  __/ ___) | (_) | |_| | | | (_|  __/ |  "#);
+    println!(r#" |_| \_\___|____/ \___/ \__,_|_|  \___\___|_|  "#);
     println!();
 
-    // 检查 yt-dlp 是否可用
-    if downloader::check_ytdlp_available() {
-        match downloader::get_version() {
-            Ok(version) => println!("✅ yt-dlp 版本: {}", version),
-            Err(e) => println!("⚠️  yt-dlp 检查失败: {}", e),
+    // 从嵌入的配置文件读取依赖信息
+    let ytdlp_version = if let Some(config_file) = ConfigAsset::get("dependencies.json") {
+        match serde_json::from_slice::<Dependencies>(&config_file.data) {
+            Ok(deps) => deps.yt_dlp.version,
+            Err(_) => "unknown".to_string(),
         }
     } else {
-        println!("⚠️  yt-dlp 未找到，下载器功能将不可用");
-    }
+        "unknown".to_string()
+    };
 
-    println!("====================================");
-    println!("🚀 正在启动服务器...");
-    println!("🌐 正在打开浏览器...");
-    println!("====================================");
+    // 服务信息框
+    println!("  ┌─────────────────────────────────────────┐");
+    println!("  │ Service URL: http://localhost:1234     │");
+
+    let version_line = format!("  │ yt-dlp version: {:<24}│", ytdlp_version);
+    println!("{}", version_line);
+
+    println!("  └─────────────────────────────────────────┘");
+    println!();
 
     // 延迟打开浏览器
     tokio::spawn(async {
         tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
         if let Err(e) = open::that("http://localhost:1234") {
-            eprintln!("❌ 无法自动打开浏览器: {}", e);
-            println!("请手动访问: http://localhost:1234");
+            eprintln!("  Failed to open browser: {}", e);
+            println!("  Please visit manually: http://localhost:1234");
         }
     });
 

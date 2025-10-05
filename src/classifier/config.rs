@@ -59,32 +59,18 @@ pub fn get_default_state() -> AppState {
     }
 }
 
-// 加载预设列表 - 从项目目录的 config/presets.json 读取
+// 加载预设列表 - 从嵌入的 config/presets.json 读取
 pub fn load_presets() -> io::Result<Vec<Preset>> {
-    // 获取可执行文件所在目录
-    let exe_path = std::env::current_exe()
-        .map_err(|e| io::Error::new(io::ErrorKind::NotFound, e))?;
-    let exe_dir = exe_path.parent()
-        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "无法获取可执行文件目录"))?;
+    use crate::static_files::ConfigAsset;
 
-    // 尝试从多个可能的位置读取预设文件
-    let possible_paths = vec![
-        exe_dir.join("config").join("presets.json"),           // 打包后的位置
-        exe_dir.join("../config/presets.json"),                // 开发环境
-        PathBuf::from("config/presets.json"),                   // 当前目录
-        PathBuf::from("./config/presets.json"),                 // 显式当前目录
-    ];
-
-    for presets_path in possible_paths {
-        if presets_path.exists() {
-            let content = fs::read_to_string(&presets_path)?;
-            let presets: Vec<Preset> = serde_json::from_str(&content)
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-            return Ok(presets);
-        }
+    // 从嵌入的资源读取预设文件
+    if let Some(config_file) = ConfigAsset::get("presets.json") {
+        let presets: Vec<Preset> = serde_json::from_slice(&config_file.data)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        return Ok(presets);
     }
 
-    // 如果找不到文件，返回空列表
+    // 如果找不到嵌入的文件，返回空列表
     Ok(Vec::new())
 }
 

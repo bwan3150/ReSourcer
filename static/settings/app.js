@@ -24,6 +24,9 @@ async function loadAppState() {
         if (appState.source_folder) {
             document.getElementById('folderInput').value = appState.source_folder;
             await loadFolders();
+        } else {
+            // 如果没有源文件夹，隐藏保存按钮
+            document.getElementById('saveBtn').style.display = 'none';
         }
 
         // 构建预设选择器
@@ -37,7 +40,11 @@ async function loadAppState() {
 // 加载文件夹列表
 async function loadFolders() {
     const folderPath = document.getElementById('folderInput').value.trim();
-    if (!folderPath) return;
+    if (!folderPath) {
+        document.getElementById('foldersSection').style.display = 'none';
+        document.getElementById('saveBtn').style.display = 'none';
+        return;
+    }
 
     try {
         const response = await fetch(`/api/classifier/folders?source_folder=${encodeURIComponent(folderPath)}`);
@@ -49,6 +56,7 @@ async function loadFolders() {
                 isNew: false  // 已存在的文件夹
             }));
             document.getElementById('foldersSection').style.display = 'block';
+            document.getElementById('saveBtn').style.display = 'inline-flex';
             renderFolders();
         }
     } catch (error) {
