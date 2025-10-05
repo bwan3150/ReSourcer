@@ -167,6 +167,8 @@ impl PixivParser {
         let client = reqwest::Client::new();
         let url = self.build_ugoira_meta_url();
 
+        eprintln!("[Pixiv] 请求动图元数据: {}", url);
+
         let response = client
             .get(&url)
             .header("Cookie", format!("PHPSESSID={}", token))
@@ -175,16 +177,20 @@ impl PixivParser {
             .await
             .map_err(|e| format!("请求动图元数据失败: {}", e))?;
 
+        let status = response.status();
+        eprintln!("[Pixiv] 动图元数据响应状态: {}", status);
+
         let json: serde_json::Value = response
             .json()
             .await
             .map_err(|e| format!("解析动图元数据失败: {}", e))?;
 
+        eprintln!("[Pixiv] 动图元数据响应: {}", serde_json::to_string_pretty(&json).unwrap_or_else(|_| "无法格式化".to_string()));
+
         if json["error"].as_bool().unwrap_or(true) {
-            return Err(format!(
-                "获取动图元数据失败: {}",
-                json["message"].as_str().unwrap_or("Unknown error")
-            ));
+            let error_msg = json["message"].as_str().unwrap_or("Unknown error");
+            eprintln!("[Pixiv] API 返回错误: {}", error_msg);
+            return Err(format!("获取动图元数据失败: {}", error_msg));
         }
 
         let meta: UgoiraMeta = serde_json::from_value(json["body"].clone())
