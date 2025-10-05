@@ -24,51 +24,29 @@ pub async fn get_state() -> Result<HttpResponse> {
         actix_web::error::ErrorInternalServerError(format!("无法加载配置: {}", e))
     })?;
 
-    Ok(HttpResponse::Ok().json(state))
-}
-
-
-// 保存预设
-pub async fn save_preset(req: web::Json<SavePresetRequest>) -> Result<HttpResponse> {
-    let mut state = load_config().map_err(|e| {
-        actix_web::error::ErrorInternalServerError(format!("无法加载配置: {}", e))
-    })?;
-
-    // 查找是否已存在同名预设
-    if let Some(preset) = state.presets.iter_mut().find(|p| p.name == req.name) {
-        preset.categories = req.categories.clone();
-    } else {
-        state.presets.push(Preset {
-            name: req.name.clone(),
-            categories: req.categories.clone(),
-        });
-    }
-
-    state.current_preset = req.name.clone();
-
-    save_config(&state).map_err(|e| {
-        actix_web::error::ErrorInternalServerError(format!("无法保存配置: {}", e))
-    })?;
+    // 从文件加载预设
+    let presets = super::config::load_presets().unwrap_or_default();
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
-        "status": "success",
-        "state": state
+        "source_folder": state.source_folder,
+        "hidden_folders": state.hidden_folders,
+        "presets": presets
     })))
 }
 
-// 加载预设
+
+// 保存预设 - 现在预设是只读的，从 config/presets.json 读取，不再支持保存
+pub async fn save_preset(_req: web::Json<SavePresetRequest>) -> Result<HttpResponse> {
+    Ok(HttpResponse::BadRequest().json(serde_json::json!({
+        "error": "Presets are read-only and loaded from config/presets.json"
+    })))
+}
+
+// 加载预设 - 现在预设是只读的，从 config/presets.json 读取
 pub async fn load_preset(req: web::Json<PresetRequest>) -> Result<HttpResponse> {
-    let mut state = load_config().map_err(|e| {
-        actix_web::error::ErrorInternalServerError(format!("无法加载配置: {}", e))
-    })?;
+    let presets = super::config::load_presets().unwrap_or_default();
 
-    if let Some(preset) = state.presets.iter().find(|p| p.name == req.name) {
-        state.current_preset = req.name.clone();
-
-        save_config(&state).map_err(|e| {
-            actix_web::error::ErrorInternalServerError(format!("无法保存配置: {}", e))
-        })?;
-
+    if let Some(preset) = presets.iter().find(|p| p.name == req.name) {
         Ok(HttpResponse::Ok().json(serde_json::json!({
             "status": "success",
             "categories": preset.categories.clone(),
@@ -81,27 +59,10 @@ pub async fn load_preset(req: web::Json<PresetRequest>) -> Result<HttpResponse> 
     }
 }
 
-// 删除预设
-pub async fn delete_preset(req: web::Json<PresetRequest>) -> Result<HttpResponse> {
-    let mut state = load_config().map_err(|e| {
-        actix_web::error::ErrorInternalServerError(format!("无法加载配置: {}", e))
-    })?;
-
-    state.presets.retain(|p| p.name != req.name);
-
-    if state.current_preset == req.name {
-        state.current_preset = state.presets.first()
-            .map(|p| p.name.clone())
-            .unwrap_or_default();
-    }
-
-    save_config(&state).map_err(|e| {
-        actix_web::error::ErrorInternalServerError(format!("无法保存配置: {}", e))
-    })?;
-
-    Ok(HttpResponse::Ok().json(serde_json::json!({
-        "status": "success",
-        "state": state
+// 删除预设 - 现在预设是只读的，从 config/presets.json 读取，不再支持删除
+pub async fn delete_preset(_req: web::Json<PresetRequest>) -> Result<HttpResponse> {
+    Ok(HttpResponse::BadRequest().json(serde_json::json!({
+        "error": "Presets are read-only and loaded from config/presets.json"
     })))
 }
 

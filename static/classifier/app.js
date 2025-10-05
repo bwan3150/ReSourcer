@@ -190,50 +190,7 @@ async function deleteSelectedPreset() {
     }
 }
 
-// 在设置界面添加分类
-function addCategoryInSetup() {
-    const input = document.getElementById('newCategoryInput');
-    const categoryName = input.value.trim();
-    
-    if (!categoryName) return;
-    
-    if (appState.current_preset) {
-        const preset = appState.presets.find(p => p.name === appState.current_preset);
-        if (preset) {
-            if (preset.categories.includes(categoryName)) {
-                alert(i18nManager.t('categoryExists', 'Category already exists'));
-                return;
-            }
-            preset.categories.push(categoryName);
-            input.value = '';
-            renderCategories(preset.categories);
-            savePresetToServer(appState.current_preset, preset.categories);
-        }
-    }
-}
-
-// 更新分类
-function updateCategoryInSetup(index, value) {
-    if (!value.trim() || !appState.current_preset) return;
-    
-    const preset = appState.presets.find(p => p.name === appState.current_preset);
-    if (preset) {
-        preset.categories[index] = value.trim();
-        savePresetToServer(appState.current_preset, preset.categories);
-    }
-}
-
-// 删除分类
-function removeCategoryInSetup(index) {
-    if (!appState.current_preset) return;
-    
-    const preset = appState.presets.find(p => p.name === appState.current_preset);
-    if (preset) {
-        preset.categories.splice(index, 1);
-        renderCategories(preset.categories);
-        savePresetToServer(appState.current_preset, preset.categories);
-    }
-}
+// 这些函数已移除，因为现在使用基于文件夹的系统，不再使用预设
 
 // 处理文件夹输入框回车
 function handleFolderInputKeydown(event) {
@@ -554,9 +511,8 @@ async function loadFiles() {
         processedCount = 0;
         isClassifying = true;
 
-        // 显示文件夹路径和预设名称
-        const presetInfo = appState.current_preset ? ` | ${appState.current_preset}` : '';
-        document.getElementById('folderPath').textContent = appState.source_folder + presetInfo;
+        // 显示文件夹路径
+        document.getElementById('folderPath').textContent = appState.source_folder;
         
         showCurrentFile();
         updateProgress();

@@ -3,8 +3,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 pub struct AppState {
     pub source_folder: String,
-    pub current_preset: String,
-    pub presets: Vec<Preset>,
     #[serde(default)]
     pub hidden_folders: Vec<String>, // 隐藏的文件夹列表
 }

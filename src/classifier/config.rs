@@ -54,45 +54,38 @@ pub fn save_config(state: &AppState) -> io::Result<()> {
 // 默认应用状态 - 不设置默认文件夹，由用户在设置页面指定
 pub fn get_default_state() -> AppState {
     AppState {
-        source_folder: String::new(), // 不再自动填充
-        current_preset: "Art Resources".to_string(),
+        source_folder: String::new(),
         hidden_folders: Vec::new(),
-        presets: vec![
-            Preset {
-                name: "Art Resources".to_string(),
-                categories: vec![
-                    "Character Design".to_string(),
-                    "Backgrounds".to_string(),
-                    "Color Reference".to_string(),
-                    "Composition".to_string(),
-                    "Anatomy".to_string(),
-                    "Lighting".to_string(),
-                ],
-            },
-            Preset {
-                name: "Photography".to_string(),
-                categories: vec![
-                    "Portraits".to_string(),
-                    "Landscapes".to_string(),
-                    "Street".to_string(),
-                    "Architecture".to_string(),
-                    "Nature".to_string(),
-                    "Black & White".to_string(),
-                ],
-            },
-            Preset {
-                name: "Design Assets".to_string(),
-                categories: vec![
-                    "UI/UX".to_string(),
-                    "Icons".to_string(),
-                    "Patterns".to_string(),
-                    "Textures".to_string(),
-                    "Mockups".to_string(),
-                    "Fonts".to_string(),
-                ],
-            },
-        ],
     }
+}
+
+// 加载预设列表 - 从项目目录的 config/presets.json 读取
+pub fn load_presets() -> io::Result<Vec<Preset>> {
+    // 获取可执行文件所在目录
+    let exe_path = std::env::current_exe()
+        .map_err(|e| io::Error::new(io::ErrorKind::NotFound, e))?;
+    let exe_dir = exe_path.parent()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "无法获取可执行文件目录"))?;
+
+    // 尝试从多个可能的位置读取预设文件
+    let possible_paths = vec![
+        exe_dir.join("config").join("presets.json"),           // 打包后的位置
+        exe_dir.join("../config/presets.json"),                // 开发环境
+        PathBuf::from("config/presets.json"),                   // 当前目录
+        PathBuf::from("./config/presets.json"),                 // 显式当前目录
+    ];
+
+    for presets_path in possible_paths {
+        if presets_path.exists() {
+            let content = fs::read_to_string(&presets_path)?;
+            let presets: Vec<Preset> = serde_json::from_str(&content)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+            return Ok(presets);
+        }
+    }
+
+    // 如果找不到文件，返回空列表
+    Ok(Vec::new())
 }
 
 pub const SUPPORTED_EXTENSIONS: &[&str] = &[
