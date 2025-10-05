@@ -42,7 +42,12 @@ async function loadFolders() {
     try {
         const response = await fetch(`/api/classifier/folders?source_folder=${encodeURIComponent(folderPath)}`);
         if (response.ok) {
-            folders = await response.json();
+            const existingFolders = await response.json();
+            // 标记已存在的文件夹
+            folders = existingFolders.map(f => ({
+                ...f,
+                isNew: false  // 已存在的文件夹
+            }));
             document.getElementById('foldersSection').style.display = 'block';
             renderFolders();
         }
@@ -70,12 +75,26 @@ function renderFolders() {
                 <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
             </svg>`;
 
+        // 保存图标(磁盘)
+        const saveIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" stroke-width="2"/>
+            <path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="2"/>
+        </svg>`;
+
+        // 删除按钮(仅新文件夹显示)
+        const deleteBtn = folder.isNew ?
+            `<button class="delete-btn" onclick="removeFolder(${index})" title="Delete">×</button>` :
+            `<span style="margin-left: 4px; color: #a3a3a3; font-size: 12px;">${saveIcon}</span>`;
+
         return `
             <div class="category-item" style="${folder.hidden ? 'opacity: 0.5;' : ''}">
                 <input type="text" value="${folder.name}" onchange="updateFolderName(${index}, this.value)" ${folder.hidden ? 'disabled' : ''}>
-                <button class="icon-btn" style="border: none; width: auto;" onclick="toggleFolderVisibility(${index})" title="${folder.hidden ? 'Show' : 'Hide'}">
-                    ${visibilityIcon}
-                </button>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                    <button class="icon-btn" style="border: none; width: auto; padding: 4px;" onclick="toggleFolderVisibility(${index})" title="${folder.hidden ? 'Show' : 'Hide'}">
+                        ${visibilityIcon}
+                    </button>
+                    ${deleteBtn}
+                </div>
             </div>
         `;
     }).join('');
@@ -110,11 +129,20 @@ function addFolder() {
 
     folders.push({
         name: folderName,
-        hidden: false
+        hidden: false,
+        isNew: true  // 标记为新文件夹
     });
 
     input.value = '';
     renderFolders();
+}
+
+// 删除文件夹(仅新添加的文件夹可删除)
+function removeFolder(index) {
+    if (folders[index].isNew) {
+        folders.splice(index, 1);
+        renderFolders();
+    }
 }
 
 // 更新文件夹名称
@@ -156,7 +184,8 @@ function applyPreset() {
         if (!folders.some(f => f.name === category)) {
             folders.push({
                 name: category,
-                hidden: false
+                hidden: false,
+                isNew: true  // 标记为新文件夹
             });
         }
     });
