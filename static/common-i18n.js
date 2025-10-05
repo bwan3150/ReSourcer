@@ -82,6 +82,7 @@ const i18nManager = {
             noHistory: '暂无历史记录',
             cancelBtn: '取消',
             openFolder: '打开',
+            previewBtn: '预览',
             clearHistory: '清空历史',
             settingsLink: '设置',
 
@@ -169,6 +170,7 @@ const i18nManager = {
             noHistory: 'No history',
             cancelBtn: 'Cancel',
             openFolder: 'Open',
+            previewBtn: 'Preview',
             clearHistory: 'Clear History',
             settingsLink: 'Settings',
 

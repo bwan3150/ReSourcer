@@ -345,6 +345,60 @@ async fn serve_file(path: web::Path<String>) -> Result<HttpResponse> {
         .body(content))
 }
 
+/// POST /api/downloader/open-folder
+/// 打开文件所在文件夹
+async fn open_folder(req: web::Json<serde_json::Value>) -> Result<HttpResponse> {
+    let file_path = req["path"]
+        .as_str()
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("Missing path"))?;
+
+    let path = Path::new(file_path);
+
+    if !path.exists() {
+        return Ok(HttpResponse::NotFound().json(serde_json::json!({
+            "error": "File not found"
+        })));
+    }
+
+    // 获取文件所在目录
+    let folder = if path.is_dir() {
+        path.to_path_buf()
+    } else {
+        path.parent()
+            .ok_or_else(|| actix_web::error::ErrorInternalServerError("No parent directory"))?
+            .to_path_buf()
+    };
+
+    // 根据操作系统打开文件夹
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&folder)
+            .spawn()
+            .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&folder)
+            .spawn()
+            .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&folder)
+            .spawn()
+            .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+    }
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "status": "success"
+    })))
+}
+
 // ============================================================================
 // 路由注册
 // ============================================================================
@@ -368,5 +422,6 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(web::resource("/credentials/{platform}").route(web::post().to(upload_credentials)))
         .service(web::resource("/credentials/{platform}").route(web::delete().to(delete_credentials)))
         // 文件服务
-        .service(web::resource("/file/{path:.*}").route(web::get().to(serve_file)));
+        .service(web::resource("/file/{path:.*}").route(web::get().to(serve_file)))
+        .service(web::resource("/open-folder").route(web::post().to(open_folder)));
 }

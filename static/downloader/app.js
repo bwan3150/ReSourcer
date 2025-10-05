@@ -292,7 +292,11 @@ function renderTasks() {
                 ${task.status === 'completed' && task.file_path ? `
                 <button class="btn-small" onclick="previewFile('${task.file_path}', '${task.url}')">
                     <span class="material-symbols-outlined">visibility</span>
-                    <span data-i18n="openFolder">Preview</span>
+                    <span data-i18n="previewBtn">Preview</span>
+                </button>
+                <button class="btn-small" onclick="openFolder('${task.file_path}')">
+                    <span class="material-symbols-outlined">folder_open</span>
+                    <span data-i18n="openFolder">Open</span>
                 </button>
                 ` : ''}
             </div>
@@ -359,7 +363,7 @@ async function cancelTask(taskId) {
 }
 
 // 预览文件
-function previewFile(filePath, url) {
+async function previewFile(filePath, url) {
     const previewModal = document.getElementById('previewModal');
     const previewContainer = document.getElementById('previewContainer');
 
@@ -372,6 +376,12 @@ function previewFile(filePath, url) {
     const isVideo = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v'].includes(ext);
     const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext);
 
+    console.log('Preview file:', filePath);
+    console.log('Extension:', ext);
+    console.log('Is video:', isVideo);
+    console.log('Is image:', isImage);
+    console.log('API URL:', apiUrl);
+
     if (isVideo) {
         previewContainer.innerHTML = `
             <video controls autoplay style="max-width: 100%; max-height: 90vh;">
@@ -379,27 +389,43 @@ function previewFile(filePath, url) {
                 Your browser does not support the video tag.
             </video>
         `;
+        previewModal.classList.add('show');
     } else if (isImage) {
         previewContainer.innerHTML = `
             <img src="${apiUrl}" alt="Preview" style="max-width: 100%; max-height: 90vh; object-fit: contain;">
         `;
+        previewModal.classList.add('show');
     } else {
-        previewContainer.innerHTML = `
-            <div style="padding: 40px; text-align: center; color: #525252;">
-                <span class="material-symbols-outlined" style="font-size: 48px; margin-bottom: 16px;">insert_drive_file</span>
-                <p style="margin-bottom: 8px;">File saved to:</p>
-                <p style="font-size: 13px; word-break: break-all;">${filePath}</p>
-            </div>
-        `;
+        // 不支持的文件类型，报错
+        alert(`Preview not supported for file type: .${ext}\nFile path: ${filePath}`);
     }
-
-    previewModal.classList.add('show');
 }
 
 // 关闭预览
 function closePreview() {
     const previewModal = document.getElementById('previewModal');
     previewModal.classList.remove('show');
+}
+
+// 打开文件所在文件夹
+async function openFolder(filePath) {
+    try {
+        // 调用后端 API 打开文件夹
+        const response = await fetch('/api/downloader/open-folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: filePath })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            alert(result.error || 'Failed to open folder');
+        }
+    } catch (error) {
+        console.error('Failed to open folder:', error);
+        alert('Failed to open folder');
+    }
 }
 
 // 开始轮询任务状态

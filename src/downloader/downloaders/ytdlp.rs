@@ -82,7 +82,9 @@ where
        .arg("-o")
        .arg(format!("{}/%(title)s.%(ext)s", output_dir))
        .arg("--newline") // 每行输出进度信息
-       .arg("--no-playlist"); // 不下载播放列表
+       .arg("--no-playlist") // 不下载播放列表
+       .arg("--print")
+       .arg("after_move:filepath"); // 打印下载完成后的文件路径
 
     // 格式参数
     if let Some(fmt) = format {
@@ -119,11 +121,20 @@ where
     let stdout_reader = BufReader::new(stdout);
     let stderr_reader = BufReader::new(stderr);
 
-    // 异步读取 stdout（进度信息）
+    // 用于存储最终的文件路径
+    let final_filepath = std::sync::Arc::new(tokio::sync::Mutex::new(None::<String>));
+    let final_filepath_clone = final_filepath.clone();
+
+    // 异步读取 stdout（进度信息和文件路径）
     let stdout_handle = tokio::spawn(async move {
         let mut lines = stdout_reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            if let Some((progress, speed, eta)) = parse_progress(&line) {
+            // 如果是文件路径（不包含 [download] 标记），则保存
+            if !line.contains("[download]") && !line.trim().is_empty() {
+                *final_filepath_clone.lock().await = Some(line.trim().to_string());
+            }
+            // 解析进度信息
+            else if let Some((progress, speed, eta)) = parse_progress(&line) {
                 progress_callback(progress, speed, eta);
             }
         }
@@ -146,8 +157,13 @@ where
         .map_err(|e| format!("读取 stdout 失败: {}", e))?;
 
     if status.success() {
-        // 成功：返回输出目录（实际文件名由 yt-dlp 决定）
-        Ok(output_dir)
+        // 成功：返回实际的文件路径
+        let filepath = final_filepath.lock().await;
+        if let Some(path) = filepath.as_ref() {
+            Ok(path.clone())
+        } else {
+            Err("下载成功但无法获取文件路径".to_string())
+        }
     } else {
         Err(format!("下载失败: {}", error_msg))
     }

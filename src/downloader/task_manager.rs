@@ -186,15 +186,21 @@ impl TaskManager {
 
         // 3. 根据结果更新任务状态
         match result {
-            Ok(output_dir) => {
-                // 下载成功
-                // TODO: 获取实际下载的文件名和路径
-                // 目前简单返回输出目录
+            Ok(file_path) => {
+                // 下载成功，file_path 现在是完整的文件路径
                 if let Some(task) = tasks.lock().await.get_mut(&task_id) {
                     task.status = TaskStatus::Completed;
                     task.progress = 100.0;
-                    task.file_path = Some(output_dir.clone());
-                    task.file_name = Some("downloaded_file".to_string()); // TODO: 从yt-dlp输出解析
+
+                    // 从文件路径中提取文件名
+                    let file_name = std::path::Path::new(&file_path)
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("unknown")
+                        .to_string();
+
+                    task.file_path = Some(file_path);
+                    task.file_name = Some(file_name);
                 }
             }
             Err(error) => {
