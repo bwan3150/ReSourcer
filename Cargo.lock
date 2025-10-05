@@ -3,21 +3,6 @@
 version = 4
 
 [[package]]
-name = "Toolkit-ReClassifier"
-version = "0.1.2"
-dependencies = [
- "actix-files",
- "actix-web",
- "mime_guess",
- "open",
- "percent-encoding",
- "rust-embed",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
 name = "actix-codec"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1047,6 +1032,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99d9a13982dcf210057a8a78572b2217b667c3beacbf3a0d8b454f6f82837d38"
 dependencies = [
  "getrandom",
+]
+
+[[package]]
+name = "re-sourcer"
+version = "0.2.0"
+dependencies = [
+ "actix-files",
+ "actix-web",
+ "mime_guess",
+ "open",
+ "percent-encoding",
+ "rust-embed",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
