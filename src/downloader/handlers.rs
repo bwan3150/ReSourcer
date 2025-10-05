@@ -502,8 +502,11 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(web::resource("/task/{id}").route(web::get().to(get_task_status)))
         .service(web::resource("/task/{id}").route(web::delete().to(cancel_task)))
         // 认证管理
-        .service(web::resource("/credentials/{platform}").route(web::post().to(upload_credentials)))
-        .service(web::resource("/credentials/{platform}").route(web::delete().to(delete_credentials)))
+        .service(
+            web::resource("/credentials/{platform}")
+                .route(web::post().to(upload_credentials))
+                .route(web::delete().to(delete_credentials))
+        )
         // 文件服务
         .service(web::resource("/file/{path:.*}").route(web::get().to(serve_file)))
         .service(web::resource("/open-folder").route(web::post().to(open_folder)))
