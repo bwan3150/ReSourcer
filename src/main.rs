@@ -31,6 +31,9 @@ async fn main() -> std::io::Result<()> {
     println!(r#" |_| \_\___|____/ \___/ \__,_|_|  \___\___|_|  "#);
     println!();
 
+    // 初始化下载器任务管理器
+    let task_manager = web::Data::new(downloader::TaskManager::new());
+
     // 从嵌入的配置文件读取依赖信息
     let ytdlp_version = if let Some(config_file) = ConfigAsset::get("dependencies.json") {
         match serde_json::from_slice::<Dependencies>(&config_file.data) {
@@ -60,9 +63,11 @@ async fn main() -> std::io::Result<()> {
         }
     });
 
-    HttpServer::new(|| {
+    HttpServer::new(move || {
         App::new()
             .wrap(middleware::Logger::default())
+            // 注入下载器任务管理器
+            .app_data(task_manager.clone())
             // 分类器 API 路由
             .service(web::scope("/api/classifier").configure(classifier::routes))
             // 下载器 API 路由

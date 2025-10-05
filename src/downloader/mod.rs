@@ -1,7 +1,12 @@
 // 下载器模块：管理视频/文件下载功能
 mod models;
+mod config;
+mod detector;
+mod auth;
+mod downloaders;
+mod task_manager;
 mod handlers;
-mod ytdlp;
 
+pub use models::*;
 pub use handlers::routes;
-pub use ytdlp::{get_ytdlp_path, check_ytdlp_available, get_version};
+pub use task_manager::TaskManager;
