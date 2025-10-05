@@ -56,6 +56,7 @@ pub fn get_default_state() -> AppState {
     AppState {
         source_folder: String::new(), // 不再自动填充
         current_preset: "Art Resources".to_string(),
+        hidden_folders: Vec::new(),
         presets: vec![
             Preset {
                 name: "Art Resources".to_string(),

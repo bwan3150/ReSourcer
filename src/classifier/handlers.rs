@@ -7,7 +7,8 @@ use super::config::{load_config, save_config, SUPPORTED_EXTENSIONS};
 // 注册所有分类器相关路由
 pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("/state").route(web::get().to(get_state)))
-       .service(web::resource("/folder").route(web::post().to(update_folder)))
+       .service(web::resource("/folders").route(web::get().to(get_folders)))
+       .service(web::resource("/settings/save").route(web::post().to(save_settings)))
        .service(web::resource("/files").route(web::get().to(get_files)))
        .service(web::resource("/move").route(web::post().to(move_file)))
        .service(web::resource("/preset/save").route(web::post().to(save_preset)))
@@ -25,22 +26,6 @@ pub async fn get_state() -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().json(state))
 }
 
-// 更新源文件夹
-pub async fn update_folder(req: web::Json<UpdateFolderRequest>) -> Result<HttpResponse> {
-    let mut state = load_config().map_err(|e| {
-        actix_web::error::ErrorInternalServerError(format!("无法加载配置: {}", e))
-    })?;
-
-    state.source_folder = req.source_folder.clone();
-
-    save_config(&state).map_err(|e| {
-        actix_web::error::ErrorInternalServerError(format!("无法保存配置: {}", e))
-    })?;
-
-    Ok(HttpResponse::Ok().json(serde_json::json!({
-        "status": "success"
-    })))
-}
 
 // 保存预设
 pub async fn save_preset(req: web::Json<SavePresetRequest>) -> Result<HttpResponse> {
@@ -239,17 +224,95 @@ pub async fn serve_file(path: web::Path<String>) -> Result<HttpResponse> {
     let file_path = percent_encoding::percent_decode_str(&path)
         .decode_utf8_lossy()
         .to_string();
-    
+
     if !Path::new(&file_path).exists() {
         return Ok(HttpResponse::NotFound().body("File not found"));
     }
-    
+
     let content = fs::read(&file_path)?;
     let mime_type = mime_guess::from_path(&file_path)
         .first_or_octet_stream()
         .to_string();
-    
+
     Ok(HttpResponse::Ok()
         .content_type(mime_type)
         .body(content))
+}
+
+// 获取源文件夹下的所有子文件夹
+pub async fn get_folders(query: web::Query<std::collections::HashMap<String, String>>) -> Result<HttpResponse> {
+    let source_folder = query.get("source_folder");
+
+    if source_folder.is_none() {
+        return Ok(HttpResponse::Ok().json(Vec::<FolderInfo>::new()));
+    }
+
+    let source_folder = source_folder.unwrap();
+    let source_path = Path::new(source_folder);
+
+    if !source_path.exists() || !source_path.is_dir() {
+        return Ok(HttpResponse::Ok().json(Vec::<FolderInfo>::new()));
+    }
+
+    // 加载配置以获取隐藏文件夹列表
+    let state = load_config().unwrap_or_else(|_| super::config::get_default_state());
+
+    let mut folders = Vec::new();
+
+    if let Ok(entries) = fs::read_dir(source_path) {
+        for entry in entries.flatten() {
+            if let Ok(metadata) = entry.metadata() {
+                if metadata.is_dir() {
+                    let folder_name = entry.file_name().to_string_lossy().to_string();
+                    // 跳过隐藏文件夹（以.开头的）
+                    if !folder_name.starts_with('.') {
+                        let hidden = state.hidden_folders.contains(&folder_name);
+                        folders.push(FolderInfo {
+                            name: folder_name,
+                            hidden,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    folders.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(HttpResponse::Ok().json(folders))
+}
+
+// 保存设置(创建文件夹并保存配置)
+pub async fn save_settings(req: web::Json<SaveSettingsRequest>) -> Result<HttpResponse> {
+    let mut state = load_config().map_err(|e| {
+        actix_web::error::ErrorInternalServerError(format!("无法加载配置: {}", e))
+    })?;
+
+    // 更新源文件夹
+    state.source_folder = req.source_folder.clone();
+    state.hidden_folders = req.hidden_folders.clone();
+
+    // 验证源文件夹存在
+    let source_path = Path::new(&state.source_folder);
+    if !source_path.exists() {
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "Source folder does not exist"
+        })));
+    }
+
+    // 创建所有需要的分类文件夹
+    for category in &req.categories {
+        let folder_path = source_path.join(category);
+        if !folder_path.exists() {
+            fs::create_dir_all(&folder_path)?;
+        }
+    }
+
+    // 保存配置
+    save_config(&state).map_err(|e| {
+        actix_web::error::ErrorInternalServerError(format!("无法保存配置: {}", e))
+    })?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "status": "success"
+    })))
 }

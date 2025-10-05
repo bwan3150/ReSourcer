@@ -312,38 +312,36 @@
                 </div>
             </div>
 
-            <div class="input-group">
-                <label class="input-label" data-i18n="categoryPreset">Category Preset</label>
-                <div style="display: flex; gap: 8px;">
-                    <select id="presetSelect" class="text-input" style="flex: 1;" onchange="loadSelectedPreset()">
-                        <!-- Presets will be loaded here -->
-                    </select>
-                    <button class="btn btn-secondary" onclick="saveCurrentAsPreset()" data-i18n="save">Save</button>
-                    <button class="btn btn-secondary" onclick="deleteSelectedPreset()" data-i18n="delete">Delete</button>
-                </div>
-            </div>
-
-            <div id="categoriesSetup" style="display: none;">
-                <label class="input-label" data-i18n="categories">Categories</label>
-                <div id="categoriesList" class="categories-list"></div>
-                <div style="display: flex; gap: 8px;">
+            <div id="foldersSection" style="display: none;">
+                <label class="input-label" data-i18n="categoryFolders">Category Folders</label>
+                <div id="foldersList" class="categories-list"></div>
+                <div style="display: flex; gap: 8px; margin-bottom: 16px;">
                     <input type="text"
-                           id="newCategoryInput"
+                           id="newFolderInput"
                            class="text-input"
-                           placeholder="Add new category"
-                           data-i18n-placeholder="addNewCategory"
-                           onkeydown="if(event.key==='Enter') addCategoryInSetup()">
-                    <button class="icon-btn" onclick="addCategoryInSetup()" title="Add">
+                           placeholder="Add new folder"
+                           data-i18n-placeholder="addNewFolder"
+                           onkeydown="if(event.key==='Enter') addFolder()">
+                    <button class="icon-btn" onclick="addFolder()" title="Add">
                         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                         </svg>
                     </button>
                 </div>
+
+                <div class="input-group">
+                    <label class="input-label" data-i18n="applyPreset">Or apply a preset</label>
+                    <div style="display: flex; gap: 8px;">
+                        <select id="presetSelect" class="text-input" style="flex: 1;">
+                            <!-- Presets will be loaded here -->
+                        </select>
+                        <button class="btn btn-secondary" onclick="applyPreset()" data-i18n="apply">Apply</button>
+                    </div>
+                </div>
             </div>
 
             <div class="btn-group">
-                <button id="setupBtn" class="btn btn-secondary" onclick="setupCategories()" data-i18n="editCategories">Edit Categories</button>
-                <button id="doneBtn" class="btn btn-primary" onclick="window.location.href='/'" data-i18n="done">Done</button>
+                <button id="saveBtn" class="btn btn-primary" onclick="saveSettings()" data-i18n="save">Save</button>
             </div>
         </div>
     </div>
