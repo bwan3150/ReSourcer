@@ -75,24 +75,13 @@ function renderFolders() {
 
     container.innerHTML = folders.map((folder, index) => {
         const visibilityIcon = folder.hidden ?
-            `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 3l18 18M10.5 10.5a2 2 0 102.828 2.828M6.5 6.5A8.5 8.5 0 0021 12M3 12a8.5 8.5 0 005.5-5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>` :
-            `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" stroke="currentColor" stroke-width="2"/>
-                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
-            </svg>`;
-
-        // 保存图标(磁盘)
-        const saveIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" stroke-width="2"/>
-            <path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="2"/>
-        </svg>`;
+            `<span class="material-symbols-outlined">visibility_off</span>` :
+            `<span class="material-symbols-outlined">visibility</span>`;
 
         // 删除按钮(仅新文件夹显示)
         const deleteBtn = folder.isNew ?
             `<button class="delete-btn" onclick="removeFolder(${index})" title="Delete">×</button>` :
-            `<span style="margin-left: 4px; color: #a3a3a3; font-size: 12px;">${saveIcon}</span>`;
+            `<span style="margin-left: 4px; color: #a3a3a3;"><span class="material-symbols-outlined" style="font-size: 18px;">save</span></span>`;
 
         return `
             <div class="category-item" style="${folder.hidden ? 'opacity: 0.5;' : ''}">

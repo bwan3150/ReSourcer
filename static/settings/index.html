@@ -4,7 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings - ReSourcer</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
         /* 语言切换按钮 */
         .lang-switcher {
             position: absolute;
@@ -277,10 +282,7 @@
 <body>
     <!-- 返回主页按钮 -->
     <a href="/" class="back-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span data-i18n="backToHome">Back to Home</span>
+        <span class="material-symbols-outlined">arrow_back</span>
     </a>
 
     <!-- 语言切换器 -->
@@ -305,10 +307,7 @@
                            onkeydown="handleFolderInputKeydown(event)"
                            style="flex: 1;">
                     <button class="icon-btn" onclick="updateSourceFolder()" title="Save">
-                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" stroke-width="2" fill="none"/>
-                            <path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="2" fill="none"/>
-                        </svg>
+                        <span class="material-symbols-outlined">save</span>
                     </button>
                 </div>
             </div>
@@ -324,9 +323,7 @@
                            data-i18n-placeholder="addNewFolder"
                            onkeydown="if(event.key==='Enter') addFolder()">
                     <button class="icon-btn" onclick="addFolder()" title="Add">
-                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                        </svg>
+                        <span class="material-symbols-outlined">add</span>
                     </button>
                 </div>
 
