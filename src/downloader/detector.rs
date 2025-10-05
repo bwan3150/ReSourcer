@@ -64,7 +64,7 @@ pub fn detect(url: &str) -> DetectResponse {
     if url_lower.contains("pixiv.net") {
         return DetectResponse {
             platform: Platform::Pixiv,
-            downloader: DownloaderType::GalleryDl, // 未来使用 gallery-dl
+            downloader: DownloaderType::PixivToolkit,
             confidence: 1.0,
             platform_name: "Pixiv".to_string(),
             requires_auth: true, // Pixiv 需要认证

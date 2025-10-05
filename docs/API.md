@@ -456,7 +456,7 @@ Base URL: `http://localhost:1234`
 
 ### DownloaderType (Enum)
 - `YtDlp`
-- `GalleryDl`
+- `PixivToolkit`
 
 ### TaskStatus (Enum)
 - `pending`

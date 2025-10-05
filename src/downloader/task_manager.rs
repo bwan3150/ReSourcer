@@ -177,9 +177,108 @@ impl TaskManager {
                 )
                 .await
             }
-            DownloaderType::GalleryDl => {
-                // 未来实现
-                Err("GalleryDl 下载器尚未实现".to_string())
+            DownloaderType::PixivToolkit => {
+                // 获取 Pixiv token
+                let token = match super::auth::pixiv::load_token() {
+                    Ok(t) => t,
+                    Err(_) => {
+                        // 如果没有 token，尝试继续（某些公开作品可能不需要）
+                        String::new()
+                    }
+                };
+
+                // 判断是否是动图
+                let is_ugoira = url.contains("ugoira") || {
+                    // 通过 API 检查作品类型
+                    match super::downloaders::pixiv_toolkit::parser::PixivParser::parse_url(&url) {
+                        Ok(parser) => {
+                            match parser.fetch_illust_info(&token).await {
+                                Ok(meta) => meta.illust_type == 2, // 2 = ugoira
+                                Err(_) => false,
+                            }
+                        }
+                        Err(_) => false,
+                    }
+                };
+
+                if is_ugoira {
+                    // 动图：下载 ZIP + 转换 GIF
+                    let task_id_clone = task_id.clone();
+                    let tasks_clone = tasks.clone();
+
+                    // 下载 ZIP
+                    match super::downloaders::pixiv_toolkit::download_ugoira_zip(
+                        url.clone(),
+                        token.clone(),
+                        save_folder.clone(),
+                    )
+                    .await
+                    {
+                        Ok((zip_path, meta)) => {
+                            // 更新进度到 50%
+                            if let Some(task) = tasks_clone.lock().await.get_mut(&task_id_clone) {
+                                task.progress = 50.0;
+                            }
+
+                            // 转换为 GIF
+                            match super::downloaders::pixiv_toolkit::parser::PixivParser::parse_url(&url) {
+                                Ok(parser) => {
+                                    match super::downloaders::pixiv_toolkit::convert_ugoira_to_gif(
+                                        zip_path.clone(),
+                                        meta,
+                                        save_folder.clone(),
+                                        parser.illust_id.clone(),
+                                        move |progress| {
+                                            let task_id = task_id_clone.clone();
+                                            let tasks = tasks_clone.clone();
+
+                                            tokio::spawn(async move {
+                                                if let Some(task) = tasks.lock().await.get_mut(&task_id) {
+                                                    task.progress = 50.0 + progress * 50.0;
+                                                }
+                                            });
+                                        },
+                                    )
+                                    .await
+                                    {
+                                        Ok(gif_path) => Ok(gif_path),
+                                        Err(e) => Err(format!("GIF 转换失败: {}", e)),
+                                    }
+                                }
+                                Err(e) => Err(format!("URL 解析失败: {}", e)),
+                            }
+                        }
+                        Err(e) => Err(format!("ZIP 下载失败: {}", e)),
+                    }
+                } else {
+                    // 普通图片/漫画：下载所有页面
+                    let task_id_clone = task_id.clone();
+                    let tasks_clone = tasks.clone();
+
+                    match super::downloaders::pixiv_toolkit::download_illust(
+                        url.clone(),
+                        token,
+                        save_folder.clone(),
+                        move |current, total| {
+                            let task_id = task_id_clone.clone();
+                            let tasks = tasks_clone.clone();
+
+                            tokio::spawn(async move {
+                                if let Some(task) = tasks.lock().await.get_mut(&task_id) {
+                                    task.progress = (current as f32 / total as f32) * 100.0;
+                                }
+                            });
+                        },
+                    )
+                    .await
+                    {
+                        Ok(files) => {
+                            // 返回最后一个文件路径
+                            files.last().cloned().ok_or_else(|| "没有下载任何文件".to_string())
+                        }
+                        Err(e) => Err(format!("图片下载失败: {}", e)),
+                    }
+                }
             }
             _ => Err("不支持的下载器类型".to_string()),
         };

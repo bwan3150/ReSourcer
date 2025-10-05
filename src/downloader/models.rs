@@ -38,8 +38,8 @@ impl std::fmt::Display for Platform {
 pub enum DownloaderType {
     #[serde(rename = "ytdlp")]
     YtDlp,
-    #[serde(rename = "gallery_dl")]
-    GalleryDl,
+    #[serde(rename = "pixiv_toolkit")]
+    PixivToolkit,
     #[serde(rename = "unknown")]
     Unknown,
 }

@@ -115,9 +115,9 @@ function showDetectResult(result) {
 
     detectPlatform.textContent = result.platform_name;
 
-    // 自动设置推荐的下载器
+    // 自动设置推荐的下载器（后端返回小写带下划线格式）
     const recommendedDownloader = result.downloader === 'ytdlp' ? 'ytdlp' :
-                                 result.downloader === 'gallery_dl' ? 'gallery_dl' : 'ytdlp';
+                                 result.downloader === 'pixiv_toolkit' ? 'pixiv_toolkit' : 'ytdlp';
     downloaderSelect.value = recommendedDownloader;
     selectedDownloader = recommendedDownloader;
 
@@ -515,7 +515,7 @@ async function createNewFolder() {
 // 认证管理
 const authConfigs = [
     { platform: 'X (Twitter)', key: 'x', downloader: 'yt-dlp', type: 'cookies' },
-    { platform: 'Pixiv', key: 'pixiv', downloader: 'gallery-dl', type: 'token' }
+    { platform: 'Pixiv', key: 'pixiv', downloader: 'pixiv-toolkit', type: 'token' }
 ];
 
 // 打开认证弹窗
