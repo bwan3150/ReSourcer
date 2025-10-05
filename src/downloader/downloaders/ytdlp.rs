@@ -5,19 +5,58 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use super::super::models::Platform;
 
-/// 根据当前操作系统获取 yt-dlp 二进制文件路径
+// 在编译时嵌入对应平台的 yt-dlp 二进制文件
+static YTDLP_BINARY: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/yt-dlp"));
+
+/// 获取 yt-dlp 二进制文件路径（从嵌入的二进制中提取）
 pub fn get_ytdlp_path() -> PathBuf {
-    let binary_name = if cfg!(target_os = "macos") {
-        "yt-dlp-macos"
-    } else if cfg!(target_os = "windows") {
-        "yt-dlp-windows.exe"
-    } else if cfg!(target_os = "linux") {
-        "yt-dlp-linux"
+    use std::fs;
+    use std::io::Write;
+
+    // 获取临时目录
+    let temp_dir = std::env::temp_dir();
+
+    // 根据操作系统设置可执行文件名
+    let binary_name = if cfg!(target_os = "windows") {
+        "yt-dlp.exe"
     } else {
-        panic!("不支持的操作系统");
+        "yt-dlp"
     };
 
-    PathBuf::from("bin").join(binary_name)
+    let ytdlp_path = temp_dir.join(binary_name);
+
+    // 如果文件不存在或者内容不同，则写入
+    let needs_write = if ytdlp_path.exists() {
+        // 检查文件大小是否一致
+        match fs::metadata(&ytdlp_path) {
+            Ok(metadata) => metadata.len() != YTDLP_BINARY.len() as u64,
+            Err(_) => true,
+        }
+    } else {
+        true
+    };
+
+    if needs_write {
+        // 写入嵌入的二进制文件
+        let mut file = fs::File::create(&ytdlp_path)
+            .expect("无法创建 yt-dlp 临时文件");
+        file.write_all(YTDLP_BINARY)
+            .expect("无法写入 yt-dlp 二进制文件");
+
+        // 在 Unix 系统上设置可执行权限
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&ytdlp_path)
+                .expect("无法读取文件元数据")
+                .permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&ytdlp_path, perms)
+                .expect("无法设置可执行权限");
+        }
+    }
+
+    ytdlp_path
 }
 
 /// 下载视频/音频（核心函数）
