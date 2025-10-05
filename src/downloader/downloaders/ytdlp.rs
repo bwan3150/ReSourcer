@@ -82,6 +82,7 @@ where
        .arg("-o")
        .arg(format!("{}/%(title)s.%(ext)s", output_dir))
        .arg("--newline") // 每行输出进度信息
+       .arg("--progress") // 强制显示进度条
        .arg("--no-playlist") // 不下载播放列表
        .arg("--print")
        .arg("after_move:filepath"); // 打印下载完成后的文件路径
@@ -129,12 +130,19 @@ where
     let stdout_handle = tokio::spawn(async move {
         let mut lines = stdout_reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            // 如果是文件路径（不包含 [download] 标记），则保存
-            if !line.contains("[download]") && !line.trim().is_empty() {
-                *final_filepath_clone.lock().await = Some(line.trim().to_string());
+            let line = line.trim();
+
+            // 调试输出
+            if !line.is_empty() {
+                eprintln!("[yt-dlp] {}", line);
+            }
+
+            // 如果是文件路径（不包含 [download] 标记且不是空行），则保存
+            if !line.contains("[download]") && !line.is_empty() {
+                *final_filepath_clone.lock().await = Some(line.to_string());
             }
             // 解析进度信息
-            else if let Some((progress, speed, eta)) = parse_progress(&line) {
+            else if let Some((progress, speed, eta)) = parse_progress(line) {
                 progress_callback(progress, speed, eta);
             }
         }
@@ -173,27 +181,40 @@ where
 ///
 /// yt-dlp 输出格式示例：
 /// [download]  45.2% of 10.50MiB at 2.30MiB/s ETA 00:02
+/// [download] 100% of 10.50MiB in 00:05
 ///
 /// # 返回
 /// - Some((progress, speed, eta))
 /// - None 如果无法解析
 fn parse_progress(line: &str) -> Option<(f32, Option<String>, Option<String>)> {
+    // 只处理包含 [download] 的行
     if !line.contains("[download]") {
         return None;
     }
 
-    // 提取百分比
-    let progress = if let Some(percent_str) = line.split('%').next() {
-        if let Some(num_str) = percent_str.split_whitespace().last() {
-            num_str.parse::<f32>().ok()?
-        } else {
-            return None;
-        }
+    // 跳过非进度行（如 "Destination: xxx"）
+    if !line.contains('%') {
+        return None;
+    }
+
+    // 清理行内容（移除可能的回车符和多余空格）
+    let line = line.trim().replace('\r', "");
+
+    // 提取百分比 - 改进的解析逻辑
+    let progress = if let Some(percent_pos) = line.find('%') {
+        // 向前查找数字
+        let before_percent = &line[..percent_pos];
+        let num_str = before_percent
+            .split_whitespace()
+            .last()
+            .unwrap_or("0");
+
+        num_str.parse::<f32>().unwrap_or(0.0)
     } else {
         return None;
     };
 
-    // 提取速度
+    // 提取速度（at 后面的值）
     let speed = if line.contains(" at ") {
         line.split(" at ")
             .nth(1)
@@ -209,6 +230,12 @@ fn parse_progress(line: &str) -> Option<(f32, Option<String>, Option<String>)> {
             .nth(1)
             .and_then(|s| s.split_whitespace().next())
             .map(|s| s.to_string())
+    } else if line.contains(" in ") && progress >= 100.0 {
+        // 如果是 "100% of X in 00:05" 格式
+        line.split(" in ")
+            .nth(1)
+            .and_then(|s| s.split_whitespace().next())
+            .map(|s| format!("in {}", s))
     } else {
         None
     };

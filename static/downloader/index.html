@@ -391,29 +391,98 @@
             font-size: 14px;
         }
 
+        /* 准备中动画 - 圆形加载器 */
+        .loader-pending {
+            width: 18px;
+            height: 18px;
+            aspect-ratio: 1;
+            border-radius: 50%;
+            padding: 1px;
+            background: conic-gradient(#0000 10%, #171717) content-box;
+            -webkit-mask:
+                repeating-conic-gradient(#0000 0deg, #000 1deg 20deg, #0000 21deg 36deg),
+                radial-gradient(farthest-side, #0000 calc(100% - 3px - 1px), #000 calc(100% - 3px));
+            -webkit-mask-composite: destination-in;
+            mask-composite: intersect;
+            animation: l4 1s infinite steps(10);
+        }
+
+        @keyframes l4 {
+            to {
+                transform: rotate(1turn);
+            }
+        }
+
+        /* 下载中动画 - 弹跳块 */
+        .loader-downloading {
+            width: 36px;
+            height: 6px;
+            box-shadow: 0 1.5px 0 #525252;
+            position: relative;
+            clip-path: inset(-16px 0 -2px);
+        }
+
+        .loader-downloading:before {
+            content: "";
+            position: absolute;
+            inset: auto calc(50% - 6.5px) 0;
+            height: 22px;
+            --g: no-repeat linear-gradient(#171717 0 0);
+            background: var(--g), var(--g), var(--g), var(--g);
+            background-size: 6.5px 6px;
+            animation:
+                l7-1 2s infinite linear,
+                l7-2 2s infinite linear;
+        }
+
+        @keyframes l7-1 {
+            0%, 100% {
+                background-position: 0 -22px, 100% -22px;
+            }
+            17.5% {
+                background-position: 0 100%, 100% -22px, 0 -22px, 100% -22px;
+            }
+            35% {
+                background-position: 0 100%, 100% 100%, 0 -22px, 100% -22px;
+            }
+            52.5% {
+                background-position: 0 100%, 100% 100%, 0 calc(100% - 6.5px), 100% -22px;
+            }
+            70%, 98% {
+                background-position: 0 100%, 100% 100%, 0 calc(100% - 6.5px), 100% calc(100% - 6.5px);
+            }
+        }
+
+        @keyframes l7-2 {
+            0%, 70% {
+                transform: translate(0);
+            }
+            100% {
+                transform: translate(200%);
+            }
+        }
+
         .status-pending {
-            background: #fef3c7;
-            color: #92400e;
+            background: transparent;
         }
 
         .status-downloading {
-            background: #dbeafe;
-            color: #1e40af;
+            background: transparent;
         }
 
         .status-completed {
-            background: #dcfce7;
-            color: #166534;
+            background: transparent;
+            color: #171717;
         }
 
         .status-failed {
-            background: #fee2e2;
-            color: #991b1b;
+            background: transparent;
+            color: #171717;
         }
 
         .status-cancelled {
-            background: #f5f5f5;
-            color: #525252;
+            background: transparent;
+            color: #171717;
         }
 
         .task-meta {
@@ -652,7 +721,7 @@
         <div class="tasks-section">
             <div class="tasks-header" onclick="toggleTasks()">
                 <div class="tasks-header-left">
-                    <span class="tasks-title" data-i18n="historyTitle">History</span>
+                    <span class="tasks-title" data-i18n="tasksTitle">Tasks</span>
                     <span class="tasks-count" id="tasksCount">0</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 12px;">

@@ -223,7 +223,9 @@ function renderTasks() {
                     ${task.status === 'completed' && task.file_name ? task.file_name : task.url}
                 </div>
                 <span class="task-status status-${task.status}">
-                    <span class="material-symbols-outlined">${getStatusIcon(task.status)}</span>
+                    ${(task.status === 'pending' || (task.status === 'downloading' && task.progress === 0)) ? '<div class="loader-pending"></div>' :
+                      (task.status === 'downloading' && task.progress > 0) ? '<div class="loader-downloading"></div>' :
+                      `<span class="material-symbols-outlined">${getStatusIcon(task.status)}</span>`}
                 </span>
             </div>
 
@@ -234,7 +236,7 @@ function renderTasks() {
                 </div>
                 <div class="task-meta-item">
                     <span class="material-symbols-outlined">folder</span>
-                    <span>${task.save_folder || 'Root'}</span>
+                    <span>${task.file_path ? task.file_path.split('/').slice(0, -1).join('/') : (task.save_folder || 'Root')}</span>
                 </div>
                 ${task.speed ? `
                 <div class="task-meta-item">
@@ -385,6 +387,27 @@ async function previewFile(filePath, url) {
 // 关闭预览
 function closePreview() {
     const previewModal = document.getElementById('previewModal');
+    const previewContainer = document.getElementById('previewContainer');
+
+    // 停止视频/音频播放
+    const video = previewContainer.querySelector('video');
+    const audio = previewContainer.querySelector('audio');
+
+    if (video) {
+        video.pause();
+        video.currentTime = 0;
+        video.src = ''; // 清空源
+    }
+
+    if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.src = ''; // 清空源
+    }
+
+    // 清空容器
+    previewContainer.innerHTML = '';
+
     previewModal.classList.remove('show');
 }
 
