@@ -3,6 +3,7 @@ use actix_web::{middleware, web, App, HttpServer};
 mod classifier;
 mod downloader;
 mod uploader;
+mod settings;
 mod static_files;
 
 use static_files::serve_static;
@@ -48,6 +49,8 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
             .wrap(middleware::Logger::default())
+            // 设置 API 路由
+            .service(web::scope("/api/settings").configure(settings::routes))
             // 分类器 API 路由
             .service(web::scope("/api/classifier").configure(classifier::routes))
             // 下载器 API 路由

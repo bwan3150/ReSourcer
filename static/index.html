@@ -5,6 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ReSourcer</title>
     <style>
+        /* 语言切换按钮 */
+        .lang-switcher {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            background: white;
+            border-radius: 8px;
+            padding: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .lang-btn {
+            padding: 8px 12px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #525252;
+            transition: all 0.2s;
+        }
+
+        .lang-btn:hover {
+            background: #f5f5f5;
+        }
+
+        .lang-btn.active {
+            background: #171717;
+            color: white;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -18,127 +52,142 @@
             line-height: 1.5;
             min-height: 100vh;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 20px;
         }
 
+        .container {
+            max-width: 800px;
+            width: 100%;
+        }
+
         .header {
             text-align: center;
-            margin-bottom: 60px;
+            margin-bottom: 48px;
         }
 
         .header h1 {
             font-size: 48px;
             font-weight: 700;
-            margin-bottom: 12px;
-            background: linear-gradient(135deg, #171717 0%, #525252 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .header p {
-            font-size: 18px;
-            color: #737373;
-        }
-
-        .nav-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 24px;
-            max-width: 1200px;
-            width: 100%;
-        }
-
-        .nav-card {
-            background: white;
-            border: 1px solid #e5e5e5;
-            border-radius: 12px;
-            padding: 32px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-decoration: none;
-            color: inherit;
-            display: block;
-        }
-
-        .nav-card:hover {
-            border-color: #171717;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
-            transform: translateY(-4px);
-        }
-
-        .nav-card-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
-            display: block;
-        }
-
-        .nav-card h2 {
-            font-size: 24px;
-            font-weight: 600;
+            letter-spacing: -1px;
             margin-bottom: 8px;
         }
 
-        .nav-card p {
+        .header p {
             color: #737373;
-            font-size: 15px;
-            line-height: 1.6;
+            font-size: 16px;
         }
 
-        .nav-card.disabled {
+        .tools-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .tool-card {
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 24px;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .tool-card:hover {
+            border-color: #171717;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .tool-card.disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
 
-        .nav-card.disabled:hover {
+        .tool-card.disabled:hover {
             border-color: #e5e5e5;
             box-shadow: none;
-            transform: none;
         }
 
-        .badge {
-            display: inline-block;
-            background: #f5f5f5;
+        .tool-info h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .tool-info p {
+            font-size: 14px;
             color: #737373;
+        }
+
+        .tool-badge {
             font-size: 12px;
-            padding: 4px 8px;
-            border-radius: 4px;
-            margin-left: 8px;
-            font-weight: 500;
+            color: #737373;
+            background: #f5f5f5;
+            padding: 4px 12px;
+            border-radius: 6px;
         }
 
         .footer {
-            margin-top: 60px;
             text-align: center;
+            margin-top: 48px;
             color: #a3a3a3;
             font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>ReSourcer</h1>
+    <!-- 语言切换 -->
+    <div class="lang-switcher">
+        <button class="lang-btn active" data-lang="en" onclick="i18nManager.setLang('en')">EN</button>
+        <button class="lang-btn" data-lang="zh" onclick="i18nManager.setLang('zh')">中文</button>
     </div>
 
-    <div class="nav-grid">
-        <a href="/classifier/" class="nav-card">
-            <h2>Classifer</h2>
-        </a>
+    <div class="container">
+        <div class="header">
+            <h1 data-i18n="homeTitle">ReSourcer</h1>
+        </div>
 
-        <a href="/downloader/" class="nav-card disabled" onclick="return false;">
-            <h2>Downloader <span class="badge">comming soon...</span></h2>
-        </a>
+        <div class="tools-grid">
+            <a href="/settings/" class="tool-card">
+                <div class="tool-info">
+                    <h2 data-i18n="settings">Settings</h2>
+                </div>
+            </a>
 
-        <a href="/uploader/" class="nav-card disabled" onclick="return false;">
-            <h2>Transmitter <span class="badge">comming soon...</span></h2>
-        </a>
+            <a href="/classifier/" class="tool-card">
+                <div class="tool-info">
+                    <h2 data-i18n="classifier">Classifier</h2>
+                </div>
+            </a>
+
+            <a href="/downloader/" class="tool-card disabled" onclick="return false;">
+                <div class="tool-info">
+                    <h2 data-i18n="downloader">Downloader</h2>
+                </div>
+                <span class="tool-badge" data-i18n="comingSoon">coming soon</span>
+            </a>
+
+            <a href="/uploader/" class="tool-card disabled" onclick="return false;">
+                <div class="tool-info">
+                    <h2 data-i18n="transmitter">Transmitter</h2>
+                </div>
+                <span class="tool-badge" data-i18n="comingSoon">coming soon</span>
+            </a>
+        </div>
+
+        <div class="footer">
+            ReSourcer v0.2.0
+        </div>
     </div>
 
-    <div class="footer">
-        ReSourcer v0.2.0
-    </div>
+    <script src="/common-i18n.js"></script>
+    <script>
+        i18nManager.updateUI();
+    </script>
 </body>
 </html>

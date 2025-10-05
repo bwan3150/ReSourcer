@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - ReSourcer</title>
+    <style>
+        /* 语言切换按钮 */
+        .lang-switcher {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            background: white;
+            border-radius: 8px;
+            padding: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .lang-btn {
+            padding: 8px 12px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #525252;
+            transition: all 0.2s;
+        }
+
+        .lang-btn:hover {
+            background: #f5f5f5;
+        }
+
+        .lang-btn.active {
+            background: #171717;
+            color: white;
+        }
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif;
+            background: #fafafa;
+            color: #171717;
+            line-height: 1.5;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #737373;
+            font-size: 14px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            letter-spacing: -0.3px;
+        }
+
+        .section-desc {
+            font-size: 14px;
+            color: #737373;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #525252;
+            margin-bottom: 8px;
+        }
+
+        .text-input {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 14px;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: #171717;
+            box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-primary {
+            background: #171717;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #404040;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #171717;
+            border: 1px solid #e5e5e5;
+        }
+
+        .btn-secondary:hover {
+            background: #fafafa;
+            border-color: #d4d4d4;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+
+        .input-with-button {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-with-button .text-input {
+            flex: 1;
+        }
+
+        .folders-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .folder-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .folder-item:hover {
+            border-color: #d4d4d4;
+            background: #fafafa;
+        }
+
+        .folder-item.hidden {
+            opacity: 0.4;
+        }
+
+        .folder-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .folder-badge {
+            font-size: 12px;
+            color: #737373;
+            margin-left: 8px;
+            padding: 2px 8px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .folder-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .presets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+        }
+
+        .preset-card {
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-card:hover {
+            border-color: #171717;
+            background: #fafafa;
+        }
+
+        .preset-card h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .preset-card p {
+            font-size: 13px;
+            color: #737373;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 32px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 语言切换 -->
+    <div class="lang-switcher">
+        <button class="lang-btn active" data-lang="en" onclick="i18nManager.setLang('en')">EN</button>
+        <button class="lang-btn" data-lang="zh" onclick="i18nManager.setLang('zh')">中文</button>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1 data-i18n="settingsTitle">Settings</h1>
+        </div>
+
+        <!-- Main Folder -->
+        <div class="section">
+            <h2 class="section-title" data-i18n="mainFolder">Main Folder</h2>
+            <div class="input-group">
+                <label class="input-label" data-i18n="workspacePath">Workspace Folder Path</label>
+                <input type="text" class="text-input" id="folderPath" placeholder="/Users/yourname/Documents/workspace">
+            </div>
+            <button class="btn btn-primary" onclick="saveFolder()" data-i18n="saveFolder">Save Folder</button>
+        </div>
+
+        <!-- Categories -->
+        <div class="section">
+            <h2 class="section-title" data-i18n="categories">Categories</h2>
+            <p class="section-desc" data-i18n="categoriesDesc">Categories are based on subfolders in your main folder</p>
+
+            <div class="input-group">
+                <label class="input-label" data-i18n="addNewCategory">Add New Category Folder</label>
+                <div class="input-with-button">
+                    <input type="text" class="text-input" id="newFolderName" placeholder="folder-name">
+                    <button class="btn btn-primary" onclick="createFolder()" data-i18n="create">Create</button>
+                </div>
+            </div>
+
+            <div class="folders-list" id="foldersList">
+                <!-- Dynamic content -->
+            </div>
+        </div>
+
+        <!-- Presets -->
+        <div class="section">
+            <h2 class="section-title" data-i18n="presetTemplates">Preset Templates</h2>
+            <p class="section-desc" data-i18n="presetTemplatesDesc">Quickly create multiple folders based on preset templates</p>
+
+            <div class="presets-grid" id="presetsList">
+                <!-- Dynamic content -->
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-secondary" onclick="window.location.href='/'" data-i18n="backToHome">Back to Home</button>
+        </div>
+    </div>
+
+    <script src="/common-i18n.js"></script>
+    <script src="settings.js"></script>
+    <script>
+        i18nManager.updateUI();
+    </script>
+</body>
+</html>
