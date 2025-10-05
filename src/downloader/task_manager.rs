@@ -199,8 +199,22 @@ impl TaskManager {
                         .unwrap_or("unknown")
                         .to_string();
 
-                    task.file_path = Some(file_path);
-                    task.file_name = Some(file_name);
+                    task.file_path = Some(file_path.clone());
+                    task.file_name = Some(file_name.clone());
+
+                    // 添加到历史记录
+                    let history_item = super::config::HistoryItem {
+                        id: task.id.clone(),
+                        url: task.url.clone(),
+                        platform: task.platform.to_string(),
+                        file_name,
+                        file_path,
+                        created_at: task.created_at.clone(),
+                    };
+
+                    if let Err(e) = super::config::add_to_history(history_item) {
+                        eprintln!("保存历史记录失败: {}", e);
+                    }
                 }
             }
             Err(error) => {

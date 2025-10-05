@@ -83,6 +83,7 @@ const i18nManager = {
             cancelBtn: '取消',
             openFolder: '打开',
             previewBtn: '预览',
+            openUrl: '打开网址',
             clearHistory: '清空历史',
             settingsLink: '设置',
 
@@ -171,6 +172,7 @@ const i18nManager = {
             cancelBtn: 'Cancel',
             openFolder: 'Open',
             previewBtn: 'Preview',
+            openUrl: 'Open URL',
             clearHistory: 'Clear History',
             settingsLink: 'Settings',
 

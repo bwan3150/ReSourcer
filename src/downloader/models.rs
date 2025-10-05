@@ -19,6 +19,20 @@ pub enum Platform {
     Unknown,
 }
 
+impl std::fmt::Display for Platform {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Platform::YouTube => write!(f, "YouTube"),
+            Platform::Bilibili => write!(f, "Bilibili"),
+            Platform::X => write!(f, "X"),
+            Platform::TikTok => write!(f, "TikTok"),
+            Platform::Pixiv => write!(f, "Pixiv"),
+            Platform::Xiaohongshu => write!(f, "Xiaohongshu"),
+            Platform::Unknown => write!(f, "Unknown"),
+        }
+    }
+}
+
 // 下载器类型（工具）
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum DownloaderType {

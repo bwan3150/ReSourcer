@@ -16,6 +16,17 @@ fn default_use_cookies() -> bool {
     true
 }
 
+// 历史记录项
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HistoryItem {
+    pub id: String,
+    pub url: String,
+    pub platform: String,
+    pub file_name: String,
+    pub file_path: String,
+    pub created_at: String,
+}
+
 // 获取配置目录路径 ~/.config/re-sourcer
 pub fn get_config_dir() -> Result<PathBuf, String> {
     let home = std::env::var("HOME")
@@ -87,4 +98,61 @@ pub fn save_config(config: &ConfigData) -> Result<(), String> {
         .map_err(|e| format!("无法写入配置文件: {}", e))?;
 
     Ok(())
+}
+
+// 获取历史记录文件路径
+pub fn get_history_path() -> Result<PathBuf, String> {
+    Ok(get_config_dir()?.join("download_history.json"))
+}
+
+// 加载历史记录
+pub fn load_history() -> Result<Vec<HistoryItem>, String> {
+    let history_path = get_history_path()?;
+
+    if !history_path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let content = fs::read_to_string(&history_path)
+        .map_err(|e| format!("无法读取历史记录: {}", e))?;
+
+    serde_json::from_str(&content)
+        .map_err(|e| format!("历史记录格式错误: {}", e))
+}
+
+// 保存历史记录
+pub fn save_history(history: &[HistoryItem]) -> Result<(), String> {
+    ensure_config_dir()?;
+
+    let history_path = get_history_path()?;
+    let content = serde_json::to_string_pretty(history)
+        .map_err(|e| format!("序列化历史记录失败: {}", e))?;
+
+    fs::write(&history_path, content)
+        .map_err(|e| format!("无法写入历史记录: {}", e))?;
+
+    Ok(())
+}
+
+// 添加到历史记录（去重并限制数量）
+pub fn add_to_history(item: HistoryItem) -> Result<(), String> {
+    let mut history = load_history()?;
+
+    // 去重：如果已存在相同 ID，先移除
+    history.retain(|h| h.id != item.id);
+
+    // 添加到开头
+    history.insert(0, item);
+
+    // 限制数量（最多100条）
+    if history.len() > 100 {
+        history.truncate(100);
+    }
+
+    save_history(&history)
+}
+
+// 清空历史记录
+pub fn clear_history() -> Result<(), String> {
+    save_history(&[])
 }

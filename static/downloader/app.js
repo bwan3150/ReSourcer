@@ -4,7 +4,6 @@ let currentTasks = [];
 let selectedFolder = '';
 let selectedDownloader = 'ytdlp'; // 默认 yt-dlp
 let pollingInterval = null;
-let downloadHistory = JSON.parse(localStorage.getItem('downloadHistory') || '[]');
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', async () => {
@@ -190,13 +189,6 @@ async function loadTasks() {
         currentTasks = data.tasks || [];
         renderTasks();
         updateTasksCount();
-
-        // 将完成的任务添加到历史记录
-        currentTasks.forEach(task => {
-            if (task.status === 'completed' && task.file_path) {
-                addToHistory(task);
-            }
-        });
     } catch (error) {
         console.error('Failed to load tasks:', error);
     }
@@ -218,31 +210,18 @@ function getStatusIcon(status) {
 function renderTasks() {
     const tasksList = document.getElementById('tasksList');
 
-    // 合并当前任务和历史记录
-    const allTasks = [...currentTasks];
-
-    // 添加历史记录中不在当前任务中的项
-    downloadHistory.forEach(historyItem => {
-        const existsInCurrent = allTasks.some(task => task.id === historyItem.id);
-        if (!existsInCurrent) {
-            allTasks.push({
-                ...historyItem,
-                status: 'completed',
-                progress: 100
-            });
-        }
-    });
-
-    if (allTasks.length === 0) {
+    if (currentTasks.length === 0) {
         tasksList.innerHTML = '<div class="empty-state" data-i18n="noTasks">No tasks</div>';
         i18nManager.updateUI();
         return;
     }
 
-    tasksList.innerHTML = allTasks.map(task => `
+    tasksList.innerHTML = currentTasks.map(task => `
         <div class="task-card" data-task-id="${task.id}">
             <div class="task-header">
-                <div class="task-url" title="${task.url}">${task.url}</div>
+                <div class="task-url" title="${task.url}">
+                    ${task.status === 'completed' && task.file_name ? task.file_name : task.url}
+                </div>
                 <span class="task-status status-${task.status}">
                     <span class="material-symbols-outlined">${getStatusIcon(task.status)}</span>
                 </span>
@@ -290,6 +269,10 @@ function renderTasks() {
                 ` : ''}
 
                 ${task.status === 'completed' && task.file_path ? `
+                <button class="btn-small" onclick="window.open('${task.url}', '_blank')">
+                    <span class="material-symbols-outlined">open_in_new</span>
+                    <span data-i18n="openUrl">URL</span>
+                </button>
                 <button class="btn-small" onclick="previewFile('${task.file_path}', '${task.url}')">
                     <span class="material-symbols-outlined">visibility</span>
                     <span data-i18n="previewBtn">Preview</span>
@@ -309,9 +292,7 @@ function renderTasks() {
 // 更新任务计数
 function updateTasksCount() {
     const tasksCount = document.getElementById('tasksCount');
-    // 统计所有任务（包括历史）
-    const uniqueIds = new Set([...currentTasks.map(t => t.id), ...downloadHistory.map(h => h.id)]);
-    tasksCount.textContent = uniqueIds.size;
+    tasksCount.textContent = currentTasks.length;
 }
 
 // 切换任务列表展开/折叠
@@ -450,47 +431,26 @@ window.addEventListener('beforeunload', () => {
     }
 });
 
-// 添加到历史记录
-function addToHistory(task) {
-    // 检查是否已存在
-    const exists = downloadHistory.some(item => item.id === task.id);
-    if (exists) return;
-
-    // 添加到历史记录
-    downloadHistory.unshift({
-        id: task.id,
-        url: task.url,
-        platform: task.platform,
-        file_name: task.file_name,
-        file_path: task.file_path,
-        created_at: task.created_at
-    });
-
-    // 限制历史记录数量（最多100条）
-    if (downloadHistory.length > 100) {
-        downloadHistory = downloadHistory.slice(0, 100);
-    }
-
-    // 保存到 localStorage
-    localStorage.setItem('downloadHistory', JSON.stringify(downloadHistory));
-}
-
-// 清空历史记录（只清除已完成的，保留进行中的）
-function clearHistory() {
+// 清空历史记录
+async function clearHistory() {
     if (!confirm(i18nManager.t('clearHistory') + '?')) {
         return;
     }
 
-    // 获取当前正在下载的任务ID
-    const activeTaskIds = currentTasks
-        .filter(task => task.status === 'downloading' || task.status === 'pending')
-        .map(task => task.id);
+    try {
+        const response = await fetch('/api/downloader/history', {
+            method: 'DELETE'
+        });
 
-    // 只保留正在下载的任务
-    downloadHistory = downloadHistory.filter(item => activeTaskIds.includes(item.id));
-
-    localStorage.setItem('downloadHistory', JSON.stringify(downloadHistory));
-    renderTasks();
-    updateTasksCount();
+        if (response.ok) {
+            await loadTasks();
+        } else {
+            const error = await response.json();
+            alert(error.error || 'Failed to clear history');
+        }
+    } catch (error) {
+        console.error('Failed to clear history:', error);
+        alert('Failed to clear history');
+    }
 }
 

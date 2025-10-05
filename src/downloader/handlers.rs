@@ -216,9 +216,46 @@ async fn create_task(
 }
 
 /// GET /api/downloader/tasks
-/// 获取所有任务列表
+/// 获取所有任务列表（包含历史记录）
 async fn get_tasks(task_manager: TaskManagerState) -> Result<HttpResponse> {
-    let tasks = task_manager.get_all_tasks().await;
+    let mut tasks = task_manager.get_all_tasks().await;
+
+    // 加载历史记录
+    if let Ok(history) = super::config::load_history() {
+        // 将历史记录转换为任务格式，并排除已在当前任务中的
+        let task_ids: std::collections::HashSet<_> = tasks.iter().map(|t| t.id.clone()).collect();
+
+        for item in history {
+            if !task_ids.contains(&item.id) {
+                // 将字符串转换为 Platform 枚举
+                let platform = match item.platform.as_str() {
+                    "YouTube" => Platform::YouTube,
+                    "Bilibili" => Platform::Bilibili,
+                    "X" => Platform::X,
+                    "TikTok" => Platform::TikTok,
+                    "Pixiv" => Platform::Pixiv,
+                    "Xiaohongshu" => Platform::Xiaohongshu,
+                    _ => Platform::Unknown,
+                };
+
+                tasks.push(DownloadTask {
+                    id: item.id,
+                    url: item.url,
+                    platform,
+                    downloader: DownloaderType::YtDlp,
+                    status: TaskStatus::Completed,
+                    progress: 100.0,
+                    speed: None,
+                    eta: None,
+                    save_folder: String::new(), // 历史记录不保存此字段
+                    file_name: Some(item.file_name),
+                    file_path: Some(item.file_path),
+                    error: None,
+                    created_at: item.created_at,
+                });
+            }
+        }
+    }
 
     Ok(HttpResponse::Ok().json(TaskListResponse {
         status: "success".to_string(),
@@ -399,6 +436,18 @@ async fn open_folder(req: web::Json<serde_json::Value>) -> Result<HttpResponse> 
     })))
 }
 
+/// DELETE /api/downloader/history
+/// 清空历史记录
+async fn clear_history() -> Result<HttpResponse> {
+    super::config::clear_history()
+        .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "status": "success",
+        "message": "历史记录已清空"
+    })))
+}
+
 // ============================================================================
 // 路由注册
 // ============================================================================
@@ -423,5 +472,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(web::resource("/credentials/{platform}").route(web::delete().to(delete_credentials)))
         // 文件服务
         .service(web::resource("/file/{path:.*}").route(web::get().to(serve_file)))
-        .service(web::resource("/open-folder").route(web::post().to(open_folder)));
+        .service(web::resource("/open-folder").route(web::post().to(open_folder)))
+        // 历史记录
+        .service(web::resource("/history").route(web::delete().to(clear_history)));
 }
