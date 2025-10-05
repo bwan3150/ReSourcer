@@ -9,6 +9,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("/state").route(web::get().to(get_state)))
        .service(web::resource("/folders").route(web::get().to(get_folders)))
        .service(web::resource("/settings/save").route(web::post().to(save_settings)))
+       .service(web::resource("/folder/create").route(web::post().to(create_folder)))
        .service(web::resource("/files").route(web::get().to(get_files)))
        .service(web::resource("/move").route(web::post().to(move_file)))
        .service(web::resource("/preset/save").route(web::post().to(save_preset)))
@@ -311,6 +312,31 @@ pub async fn save_settings(req: web::Json<SaveSettingsRequest>) -> Result<HttpRe
     save_config(&state).map_err(|e| {
         actix_web::error::ErrorInternalServerError(format!("无法保存配置: {}", e))
     })?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "status": "success"
+    })))
+}
+
+// 创建单个文件夹
+pub async fn create_folder(req: web::Json<CreateFolderRequest>) -> Result<HttpResponse> {
+    let state = load_config().map_err(|e| {
+        actix_web::error::ErrorInternalServerError(format!("无法加载配置: {}", e))
+    })?;
+
+    // 验证源文件夹存在
+    let source_path = Path::new(&state.source_folder);
+    if !source_path.exists() {
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "Source folder does not exist"
+        })));
+    }
+
+    // 创建文件夹
+    let folder_path = source_path.join(&req.folder_name);
+    if !folder_path.exists() {
+        fs::create_dir_all(&folder_path)?;
+    }
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "status": "success"

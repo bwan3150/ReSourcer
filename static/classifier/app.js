@@ -42,10 +42,32 @@ async function loadAppState() {
 }
 
 
+// 当前分类列表(从文件夹加载)
+let currentCategories = [];
+
+// 加载分类列表
+async function loadCategories() {
+    if (!appState.source_folder) {
+        currentCategories = [];
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/classifier/folders?source_folder=${encodeURIComponent(appState.source_folder)}`);
+        if (response.ok) {
+            const folders = await response.json();
+            // 只保存未隐藏的文件夹
+            currentCategories = folders.filter(f => !f.hidden).map(f => f.name);
+        }
+    } catch (error) {
+        console.error('Error loading categories:', error);
+        currentCategories = [];
+    }
+}
+
 // 获取当前分类
 function getCurrentCategories() {
-    const preset = appState.presets.find(p => p.name === appState.current_preset);
-    return preset ? preset.categories : [];
+    return currentCategories;
 }
 
 // 渲染分类列表
@@ -494,6 +516,9 @@ function updateUndoButton() {
 
 // 开始分类
 async function startClassification() {
+    // 加载分类列表
+    await loadCategories();
+
     const categories = getCurrentCategories();
 
     if (!appState.source_folder || categories.length === 0) {
@@ -623,13 +648,13 @@ function handleRenameKeydown(event) {
 function updateCategoriesGrid() {
     const grid = document.getElementById('categoriesGrid');
     const categories = getCurrentCategories();
-    
+
     let html = '';
-    
+
     for (let i = 0; i < categories.length; i++) {
         const category = categories[i];
         const shortcut = getShortcutKey(i);
-        
+
         html += `
             <button class="category-btn" onclick="moveToCategory('${category.replace(/'/g, "\\'")}')">
                 <span>${category}</span>
@@ -637,7 +662,7 @@ function updateCategoriesGrid() {
             </button>
         `;
     }
-    
+
     grid.innerHTML = html;
     updateUndoButton();
 }
@@ -700,24 +725,39 @@ async function moveToCategory(category) {
 async function quickAddNewCategory() {
     const input = document.getElementById('quickAddCategory');
     const categoryName = input.value.trim();
-    
+
     if (!categoryName) return;
-    
+
     const categories = getCurrentCategories();
-    if (categories.includes(categoryName)) return;
-    
-    categories.push(categoryName);
-    
-    if (appState.current_preset) {
-        const preset = appState.presets.find(p => p.name === appState.current_preset);
-        if (preset) {
-            preset.categories = categories;
-            await savePresetToServer(appState.current_preset, categories);
-        }
+    if (categories.includes(categoryName)) {
+        alert(i18nManager.t('folderExists', 'Folder already exists'));
+        return;
     }
-    
-    input.value = '';
-    updateCategoriesGrid();
+
+    // 直接创建文件夹
+    try {
+        const response = await fetch('/api/classifier/folder/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                folder_name: categoryName
+            })
+        });
+
+        if (response.ok) {
+            // 添加到当前分类列表
+            currentCategories.push(categoryName);
+            input.value = '';
+            updateCategoriesGrid();
+        } else {
+            alert(i18nManager.t('failedCreateFolder', 'Failed to create folder'));
+        }
+    } catch (error) {
+        console.error('Error creating folder:', error);
+        alert(i18nManager.t('failedCreateFolder', 'Failed to create folder'));
+    }
 }
 
 function updateProgress() {
