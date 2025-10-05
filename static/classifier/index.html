@@ -6,38 +6,29 @@
     <title>Toolkit ReClassifier</title>
     <link rel="stylesheet" href="/material-icons.css">
     <style>
-        /* 语言切换按钮 */
-        .lang-switcher {
-            position: absolute;
+        /* 返回按钮 */
+        .back-btn {
+            position: fixed;
             top: 20px;
-            right: 20px;
-            display: flex;
-            gap: 8px;
+            left: 20px;
+            padding: 8px;
             background: white;
+            border: 1px solid #e5e5e5;
             border-radius: 8px;
-            padding: 4px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        
-        .lang-btn {
-            padding: 8px 12px;
-            background: transparent;
-            border: none;
-            border-radius: 6px;
             cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            color: #525252;
             transition: all 0.2s;
+            text-decoration: none;
+            color: #525252;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
         }
-        
-        .lang-btn:hover {
-            background: #f5f5f5;
-        }
-        
-        .lang-btn.active {
-            background: #171717;
-            color: white;
+
+        .back-btn:hover {
+            background: #fafafa;
+            border-color: #171717;
+            color: #171717;
         }
         
         /* 图标按钮 */
@@ -229,44 +220,18 @@
         .category-item .delete-btn:hover {
             color: #ef4444;
         }
-        
-        /* 返回按钮 */
-        .back-btn {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            padding: 8px 16px;
-            background: white;
-            border: 1px solid #e5e5e5;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-decoration: none;
-            color: #525252;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            z-index: 100;
-        }
-
-        .back-btn:hover {
-            background: #fafafa;
-            border-color: #171717;
-            color: #171717;
-        }
 
         /* 主界面 */
         .main-container {
             height: 100vh;
             background: white;
         }
-        
+
         .main-layout {
             display: flex;
             height: 100%;
         }
-        
+
         /* 左侧内容区 */
         .content-area {
             flex: 1;
@@ -274,24 +239,44 @@
             flex-direction: column;
             border-right: 1px solid #e5e5e5;
         }
-        
-        .top-bar {
-            padding: 20px 24px;
+
+        /* 左侧顶部进度栏 */
+        .content-top-bar {
+            padding: 20px 24px 20px 70px;
             border-bottom: 1px solid #e5e5e5;
             background: white;
         }
-        
+
         .progress-info {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
-        
-        .progress-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
+
+        .progress-count {
+            font-size: 14px;
+            color: #525252;
+            font-weight: 500;
+        }
+
+        .progress-folder {
+            font-size: 13px;
+            color: #a3a3a3;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 4px;
+            background: #e5e5e5;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: #171717;
+            transition: width 0.3s ease;
         }
         
         .recent-history {
@@ -408,23 +393,6 @@
             border-radius: 4px;
         }
         
-        .progress-text {
-            font-size: 14px;
-            color: #525252;
-        }
-        
-        .progress-track {
-            height: 4px;
-            background: #e5e5e5;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: #171717;
-            transition: width 0.3s ease;
-        }
         
         .media-viewer {
             flex: 1;
@@ -511,12 +479,15 @@
             flex-direction: column;
             background: white;
         }
-        
+
         .sidebar-header {
             padding: 20px 24px;
             border-bottom: 1px solid #e5e5e5;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
-        
+
         .sidebar-title {
             font-size: 14px;
             font-weight: 600;
@@ -524,7 +495,65 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        
+
+        .sidebar-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* 设置按钮 */
+        .settings-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 10px;
+            background: transparent;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            color: #525252;
+            text-decoration: none;
+        }
+
+        .settings-btn:hover {
+            background: #fafafa;
+            border-color: #171717;
+            color: #171717;
+        }
+
+        /* 语言切换按钮 */
+        .lang-switcher {
+            display: flex;
+            gap: 4px;
+            background: #fafafa;
+            border-radius: 6px;
+            padding: 3px;
+        }
+
+        .lang-btn {
+            padding: 4px 8px;
+            background: transparent;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            color: #525252;
+            transition: all 0.2s;
+        }
+
+        .lang-btn:hover {
+            background: #e5e5e5;
+        }
+
+        .lang-btn.active {
+            background: #171717;
+            color: white;
+        }
+
         .categories-grid {
             flex: 1;
             padding: 16px;
@@ -640,17 +669,25 @@
         
         /* 响应式 */
         @media (max-width: 768px) {
+            .content-top-bar {
+                padding-left: 60px;
+            }
+
+            .progress-folder {
+                display: none;
+            }
+
             .main-layout {
                 flex-direction: column;
             }
-            
+
             .sidebar {
                 width: 100%;
                 height: 40vh;
                 border-right: none;
                 border-top: 1px solid #e5e5e5;
             }
-            
+
             .content-area {
                 border-right: none;
             }
@@ -658,32 +695,26 @@
     </style>
 </head>
 <body>
-    <!-- 返回主页按钮 -->
+    <!-- 返回按钮 -->
     <a href="/" class="back-btn">
         <span class="material-symbols-outlined">arrow_back</span>
     </a>
-
-    <!-- 语言切换器 -->
-    <div class="lang-switcher">
-        <button class="lang-btn" onclick="i18nManager.setLang('en')" data-lang="en">EN</button>
-        <button class="lang-btn" onclick="i18nManager.setLang('zh')" data-lang="zh">中文</button>
-    </div>
 
     <!-- 主界面 -->
     <div id="mainContainer" class="main-container">
         <div class="main-layout">
             <!-- 左侧内容区 -->
             <div class="content-area">
-                <div class="top-bar">
+                <div class="content-top-bar">
                     <div class="progress-info">
-                        <span class="progress-text" id="progressText">0 / 0</span>
-                        <span class="progress-text" id="folderPath" style="color: #a3a3a3;"></span>
+                        <span class="progress-count" id="progressText">0 / 0</span>
+                        <span class="progress-folder" id="folderPath"></span>
                     </div>
-                    <div class="progress-track">
-                        <div id="progressFill" class="progress-fill" style="width: 0%;"></div>
+                    <div class="progress-bar-container">
+                        <div id="progressFill" class="progress-bar-fill" style="width: 0%;"></div>
                     </div>
                 </div>
-                
+
                 <div id="mediaViewer" class="media-viewer">
                     <!-- 动态内容 -->
                 </div>
@@ -703,7 +734,16 @@
             <!-- 右侧分类区 -->
             <div class="sidebar">
                 <div class="sidebar-header">
-                    <div class="sidebar-title" data-i18n="categoriesTitle">Categories</div>
+                    <span class="sidebar-title" data-i18n="categoriesTitle">Categories</span>
+                    <div class="sidebar-controls">
+                        <a href="/settings/" class="settings-btn">
+                            <span class="material-symbols-outlined" style="font-size: 14px;">settings</span>
+                        </a>
+                        <div class="lang-switcher">
+                            <button class="lang-btn" onclick="i18nManager.setLang('en')" data-lang="en">EN</button>
+                            <button class="lang-btn" onclick="i18nManager.setLang('zh')" data-lang="zh">中文</button>
+                        </div>
+                    </div>
                 </div>
                 <div id="categoriesGrid" class="categories-grid">
                     <!-- 分类按钮 -->
