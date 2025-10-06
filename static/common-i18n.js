@@ -94,6 +94,19 @@ const i18nManager = {
             authInput: '输入',
             authDelete: '删除',
 
+            // Gallery 页面
+            gallery: '画廊',
+            folders: '文件夹',
+            files: '文件',
+            noFilesFound: '没有找到文件',
+            fileInfo: '文件信息',
+            fileName: '文件名',
+            fileType: '类型',
+            fileSize: '大小',
+            modified: '修改时间',
+            dimensions: '尺寸',
+            duration: '时长',
+
             // 通用
             save: '保存',
             delete: '删除',
@@ -106,6 +119,7 @@ const i18nManager = {
             homeTitle: 'ReSourcer',
             scanToAccess: 'Scan to access on LAN',
             settings: 'Settings',
+            gallery: 'Gallery',
             classifier: 'Classifier',
             downloader: 'Downloader',
             transmitter: 'Transmitter',
@@ -190,6 +204,18 @@ const i18nManager = {
             authUploadFile: 'Upload File',
             authInput: 'Input',
             authDelete: 'Delete',
+
+            // Gallery page
+            folders: 'Folders',
+            files: 'files',
+            noFilesFound: 'No files found',
+            fileInfo: 'File Info',
+            fileName: 'File Name',
+            fileType: 'Type',
+            fileSize: 'Size',
+            modified: 'Modified',
+            dimensions: 'Dimensions',
+            duration: 'Duration',
 
             // Common
             save: 'Save',
