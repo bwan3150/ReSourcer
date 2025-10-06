@@ -1,0 +1,114 @@
+name: Build Release
+
+on:
+  workflow_dispatch:  # GitHub Action页面手动触发
+  push:
+    tags:
+      - 'v*.*.*'  # TAG时触发, git tag v0.2.1; git push origin v0.2.1
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform.target }}
+    runs-on: ${{ matrix.platform.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            ytdlp: bin/yt-dlp-linux
+            artifact_name: re-sourcer-linux-x86_64
+
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            ytdlp: bin/yt-dlp-macos
+            artifact_name: re-sourcer-macos-aarch64
+
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            ytdlp: bin/yt-dlp-windows.exe
+            artifact_name: re-sourcer-windows-x86_64.exe
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform.target }}
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Verify yt-dlp binary exists
+        shell: bash
+        run: |
+          if [ ! -f "${{ matrix.platform.ytdlp }}" ]; then
+            echo "❌ yt-dlp binary not found: ${{ matrix.platform.ytdlp }}"
+            exit 1
+          fi
+          echo "✅ Found yt-dlp binary: ${{ matrix.platform.ytdlp }}"
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.platform.target }}
+
+      - name: Rename binary (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mv target/${{ matrix.platform.target }}/release/re-sourcer ${{ matrix.platform.artifact_name }}
+          chmod +x ${{ matrix.platform.artifact_name }}
+
+      - name: Rename binary (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          mv target/${{ matrix.platform.target }}/release/re-sourcer.exe ${{ matrix.platform.artifact_name }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform.artifact_name }}
+          path: ${{ matrix.platform.artifact_name }}
+          retention-days: 7
+
+# TAG触发
+  create-release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*
+          draft: true  # 保存到草稿
+          prerelease: false
+          generate_release_notes: true  # 自动生成
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
