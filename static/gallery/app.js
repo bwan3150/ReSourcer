@@ -4,6 +4,7 @@ let currentFolder = null;
 let currentFiles = [];
 let currentFileIndex = 0;
 let videoElement = null;
+let allFolders = []; // 存储所有文件夹
 
 // 页面加载完成后初始化
 window.addEventListener('load', async () => {
@@ -17,10 +18,15 @@ async function loadFolders() {
         const response = await fetch('/api/gallery/folders');
         const data = await response.json();
 
+        allFolders = data.folders; // 保存所有文件夹
         const folderList = document.getElementById('folderList');
+        const folderDropdown = document.getElementById('folderDropdown');
+
         folderList.innerHTML = '';
+        folderDropdown.innerHTML = '';
 
         data.folders.forEach((folder, index) => {
+            // 侧边栏项
             const folderItem = document.createElement('div');
             folderItem.className = 'folder-item' + (index === 0 ? ' active' : '');
             folderItem.onclick = () => selectFolder(folder, folderItem);
@@ -34,6 +40,21 @@ async function loadFolders() {
             `;
 
             folderList.appendChild(folderItem);
+
+            // 下拉菜单项
+            const dropdownItem = document.createElement('div');
+            dropdownItem.className = 'folder-dropdown-item' + (index === 0 ? ' active' : '');
+            dropdownItem.onclick = () => selectFolderFromDropdown(folder, index);
+
+            dropdownItem.innerHTML = `
+                <div class="folder-dropdown-info">
+                    <span class="material-symbols-outlined">${folder.is_source ? 'source' : 'folder'}</span>
+                    <span class="folder-dropdown-name">${folder.name}</span>
+                </div>
+                <span class="folder-dropdown-count">${folder.file_count}</span>
+            `;
+
+            folderDropdown.appendChild(dropdownItem);
         });
 
         // 默认选择第一个文件夹
@@ -287,6 +308,56 @@ function formatFileSize(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+// 从下拉菜单选择文件夹
+function selectFolderFromDropdown(folder, index) {
+    // 更新侧边栏选中状态
+    document.querySelectorAll('.folder-item').forEach((item, i) => {
+        item.classList.toggle('active', i === index);
+    });
+
+    // 更新下拉菜单选中状态
+    document.querySelectorAll('.folder-dropdown-item').forEach((item, i) => {
+        item.classList.toggle('active', i === index);
+    });
+
+    currentFolder = folder;
+    loadFiles(folder.path);
+
+    // 关闭下拉菜单
+    toggleFolderDropdown();
+}
+
+// 切换侧边栏 (移动端)
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+
+    sidebar.classList.toggle('active');
+    overlay.classList.toggle('active');
+}
+
+// 切换文件夹下拉菜单
+function toggleFolderDropdown() {
+    const dropdown = document.getElementById('folderDropdown');
+    const selector = document.querySelector('.folder-selector');
+
+    dropdown.classList.toggle('active');
+    selector.classList.toggle('active');
+}
+
+// 点击外部关闭下拉菜单
+document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('folderDropdown');
+    const selector = document.querySelector('.folder-selector');
+
+    if (dropdown && dropdown.classList.contains('active')) {
+        if (!selector.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('active');
+            selector.classList.remove('active');
+        }
+    }
+});
+
 // ESC 键关闭预览
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -294,6 +365,8 @@ document.addEventListener('keydown', (e) => {
             closeFileInfo();
         } else if (document.getElementById('previewModal').style.display === 'block') {
             closePreview();
+        } else if (document.getElementById('folderDropdown').classList.contains('active')) {
+            toggleFolderDropdown();
         }
     }
 });
