@@ -1,0 +1,396 @@
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/gallery_provider.dart';
+import '../../providers/upload_provider.dart';
+import '../../models/gallery_folder.dart';
+import '../../widgets/gallery/image_grid.dart';
+import '../../widgets/gallery/upload_button.dart';
+
+/// 画廊页面
+class GalleryScreen extends StatefulWidget {
+  const GalleryScreen({Key? key}) : super(key: key);
+
+  @override
+  State<GalleryScreen> createState() => _GalleryScreenState();
+}
+
+class _GalleryScreenState extends State<GalleryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final galleryProvider = Provider.of<GalleryProvider>(context, listen: false);
+
+    if (authProvider.apiService != null) {
+      await galleryProvider.loadFolders(authProvider.apiService!);
+    }
+  }
+
+  Future<void> _handleRefresh() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final galleryProvider = Provider.of<GalleryProvider>(context, listen: false);
+
+    if (authProvider.apiService != null) {
+      await galleryProvider.refresh(authProvider.apiService!);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NeumorphicTheme(
+      theme: const NeumorphicThemeData(
+        baseColor: Color(0xFFF0F0F0),
+        lightSource: LightSource.topLeft,
+        depth: 4,
+        intensity: 0.6,
+      ),
+      child: Scaffold(
+        backgroundColor: NeumorphicTheme.baseColor(context),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // 顶部标题栏
+              _buildHeader(),
+
+            // 图片网格
+            Expanded(
+              child: Consumer<GalleryProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading && provider.files.isEmpty) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+
+                  if (provider.error != null) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            size: 64,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            provider.error!,
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                          const SizedBox(height: 16),
+                          NeumorphicButton(
+                            onPressed: _handleRefresh,
+                            child: const Text('重试'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  if (provider.files.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.photo_library_outlined,
+                            size: 64,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            '暂无图片',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: _handleRefresh,
+                    child: ImageGrid(files: provider.files),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+        ),
+        floatingActionButton: const UploadButton(),
+      ),
+    );
+  }
+
+  void _showFolderSelector() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const _FolderSelectorSheet(),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // 文件夹选择器
+          Expanded(
+            child: Consumer<GalleryProvider>(
+              builder: (context, provider, child) {
+                final folderName = provider.currentFolder?.isSource == true
+                    ? '源文件夹'
+                    : (provider.currentFolder?.name ?? '画廊');
+                final fileCount = provider.files.length;
+
+                return NeumorphicButton(
+                  onPressed: _showFolderSelector,
+                  style: NeumorphicStyle(
+                    depth: 2,
+                    intensity: 0.6,
+                    boxShape: NeumorphicBoxShape.roundRect(
+                      BorderRadius.circular(12),
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Icon(
+                        provider.currentFolder?.isSource == true
+                            ? Icons.source
+                            : Icons.folder,
+                        size: 20,
+                        color: const Color(0xFF171717),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              folderName,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF171717),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '$fileCount ${fileCount == 1 ? 'file' : 'files'}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.expand_more,
+                        size: 20,
+                        color: Color(0xFF737373),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 12),
+          // 刷新按钮
+          NeumorphicButton(
+            onPressed: _handleRefresh,
+            style: const NeumorphicStyle(
+              boxShape: NeumorphicBoxShape.circle(),
+              depth: 2,
+            ),
+            padding: const EdgeInsets.all(12),
+            child: const Icon(Icons.refresh, size: 20),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 文件夹选择器底部面板
+class _FolderSelectorSheet extends StatelessWidget {
+  const _FolderSelectorSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.6,
+      decoration: BoxDecoration(
+        color: NeumorphicTheme.baseColor(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          // 顶部拖动条
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[400],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+
+          // 标题
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  '选择文件夹',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                NeumorphicButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: const NeumorphicStyle(
+                    boxShape: NeumorphicBoxShape.circle(),
+                    depth: 2,
+                  ),
+                  padding: const EdgeInsets.all(8),
+                  child: const Icon(Icons.close, size: 20),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // 文件夹列表
+          Expanded(
+            child: Consumer<GalleryProvider>(
+              builder: (context, provider, child) {
+                if (provider.folders.isEmpty) {
+                  return const Center(
+                    child: Text('暂无文件夹'),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: provider.folders.length,
+                  itemBuilder: (context, index) {
+                    final folder = provider.folders[index];
+                    final isSelected = provider.currentFolder?.path == folder.path;
+
+                    return _FolderItem(
+                      folder: folder,
+                      isSelected: isSelected,
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 文件夹项
+class _FolderItem extends StatelessWidget {
+  final GalleryFolder folder;
+  final bool isSelected;
+
+  const _FolderItem({
+    required this.folder,
+    required this.isSelected,
+  });
+
+  Future<void> _handleSelect(BuildContext context) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final galleryProvider = Provider.of<GalleryProvider>(context, listen: false);
+
+    if (authProvider.apiService != null) {
+      await galleryProvider.selectFolder(authProvider.apiService!, folder);
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final displayName = folder.isSource ? '源文件夹' : folder.name;
+
+    return Neumorphic(
+      margin: const EdgeInsets.only(bottom: 12),
+      style: NeumorphicStyle(
+        depth: isSelected ? -2 : 2,
+        intensity: 0.6,
+        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+      ),
+      child: InkWell(
+        onTap: () => _handleSelect(context),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(
+                folder.isSource ? Icons.source : Icons.folder,
+                size: 24,
+                color: isSelected ? const Color(0xFF171717) : const Color(0xFF737373),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  displayName,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: const Color(0xFF171717),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFF171717).withOpacity(0.1)
+                      : Colors.grey[300],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${folder.fileCount}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: isSelected ? const Color(0xFF171717) : Colors.grey[700],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

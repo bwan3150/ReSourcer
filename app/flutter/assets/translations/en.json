@@ -1,0 +1,71 @@
+{
+  "app_name": "ReSourcer",
+  "login": {
+    "title": "ReSourcer",
+    "subtitle": "Please start the backend service first",
+    "server_address": "Server Address",
+    "server_hint": "http://192.168.1.100:8080",
+    "api_key": "API Key",
+    "api_key_hint": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "login_button": "Login",
+    "scan_qr": "Scan QR Code",
+    "error_empty": "Please enter server address and API Key",
+    "error_failed": "Login failed, please check server address and API Key",
+    "verifying": "Verifying..."
+  },
+  "qr_scan": {
+    "title": "Scan QR Code",
+    "hint": "Place QR code inside the frame\nMake sure backend service is running",
+    "error_format": "Invalid QR code format",
+    "error_login": "Login failed, please check if service is available",
+    "error_parse": "QR code parsing failed"
+  },
+  "gallery": {
+    "title": "Gallery",
+    "empty": "No images",
+    "error_load": "Failed to load",
+    "retry": "Retry",
+    "uploading": "Uploading...",
+    "upload_success": "Upload successful",
+    "upload_failed": "Upload failed",
+    "service_disconnected": "Service not connected"
+  },
+  "classifier": {
+    "title": "Classifier",
+    "coming_soon": "Feature coming soon..."
+  },
+  "downloader": {
+    "title": "Downloader",
+    "coming_soon": "Feature coming soon..."
+  },
+  "settings": {
+    "title": "Settings",
+    "account_info": "Account Information",
+    "server_address": "Server Address",
+    "api_key": "API Key",
+    "not_connected": "Not connected",
+    "not_set": "Not set",
+    "about": "About",
+    "version": "Version",
+    "logout": "Logout",
+    "logout_confirm_title": "Logout",
+    "logout_confirm_message": "Are you sure you want to logout?",
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  },
+  "upload_task": {
+    "title": "Upload Tasks",
+    "empty": "No upload tasks",
+    "uploading_count": "Uploading {{count}}",
+    "status_pending": "Pending",
+    "status_uploading": "Uploading",
+    "status_completed": "Completed",
+    "status_failed": "Failed"
+  },
+  "nav": {
+    "gallery": "Gallery",
+    "classifier": "Classifier",
+    "downloader": "Downloader",
+    "settings": "Settings"
+  }
+}
