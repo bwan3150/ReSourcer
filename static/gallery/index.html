@@ -17,6 +17,13 @@
             <h1 data-i18n="gallery">画廊</h1>
         </div>
         <div class="top-right">
+            <button class="icon-btn" onclick="toggleTaskBubble()" id="taskBubbleBtn" title="Upload Tasks">
+                <span class="material-symbols-outlined">upload_file</span>
+                <span class="task-badge" id="taskBadge" style="display: none;">0</span>
+            </button>
+            <a href="/settings/" class="icon-btn" title="Settings">
+                <span class="material-symbols-outlined">settings</span>
+            </a>
             <div class="lang-switcher">
                 <button class="lang-btn active" data-lang="en" onclick="i18nManager.setLang('en')">EN</button>
                 <button class="lang-btn" data-lang="zh" onclick="i18nManager.setLang('zh')">中文</button>
@@ -176,6 +183,24 @@
             </div>
         </div>
     </div>
+
+    <!-- 任务气泡弹窗 -->
+    <div class="task-bubble" id="taskBubble" style="display: none;">
+        <div class="bubble-header">
+            <h3 data-i18n="uploadTasks">上传任务</h3>
+            <button class="bubble-close-btn" onclick="toggleTaskBubble()">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="bubble-body">
+            <div class="upload-tasks" id="uploadTasks">
+                <!-- 动态生成任务项 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 隐藏的文件选择器 -->
+    <input type="file" id="fileInput" multiple accept="image/*,video/*" style="display: none;" onchange="handleFileSelect(this.files)">
 
     <script src="/common-i18n.js"></script>
     <script src="app.js"></script>

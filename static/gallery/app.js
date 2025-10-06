@@ -157,6 +157,13 @@ async function loadFiles(folderPath) {
 
             galleryGrid.appendChild(item);
         });
+
+        // 添加上传卡片
+        const uploadCard = document.createElement('div');
+        uploadCard.className = 'gallery-item upload-card';
+        uploadCard.onclick = () => triggerFileUpload();
+        uploadCard.innerHTML = `<span class="material-symbols-outlined">add</span>`;
+        galleryGrid.appendChild(uploadCard);
     } catch (error) {
         console.error('Failed to load files:', error);
     }
@@ -507,6 +514,8 @@ document.addEventListener('keydown', (e) => {
             closePreview();
         } else if (folderDropdown.classList.contains('active')) {
             toggleFolderDropdown();
+        } else if (document.getElementById('taskBubble').style.display === 'flex') {
+            toggleTaskBubble();
         }
     } else if (inlinePreview.style.display === 'flex') {
         // 内嵌预览打开时，左右箭头切换
@@ -517,3 +526,188 @@ document.addEventListener('keydown', (e) => {
         }
     }
 });
+
+// ========== 上传功能 ==========
+
+let uploadTasks = [];
+let uploadPollingInterval = null;
+
+// 触发文件上传（点击上传卡片）
+function triggerFileUpload() {
+    if (!currentFolder) return;
+    document.getElementById('fileInput').click();
+}
+
+// 切换任务气泡弹窗
+function toggleTaskBubble() {
+    const bubble = document.getElementById('taskBubble');
+    const isVisible = bubble.style.display === 'flex';
+
+    if (!isVisible) {
+        bubble.style.display = 'flex';
+        startUploadPolling();
+    } else {
+        bubble.style.display = 'none';
+        stopUploadPolling();
+    }
+}
+
+// 处理文件选择
+function handleFileSelect(files) {
+    if (files.length === 0) return;
+
+    if (!currentFolder) {
+        alert(i18nManager.t('pleaseSelectFolder') || '请先选择文件夹');
+        return;
+    }
+
+    // 使用当前文件夹作为目标文件夹
+    uploadFiles(files, currentFolder.path);
+}
+
+// 上传文件
+async function uploadFiles(files, targetFolder) {
+    const formData = new FormData();
+    formData.append('target_folder', targetFolder);
+
+    for (let file of files) {
+        formData.append('files', file);
+    }
+
+    try {
+        const response = await fetch('/api/uploader/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            console.log('Upload initiated:', result);
+            // 显示任务气泡
+            document.getElementById('taskBubble').style.display = 'flex';
+            startUploadPolling();
+            // 立即刷新任务列表
+            await loadUploadTasks();
+        } else {
+            alert(result.error || 'Upload failed');
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        alert('Upload failed: ' + error.message);
+    }
+}
+
+// 加载上传任务列表
+async function loadUploadTasks() {
+    try {
+        const response = await fetch('/api/uploader/tasks');
+        const data = await response.json();
+
+        uploadTasks = data.tasks || [];
+        renderUploadTasks();
+    } catch (error) {
+        console.error('Failed to load upload tasks:', error);
+    }
+}
+
+// 渲染上传任务列表
+function renderUploadTasks() {
+    const container = document.getElementById('uploadTasks');
+    const badge = document.getElementById('taskBadge');
+
+    // 更新徽章
+    const activeTasks = uploadTasks.filter(t => t.status === 'pending' || t.status === 'uploading').length;
+    if (activeTasks > 0) {
+        badge.style.display = 'flex';
+        badge.textContent = activeTasks;
+    } else {
+        badge.style.display = 'none';
+    }
+
+    if (uploadTasks.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #a3a3a3;">
+                <p>${i18nManager.t('noUploadTasks') || '暂无上传任务'}</p>
+            </div>
+        `;
+        return;
+    }
+
+    // 只渲染任务列表，不触发文件列表刷新
+
+    container.innerHTML = uploadTasks.map(task => {
+        const statusText = {
+            'pending': i18nManager.t('pending') || '等待中',
+            'uploading': i18nManager.t('uploading') || '上传中',
+            'completed': i18nManager.t('completed') || '已完成',
+            'failed': i18nManager.t('failed') || '失败'
+        }[task.status] || task.status;
+
+        const progressClass = task.status === 'completed' ? 'completed' :
+                             task.status === 'failed' ? 'failed' : '';
+
+        const sizeText = formatFileSize(task.uploaded_size) +
+                        (task.file_size > 0 ? ` / ${formatFileSize(task.file_size)}` : '');
+
+        return `
+            <div class="upload-task-item">
+                <div class="task-header">
+                    <div class="task-info">
+                        <div class="task-name" title="${task.file_name}">${task.file_name}</div>
+                        <div class="task-status">${statusText} • ${sizeText}</div>
+                    </div>
+                    <div class="task-actions">
+                        ${task.status === 'completed' || task.status === 'failed' ? `
+                            <button class="task-action-btn" onclick="deleteUploadTask('${task.id}')" title="${i18nManager.t('delete') || '删除'}">
+                                <span class="material-symbols-outlined">delete</span>
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="task-progress">
+                    <div class="task-progress-bar ${progressClass}" style="width: ${task.progress}%"></div>
+                </div>
+                ${task.error ? `<div class="task-status" style="color: #ef4444;">${task.error}</div>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+// 删除上传任务
+async function deleteUploadTask(taskId) {
+    try {
+        const response = await fetch(`/api/uploader/task/${taskId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            await loadUploadTasks();
+        }
+    } catch (error) {
+        console.error('Failed to delete task:', error);
+    }
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+// 开始轮询上传任务
+function startUploadPolling() {
+    loadUploadTasks(); // 立即加载一次
+    uploadPollingInterval = setInterval(loadUploadTasks, 1000); // 每秒更新
+}
+
+// 停止轮询
+function stopUploadPolling() {
+    if (uploadPollingInterval) {
+        clearInterval(uploadPollingInterval);
+        uploadPollingInterval = null;
+    }
+}

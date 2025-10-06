@@ -53,7 +53,10 @@ async fn main() -> std::io::Result<()> {
     println!();
 
     // 初始化下载器任务管理器
-    let task_manager = web::Data::new(downloader::TaskManager::new());
+    let download_task_manager = web::Data::new(downloader::TaskManager::new());
+
+    // 初始化上传器任务管理器
+    let upload_task_manager = web::Data::new(uploader::TaskManager::new());
 
     // 从嵌入的配置文件读取依赖信息
     let ytdlp_version = if let Some(config_file) = ConfigAsset::get("dependencies.json") {
@@ -89,8 +92,9 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .wrap(middleware::Logger::default())
-            // 注入下载器任务管理器
-            .app_data(task_manager.clone())
+            // 注入任务管理器
+            .app_data(download_task_manager.clone())
+            .app_data(upload_task_manager.clone())
             // 全局配置 API（所有模块共用）
             .route("/api/config", web::get().to(get_global_config))
             // 画廊 API 路由
