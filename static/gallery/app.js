@@ -26,15 +26,18 @@ async function loadFolders() {
         folderDropdown.innerHTML = '';
 
         data.folders.forEach((folder, index) => {
+            // 翻译文件夹名称
+            const displayName = folder.is_source ? i18nManager.t('sourceFolder') : folder.name;
+
             // 侧边栏项
             const folderItem = document.createElement('div');
             folderItem.className = 'folder-item' + (index === 0 ? ' active' : '');
-            folderItem.onclick = () => selectFolder(folder, folderItem);
+            folderItem.onclick = () => selectFolder(folder, folderItem, displayName);
 
             folderItem.innerHTML = `
                 <div class="folder-info">
                     <span class="material-symbols-outlined">${folder.is_source ? 'source' : 'folder'}</span>
-                    <span class="folder-name">${folder.name}</span>
+                    <span class="folder-name">${displayName}</span>
                 </div>
                 <span class="folder-count">${folder.file_count}</span>
             `;
@@ -44,12 +47,12 @@ async function loadFolders() {
             // 下拉菜单项
             const dropdownItem = document.createElement('div');
             dropdownItem.className = 'folder-dropdown-item' + (index === 0 ? ' active' : '');
-            dropdownItem.onclick = () => selectFolderFromDropdown(folder, index);
+            dropdownItem.onclick = () => selectFolderFromDropdown(folder, index, displayName);
 
             dropdownItem.innerHTML = `
                 <div class="folder-dropdown-info">
                     <span class="material-symbols-outlined">${folder.is_source ? 'source' : 'folder'}</span>
-                    <span class="folder-dropdown-name">${folder.name}</span>
+                    <span class="folder-dropdown-name">${displayName}</span>
                 </div>
                 <span class="folder-dropdown-count">${folder.file_count}</span>
             `;
@@ -60,6 +63,8 @@ async function loadFolders() {
         // 默认选择第一个文件夹
         if (data.folders.length > 0) {
             currentFolder = data.folders[0];
+            const displayName = data.folders[0].is_source ? i18nManager.t('sourceFolder') : data.folders[0].name;
+            document.getElementById('currentFolderName').textContent = displayName;
             await loadFiles(data.folders[0].path);
         }
     } catch (error) {
@@ -68,7 +73,7 @@ async function loadFolders() {
 }
 
 // 选择文件夹
-async function selectFolder(folder, element) {
+async function selectFolder(folder, element, displayName) {
     // 更新选中状态
     document.querySelectorAll('.folder-item').forEach(item => {
         item.classList.remove('active');
@@ -76,6 +81,7 @@ async function selectFolder(folder, element) {
     element.classList.add('active');
 
     currentFolder = folder;
+    document.getElementById('currentFolderName').textContent = displayName;
     await loadFiles(folder.path);
 }
 
@@ -89,7 +95,8 @@ async function loadFiles(folderPath) {
 
         // 更新标题和文件数
         document.getElementById('currentFolderName').textContent = currentFolder.name;
-        document.getElementById('fileCount').textContent = `${data.files.length} ${i18nManager.t('files')}`;
+        const fileCountText = data.files.length === 1 ? i18nManager.t('file') : i18nManager.t('files');
+        document.getElementById('fileCount').textContent = `${data.files.length} ${fileCountText}`;
 
         const galleryGrid = document.getElementById('galleryGrid');
         const emptyState = document.getElementById('emptyState');
@@ -154,32 +161,60 @@ function getFileIcon(extension) {
     return iconMap[extension] || iconMap.default;
 }
 
-// 打开预览
+// 打开预览（内嵌式）
 function openPreview(index) {
     currentFileIndex = index;
-    const file = currentFiles[index];
+    updateInlinePreview();
+    document.getElementById('inlinePreview').style.display = 'flex';
+}
 
-    const modal = document.getElementById('previewModal');
-    const content = document.getElementById('previewContent');
-    const fileName = document.getElementById('previewFileName');
-    const videoControls = document.getElementById('videoControls');
+// 更新内嵌预览内容
+function updateInlinePreview() {
+    const file = currentFiles[currentFileIndex];
+    const media = document.getElementById('previewMedia');
+    const fileName = document.getElementById('previewFileNameInline');
+    const counter = document.getElementById('previewCounter');
+    const videoControls = document.getElementById('videoControlsInline');
 
     fileName.textContent = file.name;
+    counter.textContent = `${currentFileIndex + 1} / ${currentFiles.length}`;
 
     if (file.file_type === 'image' || file.file_type === 'gif') {
-        content.innerHTML = `<img src="/api/classifier/file/${encodeURIComponent(file.path)}" alt="${file.name}">`;
+        media.innerHTML = `<img src="/api/classifier/file/${encodeURIComponent(file.path)}" alt="${file.name}">`;
         videoControls.style.display = 'none';
     } else if (file.file_type === 'video') {
-        content.innerHTML = `<video id="previewVideo" src="/api/classifier/file/${encodeURIComponent(file.path)}" controls autoplay></video>`;
-        videoElement = document.getElementById('previewVideo');
+        media.innerHTML = `<video id="previewVideoInline" src="/api/classifier/file/${encodeURIComponent(file.path)}" autoplay></video>`;
+        videoElement = document.getElementById('previewVideoInline');
         videoControls.style.display = 'flex';
-        setupVideoControls();
+        setupVideoControlsInline();
     } else {
-        content.innerHTML = `<div class="file-icon"><span class="material-symbols-outlined">${getFileIcon(file.extension)}</span><p>${file.name}</p></div>`;
+        const iconName = getFileIcon(file.extension);
+        media.innerHTML = `<div class="file-icon"><span class="material-symbols-outlined">${iconName}</span><p>${file.name}</p></div>`;
         videoControls.style.display = 'none';
     }
+}
 
-    modal.style.display = 'block';
+// 左右切换预览
+function navigatePreview(direction) {
+    currentFileIndex += direction;
+
+    // 循环切换
+    if (currentFileIndex < 0) {
+        currentFileIndex = currentFiles.length - 1;
+    } else if (currentFileIndex >= currentFiles.length) {
+        currentFileIndex = 0;
+    }
+
+    updateInlinePreview();
+}
+
+// 关闭内嵌预览
+function closeInlinePreview() {
+    document.getElementById('inlinePreview').style.display = 'none';
+    if (videoElement) {
+        videoElement.pause();
+        videoElement = null;
+    }
 }
 
 // 关闭预览
@@ -254,6 +289,61 @@ function formatTime(seconds) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+// 设置内嵌视频控制
+function setupVideoControlsInline() {
+    const video = videoElement;
+    const playPauseBtn = document.getElementById('playPauseBtnInline');
+    const progressBar = document.getElementById('progressBarInline');
+    const timeDisplay = document.getElementById('timeDisplayInline');
+
+    video.addEventListener('timeupdate', () => {
+        const progress = (video.currentTime / video.duration) * 100;
+        progressBar.value = progress;
+
+        const current = formatTime(video.currentTime);
+        const total = formatTime(video.duration);
+        timeDisplay.textContent = `${current} / ${total}`;
+    });
+
+    video.addEventListener('play', () => {
+        playPauseBtn.innerHTML = '<span class="material-symbols-outlined">pause</span>';
+    });
+
+    video.addEventListener('pause', () => {
+        playPauseBtn.innerHTML = '<span class="material-symbols-outlined">play_arrow</span>';
+    });
+}
+
+// 内嵌视频播放/暂停
+function togglePlayPauseInline() {
+    if (videoElement) {
+        if (videoElement.paused) {
+            videoElement.play();
+        } else {
+            videoElement.pause();
+        }
+    }
+}
+
+// 内嵌视频进度跳转
+function seekVideoInline(value) {
+    if (videoElement) {
+        const time = (value / 100) * videoElement.duration;
+        videoElement.currentTime = time;
+    }
+}
+
+// 内嵌视频静音切换
+function toggleMuteInline() {
+    if (videoElement) {
+        videoElement.muted = !videoElement.muted;
+        const muteBtn = document.getElementById('muteBtnInline');
+        muteBtn.innerHTML = videoElement.muted
+            ? '<span class="material-symbols-outlined">volume_off</span>'
+            : '<span class="material-symbols-outlined">volume_up</span>';
+    }
+}
+
 // 显示文件信息
 function showFileInfo() {
     const file = currentFiles[currentFileIndex];
@@ -309,7 +399,7 @@ function formatFileSize(bytes) {
 }
 
 // 从下拉菜单选择文件夹
-function selectFolderFromDropdown(folder, index) {
+function selectFolderFromDropdown(folder, index, displayName) {
     // 更新侧边栏选中状态
     document.querySelectorAll('.folder-item').forEach((item, i) => {
         item.classList.toggle('active', i === index);
@@ -321,6 +411,7 @@ function selectFolderFromDropdown(folder, index) {
     });
 
     currentFolder = folder;
+    document.getElementById('currentFolderName').textContent = displayName;
     loadFiles(folder.path);
 
     // 关闭下拉菜单
@@ -358,15 +449,28 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// ESC 键关闭预览
+// 键盘事件处理
 document.addEventListener('keydown', (e) => {
+    const inlinePreview = document.getElementById('inlinePreview');
+    const infoModal = document.getElementById('infoModal');
+    const folderDropdown = document.getElementById('folderDropdown');
+
     if (e.key === 'Escape') {
-        if (document.getElementById('infoModal').style.display === 'block') {
+        if (infoModal.style.display === 'block') {
             closeFileInfo();
+        } else if (inlinePreview.style.display === 'flex') {
+            closeInlinePreview();
         } else if (document.getElementById('previewModal').style.display === 'block') {
             closePreview();
-        } else if (document.getElementById('folderDropdown').classList.contains('active')) {
+        } else if (folderDropdown.classList.contains('active')) {
             toggleFolderDropdown();
+        }
+    } else if (inlinePreview.style.display === 'flex') {
+        // 内嵌预览打开时，左右箭头切换
+        if (e.key === 'ArrowLeft') {
+            navigatePreview(-1);
+        } else if (e.key === 'ArrowRight') {
+            navigatePreview(1);
         }
     }
 });

@@ -97,7 +97,9 @@ const i18nManager = {
             // Gallery 页面
             gallery: '画廊',
             folders: '文件夹',
-            files: '文件',
+            sourceFolder: '源文件夹',
+            file: '个文件',
+            files: '个文件',
             noFilesFound: '没有找到文件',
             fileInfo: '文件信息',
             fileName: '文件名',
@@ -207,6 +209,8 @@ const i18nManager = {
 
             // Gallery page
             folders: 'Folders',
+            sourceFolder: 'Source Folder',
+            file: 'file',
             files: 'files',
             noFilesFound: 'No files found',
             fileInfo: 'File Info',

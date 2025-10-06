@@ -67,6 +67,59 @@
                 <span class="material-symbols-outlined">folder_open</span>
                 <p data-i18n="noFilesFound">没有找到文件</p>
             </div>
+
+            <!-- 内嵌式预览 -->
+            <div class="inline-preview" id="inlinePreview" style="display: none;">
+                <div class="preview-header">
+                    <div class="preview-header-left">
+                        <button class="sidebar-toggle-btn" onclick="toggleSidebar()">
+                            <span class="material-symbols-outlined">menu</span>
+                        </button>
+                        <span class="preview-title" id="previewTitle">文件预览</span>
+                    </div>
+                    <button class="preview-close-btn" onclick="closeInlinePreview()">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div class="preview-body">
+                    <!-- 左箭头 -->
+                    <button class="nav-btn nav-prev" onclick="navigatePreview(-1)">
+                        <span class="material-symbols-outlined">chevron_left</span>
+                    </button>
+
+                    <!-- 预览内容 -->
+                    <div class="preview-media" id="previewMedia">
+                        <!-- 动态加载 -->
+                    </div>
+
+                    <!-- 右箭头 -->
+                    <button class="nav-btn nav-next" onclick="navigatePreview(1)">
+                        <span class="material-symbols-outlined">chevron_right</span>
+                    </button>
+                </div>
+
+                <!-- 视频控制（仅视频显示） -->
+                <div class="video-controls-inline" id="videoControlsInline" style="display: none;">
+                    <button class="play-pause-btn" id="playPauseBtnInline" onclick="togglePlayPauseInline()">
+                        <span class="material-symbols-outlined">play_arrow</span>
+                    </button>
+                    <input type="range" class="progress-bar" id="progressBarInline" min="0" max="100" value="0" onchange="seekVideoInline(this.value)">
+                    <span class="time-display" id="timeDisplayInline">0:00 / 0:00</span>
+                    <button class="mute-btn" id="muteBtnInline" onclick="toggleMuteInline()">
+                        <span class="material-symbols-outlined">volume_up</span>
+                    </button>
+                </div>
+
+                <div class="preview-footer">
+                    <div class="preview-info-text">
+                        <span id="previewFileNameInline">filename.jpg</span>
+                        <span class="preview-counter" id="previewCounter">1 / 10</span>
+                    </div>
+                    <button class="info-btn-inline" onclick="showFileInfo()">
+                        <span class="material-symbols-outlined">info</span>
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
