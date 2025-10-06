@@ -24,19 +24,6 @@ pub struct UploadTask {
     pub created_at: String,            // 创建时间
 }
 
-/// 上传请求（通过 multipart form-data）
-#[derive(Debug, Deserialize)]
-pub struct UploadRequest {
-    pub target_folder: String,  // 目标文件夹
-}
-
-/// 上传响应
-#[derive(Debug, Serialize)]
-pub struct UploadResponse {
-    pub task_id: String,
-    pub message: String,
-}
-
 /// 任务列表响应
 #[derive(Debug, Serialize)]
 pub struct TaskListResponse {

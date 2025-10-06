@@ -1,5 +1,4 @@
 use actix_web::{middleware, web, App, HttpResponse, HttpServer, Result};
-use serde::Deserialize;
 use std::net::UdpSocket;
 
 mod classifier;
@@ -9,7 +8,7 @@ mod gallery;
 mod static_files;
 mod auth;
 
-use static_files::{serve_static, ConfigAsset};
+use static_files::serve_static;
 
 /// 全局配置 API - 所有模块共用
 async fn get_global_config() -> Result<HttpResponse> {

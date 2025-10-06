@@ -102,7 +102,6 @@ impl TaskManager {
         };
 
         let mut uploaded_size: u64 = 0;
-        let mut total_size: u64 = 0;
 
         // 读取并写入文件数据
         while let Some(chunk) = field.next().await {
@@ -113,10 +112,9 @@ impl TaskManager {
                         return;
                     }
                     uploaded_size += data.len() as u64;
-                    total_size = uploaded_size;
 
                     // 更新进度 (由于不知道总大小，这里以已上传大小为准)
-                    Self::update_progress_with_size(&tasks, &task_id, uploaded_size, total_size).await;
+                    Self::update_progress_with_size(&tasks, &task_id, uploaded_size, uploaded_size).await;
                 }
                 Err(e) => {
                     Self::update_error(&tasks, &task_id, format!("读取数据失败: {}", e)).await;

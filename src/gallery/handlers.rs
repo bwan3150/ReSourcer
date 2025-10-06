@@ -2,7 +2,6 @@ use actix_web::{web, HttpResponse, Result};
 use std::path::Path;
 use std::fs;
 use super::models::*;
-use image::imageops::FilterType;
 use std::io::Cursor;
 
 /// 支持的图片格式
