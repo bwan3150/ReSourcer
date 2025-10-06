@@ -388,6 +388,17 @@
             padding: 12px;
         }
 
+        .ytdlp-version {
+            margin-top: 12px;
+            padding: 12px;
+            text-align: center;
+            font-size: 12px;
+            color: #a3a3a3;
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+        }
+
         .task-card {
             background: #fafafa;
             border: 1px solid #e5e5e5;
@@ -933,6 +944,9 @@
             </div>
         </div>
 
+        <!-- yt-dlp 版本信息 -->
+        <div class="ytdlp-version" id="ytdlpVersion"></div>
+
         <!-- 预览模态框 -->
         <div id="previewModal" class="preview-modal" onclick="closePreview()">
             <div class="preview-content" onclick="event.stopPropagation()">
@@ -963,6 +977,8 @@
         </div>
     </div>
 
+    <script src="/auth.js"></script>
+    <script>AuthManager.checkAuthAndRedirect();</script>
     <script src="/common-i18n.js"></script>
     <script src="app.js"></script>
 </body>

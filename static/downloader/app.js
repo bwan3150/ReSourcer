@@ -38,7 +38,14 @@ async function loadConfig() {
     try {
         const response = await fetch('/api/downloader/config');
         const data = await response.json();
-        // 配置加载成功，不做额外处理
+
+        // 显示 yt-dlp 版本
+        if (data.ytdlp_version) {
+            const versionEl = document.getElementById('ytdlpVersion');
+            if (versionEl) {
+                versionEl.textContent = `yt-dlp ${data.ytdlp_version}`;
+            }
+        }
     } catch (error) {
         console.error('Failed to load config:', error);
     }

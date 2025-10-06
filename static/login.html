@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - ReSourcer</title>
+    <link rel="stylesheet" href="/material-icons.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif;
+            background: #fafafa;
+            color: #171717;
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            max-width: 400px;
+            width: 100%;
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .login-header p {
+            color: #737373;
+            font-size: 14px;
+        }
+
+        .login-hint {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #a3a3a3;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #525252;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 15px;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            background: white;
+            transition: all 0.2s;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #171717;
+            box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            background: #171717;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+
+        .login-btn:hover:not(:disabled) {
+            background: #404040;
+        }
+
+        .login-btn:disabled {
+            background: #d4d4d4;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            display: none;
+            padding: 12px 16px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            color: #dc2626;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 32px;
+            color: #a3a3a3;
+            font-size: 13px;
+        }
+
+        /* 语言切换 */
+        .lang-switcher {
+            display: flex;
+            gap: 8px;
+            background: white;
+            border-radius: 8px;
+            padding: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .lang-btn {
+            padding: 8px 12px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #525252;
+            transition: all 0.2s;
+        }
+
+        .lang-btn:hover {
+            background: #f5f5f5;
+        }
+
+        .lang-btn.active {
+            background: #171717;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- 语言切换 -->
+    <div style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
+        <div class="lang-switcher">
+            <button class="lang-btn active" data-lang="en" onclick="switchLang('en')">EN</button>
+            <button class="lang-btn" data-lang="zh" onclick="switchLang('zh')">中文</button>
+        </div>
+    </div>
+
+    <div class="login-container">
+        <div class="login-header">
+            <h1>ReSourcer</h1>
+            <p class="login-hint" data-i18n="loginHint">Check terminal for API Key or scan QR code</p>
+        </div>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="apiKey" data-i18n="apiKey">API Key</label>
+                <input type="text" id="apiKey" name="apiKey" required autocomplete="off" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+            </div>
+
+            <button type="submit" class="login-btn" id="loginBtn" data-i18n="login">Login</button>
+        </form>
+
+        <div class="footer">
+            ReSourcer v0.2.0
+        </div>
+    </div>
+
+    <script src="/auth.js"></script>
+    <script src="/common-i18n.js"></script>
+    <script>
+        // 多语言翻译
+        const loginTranslations = {
+            en: {
+                apiKey: 'API Key',
+                login: 'Login',
+                loginHint: 'Check terminal for API Key or scan QR code',
+                verifying: 'Verifying...',
+                invalidKey: 'Invalid API Key',
+                networkError: 'Network error, please try again'
+            },
+            zh: {
+                apiKey: 'API Key',
+                login: '登录',
+                loginHint: '在终端查看 API Key 或扫描二维码',
+                verifying: '验证中...',
+                invalidKey: '无效的 API Key',
+                networkError: '网络错误，请重试'
+            }
+        };
+
+        let currentLang = localStorage.getItem('language') || 'en';
+
+        function switchLang(lang) {
+            currentLang = lang;
+            localStorage.setItem('language', lang);
+            updateUI();
+        }
+
+        function updateUI() {
+            const t = loginTranslations[currentLang];
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (t[key]) {
+                    if (el.tagName === 'INPUT') {
+                        el.placeholder = t[key];
+                    } else {
+                        el.textContent = t[key];
+                    }
+                }
+            });
+
+            // 更新按钮状态
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-lang') === currentLang);
+            });
+        }
+
+        // 初始化语言
+        updateUI();
+
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        const apiKeyInput = document.getElementById('apiKey');
+
+        // 检查 URL 参数中是否有 key
+        const urlParams = new URLSearchParams(window.location.search);
+        const keyFromUrl = urlParams.get('key');
+
+        if (keyFromUrl) {
+            // 自动填充 API Key
+            apiKeyInput.value = keyFromUrl;
+
+            // 自动提交登录
+            setTimeout(() => {
+                loginForm.dispatchEvent(new Event('submit'));
+            }, 100);
+        }
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const t = loginTranslations[currentLang];
+
+            // 禁用按钮
+            loginBtn.disabled = true;
+            loginBtn.textContent = t.verifying;
+            errorMessage.classList.remove('show');
+
+            try {
+                const response = await fetch('/api/auth/verify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ api_key: apiKey }),
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.valid) {
+                    // 验证成功，保存 API Key
+                    localStorage.setItem('api_key', apiKey);
+
+                    // 设置 Cookie（有效期 30 天）
+                    const expires = new Date();
+                    expires.setDate(expires.getDate() + 30);
+                    document.cookie = `api_key=${apiKey}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
+
+                    // 跳转到首页
+                    window.location.href = '/';
+                } else {
+                    // 验证失败
+                    errorMessage.textContent = result.error || t.invalidKey;
+                    errorMessage.classList.add('show');
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = t.login;
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                errorMessage.textContent = t.networkError;
+                errorMessage.classList.add('show');
+                loginBtn.disabled = false;
+                loginBtn.textContent = t.login;
+            }
+        });
+    </script>
+</body>
+</html>

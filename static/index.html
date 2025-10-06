@@ -28,6 +28,8 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             color: #525252;
             text-decoration: none;
+            border: none;
+            cursor: pointer;
             transition: all 0.2s;
         }
 
@@ -215,6 +217,9 @@
         <a href="/settings/" class="settings-icon-btn" title="Settings">
             <span class="material-symbols-outlined">settings</span>
         </a>
+        <button class="settings-icon-btn" onclick="AuthManager.logout()" title="Logout">
+            <span class="material-symbols-outlined">logout</span>
+        </button>
         <div class="lang-switcher">
             <button class="lang-btn active" data-lang="en" onclick="i18nManager.setLang('en')">EN</button>
             <button class="lang-btn" data-lang="zh" onclick="i18nManager.setLang('zh')">中文</button>
@@ -264,6 +269,11 @@
 
     <!-- QRCode.js -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="/auth.js"></script>
+    <script>
+        // 检查认证
+        AuthManager.checkAuthAndRedirect();
+    </script>
     <script src="/common-i18n.js"></script>
     <script>
         i18nManager.updateUI();

@@ -1,5 +1,4 @@
 use actix_web::{middleware, web, App, HttpResponse, HttpServer, Result};
-use serde::Deserialize;
 use std::net::UdpSocket;
 
 mod classifier;
@@ -7,19 +6,9 @@ mod downloader;
 mod uploader;
 mod gallery;
 mod static_files;
+mod auth;
 
-use static_files::{serve_static, ConfigAsset};
-
-#[derive(Deserialize)]
-struct DependencyInfo {
-    version: String,
-}
-
-#[derive(Deserialize)]
-struct Dependencies {
-    #[serde(rename = "yt-dlp")]
-    yt_dlp: DependencyInfo,
-}
+use static_files::serve_static;
 
 /// 全局配置 API - 所有模块共用
 async fn get_global_config() -> Result<HttpResponse> {
@@ -58,25 +47,37 @@ async fn main() -> std::io::Result<()> {
     // 初始化上传器任务管理器
     let upload_task_manager = web::Data::new(uploader::TaskManager::new());
 
-    // 从嵌入的配置文件读取依赖信息
-    let ytdlp_version = if let Some(config_file) = ConfigAsset::get("dependencies.json") {
-        match serde_json::from_slice::<Dependencies>(&config_file.data) {
-            Ok(deps) => deps.yt_dlp.version,
-            Err(_) => "unknown".to_string(),
-        }
-    } else {
-        "unknown".to_string()
-    };
+    // 生成 API Key (优先使用环境变量，否则生成随机 UUID)
+    let api_key = std::env::var("API_KEY").unwrap_or_else(|_| {
+        uuid::Uuid::new_v4().to_string()
+    });
+
+    // 生成登录 URL（带 API Key）
+    let login_url = format!("http://{}:1234/login.html?key={}", local_ip, api_key);
+
+    // 生成 QR Code
+    use qrcode::QrCode;
+    use qrcode::render::unicode;
+    let qr_code = QrCode::new(&login_url).unwrap();
+    let qr_string = qr_code.render::<unicode::Dense1x2>()
+        .dark_color(unicode::Dense1x2::Light)
+        .light_color(unicode::Dense1x2::Dark)
+        .build();
 
     // 服务信息框
     println!("  ┌──────────────────────────────────────────────┐");
     let service_line = format!("  │ Service URL:    http://{}:1234   ", local_ip);
     println!("{:<47}│", service_line);
-
-    let version_line = format!("  │ yt-dlp version: {:<29}│", ytdlp_version);
-    println!("{}", version_line);
-
+    println!("  │ API Key:                                     │");
+    let key_line = format!("  │ {:<45}│", api_key);
+    println!("{}", key_line);
     println!("  └──────────────────────────────────────────────┘");
+    println!();
+
+    // 打印 QR Code
+    for line in qr_string.lines() {
+        println!("  {}", line);
+    }
     println!();
 
     // 延迟打开浏览器
@@ -89,12 +90,19 @@ async fn main() -> std::io::Result<()> {
         }
     });
 
+    let api_key_data = web::Data::new(api_key.clone());
+
     HttpServer::new(move || {
         App::new()
             .wrap(middleware::Logger::default())
-            // 注入任务管理器
+            // 全局 API Key 验证中间件
+            .wrap(auth::middleware::ApiKeyAuth::new(api_key.clone()))
+            // 注入 API Key 和任务管理器
+            .app_data(api_key_data.clone())
             .app_data(download_task_manager.clone())
             .app_data(upload_task_manager.clone())
+            // 认证 API 路由
+            .service(web::scope("/api/auth").configure(auth::routes))
             // 全局配置 API（所有模块共用）
             .route("/api/config", web::get().to(get_global_config))
             // 画廊 API 路由
