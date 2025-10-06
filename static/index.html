@@ -235,14 +235,14 @@
 
         <!-- 工具列表 -->
         <div class="tools-grid">
-            <a href="/classifier/" class="tool-card">
+            <a href="#" class="tool-card" onclick="checkConfigAndNavigate('/classifier/', event)">
                 <div class="tool-info">
                     <span class="material-symbols-outlined tool-icon">folder_open</span>
                     <h2 data-i18n="classifier">Classifier</h2>
                 </div>
             </a>
 
-            <a href="/downloader/" class="tool-card">
+            <a href="#" class="tool-card" onclick="checkConfigAndNavigate('/downloader/', event)">
                 <div class="tool-info">
                     <span class="material-symbols-outlined tool-icon">download</span>
                     <h2 data-i18n="downloader">Downloader</h2>
@@ -268,6 +268,33 @@
     <script src="/common-i18n.js"></script>
     <script>
         i18nManager.updateUI();
+
+        // 检查配置并导航
+        async function checkConfigAndNavigate(url, event) {
+            event.preventDefault();
+
+            try {
+                // 检查 classifier 的配置
+                const classifierResponse = await fetch('/api/classifier/config');
+                const classifierConfig = await classifierResponse.json();
+
+                if (!classifierConfig.source_folder || classifierConfig.source_folder.trim() === '') {
+                    const message = i18nManager.translate('pleaseConfigureSourceFolder') ||
+                                  '请先在设置页面配置源文件夹';
+                    if (confirm(message + '\n\n是否现在前往设置页面？')) {
+                        window.location.href = '/settings/';
+                    }
+                    return;
+                }
+
+                // 配置正常，导航到目标页面
+                window.location.href = url;
+            } catch (error) {
+                console.error('Failed to check config:', error);
+                // 出错时仍然允许导航
+                window.location.href = url;
+            }
+        }
 
         // 生成二维码
         async function generateQRCode() {
