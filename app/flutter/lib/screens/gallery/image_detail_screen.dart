@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:provider/provider.dart';
 import 'package:media_kit/media_kit.dart';
@@ -419,14 +420,37 @@ class _VideoPlayerState extends State<_VideoPlayer> {
     try {
       print('开始初始化视频播放器: ${widget.videoUrl}');
 
-      // 创建Player实例
-      _player = Player();
+      // 创建Player实例，配置选项
+      _player = Player(
+        configuration: const PlayerConfiguration(
+          title: 'Video Player',
+          // 启用日志以便调试
+          logLevel: MPVLogLevel.info,
+        ),
+      );
       _videoController = VideoController(_player);
 
       widget.onPlayerCreated?.call(_player);
 
+      bool hasError = false;
+
+      // 监听错误
+      _player.stream.error.listen((error) {
+        print('视频播放错误: $error');
+        if (mounted && !hasError) {
+          hasError = true;
+          setState(() => _hasError = true);
+        }
+      });
+
+      // 监听缓冲状态
+      _player.stream.buffering.listen((buffering) {
+        print('视频缓冲状态: $buffering');
+      });
+
       // 监听播放状态
       _player.stream.playing.listen((playing) {
+        print('视频播放状态: $playing');
         if (mounted) {
           setState(() {
             _isPlaying = playing;
@@ -443,6 +467,7 @@ class _VideoPlayerState extends State<_VideoPlayer> {
 
       // 监听播放时长
       _player.stream.duration.listen((duration) {
+        print('视频时长: $duration');
         if (mounted) {
           setState(() => _duration = duration);
         }
@@ -456,21 +481,63 @@ class _VideoPlayerState extends State<_VideoPlayer> {
       });
 
       print('正在打开视频文件...');
-      // 使用httpHeaders设置Cookie
+
+      // 构建带 API key 的 URL（通过 URL 参数传递，比 HTTP headers 更可靠）
+      final uri = Uri.parse(widget.videoUrl);
+      final videoUrlWithKey = uri.replace(
+        queryParameters: {
+          ...uri.queryParameters,
+          'key': widget.apiKey, // 后端中间件支持 'key' 参数
+        },
+      ).toString();
+
+      print('视频 URL: $videoUrlWithKey');
+
+      // 使用超时包装，不依赖 HTTP headers
       await _player.open(
-        Media(widget.videoUrl, httpHeaders: {'Cookie': 'api_key=${widget.apiKey}'}),
-        play: true,
+        Media(videoUrlWithKey),
+        play: false, // 先不自动播放，等初始化完成
+      ).timeout(
+        const Duration(seconds: 20),
+        onTimeout: () {
+          print('视频加载超时');
+          throw TimeoutException('视频加载超时');
+        },
       );
 
-      print('视频文件已打开，等待加载...');
-      // 等待视频加载
-      await Future.delayed(const Duration(milliseconds: 300));
+      print('视频文件已打开，等待编解码器准备...');
+
+      // 等待更长时间让视频完全初始化
+      int waitCount = 0;
+      while (waitCount < 30 && !hasError) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        waitCount++;
+
+        // 检查是否已经有 duration（说明视频信息已加载）
+        if (_duration.inMilliseconds > 0) {
+          print('视频信息已加载，duration: $_duration');
+          break;
+        }
+      }
+
+      if (hasError) {
+        print('视频初始化过程中发生错误');
+        return;
+      }
 
       if (mounted) {
         print('视频播放器初始化成功');
         setState(() {
           _isInitialized = true;
         });
+
+        // 等待一小段时间再播放，确保编解码器完全准备好
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        if (mounted && !hasError) {
+          print('开始播放视频');
+          _player.play();
+        }
       }
     } catch (e, stackTrace) {
       print('视频初始化失败: $e');
