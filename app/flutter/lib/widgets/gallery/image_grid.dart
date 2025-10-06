@@ -3,7 +3,7 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:photo_manager/photo_manager.dart';
+import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import '../../models/gallery_file.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/upload_provider.dart';
@@ -309,27 +309,51 @@ class _UploadCardState extends State<UploadCard> {
     }
   }
 
-  // 从相册上传
+  // 从相册上传（使用 wechat_assets_picker 以支持准确删除）
   Future<void> _uploadFromGallery() async {
     if (_uploading) return;
 
     try {
-      final List<XFile> files = await _picker.pickMultipleMedia(
-        imageQuality: 85,
+      // 使用 wechat_assets_picker 选择照片/视频，返回 AssetEntity 列表
+      final List<AssetEntity>? assets = await AssetPicker.pickAssets(
+        context,
+        pickerConfig: AssetPickerConfig(
+          maxAssets: 100,
+          requestType: RequestType.common, // 支持图片和视频
+          textDelegate: const AssetPickerTextDelegate(),
+        ),
       );
 
-      if (files.isEmpty || !mounted) return;
+      if (assets == null || assets.isEmpty || !mounted) return;
 
       // 显示确认对话框，包含删除选项
       bool? result = await showDialog<bool>(
         context: context,
-        builder: (context) => _GalleryUploadDialog(fileCount: files.length),
+        builder: (context) => _GalleryUploadDialog(fileCount: assets.length),
       );
 
       if (result == null || !mounted) return;
 
-      final filePaths = files.map((f) => f.path).toList();
-      await _performUpload(filePaths, deleteAfterUpload: result);
+      // 将 AssetEntity 转换为文件路径
+      final List<String> filePaths = [];
+      for (var asset in assets) {
+        final file = await asset.file;
+        if (file != null) {
+          filePaths.add(file.path);
+        }
+      }
+
+      if (filePaths.isEmpty) {
+        _showMessage('无法获取文件路径', isError: true);
+        return;
+      }
+
+      // 传递 assets 用于删除
+      await _performUpload(
+        filePaths,
+        deleteAfterUpload: result,
+        assetEntities: result ? assets : null,
+      );
     } catch (e) {
       print('相册选择出错: $e');
       if (mounted) {
@@ -367,7 +391,11 @@ class _UploadCardState extends State<UploadCard> {
   }
 
   // 执行上传
-  Future<void> _performUpload(List<String> filePaths, {required bool deleteAfterUpload}) async {
+  Future<void> _performUpload(
+    List<String> filePaths, {
+    required bool deleteAfterUpload,
+    List<AssetEntity>? assetEntities, // 可选的 AssetEntity 列表，用于准确删除
+  }) async {
     setState(() => _uploading = true);
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -394,7 +422,13 @@ class _UploadCardState extends State<UploadCard> {
 
           // 如果需要删除原文件
           if (deleteAfterUpload) {
-            await _deleteFiles(filePaths);
+            if (assetEntities != null && assetEntities.isNotEmpty) {
+              // 使用 AssetEntity 直接删除（准确且快速）
+              await _deleteAssets(assetEntities);
+            } else {
+              // 没有 AssetEntity，无法删除
+              _showMessage('无法删除：此上传方式不支持删除原文件', isError: true);
+            }
           }
 
           // 刷新文件列表
@@ -413,86 +447,31 @@ class _UploadCardState extends State<UploadCard> {
     }
   }
 
-  // 删除本地文件（iOS会移动到最近删除，Android会永久删除）
-  Future<void> _deleteFiles(List<String> filePaths) async {
+  // 使用 AssetEntity 直接删除照片（准确且快速）
+  Future<void> _deleteAssets(List<AssetEntity> assets) async {
     try {
-      int deletedCount = 0;
+      // 提取所有 asset ID
+      final List<String> assetIds = assets.map((asset) => asset.id).toList();
 
-      // iOS/Android: 尝试从照片库删除
-      if (Platform.isIOS || Platform.isAndroid) {
-        // 请求照片库权限
-        final PermissionState ps = await PhotoManager.requestPermissionExtend();
-        if (ps.isAuth || ps.hasAccess) {
-          // 获取所有照片
-          final List<AssetPathEntity> albums = await PhotoManager.getAssetPathList(
-            type: RequestType.common,
-          );
+      print('准备删除 ${assetIds.length} 个资源');
 
-          // 遍历所有相册
-          for (var album in albums) {
-            final List<AssetEntity> assets = await album.getAssetListRange(
-              start: 0,
-              end: 100000, // 获取所有资源
-            );
+      // 使用 PhotoManager 批量删除
+      final List<String> deletedIds = await PhotoManager.editor.deleteWithIds(assetIds);
 
-            // 根据文件路径匹配asset
-            for (var path in filePaths) {
-              for (var asset in assets) {
-                final file = await asset.file;
-                if (file != null && file.path == path) {
-                  // 找到匹配的asset，删除它
-                  final List<String> result = await PhotoManager.editor.deleteWithIds([asset.id]);
-                  if (result.isNotEmpty) {
-                    deletedCount++;
-                    print('成功从照片库删除: $path');
-                  }
-                  break;
-                }
-              }
-            }
-          }
-
-          if (deletedCount > 0) {
-            if (mounted) {
-              _showMessage('已删除 $deletedCount 个照片（移至最近删除）');
-            }
-          } else {
-            // 如果没有从照片库删除成功，尝试直接删除文件
-            await _deleteLocalFiles(filePaths);
-          }
+      if (mounted) {
+        if (deletedIds.isNotEmpty) {
+          _showMessage('已删除 ${deletedIds.length} 个文件（${Platform.isIOS ? '移至最近删除' : '已删除'}）');
+          print('成功删除 ${deletedIds.length} 个资源');
         } else {
-          // 没有照片库权限，只删除临时文件
-          print('没有照片库权限，只删除临时文件');
-          await _deleteLocalFiles(filePaths);
+          _showMessage('删除失败', isError: true);
+          print('删除失败：没有资源被删除');
         }
-      } else {
-        // 其他平台，直接删除文件
-        await _deleteLocalFiles(filePaths);
       }
     } catch (e) {
-      print('删除文件出错: $e');
+      print('删除资源出错: $e');
       if (mounted) {
-        _showMessage('删除部分文件失败', isError: true);
+        _showMessage('删除失败: $e', isError: true);
       }
-    }
-  }
-
-  // 删除本地临时文件
-  Future<void> _deleteLocalFiles(List<String> filePaths) async {
-    int deletedCount = 0;
-    for (String path in filePaths) {
-      try {
-        final file = File(path);
-        if (await file.exists()) {
-          await file.delete();
-          deletedCount++;
-        }
-      } catch (e) {
-        print('删除文件失败 $path: $e');
-      }
-    }
-    if (mounted && deletedCount > 0) {
-      _showMessage('已删除 $deletedCount 个临时文件');
     }
   }
 

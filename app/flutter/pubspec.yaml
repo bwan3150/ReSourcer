@@ -56,6 +56,9 @@ dependencies:
   # 照片库管理（删除照片）
   photo_manager: ^3.5.1
 
+  # 照片选择器（支持多选并返回AssetEntity）
+  wechat_assets_picker: ^9.5.0
+
   # 文件选择
   file_picker: ^8.1.6
 
