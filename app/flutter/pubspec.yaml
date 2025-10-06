@@ -56,8 +56,10 @@ dependencies:
   # 文件路径
   path_provider: ^2.1.5
 
-  # 视频播放器
-  video_player: ^2.9.2
+  # 视频播放器 - media_kit (高性能，硬件加速)
+  media_kit: ^1.1.11
+  media_kit_video: ^1.2.5
+  media_kit_libs_video: ^1.0.5
 
   # 文件上传（multipart）
   dio: ^5.7.0

@@ -1,9 +1,10 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:provider/provider.dart';
-import 'package:video_player/video_player.dart';
 import '../../models/gallery_file.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/constants.dart';
+
+import '../../screens/gallery/image_detail_screen.dart';
 
 /// 图片网格组件
 class ImageGrid extends StatelessWidget {
@@ -31,7 +32,11 @@ class ImageGrid extends StatelessWidget {
             ),
             delegate: SliverChildBuilderDelegate(
               (context, index) {
-                return ImageGridItem(file: files[index]);
+                return ImageGridItem(
+                  file: files[index],
+                  allFiles: files,
+                  currentIndex: index,
+                );
               },
               childCount: files.length,
             ),
@@ -60,16 +65,24 @@ class ImageGrid extends StatelessWidget {
 /// 图片网格项
 class ImageGridItem extends StatelessWidget {
   final GalleryFile file;
+  final List<GalleryFile> allFiles;
+  final int currentIndex;
 
   const ImageGridItem({
     Key? key,
     required this.file,
+    required this.allFiles,
+    required this.currentIndex,
   }) : super(key: key);
 
   void _handleTap(BuildContext context) {
-    Navigator.of(context).pushNamed(
-      Constants.routeImageDetail,
-      arguments: file,
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ImageDetailScreen(
+          files: allFiles,
+          initialIndex: currentIndex,
+        ),
+      ),
     );
   }
 
@@ -125,10 +138,19 @@ class ImageGridItem extends StatelessWidget {
                   },
                 )
               else if (file.isVideo)
-                // 视频显示第一帧（使用VideoPlayer预加载metadata）
-                _VideoThumbnail(
-                  videoUrl: authProvider.apiService!.getImageUrl(file.path),
-                  apiKey: authProvider.apiKey ?? '',
+                // 视频显示占位符（点击后进入详情页播放）
+                Container(
+                  color: Colors.grey[800],
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Icon(
+                        Icons.play_circle_outline,
+                        size: 64,
+                        color: Colors.white.withOpacity(0.8),
+                      ),
+                    ],
+                  ),
                 )
               else
                 _buildPlaceholder(Icons.insert_drive_file),
@@ -172,99 +194,3 @@ class ImageGridItem extends StatelessWidget {
   }
 }
 
-/// 视频缩略图组件（显示第一帧）
-class _VideoThumbnail extends StatefulWidget {
-  final String videoUrl;
-  final String apiKey;
-
-  const _VideoThumbnail({
-    required this.videoUrl,
-    required this.apiKey,
-  });
-
-  @override
-  State<_VideoThumbnail> createState() => _VideoThumbnailState();
-}
-
-class _VideoThumbnailState extends State<_VideoThumbnail> {
-  VideoPlayerController? _controller;
-  bool _initialized = false;
-  bool _error = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeVideo();
-  }
-
-  Future<void> _initializeVideo() async {
-    try {
-      print('初始化视频: ${widget.videoUrl}');
-
-      _controller = VideoPlayerController.networkUrl(
-        Uri.parse(widget.videoUrl),
-        httpHeaders: {'Cookie': 'api_key=${widget.apiKey}'},
-      );
-
-      // 设置为静音
-      _controller!.setVolume(0);
-
-      // 初始化视频
-      await _controller!.initialize();
-
-      print('视频初始化成功，尺寸: ${_controller!.value.size}');
-
-      if (mounted) {
-        // 跳转到0.1秒处以获取第一帧
-        await _controller!.seekTo(const Duration(milliseconds: 100));
-        print('跳转到0.1秒成功');
-        setState(() => _initialized = true);
-      }
-    } catch (e) {
-      print('视频初始化失败: $e');
-      if (mounted) {
-        setState(() => _error = true);
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_error) {
-      return Container(
-        color: Colors.grey[300],
-        child: Icon(
-          Icons.broken_image,
-          size: 40,
-          color: Colors.grey[500],
-        ),
-      );
-    }
-
-    if (!_initialized || _controller == null) {
-      return Container(
-        color: Colors.grey[300],
-        child: Icon(
-          Icons.videocam,
-          size: 40,
-          color: Colors.grey[500],
-        ),
-      );
-    }
-
-    return FittedBox(
-      fit: BoxFit.cover,
-      child: SizedBox(
-        width: _controller!.value.size.width,
-        height: _controller!.value.size.height,
-        child: VideoPlayer(_controller!),
-      ),
-    );
-  }
-}
