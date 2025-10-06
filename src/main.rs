@@ -7,6 +7,7 @@ mod downloader;
 mod uploader;
 mod gallery;
 mod static_files;
+mod auth;
 
 use static_files::{serve_static, ConfigAsset};
 
@@ -68,6 +69,23 @@ async fn main() -> std::io::Result<()> {
         "unknown".to_string()
     };
 
+    // 生成 API Key (优先使用环境变量，否则生成随机 UUID)
+    let api_key = std::env::var("API_KEY").unwrap_or_else(|_| {
+        uuid::Uuid::new_v4().to_string()
+    });
+
+    // 生成登录 URL（带 API Key）
+    let login_url = format!("http://{}:1234/login.html?key={}", local_ip, api_key);
+
+    // 生成 QR Code
+    use qrcode::QrCode;
+    use qrcode::render::unicode;
+    let qr_code = QrCode::new(&login_url).unwrap();
+    let qr_string = qr_code.render::<unicode::Dense1x2>()
+        .dark_color(unicode::Dense1x2::Light)
+        .light_color(unicode::Dense1x2::Dark)
+        .build();
+
     // 服务信息框
     println!("  ┌──────────────────────────────────────────────┐");
     let service_line = format!("  │ Service URL:    http://{}:1234   ", local_ip);
@@ -76,7 +94,21 @@ async fn main() -> std::io::Result<()> {
     let version_line = format!("  │ yt-dlp version: {:<29}│", ytdlp_version);
     println!("{}", version_line);
 
+    println!("  ├──────────────────────────────────────────────┤");
+    println!("  │ API Key:                                     │");
+    let key_line = format!("  │   {:<42}│", api_key);
+    println!("{}", key_line);
+    println!("  │                                              │");
+    println!("  │ Scan QR code or copy key to login            │");
     println!("  └──────────────────────────────────────────────┘");
+    println!();
+
+    // 打印 QR Code
+    println!("  Scan to login:");
+    println!();
+    for line in qr_string.lines() {
+        println!("  {}", line);
+    }
     println!();
 
     // 延迟打开浏览器
@@ -89,12 +121,19 @@ async fn main() -> std::io::Result<()> {
         }
     });
 
+    let api_key_data = web::Data::new(api_key.clone());
+
     HttpServer::new(move || {
         App::new()
             .wrap(middleware::Logger::default())
-            // 注入任务管理器
+            // 全局 API Key 验证中间件
+            .wrap(auth::middleware::ApiKeyAuth::new(api_key.clone()))
+            // 注入 API Key 和任务管理器
+            .app_data(api_key_data.clone())
             .app_data(download_task_manager.clone())
             .app_data(upload_task_manager.clone())
+            // 认证 API 路由
+            .service(web::scope("/api/auth").configure(auth::routes))
             // 全局配置 API（所有模块共用）
             .route("/api/config", web::get().to(get_global_config))
             // 画廊 API 路由
