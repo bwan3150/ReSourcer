@@ -13,7 +13,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
 }
 
 /// POST /api/uploader/upload
-/// 上传文件（支持批量）
+/// 上传文件（支持批量）- 使用流式处理，边读边写
 async fn upload_file(
     mut payload: Multipart,
     task_manager: web::Data<TaskManager>,
@@ -21,7 +21,7 @@ async fn upload_file(
     let mut task_ids = Vec::new();
     let mut target_folder = String::new();
 
-    // 解析 multipart 数据
+    // 解析 multipart 数据，每个文件立即处理
     while let Some(item) = payload.next().await {
         let mut field = item?;
         let content_disposition = field.content_disposition();
@@ -54,7 +54,7 @@ async fn upload_file(
                 })));
             }
 
-            // 创建上传任务并直接上传
+            // 创建任务并后台执行上传
             let task_id = task_manager
                 .create_and_upload(
                     file_name.clone(),

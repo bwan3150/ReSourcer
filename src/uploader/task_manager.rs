@@ -20,12 +20,12 @@ impl TaskManager {
         }
     }
 
-    /// 创建任务并开始上传（直接在当前上下文中执行）
+    /// 创建任务并执行上传（流式处理，直接处理）
     pub async fn create_and_upload(
         &self,
         file_name: String,
         target_folder: String,
-        mut field: actix_multipart::Field,
+        field: actix_multipart::Field,
     ) -> Result<String, String> {
         // 1. 生成唯一任务 ID
         let task_id = uuid::Uuid::new_v4().to_string();
@@ -46,27 +46,34 @@ impl TaskManager {
         // 3. 存储任务
         self.tasks.lock().await.insert(task_id.clone(), task);
 
-        // 4. 直接执行上传（在当前异步上下文中）
-        self.execute_upload(
-            task_id.clone(),
-            file_name,
-            target_folder,
-            field,
-        )
-        .await;
+        // 4. 在后台spawn任务执行上传（避免阻塞响应）
+        let task_id_clone = task_id.clone();
+        let file_name_clone = file_name.clone();
+        let target_folder_clone = target_folder.clone();
+        let tasks_clone = self.tasks.clone();
+
+        actix_web::rt::spawn(async move {
+            Self::execute_upload_static(
+                task_id_clone,
+                file_name_clone,
+                target_folder_clone,
+                field,
+                tasks_clone,
+            )
+            .await;
+        });
 
         Ok(task_id)
     }
 
-    /// 执行上传
-    async fn execute_upload(
-        &self,
+    /// 静态方法执行上传（用于spawn）
+    async fn execute_upload_static(
         task_id: String,
         file_name: String,
         target_folder: String,
         mut field: actix_multipart::Field,
+        tasks: Arc<Mutex<HashMap<String, UploadTask>>>,
     ) {
-        let tasks = self.tasks.clone();
         // 更新状态为上传中
         Self::update_status(&tasks, &task_id, UploadStatus::Uploading).await;
 
