@@ -50,6 +50,12 @@ body {
     font-weight: 600;
 }
 
+.top-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 /* 语言切换 */
 .lang-switcher {
     display: flex;
@@ -955,5 +961,256 @@ body {
 
     .nav-next {
         right: 10px;
+    }
+}
+
+/* 图标按钮 */
+.icon-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: white;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    color: #525252;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.icon-btn:hover {
+    background: #f5f5f5;
+    border-color: #171717;
+    color: #171717;
+}
+
+.icon-btn .material-symbols-outlined {
+    font-size: 20px;
+}
+
+/* 任务徽章 */
+.task-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    background: #ef4444;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+}
+
+/* 任务气泡弹窗 */
+.task-bubble {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    width: 380px;
+    max-height: 500px;
+    background: white;
+    border: 1px solid #e5e5e5;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    z-index: 101;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 气泡三角形箭头 */
+.task-bubble::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    right: 60px;
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid white;
+    filter: drop-shadow(0 -2px 2px rgba(0,0,0,0.05));
+}
+
+.bubble-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.bubble-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.bubble-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: #525252;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.bubble-close-btn:hover {
+    background: #f5f5f5;
+}
+
+.bubble-close-btn .material-symbols-outlined {
+    font-size: 18px;
+}
+
+.bubble-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    max-height: 420px;
+}
+
+/* 上传卡片（放在 gallery grid 中） */
+.upload-card {
+    position: relative;
+    border: 2px dashed #e5e5e5;
+    border-radius: 12px;
+    background: #fafafa;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.upload-card:hover {
+    border-color: #171717;
+    background: #f5f5f5;
+}
+
+.upload-card .material-symbols-outlined {
+    font-size: 48px;
+    color: #a3a3a3;
+}
+
+.upload-card:hover .material-symbols-outlined {
+    color: #171717;
+}
+
+/* 上传任务列表 */
+.upload-tasks {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.upload-task-item {
+    background: #fafafa;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.task-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.task-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #171717;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.task-status {
+    font-size: 12px;
+    color: #737373;
+    margin-top: 2px;
+}
+
+.task-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.task-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: #737373;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.task-action-btn:hover {
+    background: white;
+    color: #171717;
+}
+
+.task-action-btn .material-symbols-outlined {
+    font-size: 18px;
+}
+
+/* 进度条 */
+.task-progress {
+    width: 100%;
+    height: 4px;
+    background: #e5e5e5;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.task-progress-bar {
+    height: 100%;
+    background: #171717;
+    transition: width 0.3s;
+}
+
+.task-progress-bar.completed {
+    background: #22c55e;
+}
+
+.task-progress-bar.failed {
+    background: #ef4444;
+}
+
+/* 移动端响应 */
+@media (max-width: 768px) {
+    .task-bubble {
+        width: calc(100% - 40px);
+        right: 20px;
+        left: 20px;
+    }
+
+    .task-bubble::before {
+        right: 80px;
     }
 }

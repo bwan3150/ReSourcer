@@ -109,6 +109,21 @@ const i18nManager = {
             dimensions: '尺寸',
             duration: '时长',
 
+            // 上传功能
+            upload: '上传',
+            uploadFiles: '上传文件',
+            uploadTasks: '上传任务',
+            targetFolder: '目标文件夹',
+            dragFilesHere: '拖拽文件到这里或点击选择',
+            supportedFormats: '支持图片和视频格式',
+            pleaseSelectTargetFolder: '请选择目标文件夹',
+            pleaseSelectFolder: '请先选择文件夹',
+            noUploadTasks: '暂无上传任务',
+            pending: '等待中',
+            uploading: '上传中',
+            completed: '已完成',
+            failed: '失败',
+
             // 通用
             save: '保存',
             delete: '删除',
@@ -220,6 +235,21 @@ const i18nManager = {
             modified: 'Modified',
             dimensions: 'Dimensions',
             duration: 'Duration',
+
+            // Upload feature
+            upload: 'Upload',
+            uploadFiles: 'Upload Files',
+            uploadTasks: 'Upload Tasks',
+            targetFolder: 'Target Folder',
+            dragFilesHere: 'Drag files here or click to select',
+            supportedFormats: 'Supports images and videos',
+            pleaseSelectTargetFolder: 'Please select target folder',
+            pleaseSelectFolder: 'Please select a folder first',
+            noUploadTasks: 'No upload tasks',
+            pending: 'Pending',
+            uploading: 'Uploading',
+            completed: 'Completed',
+            failed: 'Failed',
 
             // Common
             save: 'Save',
