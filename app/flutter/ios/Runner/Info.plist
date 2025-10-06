@@ -51,6 +51,8 @@
 	<string>需要访问相册以选择照片和视频上传到服务器</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>需要访问相册以保存照片和视频</string>
+	<key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
+	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>需要访问麦克风以录制视频</string>
 </dict>

@@ -3,12 +3,11 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:photo_manager/photo_manager.dart';
 import '../../models/gallery_file.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/upload_provider.dart';
 import '../../providers/gallery_provider.dart';
-import '../../utils/constants.dart';
-
 import '../../screens/gallery/image_detail_screen.dart';
 
 /// 图片网格组件
@@ -414,23 +413,86 @@ class _UploadCardState extends State<UploadCard> {
     }
   }
 
-  // 删除本地文件（会移动到系统回收站/最近删除）
+  // 删除本地文件（iOS会移动到最近删除，Android会永久删除）
   Future<void> _deleteFiles(List<String> filePaths) async {
     try {
-      for (String path in filePaths) {
-        final file = File(path);
-        if (await file.exists()) {
-          await file.delete();
+      int deletedCount = 0;
+
+      // iOS/Android: 尝试从照片库删除
+      if (Platform.isIOS || Platform.isAndroid) {
+        // 请求照片库权限
+        final PermissionState ps = await PhotoManager.requestPermissionExtend();
+        if (ps.isAuth || ps.hasAccess) {
+          // 获取所有照片
+          final List<AssetPathEntity> albums = await PhotoManager.getAssetPathList(
+            type: RequestType.common,
+          );
+
+          // 遍历所有相册
+          for (var album in albums) {
+            final List<AssetEntity> assets = await album.getAssetListRange(
+              start: 0,
+              end: 100000, // 获取所有资源
+            );
+
+            // 根据文件路径匹配asset
+            for (var path in filePaths) {
+              for (var asset in assets) {
+                final file = await asset.file;
+                if (file != null && file.path == path) {
+                  // 找到匹配的asset，删除它
+                  final List<String> result = await PhotoManager.editor.deleteWithIds([asset.id]);
+                  if (result.isNotEmpty) {
+                    deletedCount++;
+                    print('成功从照片库删除: $path');
+                  }
+                  break;
+                }
+              }
+            }
+          }
+
+          if (deletedCount > 0) {
+            if (mounted) {
+              _showMessage('已删除 $deletedCount 个照片（移至最近删除）');
+            }
+          } else {
+            // 如果没有从照片库删除成功，尝试直接删除文件
+            await _deleteLocalFiles(filePaths);
+          }
+        } else {
+          // 没有照片库权限，只删除临时文件
+          print('没有照片库权限，只删除临时文件');
+          await _deleteLocalFiles(filePaths);
         }
-      }
-      if (mounted) {
-        _showMessage('已删除 ${filePaths.length} 个本地文件');
+      } else {
+        // 其他平台，直接删除文件
+        await _deleteLocalFiles(filePaths);
       }
     } catch (e) {
       print('删除文件出错: $e');
       if (mounted) {
-        _showMessage('删除文件失败', isError: true);
+        _showMessage('删除部分文件失败', isError: true);
       }
+    }
+  }
+
+  // 删除本地临时文件
+  Future<void> _deleteLocalFiles(List<String> filePaths) async {
+    int deletedCount = 0;
+    for (String path in filePaths) {
+      try {
+        final file = File(path);
+        if (await file.exists()) {
+          await file.delete();
+          deletedCount++;
+        }
+      } catch (e) {
+        print('删除文件失败 $path: $e');
+      }
+    }
+    if (mounted && deletedCount > 0) {
+      _showMessage('已删除 $deletedCount 个临时文件');
     }
   }
 
