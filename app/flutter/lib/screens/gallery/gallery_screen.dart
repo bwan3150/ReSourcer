@@ -16,10 +16,15 @@ class GalleryScreen extends StatefulWidget {
 }
 
 class _GalleryScreenState extends State<GalleryScreen> {
+  bool _isDropdownOpen = false;
+
   @override
   void initState() {
     super.initState();
-    _loadData();
+    // 使用 addPostFrameCallback 延迟到 build 完成后再加载数据
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
   }
 
   Future<void> _loadData() async {
@@ -52,14 +57,17 @@ class _GalleryScreenState extends State<GalleryScreen> {
       child: Scaffold(
         backgroundColor: NeumorphicTheme.baseColor(context),
         body: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              // 顶部标题栏
-              _buildHeader(),
+              // 主内容
+              Column(
+                children: [
+                  // 顶部标题栏
+                  _buildHeader(),
 
-            // 图片网格
-            Expanded(
-              child: Consumer<GalleryProvider>(
+                  // 图片网格
+                  Expanded(
+                    child: Consumer<GalleryProvider>(
                 builder: (context, provider, child) {
                   if (provider.isLoading && provider.files.isEmpty) {
                     return const Center(
@@ -117,13 +125,36 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
                   return RefreshIndicator(
                     onRefresh: _handleRefresh,
-                    child: ImageGrid(files: provider.files),
+                    child: ImageGrid(
+                      files: provider.files,
+                      fileCount: provider.files.length,
+                    ),
                   );
                 },
               ),
             ),
           ],
         ),
+
+              // 遮罩层（点击关闭下拉菜单）- 必须在下拉菜单之前，不覆盖下拉菜单区域
+              if (_isDropdownOpen)
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _isDropdownOpen = false),
+                    child: Container(color: Colors.black.withOpacity(0.3)),
+                  ),
+                ),
+
+              // 下拉菜单 - 在遮罩层之上
+              if (_isDropdownOpen)
+                Positioned(
+                  top: 62, // 标题栏高度
+                  left: 20,
+                  right: 20,
+                  child: _buildFolderDropdown(),
+                ),
+            ],
+          ),
         ),
         floatingActionButton: const UploadButton(),
       ),
@@ -131,11 +162,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
   }
 
   void _showFolderSelector() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const _FolderSelectorSheet(),
-    );
+    setState(() {
+      _isDropdownOpen = !_isDropdownOpen;
+    });
   }
 
   Widget _buildHeader() {
@@ -151,12 +180,11 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 final folderName = provider.currentFolder?.isSource == true
                     ? '源文件夹'
                     : (provider.currentFolder?.name ?? '画廊');
-                final fileCount = provider.files.length;
 
                 return NeumorphicButton(
                   onPressed: _showFolderSelector,
                   style: NeumorphicStyle(
-                    depth: 2,
+                    depth: _isDropdownOpen ? -2 : 2,
                     intensity: 0.6,
                     boxShape: NeumorphicBoxShape.roundRect(
                       BorderRadius.circular(12),
@@ -174,33 +202,21 @@ class _GalleryScreenState extends State<GalleryScreen> {
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              folderName,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF171717),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              '$fileCount ${fileCount == 1 ? 'file' : 'files'}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          folderName,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF171717),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const Icon(
-                        Icons.expand_more,
+                      Icon(
+                        _isDropdownOpen ? Icons.expand_less : Icons.expand_more,
                         size: 20,
-                        color: Color(0xFF737373),
+                        color: const Color(0xFF737373),
                       ),
                     ],
                   ),
@@ -223,9 +239,105 @@ class _GalleryScreenState extends State<GalleryScreen> {
       ),
     );
   }
+
+  Widget _buildFolderDropdown() {
+    return Consumer<GalleryProvider>(
+      builder: (context, provider, child) {
+        if (provider.folders.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Neumorphic(
+          style: NeumorphicStyle(
+            depth: 4,
+            intensity: 0.8,
+            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+          ),
+          child: Container(
+            constraints: const BoxConstraints(maxHeight: 300),
+            decoration: BoxDecoration(
+              color: NeumorphicTheme.baseColor(context),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              shrinkWrap: true,
+              physics: const BouncingScrollPhysics(),
+              itemCount: provider.folders.length,
+              separatorBuilder: (context, index) => Divider(
+                height: 1,
+                color: Colors.grey[300],
+              ),
+              itemBuilder: (context, index) {
+                final folder = provider.folders[index];
+                final isSelected = provider.currentFolder?.path == folder.path;
+                final displayName = folder.isSource ? '源文件夹' : folder.name;
+
+                return NeumorphicButton(
+                  onPressed: () async {
+                    setState(() => _isDropdownOpen = false);
+                    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                    if (authProvider.apiService != null) {
+                      await provider.selectFolder(authProvider.apiService!, folder);
+                    }
+                  },
+                  style: NeumorphicStyle(
+                    depth: isSelected ? -2 : 0,
+                    intensity: 0.6,
+                    boxShape: const NeumorphicBoxShape.rect(),
+                    color: isSelected ? const Color(0xFF171717).withOpacity(0.05) : null,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Icon(
+                        folder.isSource ? Icons.source : Icons.folder,
+                        size: 20,
+                        color: isSelected ? const Color(0xFF171717) : const Color(0xFF737373),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          displayName,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                            color: const Color(0xFF171717),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFF171717).withOpacity(0.1)
+                              : Colors.grey[300],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${folder.fileCount}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: isSelected ? const Color(0xFF171717) : Colors.grey[700],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
-/// 文件夹选择器底部面板
+/// 文件夹选择器底部面板（已废弃，改用下拉菜单）
 class _FolderSelectorSheet extends StatelessWidget {
   const _FolderSelectorSheet();
 

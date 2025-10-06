@@ -56,6 +56,9 @@ dependencies:
   # 文件路径
   path_provider: ^2.1.5
 
+  # 视频播放器
+  video_player: ^2.9.2
+
   # 文件上传（multipart）
   dio: ^5.7.0
 
