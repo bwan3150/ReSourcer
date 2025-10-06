@@ -411,6 +411,7 @@ class _VideoPlayerState extends State<_VideoPlayer> {
   double _volume = 1.0;
   bool _showControls = true; // 控件显示状态
   Timer? _hideControlsTimer; // 自动隐藏控件的计时器
+  bool _isDisposed = false; // 标记是否已dispose，防止在dispose后调用Player方法
 
   @override
   void initState() {
@@ -431,7 +432,15 @@ class _VideoPlayerState extends State<_VideoPlayer> {
           logLevel: MPVLogLevel.info,
         ),
       );
-      _videoController = VideoController(_player);
+
+      // 配置 VideoController，禁用硬件加速强制使用软件解码
+      // 这样即使高分辨率视频硬件解码失败，也能通过软件解码播放
+      _videoController = VideoController(
+        _player,
+        configuration: const VideoControllerConfiguration(
+          enableHardwareAcceleration: false, // 使用软件解码，兼容性更好
+        ),
+      );
 
       widget.onPlayerCreated?.call(_player);
 
@@ -440,7 +449,7 @@ class _VideoPlayerState extends State<_VideoPlayer> {
       // 监听错误
       _player.stream.error.listen((error) {
         print('视频播放错误: $error');
-        if (mounted && !hasError) {
+        if (!_isDisposed && mounted && !hasError) {
           hasError = true;
           setState(() => _hasError = true);
         }
@@ -454,7 +463,7 @@ class _VideoPlayerState extends State<_VideoPlayer> {
       // 监听播放状态
       _player.stream.playing.listen((playing) {
         print('视频播放状态: $playing');
-        if (mounted) {
+        if (!_isDisposed && mounted) {
           setState(() {
             _isPlaying = playing;
           });
@@ -473,7 +482,7 @@ class _VideoPlayerState extends State<_VideoPlayer> {
 
       // 监听播放位置
       _player.stream.position.listen((position) {
-        if (mounted) {
+        if (!_isDisposed && mounted) {
           setState(() => _position = position);
         }
       });
@@ -481,14 +490,14 @@ class _VideoPlayerState extends State<_VideoPlayer> {
       // 监听播放时长
       _player.stream.duration.listen((duration) {
         print('视频时长: $duration');
-        if (mounted) {
+        if (!_isDisposed && mounted) {
           setState(() => _duration = duration);
         }
       });
 
       // 监听音量
       _player.stream.volume.listen((volume) {
-        if (mounted) {
+        if (!_isDisposed && mounted) {
           setState(() => _volume = volume);
         }
       });
@@ -518,13 +527,25 @@ class _VideoPlayerState extends State<_VideoPlayer> {
         },
       );
 
+      // 检查是否已dispose
+      if (_isDisposed || !mounted) {
+        print('视频打开后检测到widget已dispose，停止初始化');
+        return;
+      }
+
       print('视频文件已打开，等待编解码器准备...');
 
       // 等待更长时间让视频完全初始化
       int waitCount = 0;
-      while (waitCount < 30 && !hasError) {
+      while (waitCount < 30 && !hasError && !_isDisposed) {
         await Future.delayed(const Duration(milliseconds: 100));
         waitCount++;
+
+        // 再次检查是否已dispose
+        if (_isDisposed || !mounted) {
+          print('等待过程中检测到widget已dispose，停止初始化');
+          return;
+        }
 
         // 检查是否已经有 duration（说明视频信息已加载）
         if (_duration.inMilliseconds > 0) {
@@ -538,6 +559,12 @@ class _VideoPlayerState extends State<_VideoPlayer> {
         return;
       }
 
+      // 最终检查
+      if (_isDisposed || !mounted) {
+        print('准备播放前检测到widget已dispose，停止初始化');
+        return;
+      }
+
       if (mounted) {
         print('视频播放器初始化成功');
         setState(() {
@@ -547,9 +574,12 @@ class _VideoPlayerState extends State<_VideoPlayer> {
         // 等待一小段时间再播放，确保编解码器完全准备好
         await Future.delayed(const Duration(milliseconds: 200));
 
-        if (mounted && !hasError) {
+        // 再次检查是否已dispose
+        if (!_isDisposed && mounted && !hasError) {
           print('开始播放视频');
           _player.play();
+        } else {
+          print('延迟后检测到widget已dispose或有错误，取消播放');
         }
       }
     } catch (e, stackTrace) {
@@ -563,6 +593,7 @@ class _VideoPlayerState extends State<_VideoPlayer> {
 
   @override
   void dispose() {
+    _isDisposed = true; // 设置标志，防止异步操作继续执行
     _hideControlsTimer?.cancel();
     _player.dispose();
     super.dispose();
@@ -589,6 +620,7 @@ class _VideoPlayerState extends State<_VideoPlayer> {
   }
 
   void _togglePlayPause() {
+    if (_isDisposed) return; // 防止在dispose后调用
     if (_isPlaying) {
       _player.pause();
     } else {
@@ -710,6 +742,7 @@ class _VideoPlayerState extends State<_VideoPlayer> {
           child: NeumorphicSlider(
             value: progress.clamp(0.0, 1.0),
             onChanged: (value) {
+              if (_isDisposed) return; // 防止在dispose后调用
               final seekDuration = _duration * value;
               _player.seek(seekDuration);
               // 拖动进度条时，重置自动隐藏计时器
@@ -775,6 +808,7 @@ class _VideoPlayerState extends State<_VideoPlayer> {
             // 静音按钮
             NeumorphicButton(
               onPressed: () {
+                if (_isDisposed) return; // 防止在dispose后调用
                 if (_volume > 0) {
                   _player.setVolume(0);
                 } else {
