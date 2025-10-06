@@ -3,6 +3,8 @@ use std::path::Path;
 use std::fs;
 use super::models::*;
 use std::io::Cursor;
+use std::process::Command;
+use image::ImageFormat;
 
 /// 支持的图片格式
 const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp", "bmp", "tiff", "svg"];
@@ -175,8 +177,56 @@ fn count_media_files(path: &Path) -> usize {
     count
 }
 
+/// 从视频提取首帧
+fn extract_video_first_frame(video_path: &Path) -> Result<image::DynamicImage> {
+    // 创建临时文件保存首帧
+    let temp_output = std::env::temp_dir().join(format!("thumb_{}.jpg", uuid::Uuid::new_v4()));
+
+    // 使用 ffmpeg 提取第一帧
+    // -i: 输入文件
+    // -vf "select=eq(n\,0)": 选择第一帧
+    // -vframes 1: 只输出1帧
+    // -q:v 2: 高质量输出
+    let output = Command::new("ffmpeg")
+        .args(&[
+            "-i", video_path.to_str().unwrap(),
+            "-vf", "select=eq(n\\,0)",
+            "-vframes", "1",
+            "-q:v", "2",
+            "-y", // 覆盖已存在的文件
+            temp_output.to_str().unwrap(),
+        ])
+        .output()
+        .map_err(|e| {
+            actix_web::error::ErrorInternalServerError(
+                format!("FFmpeg 执行失败 (请确保已安装 ffmpeg): {}", e)
+            )
+        })?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        // 清理临时文件
+        let _ = fs::remove_file(&temp_output);
+        return Err(actix_web::error::ErrorInternalServerError(
+            format!("FFmpeg 提取首帧失败: {}", stderr)
+        ));
+    }
+
+    // 读取生成的首帧图片
+    let img = image::open(&temp_output)
+        .map_err(|e| {
+            let _ = fs::remove_file(&temp_output);
+            actix_web::error::ErrorInternalServerError(format!("无法读取视频首帧: {}", e))
+        })?;
+
+    // 清理临时文件
+    let _ = fs::remove_file(&temp_output);
+
+    Ok(img)
+}
+
 /// GET /api/gallery/thumbnail?path=<file_path>&size=<size>
-/// 生成并返回图片缩略图
+/// 生成并返回图片/视频缩略图
 async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, String>>) -> Result<HttpResponse> {
     let file_path = query.get("path")
         .ok_or_else(|| actix_web::error::ErrorBadRequest("缺少 path 参数"))?;
@@ -197,21 +247,28 @@ async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, Strin
         .unwrap_or("")
         .to_lowercase();
 
-    // 只为图片和GIF生成缩略图
-    if extension != GIF_EXTENSION && !IMAGE_EXTENSIONS.contains(&extension.as_str()) {
-        return Err(actix_web::error::ErrorBadRequest("不支持的图片格式"));
+    // 判断文件类型
+    let is_video = VIDEO_EXTENSIONS.contains(&extension.as_str());
+    let is_image = extension == GIF_EXTENSION || IMAGE_EXTENSIONS.contains(&extension.as_str());
+
+    if !is_video && !is_image {
+        return Err(actix_web::error::ErrorBadRequest("不支持的媒体格式"));
     }
 
-    // 读取并处理图片
-    let img = image::open(path)
-        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法读取图片: {}", e)))?;
+    // 根据文件类型读取图片或提取视频首帧
+    let img = if is_video {
+        extract_video_first_frame(path)?
+    } else {
+        image::open(path)
+            .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法读取图片: {}", e)))?
+    };
 
     // 生成缩略图 (保持宽高比)
     let thumbnail = img.thumbnail(size, size);
 
     // 将缩略图编码为JPEG格式
     let mut buffer = Cursor::new(Vec::new());
-    thumbnail.write_to(&mut buffer, image::ImageFormat::Jpeg)
+    thumbnail.write_to(&mut buffer, ImageFormat::Jpeg)
         .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法编码图片: {}", e)))?;
 
     Ok(HttpResponse::Ok()

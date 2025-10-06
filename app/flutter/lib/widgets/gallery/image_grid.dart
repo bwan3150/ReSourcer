@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../models/gallery_file.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/upload_provider.dart';
@@ -146,20 +148,48 @@ class ImageGridItem extends StatelessWidget {
                     return _buildPlaceholder(Icons.gif);
                   },
                 )
-              else if (file.isVideo)
-                // 视频显示占位符（点击后进入详情页播放）
-                Container(
-                  color: Colors.grey[800],
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Icon(
-                        Icons.play_circle_outline,
-                        size: 64,
-                        color: Colors.white.withOpacity(0.8),
+              else if (file.isVideo && thumbnailUrl != null)
+                // 视频显示首帧缩略图
+                Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      thumbnailUrl,
+                      fit: BoxFit.cover,
+                      headers: {
+                        'Cookie': 'api_key=${authProvider.apiKey}',
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey[800],
+                          child: Icon(
+                            Icons.play_circle_outline,
+                            size: 64,
+                            color: Colors.white.withOpacity(0.8),
+                          ),
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return _buildPlaceholder(Icons.videocam);
+                      },
+                    ),
+                    // 播放图标叠加层
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.play_arrow,
+                          size: 32,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 )
               else
                 _buildPlaceholder(Icons.insert_drive_file),
@@ -218,31 +248,141 @@ class _UploadCardState extends State<UploadCard> {
   final ImagePicker _picker = ImagePicker();
   bool _uploading = false;
 
-  Future<void> _handleUpload() async {
-    if (_uploading || widget.targetFolder == null) return;
+  // 显示上传方式选择对话框
+  Future<void> _showUploadMethodDialog() async {
+    if (widget.targetFolder == null) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('选择上传方式'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('相机拍摄'),
+              onTap: () {
+                Navigator.pop(context);
+                _uploadFromCamera();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('从相册选择'),
+              onTap: () {
+                Navigator.pop(context);
+                _uploadFromGallery();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.folder),
+              title: const Text('从文件选择'),
+              onTap: () {
+                Navigator.pop(context);
+                _uploadFromFiles();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 从相机上传
+  Future<void> _uploadFromCamera() async {
+    if (_uploading) return;
 
     try {
-      // 选择多个文件（图片和视频）
+      final XFile? photo = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+
+      if (photo == null || !mounted) return;
+
+      await _performUpload([photo.path], deleteAfterUpload: false);
+    } catch (e) {
+      print('相机拍摄出错: $e');
+      if (mounted) {
+        _showMessage('相机拍摄失败', isError: true);
+      }
+    }
+  }
+
+  // 从相册上传
+  Future<void> _uploadFromGallery() async {
+    if (_uploading) return;
+
+    try {
       final List<XFile> files = await _picker.pickMultipleMedia(
         imageQuality: 85,
       );
 
       if (files.isEmpty || !mounted) return;
 
-      setState(() => _uploading = true);
+      // 显示确认对话框，包含删除选项
+      bool? result = await showDialog<bool>(
+        context: context,
+        builder: (context) => _GalleryUploadDialog(fileCount: files.length),
+      );
 
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final uploadProvider = Provider.of<UploadProvider>(context, listen: false);
-      final galleryProvider = Provider.of<GalleryProvider>(context, listen: false);
+      if (result == null || !mounted) return;
 
-      if (authProvider.apiService == null) {
-        _showMessage('服务未连接', isError: true);
-        setState(() => _uploading = false);
-        return;
-      }
-
-      // 上传文件
       final filePaths = files.map((f) => f.path).toList();
+      await _performUpload(filePaths, deleteAfterUpload: result);
+    } catch (e) {
+      print('相册选择出错: $e');
+      if (mounted) {
+        _showMessage('相册选择失败', isError: true);
+      }
+    }
+  }
+
+  // 从文件系统上传
+  Future<void> _uploadFromFiles() async {
+    if (_uploading) return;
+
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.media,
+      );
+
+      if (result == null || result.files.isEmpty || !mounted) return;
+
+      final filePaths = result.files
+          .where((f) => f.path != null)
+          .map((f) => f.path!)
+          .toList();
+
+      if (filePaths.isEmpty) return;
+
+      await _performUpload(filePaths, deleteAfterUpload: false);
+    } catch (e) {
+      print('文件选择出错: $e');
+      if (mounted) {
+        _showMessage('文件选择失败', isError: true);
+      }
+    }
+  }
+
+  // 执行上传
+  Future<void> _performUpload(List<String> filePaths, {required bool deleteAfterUpload}) async {
+    setState(() => _uploading = true);
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final uploadProvider = Provider.of<UploadProvider>(context, listen: false);
+    final galleryProvider = Provider.of<GalleryProvider>(context, listen: false);
+
+    if (authProvider.apiService == null) {
+      _showMessage('服务未连接', isError: true);
+      setState(() => _uploading = false);
+      return;
+    }
+
+    try {
+      // 上传文件
       final success = await uploadProvider.uploadFiles(
         authProvider.apiService!,
         filePaths,
@@ -252,6 +392,12 @@ class _UploadCardState extends State<UploadCard> {
       if (mounted) {
         if (success) {
           _showMessage('上传任务已创建');
+
+          // 如果需要删除原文件
+          if (deleteAfterUpload) {
+            await _deleteFiles(filePaths);
+          }
+
           // 刷新文件列表
           await galleryProvider.refresh(authProvider.apiService!);
         } else {
@@ -264,6 +410,26 @@ class _UploadCardState extends State<UploadCard> {
       if (mounted) {
         _showMessage('上传出错', isError: true);
         setState(() => _uploading = false);
+      }
+    }
+  }
+
+  // 删除本地文件（会移动到系统回收站/最近删除）
+  Future<void> _deleteFiles(List<String> filePaths) async {
+    try {
+      for (String path in filePaths) {
+        final file = File(path);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+      if (mounted) {
+        _showMessage('已删除 ${filePaths.length} 个本地文件');
+      }
+    } catch (e) {
+      print('删除文件出错: $e');
+      if (mounted) {
+        _showMessage('删除文件失败', isError: true);
       }
     }
   }
@@ -283,7 +449,7 @@ class _UploadCardState extends State<UploadCard> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: _uploading ? null : _handleUpload,
+      onTap: _uploading ? null : _showUploadMethodDialog,
       child: Neumorphic(
         style: NeumorphicStyle(
           depth: _uploading ? -2 : 4,
@@ -306,6 +472,55 @@ class _UploadCardState extends State<UploadCard> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// 相册上传确认对话框
+class _GalleryUploadDialog extends StatefulWidget {
+  final int fileCount;
+
+  const _GalleryUploadDialog({required this.fileCount});
+
+  @override
+  State<_GalleryUploadDialog> createState() => _GalleryUploadDialogState();
+}
+
+class _GalleryUploadDialogState extends State<_GalleryUploadDialog> {
+  bool _deleteAfterUpload = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('上传确认'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('已选择 ${widget.fileCount} 个文件'),
+          const SizedBox(height: 16),
+          CheckboxListTile(
+            value: _deleteAfterUpload,
+            onChanged: (value) {
+              setState(() => _deleteAfterUpload = value ?? false);
+            },
+            title: const Text('上传后删除原图'),
+            subtitle: const Text('文件将移至回收站'),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, _deleteAfterUpload),
+          child: const Text('上传'),
+        ),
+      ],
     );
   }
 }

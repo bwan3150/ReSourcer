@@ -53,6 +53,9 @@ dependencies:
   # 图片选择
   image_picker: ^1.1.2
 
+  # 文件选择
+  file_picker: ^8.1.6
+
   # 文件路径
   path_provider: ^2.1.5
 
