@@ -2,6 +2,8 @@ use actix_web::{web, HttpResponse, Result};
 use std::path::Path;
 use std::fs;
 use super::models::*;
+use image::imageops::FilterType;
+use std::io::Cursor;
 
 /// 支持的图片格式
 const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp", "bmp", "tiff", "svg"];
@@ -15,7 +17,8 @@ const GIF_EXTENSION: &str = "gif";
 /// 注册所有 Gallery 相关路由
 pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("/folders").route(web::get().to(get_folders)))
-       .service(web::resource("/files").route(web::get().to(get_files)));
+       .service(web::resource("/files").route(web::get().to(get_files)))
+       .service(web::resource("/thumbnail").route(web::get().to(get_thumbnail)));
 }
 
 /// GET /api/gallery/folders
@@ -171,4 +174,48 @@ fn count_media_files(path: &Path) -> usize {
     }
 
     count
+}
+
+/// GET /api/gallery/thumbnail?path=<file_path>&size=<size>
+/// 生成并返回图片缩略图
+async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, String>>) -> Result<HttpResponse> {
+    let file_path = query.get("path")
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("缺少 path 参数"))?;
+
+    let size: u32 = query.get("size")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(300); // 默认300px
+
+    let path = Path::new(file_path);
+    if !path.exists() || !path.is_file() {
+        return Err(actix_web::error::ErrorNotFound("文件不存在"));
+    }
+
+    // 获取扩展名判断文件类型
+    let extension = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+
+    // 只为图片和GIF生成缩略图
+    if extension != GIF_EXTENSION && !IMAGE_EXTENSIONS.contains(&extension.as_str()) {
+        return Err(actix_web::error::ErrorBadRequest("不支持的图片格式"));
+    }
+
+    // 读取并处理图片
+    let img = image::open(path)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法读取图片: {}", e)))?;
+
+    // 生成缩略图 (保持宽高比)
+    let thumbnail = img.thumbnail(size, size);
+
+    // 将缩略图编码为JPEG格式
+    let mut buffer = Cursor::new(Vec::new());
+    thumbnail.write_to(&mut buffer, image::ImageFormat::Jpeg)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法编码图片: {}", e)))?;
+
+    Ok(HttpResponse::Ok()
+        .content_type("image/jpeg")
+        .body(buffer.into_inner()))
 }

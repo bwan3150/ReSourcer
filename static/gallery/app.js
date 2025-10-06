@@ -127,13 +127,20 @@ async function loadFiles(folderPath) {
             item.onclick = () => openPreview(index);
 
             if (file.file_type === 'image') {
+                // 普通图片使用缩略图
+                item.innerHTML = `
+                    <img src="/api/gallery/thumbnail?path=${encodeURIComponent(file.path)}&size=300" alt="${file.name}">
+                    <div class="file-type-badge">${file.extension}</div>
+                `;
+            } else if (file.file_type === 'gif') {
+                // GIF直接加载以显示动画
                 item.innerHTML = `
                     <img src="/api/classifier/file/${encodeURIComponent(file.path)}" alt="${file.name}">
                     <div class="file-type-badge">${file.extension}</div>
                 `;
-            } else if (file.file_type === 'video' || file.file_type === 'gif') {
+            } else if (file.file_type === 'video') {
                 item.innerHTML = `
-                    <video src="/api/classifier/file/${encodeURIComponent(file.path)}" preload="metadata"></video>
+                    <video src="/api/classifier/file/${encodeURIComponent(file.path)}#t=0.1" preload="metadata" muted></video>
                     <div class="file-type-badge">${file.extension}</div>
                 `;
             } else {
