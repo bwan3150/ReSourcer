@@ -82,7 +82,17 @@ async function selectFolder(folder, element, displayName) {
 
     currentFolder = folder;
     document.getElementById('currentFolderName').textContent = displayName;
+
+    // 检查预览是否已打开
+    const inlinePreview = document.getElementById('inlinePreview');
+    const isPreviewOpen = inlinePreview.style.display === 'flex';
+
     await loadFiles(folder.path);
+
+    // 如果预览已打开且有文件,自动打开第一个文件
+    if (isPreviewOpen && currentFiles.length > 0) {
+        openPreview(0);
+    }
 }
 
 // 加载文件列表
@@ -399,7 +409,7 @@ function formatFileSize(bytes) {
 }
 
 // 从下拉菜单选择文件夹
-function selectFolderFromDropdown(folder, index, displayName) {
+async function selectFolderFromDropdown(folder, index, displayName) {
     // 更新侧边栏选中状态
     document.querySelectorAll('.folder-item').forEach((item, i) => {
         item.classList.toggle('active', i === index);
@@ -412,7 +422,17 @@ function selectFolderFromDropdown(folder, index, displayName) {
 
     currentFolder = folder;
     document.getElementById('currentFolderName').textContent = displayName;
-    loadFiles(folder.path);
+
+    // 检查预览是否已打开
+    const inlinePreview = document.getElementById('inlinePreview');
+    const isPreviewOpen = inlinePreview.style.display === 'flex';
+
+    await loadFiles(folder.path);
+
+    // 如果预览已打开且有文件,自动打开第一个文件
+    if (isPreviewOpen && currentFiles.length > 0) {
+        openPreview(0);
+    }
 
     // 关闭下拉菜单
     toggleFolderDropdown();
