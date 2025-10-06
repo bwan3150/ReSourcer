@@ -274,16 +274,21 @@
             event.preventDefault();
 
             try {
-                // 检查 classifier 的配置
-                const classifierResponse = await fetch('/api/classifier/config');
-                const classifierConfig = await classifierResponse.json();
+                // 使用全局配置 API 检查
+                const response = await fetch('/api/config');
 
-                if (!classifierConfig.source_folder || classifierConfig.source_folder.trim() === '') {
-                    const message = i18nManager.translate('pleaseConfigureSourceFolder') ||
-                                  '请先在设置页面配置源文件夹';
-                    if (confirm(message + '\n\n是否现在前往设置页面？')) {
-                        window.location.href = '/settings/';
-                    }
+                if (!response.ok) {
+                    // API 请求失败，视为未配置
+                    alert(i18nManager.t('pleaseConfigureSourceFolder'));
+                    window.location.href = '/settings/';
+                    return;
+                }
+
+                const config = await response.json();
+
+                if (!config.source_folder || config.source_folder.trim() === '') {
+                    alert(i18nManager.t('pleaseConfigureSourceFolder'));
+                    window.location.href = '/settings/';
                     return;
                 }
 
@@ -291,8 +296,9 @@
                 window.location.href = url;
             } catch (error) {
                 console.error('Failed to check config:', error);
-                // 出错时仍然允许导航
-                window.location.href = url;
+                // 出错时也视为未配置，跳转到设置页面
+                alert(i18nManager.t('pleaseConfigureSourceFolder'));
+                window.location.href = '/settings/';
             }
         }
 

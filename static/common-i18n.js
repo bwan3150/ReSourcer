@@ -98,7 +98,8 @@ const i18nManager = {
             save: '保存',
             delete: '删除',
             cancel: '取消',
-            confirm: '确认'
+            confirm: '确认',
+            pleaseConfigureSourceFolder: '请先在设置页面配置源文件夹'
         },
         en: {
             // Home
@@ -194,7 +195,8 @@ const i18nManager = {
             save: 'Save',
             delete: 'Delete',
             cancel: 'Cancel',
-            confirm: 'Confirm'
+            confirm: 'Confirm',
+            pleaseConfigureSourceFolder: 'Please configure source folder in Settings first'
         }
     },
 

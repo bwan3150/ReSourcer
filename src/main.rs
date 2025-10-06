@@ -1,4 +1,4 @@
-use actix_web::{middleware, web, App, HttpServer};
+use actix_web::{middleware, web, App, HttpResponse, HttpServer, Result};
 use serde::Deserialize;
 use std::net::UdpSocket;
 
@@ -18,6 +18,17 @@ struct DependencyInfo {
 struct Dependencies {
     #[serde(rename = "yt-dlp")]
     yt_dlp: DependencyInfo,
+}
+
+/// 全局配置 API - 所有模块共用
+async fn get_global_config() -> Result<HttpResponse> {
+    let config = classifier::config::load_config()
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法加载配置: {}", e)))?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "source_folder": config.source_folder,
+        "hidden_folders": config.hidden_folders,
+    })))
 }
 
 #[actix_web::main]
@@ -79,6 +90,8 @@ async fn main() -> std::io::Result<()> {
             .wrap(middleware::Logger::default())
             // 注入下载器任务管理器
             .app_data(task_manager.clone())
+            // 全局配置 API（所有模块共用）
+            .route("/api/config", web::get().to(get_global_config))
             // 分类器 API 路由
             .service(web::scope("/api/classifier").configure(classifier::routes))
             // 下载器 API 路由
