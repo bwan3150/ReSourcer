@@ -81,6 +81,9 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
 
+  # 自动生成应用图标
+  flutter_launcher_icons: ^0.14.1
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -121,3 +124,13 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# 应用图标配置
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/application_icon/original.jpeg"
+  remove_alpha_ios: true
+  # Android 自适应图标
+  adaptive_icon_foreground: "assets/application_icon/original.jpeg"
+  adaptive_icon_background: "#FFFFFF"
