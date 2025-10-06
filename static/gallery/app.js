@@ -634,12 +634,7 @@ function renderUploadTasks() {
         return;
     }
 
-    // 检查是否有新完成的任务，如果有则刷新文件列表
-    const hasNewCompleted = uploadTasks.some(t => t.status === 'completed' && !t._notified);
-    if (hasNewCompleted && currentFolder) {
-        uploadTasks.forEach(t => { if (t.status === 'completed') t._notified = true; });
-        loadFiles(currentFolder.path);
-    }
+    // 只渲染任务列表，不触发文件列表刷新
 
     container.innerHTML = uploadTasks.map(task => {
         const statusText = {
