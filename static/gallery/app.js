@@ -183,7 +183,7 @@ function updateInlinePreview() {
         media.innerHTML = `<img src="/api/classifier/file/${encodeURIComponent(file.path)}" alt="${file.name}">`;
         videoControls.style.display = 'none';
     } else if (file.file_type === 'video') {
-        media.innerHTML = `<video id="previewVideoInline" src="/api/classifier/file/${encodeURIComponent(file.path)}" autoplay></video>`;
+        media.innerHTML = `<video id="previewVideoInline" src="/api/classifier/file/${encodeURIComponent(file.path)}" autoplay onclick="togglePlayPauseInline()"></video>`;
         videoElement = document.getElementById('previewVideoInline');
         videoControls.style.display = 'flex';
         setupVideoControlsInline();
@@ -418,13 +418,20 @@ function selectFolderFromDropdown(folder, index, displayName) {
     toggleFolderDropdown();
 }
 
-// 切换侧边栏 (移动端)
+// 切换侧边栏
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
 
-    sidebar.classList.toggle('active');
-    overlay.classList.toggle('active');
+    // 桌面端和移动端使用不同的类
+    if (window.innerWidth > 768) {
+        // 桌面端：使用 hidden 类
+        sidebar.classList.toggle('hidden');
+    } else {
+        // 移动端：使用 active 类和遮罩
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+    }
 }
 
 // 切换文件夹下拉菜单
