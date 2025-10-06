@@ -32,11 +32,36 @@ async fn get_config() -> Result<HttpResponse> {
 
     let auth_status = super::auth::check_all_auth_status();
 
+    // 读取 yt-dlp 版本
+    use crate::static_files::ConfigAsset;
+    use serde::Deserialize;
+
+    #[derive(Deserialize)]
+    struct DependencyInfo {
+        version: String,
+    }
+
+    #[derive(Deserialize)]
+    struct Dependencies {
+        #[serde(rename = "yt-dlp")]
+        yt_dlp: DependencyInfo,
+    }
+
+    let ytdlp_version = if let Some(config_file) = ConfigAsset::get("dependencies.json") {
+        match serde_json::from_slice::<Dependencies>(&config_file.data) {
+            Ok(deps) => deps.yt_dlp.version,
+            Err(_) => "unknown".to_string(),
+        }
+    } else {
+        "unknown".to_string()
+    };
+
     Ok(HttpResponse::Ok().json(ConfigResponse {
         source_folder: config.source_folder,
         hidden_folders: config.hidden_folders,
         use_cookies: config.use_cookies,
         auth_status,
+        ytdlp_version,
     }))
 }
 

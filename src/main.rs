@@ -11,17 +11,6 @@ mod auth;
 
 use static_files::{serve_static, ConfigAsset};
 
-#[derive(Deserialize)]
-struct DependencyInfo {
-    version: String,
-}
-
-#[derive(Deserialize)]
-struct Dependencies {
-    #[serde(rename = "yt-dlp")]
-    yt_dlp: DependencyInfo,
-}
-
 /// 全局配置 API - 所有模块共用
 async fn get_global_config() -> Result<HttpResponse> {
     let config = classifier::config::load_config()
@@ -59,16 +48,6 @@ async fn main() -> std::io::Result<()> {
     // 初始化上传器任务管理器
     let upload_task_manager = web::Data::new(uploader::TaskManager::new());
 
-    // 从嵌入的配置文件读取依赖信息
-    let ytdlp_version = if let Some(config_file) = ConfigAsset::get("dependencies.json") {
-        match serde_json::from_slice::<Dependencies>(&config_file.data) {
-            Ok(deps) => deps.yt_dlp.version,
-            Err(_) => "unknown".to_string(),
-        }
-    } else {
-        "unknown".to_string()
-    };
-
     // 生成 API Key (优先使用环境变量，否则生成随机 UUID)
     let api_key = std::env::var("API_KEY").unwrap_or_else(|_| {
         uuid::Uuid::new_v4().to_string()
@@ -90,22 +69,13 @@ async fn main() -> std::io::Result<()> {
     println!("  ┌──────────────────────────────────────────────┐");
     let service_line = format!("  │ Service URL:    http://{}:1234   ", local_ip);
     println!("{:<47}│", service_line);
-
-    let version_line = format!("  │ yt-dlp version: {:<29}│", ytdlp_version);
-    println!("{}", version_line);
-
-    println!("  ├──────────────────────────────────────────────┤");
     println!("  │ API Key:                                     │");
-    let key_line = format!("  │   {:<42}│", api_key);
+    let key_line = format!("  │ {:<45}│", api_key);
     println!("{}", key_line);
-    println!("  │                                              │");
-    println!("  │ Scan QR code or copy key to login            │");
     println!("  └──────────────────────────────────────────────┘");
     println!();
 
     // 打印 QR Code
-    println!("  Scan to login:");
-    println!();
     for line in qr_string.lines() {
         println!("  {}", line);
     }

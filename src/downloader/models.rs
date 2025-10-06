@@ -139,6 +139,7 @@ pub struct ConfigResponse {
     pub hidden_folders: Vec<String>,
     pub use_cookies: bool,
     pub auth_status: AuthStatus,
+    pub ytdlp_version: String,
 }
 
 // 认证状态（按平台）

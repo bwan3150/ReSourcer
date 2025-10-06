@@ -50,6 +50,12 @@
             font-size: 14px;
         }
 
+        .login-hint {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #a3a3a3;
+        }
+
         .form-group {
             margin-bottom: 20px;
         }
@@ -117,15 +123,6 @@
             display: block;
         }
 
-        .hint {
-            margin-top: 24px;
-            padding: 16px;
-            background: #f5f5f5;
-            border-radius: 8px;
-            font-size: 13px;
-            color: #525252;
-        }
-
         .footer {
             text-align: center;
             margin-top: 32px;
@@ -177,6 +174,7 @@
     <div class="login-container">
         <div class="login-header">
             <h1>ReSourcer</h1>
+            <p class="login-hint" data-i18n="loginHint">Check terminal for API Key or scan QR code</p>
         </div>
 
         <div id="errorMessage" class="error-message"></div>
@@ -189,10 +187,6 @@
 
             <button type="submit" class="login-btn" id="loginBtn" data-i18n="login">Login</button>
         </form>
-
-        <div class="hint" data-i18n="loginHint">
-            Check terminal for API Key or scan QR code
-        </div>
 
         <div class="footer">
             ReSourcer v0.2.0
