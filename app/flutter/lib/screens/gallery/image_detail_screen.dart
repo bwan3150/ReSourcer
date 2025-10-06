@@ -409,11 +409,14 @@ class _VideoPlayerState extends State<_VideoPlayer> {
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   double _volume = 1.0;
+  bool _showControls = true; // 控件显示状态
+  Timer? _hideControlsTimer; // 自动隐藏控件的计时器
 
   @override
   void initState() {
     super.initState();
     _initializeVideo();
+    _startHideControlsTimer(); // 开始自动隐藏倒计时
   }
 
   Future<void> _initializeVideo() async {
@@ -455,6 +458,16 @@ class _VideoPlayerState extends State<_VideoPlayer> {
           setState(() {
             _isPlaying = playing;
           });
+
+          // 播放状态改变时的控件显示逻辑
+          if (playing && _showControls) {
+            // 如果开始播放且控件可见，启动自动隐藏计时器
+            _startHideControlsTimer();
+          } else if (!playing) {
+            // 如果暂停，取消自动隐藏计时器并显示控件
+            _hideControlsTimer?.cancel();
+            setState(() => _showControls = true);
+          }
         }
       });
 
@@ -550,8 +563,29 @@ class _VideoPlayerState extends State<_VideoPlayer> {
 
   @override
   void dispose() {
+    _hideControlsTimer?.cancel();
     _player.dispose();
     super.dispose();
+  }
+
+  // 开始自动隐藏控件的计时器（3秒后隐藏）
+  void _startHideControlsTimer() {
+    _hideControlsTimer?.cancel();
+    _hideControlsTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && _isPlaying) {
+        setState(() => _showControls = false);
+      }
+    });
+  }
+
+  // 切换控件显示/隐藏
+  void _toggleControls() {
+    setState(() {
+      _showControls = !_showControls;
+    });
+    if (_showControls) {
+      _startHideControlsTimer(); // 显示控件后，开始倒计时自动隐藏
+    }
   }
 
   void _togglePlayPause() {
@@ -560,26 +594,66 @@ class _VideoPlayerState extends State<_VideoPlayer> {
     } else {
       _player.play();
     }
+    // 切换播放状态时，显示控件并重新开始倒计时
+    setState(() => _showControls = true);
+    _startHideControlsTimer();
   }
 
   @override
   Widget build(BuildContext context) {
     if (_hasError) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.white54,
+      return Container(
+        color: NeumorphicTheme.baseColor(context),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Colors.grey[600],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '视频加载失败',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '可能是视频编码格式不支持',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                NeumorphicButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: NeumorphicStyle(
+                    depth: 4,
+                    intensity: 0.6,
+                    boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  child: Text(
+                    '返回',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: 16),
-            Text(
-              '视频加载失败',
-              style: TextStyle(color: Colors.white54),
-            ),
-          ],
+          ),
         ),
       );
     }
@@ -602,21 +676,22 @@ class _VideoPlayerState extends State<_VideoPlayer> {
           ),
         ),
 
-        // 点击区域用于播放/暂停
+        // 点击区域用于显示/隐藏控件
         Positioned.fill(
           child: GestureDetector(
-            onTap: _togglePlayPause,
+            onTap: _toggleControls,
             behavior: HitTestBehavior.translucent,
           ),
         ),
 
-        // 底部控制栏
-        Positioned(
-          bottom: 20,
-          left: 20,
-          right: 20,
-          child: _buildBottomControls(),
-        ),
+        // 底部控制栏（根据 _showControls 状态显示/隐藏）
+        if (_showControls)
+          Positioned(
+            bottom: 20,
+            left: 20,
+            right: 20,
+            child: _buildBottomControls(),
+          ),
       ],
     );
   }
@@ -637,6 +712,8 @@ class _VideoPlayerState extends State<_VideoPlayer> {
             onChanged: (value) {
               final seekDuration = _duration * value;
               _player.seek(seekDuration);
+              // 拖动进度条时，重置自动隐藏计时器
+              _startHideControlsTimer();
             },
             style: SliderStyle(
               depth: -2,
@@ -703,6 +780,8 @@ class _VideoPlayerState extends State<_VideoPlayer> {
                 } else {
                   _player.setVolume(100);
                 }
+                // 点击音量按钮时，重置自动隐藏计时器
+                _startHideControlsTimer();
               },
               style: const NeumorphicStyle(
                 boxShape: NeumorphicBoxShape.circle(),

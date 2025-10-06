@@ -62,6 +62,7 @@ sudo systemctl restart resourcer
 
 # 查看日志
 sudo journalctl -u resourcer -f
+sudo journalctl -u resourcer -n 100 -f
 ```
 
 ## 五、开放端口
