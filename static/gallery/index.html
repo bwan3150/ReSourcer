@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallery - ReSourcer</title>
+    <link rel="stylesheet" href="/material-icons.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <div class="top-bar">
+        <div class="top-left">
+            <a href="/" class="back-btn">
+                <span class="material-symbols-outlined">arrow_back</span>
+            </a>
+            <h1 data-i18n="gallery">画廊</h1>
+        </div>
+        <div class="top-right">
+            <div class="lang-switcher">
+                <button class="lang-btn active" data-lang="en" onclick="i18nManager.setLang('en')">EN</button>
+                <button class="lang-btn" data-lang="zh" onclick="i18nManager.setLang('zh')">中文</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主容器 -->
+    <div class="main-container">
+        <!-- 左侧文件夹导航 -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header" data-i18n="categories">分类</div>
+            <div class="folder-list" id="folderList">
+                <!-- 文件夹列表将在这里动态生成 -->
+            </div>
+        </div>
+
+        <!-- 侧边栏遮罩 (移动端) -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+        <!-- 右侧内容区 -->
+        <div class="content-area">
+            <!-- 当前文件夹信息 -->
+            <div class="content-header">
+                <div class="header-left">
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    <div class="folder-selector" onclick="toggleFolderDropdown()">
+                        <h2 id="currentFolderName">源文件夹</h2>
+                        <span class="material-symbols-outlined dropdown-icon">expand_more</span>
+                    </div>
+                    <!-- 下拉菜单 -->
+                    <div class="folder-dropdown" id="folderDropdown">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+                <span id="fileCount" class="file-count">0 files</span>
+            </div>
+
+            <!-- 网格相册 -->
+            <div class="gallery-grid" id="galleryGrid">
+                <!-- 文件项将在这里动态生成 -->
+            </div>
+
+            <!-- 空状态提示 -->
+            <div class="empty-state" id="emptyState" style="display: none;">
+                <span class="material-symbols-outlined">folder_open</span>
+                <p data-i18n="noFilesFound">没有找到文件</p>
+            </div>
+
+            <!-- 内嵌式预览 -->
+            <div class="inline-preview" id="inlinePreview" style="display: none;">
+                <div class="preview-header">
+                    <div class="preview-header-left">
+                        <button class="sidebar-toggle-btn" onclick="toggleSidebar()">
+                            <span class="material-symbols-outlined">menu</span>
+                        </button>
+                        <span class="preview-title" id="previewTitle">文件预览</span>
+                    </div>
+                    <button class="preview-close-btn" onclick="closeInlinePreview()">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div class="preview-body">
+                    <!-- 左箭头 -->
+                    <button class="nav-btn nav-prev" onclick="navigatePreview(-1)">
+                        <span class="material-symbols-outlined">chevron_left</span>
+                    </button>
+
+                    <!-- 预览内容 -->
+                    <div class="preview-media" id="previewMedia">
+                        <!-- 动态加载 -->
+                    </div>
+
+                    <!-- 右箭头 -->
+                    <button class="nav-btn nav-next" onclick="navigatePreview(1)">
+                        <span class="material-symbols-outlined">chevron_right</span>
+                    </button>
+                </div>
+
+                <!-- 视频控制（仅视频显示） -->
+                <div class="video-controls-inline" id="videoControlsInline" style="display: none;">
+                    <button class="play-pause-btn" id="playPauseBtnInline" onclick="togglePlayPauseInline()">
+                        <span class="material-symbols-outlined">play_arrow</span>
+                    </button>
+                    <input type="range" class="progress-bar" id="progressBarInline" min="0" max="100" value="0" onchange="seekVideoInline(this.value)">
+                    <span class="time-display" id="timeDisplayInline">0:00 / 0:00</span>
+                    <button class="mute-btn" id="muteBtnInline" onclick="toggleMuteInline()">
+                        <span class="material-symbols-outlined">volume_up</span>
+                    </button>
+                </div>
+
+                <div class="preview-footer">
+                    <div class="preview-info-text">
+                        <span id="previewFileNameInline">filename.jpg</span>
+                        <span class="preview-counter" id="previewCounter">1 / 10</span>
+                    </div>
+                    <button class="info-btn-inline" onclick="showFileInfo()">
+                        <span class="material-symbols-outlined">info</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 预览模态框 -->
+    <div class="preview-modal" id="previewModal" style="display: none;">
+        <div class="preview-overlay" onclick="closePreview()"></div>
+        <div class="preview-container">
+            <!-- 关闭按钮 -->
+            <button class="preview-close" onclick="closePreview()">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+
+            <!-- 媒体内容 -->
+            <div class="preview-content" id="previewContent">
+                <!-- 动态加载图片、视频或GIF -->
+            </div>
+
+            <!-- 控制栏 -->
+            <div class="preview-controls">
+                <div class="preview-info">
+                    <span id="previewFileName">filename.jpg</span>
+                </div>
+                <button class="info-btn" onclick="showFileInfo()">
+                    <span class="material-symbols-outlined">info</span>
+                </button>
+            </div>
+
+            <!-- 视频控制（仅视频显示） -->
+            <div class="video-controls" id="videoControls" style="display: none;">
+                <button class="play-pause-btn" id="playPauseBtn" onclick="togglePlayPause()">
+                    <span class="material-symbols-outlined">play_arrow</span>
+                </button>
+                <input type="range" class="progress-bar" id="progressBar" min="0" max="100" value="0" onchange="seekVideo(this.value)">
+                <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
+                <button class="mute-btn" id="muteBtn" onclick="toggleMute()">
+                    <span class="material-symbols-outlined">volume_up</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 文件信息弹窗 -->
+    <div class="info-modal" id="infoModal" style="display: none;">
+        <div class="info-overlay" onclick="closeFileInfo()"></div>
+        <div class="info-panel">
+            <div class="info-header">
+                <h3 data-i18n="fileInfo">文件信息</h3>
+                <button class="info-close" onclick="closeFileInfo()">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="info-content" id="infoContent">
+                <!-- 文件信息将在这里显示 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/common-i18n.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

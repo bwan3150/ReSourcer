@@ -5,6 +5,7 @@ use std::net::UdpSocket;
 mod classifier;
 mod downloader;
 mod uploader;
+mod gallery;
 mod static_files;
 
 use static_files::{serve_static, ConfigAsset};
@@ -92,6 +93,8 @@ async fn main() -> std::io::Result<()> {
             .app_data(task_manager.clone())
             // 全局配置 API（所有模块共用）
             .route("/api/config", web::get().to(get_global_config))
+            // 画廊 API 路由
+            .service(web::scope("/api/gallery").configure(gallery::routes))
             // 分类器 API 路由
             .service(web::scope("/api/classifier").configure(classifier::routes))
             // 下载器 API 路由
