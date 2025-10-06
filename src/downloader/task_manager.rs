@@ -78,13 +78,31 @@ impl TaskManager {
         self.tasks.lock().await.values().cloned().collect()
     }
 
-    /// 取消任务（基础版本：只更新状态，不杀进程）
+    /// 取消任务并移入历史记录
     pub async fn cancel_task(&self, task_id: &str) -> Result<(), String> {
-        if let Some(task) = self.tasks.lock().await.get_mut(task_id) {
+        let mut tasks = self.tasks.lock().await;
+
+        if let Some(task) = tasks.get(task_id) {
             // 只有 Pending 或 Downloading 状态才能取消
             match task.status {
                 TaskStatus::Pending | TaskStatus::Downloading => {
-                    task.status = TaskStatus::Cancelled;
+                    // 移除任务并添加到历史记录
+                    if let Some(task) = tasks.remove(task_id) {
+                        let history_item = super::config::HistoryItem {
+                            id: task.id.clone(),
+                            url: task.url.clone(),
+                            platform: task.platform.to_string(),
+                            status: "cancelled".to_string(),
+                            file_name: None,
+                            file_path: None,
+                            error: None,
+                            created_at: task.created_at.clone(),
+                        };
+
+                        if let Err(e) = super::config::add_to_history(history_item) {
+                            eprintln!("保存历史记录失败: {}", e);
+                        }
+                    }
                     Ok(())
                 }
                 _ => Err("任务已完成或已取消，无法再次取消".to_string()),
@@ -92,14 +110,6 @@ impl TaskManager {
         } else {
             Err("任务不存在".to_string())
         }
-    }
-
-    /// 清除所有已完成、失败和已取消的任务
-    pub async fn clear_finished_tasks(&self) {
-        let mut tasks = self.tasks.lock().await;
-        tasks.retain(|_, task| {
-            matches!(task.status, TaskStatus::Pending | TaskStatus::Downloading)
-        });
     }
 
     /// 执行下载（私有函数）
@@ -239,31 +249,28 @@ impl TaskManager {
             _ => Err("不支持的下载器类型".to_string()),
         };
 
-        // 3. 根据结果更新任务状态
-        match result {
-            Ok(file_path) => {
-                // 下载成功，file_path 现在是完整的文件路径
-                if let Some(task) = tasks.lock().await.get_mut(&task_id) {
-                    task.status = TaskStatus::Completed;
-                    task.progress = 100.0;
+        // 3. 根据结果更新任务状态，并立即移入历史记录
+        let task_info = tasks.lock().await.remove(&task_id);
 
-                    // 从文件路径中提取文件名
+        if let Some(task) = task_info {
+            match result {
+                Ok(file_path) => {
+                    // 下载成功
                     let file_name = std::path::Path::new(&file_path)
                         .file_name()
                         .and_then(|n| n.to_str())
                         .unwrap_or("unknown")
                         .to_string();
 
-                    task.file_path = Some(file_path.clone());
-                    task.file_name = Some(file_name.clone());
-
                     // 添加到历史记录
                     let history_item = super::config::HistoryItem {
                         id: task.id.clone(),
                         url: task.url.clone(),
                         platform: task.platform.to_string(),
-                        file_name,
-                        file_path,
+                        status: "completed".to_string(),
+                        file_name: Some(file_name),
+                        file_path: Some(file_path),
+                        error: None,
                         created_at: task.created_at.clone(),
                     };
 
@@ -271,12 +278,22 @@ impl TaskManager {
                         eprintln!("保存历史记录失败: {}", e);
                     }
                 }
-            }
-            Err(error) => {
-                // 下载失败
-                if let Some(task) = tasks.lock().await.get_mut(&task_id) {
-                    task.status = TaskStatus::Failed;
-                    task.error = Some(error);
+                Err(error) => {
+                    // 下载失败
+                    let history_item = super::config::HistoryItem {
+                        id: task.id.clone(),
+                        url: task.url.clone(),
+                        platform: task.platform.to_string(),
+                        status: "failed".to_string(),
+                        file_name: None,
+                        file_path: None,
+                        error: Some(error),
+                        created_at: task.created_at.clone(),
+                    };
+
+                    if let Err(e) = super::config::add_to_history(history_item) {
+                        eprintln!("保存历史记录失败: {}", e);
+                    }
                 }
             }
         }

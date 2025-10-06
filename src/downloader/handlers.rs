@@ -194,44 +194,49 @@ async fn create_task(
 }
 
 /// GET /api/downloader/tasks
-/// 获取所有任务列表（包含历史记录）
+/// 获取所有任务列表（进行中的任务 + 历史记录）
 async fn get_tasks(task_manager: TaskManagerState) -> Result<HttpResponse> {
     let mut tasks = task_manager.get_all_tasks().await;
 
-    // 加载历史记录
+    // 加载历史记录并转换为任务格式
     if let Ok(history) = super::config::load_history() {
-        // 将历史记录转换为任务格式，并排除已在当前任务中的
-        let task_ids: std::collections::HashSet<_> = tasks.iter().map(|t| t.id.clone()).collect();
-
         for item in history {
-            if !task_ids.contains(&item.id) {
-                // 将字符串转换为 Platform 枚举
-                let platform = match item.platform.as_str() {
-                    "YouTube" => Platform::YouTube,
-                    "Bilibili" => Platform::Bilibili,
-                    "X" => Platform::X,
-                    "TikTok" => Platform::TikTok,
-                    "Pixiv" => Platform::Pixiv,
-                    "Xiaohongshu" => Platform::Xiaohongshu,
-                    _ => Platform::Unknown,
-                };
+            // 将字符串转换为 Platform 枚举
+            let platform = match item.platform.as_str() {
+                "YouTube" => Platform::YouTube,
+                "Bilibili" => Platform::Bilibili,
+                "X" => Platform::X,
+                "TikTok" => Platform::TikTok,
+                "Pixiv" => Platform::Pixiv,
+                "Xiaohongshu" => Platform::Xiaohongshu,
+                _ => Platform::Unknown,
+            };
 
-                tasks.push(DownloadTask {
-                    id: item.id,
-                    url: item.url,
-                    platform,
-                    downloader: DownloaderType::YtDlp,
-                    status: TaskStatus::Completed,
-                    progress: 100.0,
-                    speed: None,
-                    eta: None,
-                    save_folder: String::new(), // 历史记录不保存此字段
-                    file_name: Some(item.file_name),
-                    file_path: Some(item.file_path),
-                    error: None,
-                    created_at: item.created_at,
-                });
-            }
+            // 将字符串转换为 TaskStatus 枚举
+            let status = match item.status.as_str() {
+                "completed" => TaskStatus::Completed,
+                "failed" => TaskStatus::Failed,
+                "cancelled" => TaskStatus::Cancelled,
+                _ => TaskStatus::Failed,
+            };
+
+            let progress = if status == TaskStatus::Completed { 100.0 } else { 0.0 };
+
+            tasks.push(DownloadTask {
+                id: item.id,
+                url: item.url,
+                platform,
+                downloader: DownloaderType::YtDlp,
+                status,
+                progress,
+                speed: None,
+                eta: None,
+                save_folder: String::new(),
+                file_name: item.file_name,
+                file_path: item.file_path,
+                error: item.error,
+                created_at: item.created_at,
+            });
         }
     }
 
@@ -261,20 +266,36 @@ async fn get_task_status(
 }
 
 /// DELETE /api/downloader/task/:id
-/// 取消任务
+/// 取消进行中的任务或删除历史记录
 async fn cancel_task(
     task_id: web::Path<String>,
     task_manager: TaskManagerState,
 ) -> Result<HttpResponse> {
-    task_manager
-        .cancel_task(&task_id)
-        .await
-        .map_err(|e| actix_web::error::ErrorBadRequest(e))?;
-
-    Ok(HttpResponse::Ok().json(serde_json::json!({
-        "status": "success",
-        "message": "任务已取消"
-    })))
+    // 先尝试取消进行中的任务
+    match task_manager.cancel_task(&task_id).await {
+        Ok(_) => {
+            return Ok(HttpResponse::Ok().json(serde_json::json!({
+                "status": "success",
+                "message": "任务已取消"
+            })));
+        }
+        Err(_) => {
+            // 如果不是进行中的任务，尝试从历史记录中删除
+            match super::config::remove_from_history(&task_id) {
+                Ok(_) => {
+                    return Ok(HttpResponse::Ok().json(serde_json::json!({
+                        "status": "success",
+                        "message": "任务已删除"
+                    })));
+                }
+                Err(_) => {
+                    return Ok(HttpResponse::NotFound().json(serde_json::json!({
+                        "error": "任务不存在"
+                    })));
+                }
+            }
+        }
+    }
 }
 
 // ============================================================================
@@ -428,14 +449,10 @@ async fn open_folder(req: web::Json<serde_json::Value>) -> Result<HttpResponse> 
 }
 
 /// DELETE /api/downloader/history
-/// 清空历史记录和所有已完成/失败的任务
-async fn clear_history(task_manager: TaskManagerState) -> Result<HttpResponse> {
-    // 1. 清空历史记录文件
+/// 清空历史记录（进行中的任务不受影响）
+async fn clear_history() -> Result<HttpResponse> {
     super::config::clear_history()
         .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
-
-    // 2. 清除 TaskManager 中所有已完成、失败和已取消的任务
-    task_manager.clear_finished_tasks().await;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "status": "success",
@@ -503,8 +520,11 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         // 任务管理
         .service(web::resource("/task").route(web::post().to(create_task)))
         .service(web::resource("/tasks").route(web::get().to(get_tasks)))
-        .service(web::resource("/task/{id}").route(web::get().to(get_task_status)))
-        .service(web::resource("/task/{id}").route(web::delete().to(cancel_task)))
+        .service(
+            web::resource("/task/{id}")
+                .route(web::get().to(get_task_status))
+                .route(web::delete().to(cancel_task))
+        )
         // 认证管理
         .service(
             web::resource("/credentials/{platform}")

@@ -22,8 +22,10 @@ pub struct HistoryItem {
     pub id: String,
     pub url: String,
     pub platform: String,
-    pub file_name: String,
-    pub file_path: String,
+    pub status: String, // "completed", "failed", "cancelled"
+    pub file_name: Option<String>, // 成功时有值
+    pub file_path: Option<String>, // 成功时有值
+    pub error: Option<String>, // 失败时有值
     pub created_at: String,
 }
 
@@ -149,6 +151,13 @@ pub fn add_to_history(item: HistoryItem) -> Result<(), String> {
         history.truncate(100);
     }
 
+    save_history(&history)
+}
+
+// 从历史记录中删除单个条目
+pub fn remove_from_history(task_id: &str) -> Result<(), String> {
+    let mut history = load_history()?;
+    history.retain(|h| h.id != task_id);
     save_history(&history)
 }
 

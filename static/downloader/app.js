@@ -295,6 +295,13 @@ function renderTasks() {
                     <span data-i18n="openFolder">Open</span>
                 </button>
                 ` : ''}
+
+                ${task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled' ? `
+                <button class="btn-small btn-delete" onclick="deleteTask('${task.id}')">
+                    <span class="material-symbols-outlined">delete</span>
+                    <span data-i18n="deleteBtn">Delete</span>
+                </button>
+                ` : ''}
             </div>
         </div>
     `).join('');
@@ -464,6 +471,28 @@ window.addEventListener('beforeunload', () => {
         clearInterval(pollingInterval);
     }
 });
+
+// 删除单个任务
+async function deleteTask(taskId) {
+    try {
+        const response = await fetch(`/api/downloader/task/${taskId}`, {
+            method: 'DELETE'
+        });
+
+        console.log('Delete response status:', response.status);
+        const data = await response.json();
+        console.log('Delete response data:', data);
+
+        if (response.ok) {
+            await loadTasks();
+        } else {
+            alert(data.error || 'Failed to delete task');
+        }
+    } catch (error) {
+        console.error('Failed to delete task:', error);
+        alert('Failed to delete task: ' + error.message);
+    }
+}
 
 // 清空历史记录
 async function clearHistory() {
