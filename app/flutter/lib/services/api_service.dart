@@ -84,15 +84,19 @@ class ApiService {
     }
   }
 
-  /// 上传文件
-  Future<String?> uploadFile(String filePath, String targetFolder) async {
+  /// 上传多个文件
+  Future<bool> uploadFiles(List<String> filePaths, String targetFolder) async {
     try {
-      String fileName = filePath.split('/').last;
+      final formData = FormData();
+      formData.fields.add(MapEntry('target_folder', targetFolder));
 
-      FormData formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(filePath, filename: fileName),
-        'target_folder': targetFolder,
-      });
+      for (String filePath in filePaths) {
+        String fileName = filePath.split('/').last;
+        formData.files.add(MapEntry(
+          'files',
+          await MultipartFile.fromFile(filePath, filename: fileName),
+        ));
+      }
 
       final response = await _dio.post(
         '$_baseUrl/api/uploader/upload',
@@ -102,13 +106,10 @@ class ApiService {
         ),
       );
 
-      if (response.statusCode == 200) {
-        return response.data['task_id'];
-      }
-      return null;
+      return response.statusCode == 200;
     } catch (e) {
       print('上传文件失败: $e');
-      return null;
+      return false;
     }
   }
 
@@ -135,7 +136,7 @@ class ApiService {
   Future<bool> deleteUploadTask(String taskId) async {
     try {
       final response = await http.delete(
-        Uri.parse('$_baseUrl/api/uploader/tasks/$taskId'),
+        Uri.parse('$_baseUrl/api/uploader/task/$taskId'),
         headers: {'Cookie': 'api_key=$_apiKey'},
       );
 

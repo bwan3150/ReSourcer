@@ -1,11 +1,12 @@
+import 'dart:async';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/upload_provider.dart';
-import '../../providers/gallery_provider.dart';
+import '../../models/upload_task.dart';
+import '../../screens/upload/upload_tasks_screen.dart';
 
-/// 上传按钮组件
+/// 上传任务列表按钮（悬浮按钮）
 class UploadButton extends StatefulWidget {
   const UploadButton({Key? key}) : super(key: key);
 
@@ -14,75 +15,104 @@ class UploadButton extends StatefulWidget {
 }
 
 class _UploadButtonState extends State<UploadButton> {
-  final ImagePicker _picker = ImagePicker();
+  Timer? _pollingTimer;
 
-  Future<void> _handleUpload() async {
-    // 选择图片
-    final XFile? image = await _picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 4096,
-      maxHeight: 4096,
-    );
+  @override
+  void initState() {
+    super.initState();
+    // 加载任务并开始轮询
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadTasks();
+      _startPolling();
+    });
+  }
 
-    if (image == null || !mounted) return;
+  @override
+  void dispose() {
+    _stopPolling();
+    super.dispose();
+  }
 
-    // 上传
+  Future<void> _loadTasks() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final uploadProvider = Provider.of<UploadProvider>(context, listen: false);
-    final galleryProvider = Provider.of<GalleryProvider>(context, listen: false);
 
-    if (authProvider.apiService == null) {
-      _showMessage('服务未连接', isError: true);
-      return;
-    }
-
-    // 显示加载提示
-    _showMessage('正在上传...');
-
-    final success = await uploadProvider.uploadFile(
-      authProvider.apiService!,
-      image.path,
-      'uploads', // 默认上传到 uploads 文件夹
-    );
-
-    if (mounted) {
-      if (success) {
-        _showMessage('上传成功');
-        // 刷新画廊
-        await galleryProvider.refresh(authProvider.apiService!);
-      } else {
-        _showMessage('上传失败', isError: true);
-      }
+    if (authProvider.apiService != null) {
+      await uploadProvider.loadTasks(authProvider.apiService!);
     }
   }
 
-  void _showMessage(String message, {bool isError = false}) {
-    if (!mounted) return;
+  void _startPolling() {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        _loadTasks();
+      }
+    });
+  }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-        duration: const Duration(seconds: 2),
+  void _stopPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
+  }
+
+  void _openTaskList() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const UploadTasksScreen(),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return NeumorphicFloatingActionButton(
-      onPressed: _handleUpload,
-      style: NeumorphicStyle(
-        depth: 6,
-        intensity: 0.8,
-        boxShape: const NeumorphicBoxShape.circle(),
-        color: NeumorphicTheme.baseColor(context),
-      ),
-      child: const Icon(
-        Icons.add_a_photo,
-        size: 28,
-        color: Color(0xFF171717),
-      ),
+    return Consumer<UploadProvider>(
+      builder: (context, provider, child) {
+        final activeTasks = provider.tasks
+            .where((t) =>
+                t.status == UploadStatus.pending ||
+                t.status == UploadStatus.uploading)
+            .length;
+
+        return Stack(
+          children: [
+            NeumorphicFloatingActionButton(
+              onPressed: _openTaskList,
+              style: NeumorphicStyle(
+                depth: 6,
+                intensity: 0.8,
+                boxShape: const NeumorphicBoxShape.circle(),
+                color: NeumorphicTheme.baseColor(context),
+              ),
+              child: const Icon(
+                Icons.cloud_upload_outlined,
+                size: 28,
+                color: Color(0xFF171717),
+              ),
+            ),
+            // 徽章显示活跃任务数
+            if (activeTasks > 0)
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '$activeTasks',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

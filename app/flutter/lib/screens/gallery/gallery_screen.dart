@@ -128,6 +128,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     child: ImageGrid(
                       files: provider.files,
                       fileCount: provider.files.length,
+                      currentFolderPath: provider.currentFolder?.path,
                     ),
                   );
                 },

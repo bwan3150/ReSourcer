@@ -1,7 +1,10 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../models/gallery_file.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/upload_provider.dart';
+import '../../providers/gallery_provider.dart';
 import '../../utils/constants.dart';
 
 import '../../screens/gallery/image_detail_screen.dart';
@@ -10,11 +13,13 @@ import '../../screens/gallery/image_detail_screen.dart';
 class ImageGrid extends StatelessWidget {
   final List<GalleryFile> files;
   final int fileCount;
+  final String? currentFolderPath;
 
   const ImageGrid({
     Key? key,
     required this.files,
     required this.fileCount,
+    this.currentFolderPath,
   }) : super(key: key);
 
   @override
@@ -32,13 +37,17 @@ class ImageGrid extends StatelessWidget {
             ),
             delegate: SliverChildBuilderDelegate(
               (context, index) {
+                // 最后一个item是上传卡片
+                if (index == files.length) {
+                  return UploadCard(targetFolder: currentFolderPath);
+                }
                 return ImageGridItem(
                   file: files[index],
                   allFiles: files,
                   currentIndex: index,
                 );
               },
-              childCount: files.length,
+              childCount: files.length + 1, // +1 for upload card
             ),
           ),
         ),
@@ -194,3 +203,109 @@ class ImageGridItem extends StatelessWidget {
   }
 }
 
+
+/// 上传卡片组件
+class UploadCard extends StatefulWidget {
+  final String? targetFolder;
+
+  const UploadCard({Key? key, this.targetFolder}) : super(key: key);
+
+  @override
+  State<UploadCard> createState() => _UploadCardState();
+}
+
+class _UploadCardState extends State<UploadCard> {
+  final ImagePicker _picker = ImagePicker();
+  bool _uploading = false;
+
+  Future<void> _handleUpload() async {
+    if (_uploading || widget.targetFolder == null) return;
+
+    try {
+      // 选择多个文件（图片和视频）
+      final List<XFile> files = await _picker.pickMultipleMedia(
+        imageQuality: 85,
+      );
+
+      if (files.isEmpty || !mounted) return;
+
+      setState(() => _uploading = true);
+
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final uploadProvider = Provider.of<UploadProvider>(context, listen: false);
+      final galleryProvider = Provider.of<GalleryProvider>(context, listen: false);
+
+      if (authProvider.apiService == null) {
+        _showMessage('服务未连接', isError: true);
+        setState(() => _uploading = false);
+        return;
+      }
+
+      // 上传文件
+      final filePaths = files.map((f) => f.path).toList();
+      final success = await uploadProvider.uploadFiles(
+        authProvider.apiService!,
+        filePaths,
+        widget.targetFolder!,
+      );
+
+      if (mounted) {
+        if (success) {
+          _showMessage('上传任务已创建');
+          // 刷新文件列表
+          await galleryProvider.refresh(authProvider.apiService!);
+        } else {
+          _showMessage('上传失败', isError: true);
+        }
+        setState(() => _uploading = false);
+      }
+    } catch (e) {
+      print('上传出错: $e');
+      if (mounted) {
+        _showMessage('上传出错', isError: true);
+        setState(() => _uploading = false);
+      }
+    }
+  }
+
+  void _showMessage(String message, {bool isError = false}) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _uploading ? null : _handleUpload,
+      child: Neumorphic(
+        style: NeumorphicStyle(
+          depth: _uploading ? -2 : 4,
+          intensity: 0.8,
+          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+          color: Colors.grey[200],
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(
+            child: _uploading
+                ? const CircularProgressIndicator()
+                : const Icon(
+                    Icons.add,
+                    size: 48,
+                    color: Colors.grey,
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}

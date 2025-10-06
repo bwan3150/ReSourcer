@@ -27,11 +27,11 @@ class UploadProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// 上传文件
-  Future<bool> uploadFile(ApiService apiService, String filePath, String targetFolder) async {
+  /// 上传多个文件
+  Future<bool> uploadFiles(ApiService apiService, List<String> filePaths, String targetFolder) async {
     try {
-      final taskId = await apiService.uploadFile(filePath, targetFolder);
-      if (taskId != null) {
+      final success = await apiService.uploadFiles(filePaths, targetFolder);
+      if (success) {
         // 重新加载任务列表
         await loadTasks(apiService);
         return true;
