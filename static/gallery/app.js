@@ -399,11 +399,20 @@ function showFileInfo() {
     `;
 
     modal.style.display = 'block';
+    // 触发动画
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 10);
 }
 
 // 关闭文件信息
 function closeFileInfo() {
-    document.getElementById('infoModal').style.display = 'none';
+    const modal = document.getElementById('infoModal');
+    modal.classList.remove('show');
+    // 等待动画完成后隐藏
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 300);
 }
 
 // 格式化文件大小
