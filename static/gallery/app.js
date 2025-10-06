@@ -140,7 +140,7 @@ async function loadFiles(folderPath) {
                 `;
             } else if (file.file_type === 'video') {
                 item.innerHTML = `
-                    <video src="/api/classifier/file/${encodeURIComponent(file.path)}#t=0.1" preload="metadata" muted></video>
+                    <video src="/api/classifier/file/${encodeURIComponent(file.path)}#t=0.1" preload="metadata" muted playsinline></video>
                     <div class="file-type-badge">${file.extension}</div>
                 `;
             } else {
@@ -200,7 +200,7 @@ function updateInlinePreview() {
         media.innerHTML = `<img src="/api/classifier/file/${encodeURIComponent(file.path)}" alt="${file.name}">`;
         videoControls.style.display = 'none';
     } else if (file.file_type === 'video') {
-        media.innerHTML = `<video id="previewVideoInline" src="/api/classifier/file/${encodeURIComponent(file.path)}" autoplay onclick="togglePlayPauseInline()"></video>`;
+        media.innerHTML = `<video id="previewVideoInline" src="/api/classifier/file/${encodeURIComponent(file.path)}" autoplay playsinline onclick="togglePlayPauseInline()"></video>`;
         videoElement = document.getElementById('previewVideoInline');
         videoControls.style.display = 'flex';
         setupVideoControlsInline();
