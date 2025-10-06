@@ -428,10 +428,14 @@ async fn open_folder(req: web::Json<serde_json::Value>) -> Result<HttpResponse> 
 }
 
 /// DELETE /api/downloader/history
-/// 清空历史记录
-async fn clear_history() -> Result<HttpResponse> {
+/// 清空历史记录和所有已完成/失败的任务
+async fn clear_history(task_manager: TaskManagerState) -> Result<HttpResponse> {
+    // 1. 清空历史记录文件
     super::config::clear_history()
         .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+
+    // 2. 清除 TaskManager 中所有已完成、失败和已取消的任务
+    task_manager.clear_finished_tasks().await;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "status": "success",

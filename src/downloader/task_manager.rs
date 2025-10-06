@@ -94,6 +94,14 @@ impl TaskManager {
         }
     }
 
+    /// 清除所有已完成、失败和已取消的任务
+    pub async fn clear_finished_tasks(&self) {
+        let mut tasks = self.tasks.lock().await;
+        tasks.retain(|_, task| {
+            matches!(task.status, TaskStatus::Pending | TaskStatus::Downloading)
+        });
+    }
+
     /// 执行下载（私有函数）
     async fn execute_download(
         task_id: String,
