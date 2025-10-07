@@ -27,6 +27,10 @@ class _ServerListScreenState extends State<ServerListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 检查是否已登录（有当前服务器）
+    final authProvider = Provider.of<AuthProvider>(context);
+    final hasCurrentServer = authProvider.currentServer != null;
+
     return NeumorphicTheme(
       theme: const NeumorphicThemeData(
         baseColor: Color(0xFFF0F0F0),
@@ -45,26 +49,30 @@ class _ServerListScreenState extends State<ServerListScreen> {
               color: Color(0xFF171717),
             ),
           ),
-          leading: NeumorphicButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: const NeumorphicStyle(
-              boxShape: NeumorphicBoxShape.circle(),
-              depth: 3,
-            ),
-            padding: const EdgeInsets.all(12),
-            child: const Icon(Icons.arrow_back, size: 20),
-          ),
-          actions: [
-            NeumorphicButton(
-              onPressed: () => _showStatusHelp(context),
-              style: const NeumorphicStyle(
-                boxShape: NeumorphicBoxShape.circle(),
-                depth: 3,
-              ),
-              padding: const EdgeInsets.all(12),
-              child: const Icon(Icons.help_outline, size: 20),
-            ),
-          ],
+          leading: hasCurrentServer
+              ? NeumorphicButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: const NeumorphicStyle(
+                    boxShape: NeumorphicBoxShape.circle(),
+                    depth: 3,
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: const Icon(Icons.arrow_back, size: 20),
+                )
+              : null,
+          actions: hasCurrentServer
+              ? [
+                  NeumorphicButton(
+                    onPressed: () => _showStatusHelp(context),
+                    style: const NeumorphicStyle(
+                      boxShape: NeumorphicBoxShape.circle(),
+                      depth: 3,
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: const Icon(Icons.help_outline, size: 20),
+                  ),
+                ]
+              : null,
         ),
         body: Consumer<ServerProvider>(
           builder: (context, provider, child) {
@@ -225,57 +233,72 @@ class _ServerListScreenState extends State<ServerListScreen> {
   Widget _buildServerCard(Server server, ServerStatus status, bool isCurrent) {
     final statusColor = _getStatusColor(status);
 
+    // 服务器卡片内容
+    final cardContent = GestureDetector(
+      onLongPress: () => _editServer(server),
+      child: Row(
+        children: [
+          // 状态指示灯
+          _buildStatusIndicator(statusColor, status),
+          const SizedBox(width: 16),
+          // 服务器名称和地址
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  server.name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF171717),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  server.baseUrl,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: NeumorphicButton(
-        onPressed: status == ServerStatus.online && !isCurrent
-            ? () => _switchServer(server)
-            : null,
-        style: NeumorphicStyle(
-          depth: isCurrent ? -4 : 4,
-          intensity: 0.6,
-          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-        ),
-        padding: const EdgeInsets.all(20),
-        child: GestureDetector(
-          onLongPress: () => _editServer(server),
-          child: Row(
-            children: [
-              // 状态指示灯
-              _buildStatusIndicator(statusColor, status),
-              const SizedBox(width: 16),
-              // 服务器名称和地址
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      server.name,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF171717),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      server.baseUrl,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[600],
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+      child: isCurrent
+          ? // 当前服务器 - 使用静态 Neumorphic 显示下陷状态
+          Neumorphic(
+              style: NeumorphicStyle(
+                depth: -4,
+                intensity: 0.6,
+                boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
               ),
-            ],
-          ),
-        ),
-      ),
+              padding: const EdgeInsets.all(20),
+              child: cardContent,
+            )
+          : // 其他服务器 - 使用 NeumorphicButton 提供点击反馈
+          NeumorphicButton(
+              onPressed: status == ServerStatus.online
+                  ? () => _switchServer(server)
+                  : null,
+              style: NeumorphicStyle(
+                depth: 4,
+                intensity: 0.6,
+                boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
+              ),
+              padding: const EdgeInsets.all(20),
+              child: cardContent,
+            ),
     );
   }
 
