@@ -54,9 +54,20 @@ class _HomeScreenState extends State<HomeScreen> {
         intensity: 0.6,
       ),
       child: Scaffold(
-        body: IndexedStack(
-          index: _pageIndex,
-          children: _pages,
+        body: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          switchInCurve: Curves.easeInOut,
+          switchOutCurve: Curves.easeInOut,
+          transitionBuilder: (child, animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          },
+          child: Container(
+            key: ValueKey<int>(_pageIndex),
+            child: _pages[_pageIndex],
+          ),
         ),
         bottomNavigationBar: _buildBottomNavigationBar(),
       ),
@@ -64,93 +75,37 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBottomNavigationBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: NeumorphicTheme.baseColor(context),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(
-                index: Constants.tabGallery,
-                icon: Icons.photo_library_outlined,
-                activeIcon: Icons.photo_library,
-                label: '画廊',
-              ),
-              _buildNavItem(
-                index: Constants.tabClassifier,
-                icon: Icons.category_outlined,
-                activeIcon: Icons.category,
-                label: '分类器',
-              ),
-              _buildNavItem(
-                index: Constants.tabDownloader,
-                icon: Icons.download_outlined,
-                activeIcon: Icons.download,
-                label: '下载器',
-              ),
-              _buildNavItem(
-                index: Constants.tabSettings,
-                icon: Icons.settings_outlined,
-                activeIcon: Icons.settings,
-                label: '设置',
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required int index,
-    required IconData icon,
-    required IconData activeIcon,
-    required String label,
-  }) {
-    final isActive = _currentIndex == index;
-
-    return GestureDetector(
-      onTap: () => _onTabTapped(index),
+    return SafeArea(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: isActive
-              ? NeumorphicTheme.baseColor(context)
-              : Colors.transparent,
-        ),
-        child: isActive
-            ? Neumorphic(
-                style: NeumorphicStyle(
-                  depth: -2,
-                  intensity: 0.6,
-                  boxShape: NeumorphicBoxShape.roundRect(
-                    BorderRadius.circular(12),
-                  ),
+        color: NeumorphicTheme.baseColor(context),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: NeumorphicToggle(
+          height: 50,
+          selectedIndex: _pageIndex,
+          displayForegroundOnlyIfSelected: true,
+          children: [
+            // 画廊
+            ToggleElement(
+              background: Center(
+                child: Icon(
+                  Icons.photo_library_outlined,
+                  size: 24,
+                  color: const Color(0xFF737373),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              ),
+              foreground: Center(
                 child: Row(
-                  children: [
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
                     Icon(
-                      activeIcon,
+                      Icons.photo_library,
                       size: 24,
-                      color: const Color(0xFF171717),
+                      color: Color(0xFF171717),
                     ),
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
                     Text(
-                      label,
-                      style: const TextStyle(
+                      '画廊',
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF171717),
@@ -158,12 +113,116 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-              )
-            : Icon(
-                icon,
-                size: 24,
-                color: const Color(0xFF737373),
               ),
+            ),
+            // 分类器
+            ToggleElement(
+              background: Center(
+                child: Icon(
+                  Icons.category_outlined,
+                  size: 24,
+                  color: const Color(0xFF737373),
+                ),
+              ),
+              foreground: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Icon(
+                      Icons.category,
+                      size: 24,
+                      color: Color(0xFF171717),
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      '分类器',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF171717),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // 下载器
+            ToggleElement(
+              background: Center(
+                child: Icon(
+                  Icons.download_outlined,
+                  size: 24,
+                  color: const Color(0xFF737373),
+                ),
+              ),
+              foreground: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Icon(
+                      Icons.download,
+                      size: 24,
+                      color: Color(0xFF171717),
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      '下载器',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF171717),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // 设置
+            ToggleElement(
+              background: Center(
+                child: Icon(
+                  Icons.settings_outlined,
+                  size: 24,
+                  color: const Color(0xFF737373),
+                ),
+              ),
+              foreground: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Icon(
+                      Icons.settings,
+                      size: 24,
+                      color: Color(0xFF171717),
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      '设置',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF171717),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          thumb: Neumorphic(
+            style: NeumorphicStyle(
+              depth: -3,
+              intensity: 0.6,
+              boxShape: NeumorphicBoxShape.roundRect(
+                BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          onChanged: (index) {
+            final actualIndex = _indexMap[index];
+            _onTabTapped(actualIndex);
+          },
+        ),
       ),
     );
   }
