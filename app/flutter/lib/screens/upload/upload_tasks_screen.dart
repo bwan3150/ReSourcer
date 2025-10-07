@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/upload_task.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/upload_provider.dart';
+import '../../widgets/common/neumorphic_option_sheet.dart';
 
 /// 上传任务列表页面
 class UploadTasksScreen extends StatefulWidget {
@@ -78,6 +79,52 @@ class _UploadTasksScreenState extends State<UploadTasksScreen> {
         );
       }
     }
+  }
+
+  /// 显示选择上传方式弹窗
+  void _showUploadOptions() {
+    NeumorphicOptionSheet.show(
+      context: context,
+      title: '选择上传方式',
+      options: [
+        SheetOption(
+          icon: Icons.photo_library,
+          text: '从相册选择',
+          onTap: () => _pickFromGallery(),
+        ),
+        SheetOption(
+          icon: Icons.camera_alt,
+          text: '拍照',
+          onTap: () => _takePhoto(),
+        ),
+        SheetOption(
+          icon: Icons.folder,
+          text: '从文件选择',
+          onTap: () => _pickFromFiles(),
+        ),
+      ],
+    );
+  }
+
+  /// 从相册选择（待实现）
+  void _pickFromGallery() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('从相册选择功能即将推出')),
+    );
+  }
+
+  /// 拍照（待实现）
+  void _takePhoto() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('拍照功能即将推出')),
+    );
+  }
+
+  /// 从文件选择（待实现）
+  void _pickFromFiles() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('从文件选择功能即将推出')),
+    );
   }
 
   @override

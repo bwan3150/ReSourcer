@@ -9,6 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/upload_provider.dart';
 import '../../providers/gallery_provider.dart';
 import '../../screens/gallery/image_detail_screen.dart';
+import '../common/neumorphic_option_sheet.dart';
 
 /// 图片网格组件
 class ImageGrid extends StatelessWidget {
@@ -251,40 +252,26 @@ class _UploadCardState extends State<UploadCard> {
   Future<void> _showUploadMethodDialog() async {
     if (widget.targetFolder == null) return;
 
-    showDialog(
+    NeumorphicOptionSheet.show(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('选择上传方式'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('相机拍摄'),
-              onTap: () {
-                Navigator.pop(context);
-                _uploadFromCamera();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('从相册选择'),
-              onTap: () {
-                Navigator.pop(context);
-                _uploadFromGallery();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.folder),
-              title: const Text('从文件选择'),
-              onTap: () {
-                Navigator.pop(context);
-                _uploadFromFiles();
-              },
-            ),
-          ],
+      title: '选择上传方式',
+      options: [
+        SheetOption(
+          icon: Icons.camera_alt,
+          text: '相机拍摄',
+          onTap: () => _uploadFromCamera(),
         ),
-      ),
+        SheetOption(
+          icon: Icons.photo_library,
+          text: '从相册选择',
+          onTap: () => _uploadFromGallery(),
+        ),
+        SheetOption(
+          icon: Icons.folder,
+          text: '从文件选择',
+          onTap: () => _uploadFromFiles(),
+        ),
+      ],
     );
   }
 

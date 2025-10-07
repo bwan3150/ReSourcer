@@ -4,6 +4,7 @@ import '../../models/server.dart';
 import '../../providers/server_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/neumorphic_dialog.dart';
+import '../../widgets/common/neumorphic_option_sheet.dart';
 import 'add_server_screen.dart';
 
 /// 服务器列表管理界面
@@ -373,61 +374,28 @@ class _ServerListScreenState extends State<ServerListScreen> {
 
   /// 编辑服务器 - 长按后显示选项
   Future<void> _editServer(Server server) async {
-    showModalBottomSheet(
+    NeumorphicOptionSheet.show(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFF0F0F0),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      title: server.name,
+      options: [
+        SheetOption(
+          icon: Icons.edit,
+          text: '重命名',
+          onTap: () => _showComingSoonDialog(),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // 标题
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Text(
-                server.name,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF171717),
-                ),
-              ),
-            ),
-            const Divider(),
-            // 重命名（暂未实现）
-            ListTile(
-              leading: const Icon(Icons.edit, color: Color(0xFF737373)),
-              title: const Text('重命名'),
-              onTap: () {
-                Navigator.pop(context);
-                _showComingSoonDialog();
-              },
-            ),
-            // 更新 API Key（暂未实现）
-            ListTile(
-              leading: const Icon(Icons.vpn_key, color: Color(0xFF737373)),
-              title: const Text('更新 API Key'),
-              onTap: () {
-                Navigator.pop(context);
-                _showComingSoonDialog();
-              },
-            ),
-            // 删除
-            ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text('删除', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                _deleteServer(server);
-              },
-            ),
-          ],
+        SheetOption(
+          icon: Icons.vpn_key,
+          text: '更新 API Key',
+          onTap: () => _showComingSoonDialog(),
         ),
-      ),
+        SheetOption(
+          icon: Icons.delete_outline,
+          text: '删除',
+          textColor: const Color(0xFF737373),
+          iconColor: const Color(0xFF737373),
+          onTap: () => _deleteServer(server),
+        ),
+      ],
     );
   }
 
