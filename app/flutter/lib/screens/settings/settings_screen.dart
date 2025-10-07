@@ -192,38 +192,7 @@ class SettingsScreen extends StatelessWidget {
 
   /// 动态状态指示灯（带涟漪效果）
   Widget _buildStatusIndicator(Color color, ServerStatus status) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // 外层涟漪
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color.withOpacity(0.2),
-          ),
-        ),
-        // 内层光点
-        Container(
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color,
-            boxShadow: status == ServerStatus.checking
-                ? []
-                : [
-                    BoxShadow(
-                      color: color.withOpacity(0.6),
-                      blurRadius: 8,
-                      spreadRadius: 2,
-                    ),
-                  ],
-          ),
-        ),
-      ],
-    );
+    return _AnimatedStatusIndicator(color: color, status: status);
   }
 
   /// 获取状态颜色
@@ -306,5 +275,89 @@ class SettingsScreen extends StatelessWidget {
       final serverProvider = Provider.of<ServerProvider>(context, listen: false);
       await serverProvider.checkAllServers();
     }
+  }
+}
+
+/// 带动画的状态指示灯
+class _AnimatedStatusIndicator extends StatefulWidget {
+  final Color color;
+  final ServerStatus status;
+
+  const _AnimatedStatusIndicator({
+    required this.color,
+    required this.status,
+  });
+
+  @override
+  State<_AnimatedStatusIndicator> createState() => _AnimatedStatusIndicatorState();
+}
+
+class _AnimatedStatusIndicatorState extends State<_AnimatedStatusIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    _animation = Tween<double>(begin: 0.8, end: 1.2).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    _controller.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 28,
+      height: 28,
+      child: AnimatedBuilder(
+        animation: _animation,
+        builder: (context, child) {
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              // 外层涟漪 - 带呼吸动画
+              Container(
+                width: 24 * _animation.value,
+                height: 24 * _animation.value,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.color.withOpacity(0.2),
+                ),
+              ),
+              // 内层光点
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.color,
+                  boxShadow: widget.status == ServerStatus.checking
+                      ? []
+                      : [
+                          BoxShadow(
+                            color: widget.color.withOpacity(0.5),
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 }

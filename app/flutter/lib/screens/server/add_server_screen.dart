@@ -339,15 +339,11 @@ class _AddServerScreenState extends State<AddServerScreen> {
     );
 
     if (result != null && mounted) {
-      print('扫描结果: $result');
       // 解析二维码 URL: http://192.168.1.100:1234/login.html?key=xxx
       try {
         final uri = Uri.parse(result);
         final baseUrl = '${uri.scheme}://${uri.host}:${uri.port}';
         final key = uri.queryParameters['key'];
-
-        print('解析后 baseUrl: $baseUrl');
-        print('解析后 key: $key');
 
         if (key != null) {
           setState(() {
@@ -356,20 +352,17 @@ class _AddServerScreenState extends State<AddServerScreen> {
             _qrScanned = true;
             _errorMessage = null;
           });
-          print('扫描成功，_qrScanned = true');
         } else {
           setState(() {
             _errorMessage = '二维码格式无效';
             _qrScanned = false;
           });
-          print('二维码格式无效，未找到 key 参数');
         }
       } catch (e) {
         setState(() {
           _errorMessage = '无法解析二维码：$e';
           _qrScanned = false;
         });
-        print('解析二维码错误: $e');
       }
     }
   }
@@ -380,17 +373,11 @@ class _AddServerScreenState extends State<AddServerScreen> {
     final url = _urlController.text.trim();
     final key = _keyController.text.trim();
 
-    print('开始添加服务器');
-    print('name: $name');
-    print('url: $url');
-    print('key: $key');
-
     // 验证输入
     if (name.isEmpty) {
       setState(() {
         _errorMessage = '请输入服务器名称';
       });
-      print('错误: 服务器名称为空');
       return;
     }
 
@@ -398,7 +385,6 @@ class _AddServerScreenState extends State<AddServerScreen> {
       setState(() {
         _errorMessage = _isQRMode ? '请先扫描二维码' : '请填写所有字段';
       });
-      print('错误: url 或 key 为空');
       return;
     }
 
@@ -408,17 +394,14 @@ class _AddServerScreenState extends State<AddServerScreen> {
     });
 
     try {
-      print('开始验证服务器...');
       // 验证服务器
       final isValid = await ApiService.verifyApiKey(url, key);
-      print('验证结果: $isValid');
 
       if (!isValid) {
         setState(() {
           _errorMessage = '验证失败：API Key 无效或服务器无法访问';
           _isVerifying = false;
         });
-        print('验证失败');
         return;
       }
 
@@ -431,14 +414,11 @@ class _AddServerScreenState extends State<AddServerScreen> {
         addedAt: DateTime.now(),
       );
 
-      print('服务器验证成功，准备添加到列表');
-
       // 添加到列表
       if (mounted) {
         final serverProvider = Provider.of<ServerProvider>(context, listen: false);
         await serverProvider.addServer(server);
 
-        print('服务器添加成功，准备返回');
         Navigator.of(context).pop();
       }
     } catch (e) {
@@ -446,7 +426,6 @@ class _AddServerScreenState extends State<AddServerScreen> {
         _errorMessage = '添加失败：$e';
         _isVerifying = false;
       });
-      print('添加失败，错误: $e');
     }
   }
 }
@@ -471,26 +450,107 @@ class _QRScannerScreenState extends State<_QRScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('扫描二维码'),
-        backgroundColor: Colors.black,
+    return NeumorphicTheme(
+      theme: const NeumorphicThemeData(
+        baseColor: Color(0xFFF0F0F0),
+        lightSource: LightSource.topLeft,
+        depth: 4,
+        intensity: 0.6,
       ),
-      body: MobileScanner(
-        controller: _controller,
-        onDetect: (capture) {
-          // 如果已经扫描过，直接返回，防止多次 pop
-          if (_hasScanned) return;
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            // 相机预览层
+            MobileScanner(
+              controller: _controller,
+              onDetect: (capture) {
+                // 如果已经扫描过，直接返回，防止多次 pop
+                if (_hasScanned) return;
 
-          final List<Barcode> barcodes = capture.barcodes;
-          for (final barcode in barcodes) {
-            if (barcode.rawValue != null) {
-              _hasScanned = true; // 标记已扫描
-              Navigator.of(context).pop(barcode.rawValue);
-              return;
-            }
-          }
-        },
+                final List<Barcode> barcodes = capture.barcodes;
+                for (final barcode in barcodes) {
+                  if (barcode.rawValue != null) {
+                    _hasScanned = true; // 标记已扫描
+                    Navigator.of(context).pop(barcode.rawValue);
+                    return;
+                  }
+                }
+              },
+            ),
+            // 扫描框遮罩层
+            _buildScannerOverlay(),
+            // 顶部栏
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    // 返回按钮
+                    NeumorphicButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: const NeumorphicStyle(
+                        boxShape: NeumorphicBoxShape.circle(),
+                        depth: 4,
+                        color: Color(0xFFF0F0F0),
+                      ),
+                      padding: const EdgeInsets.all(12),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        size: 20,
+                        color: Color(0xFF171717),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // 标题卡片
+                    Expanded(
+                      child: Neumorphic(
+                        style: NeumorphicStyle(
+                          depth: 4,
+                          intensity: 0.6,
+                          color: const Color(0xFFF0F0F0),
+                          boxShape: NeumorphicBoxShape.roundRect(
+                            BorderRadius.circular(25),
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        child: const Text(
+                          '扫描二维码',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF171717),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 扫描框遮罩
+  Widget _buildScannerOverlay() {
+    return Center(
+      child: Container(
+        width: 250,
+        height: 250,
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: Colors.white.withOpacity(0.6),
+            width: 1.5,
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
       ),
     );
   }
