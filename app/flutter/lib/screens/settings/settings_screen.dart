@@ -5,6 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/server_provider.dart';
 import '../../models/server.dart';
 import '../../utils/constants.dart';
+import '../../widgets/common/neumorphic_dialog.dart';
 import '../server/server_list_screen.dart';
 
 /// 设置页面
@@ -12,22 +13,10 @@ class SettingsScreen extends StatelessWidget {
   const SettingsScreen({Key? key}) : super(key: key);
 
   Future<void> _handleLogout(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await NeumorphicDialog.showConfirm(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('退出登录'),
-        content: const Text('确定要退出登录吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
+      title: '断开连接',
+      content: '确定要断开当前服务器连接吗？',
     );
 
     if (confirmed == true && context.mounted) {
@@ -79,90 +68,29 @@ class SettingsScreen extends StatelessWidget {
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   children: [
-                    _buildSection(
-                      context,
-                      title: '服务器',
-                      children: [
-                        // 当前服务器信息
-                        Consumer<AuthProvider>(
-                          builder: (context, authProvider, child) {
-                            final server = authProvider.currentServer;
-                            if (server == null) {
-                              return _buildInfoItem(
-                                context,
-                                icon: Icons.dns_outlined,
-                                title: '当前服务器',
-                                value: '未连接',
-                              );
-                            }
-
-                            return Column(
-                              children: [
-                                _buildInfoItem(
-                                  context,
-                                  icon: Icons.dns,
-                                  title: '当前服务器',
-                                  value: server.name,
-                                ),
-                                const SizedBox(height: 12),
-                                _buildInfoItem(
-                                  context,
-                                  icon: Icons.link,
-                                  title: '服务地址',
-                                  value: server.baseUrl,
-                                ),
-                                const SizedBox(height: 12),
-                                Consumer<ServerProvider>(
-                                  builder: (context, serverProvider, child) {
-                                    final status = serverProvider.getServerStatus(server.id);
-                                    return _buildServerStatusItem(context, status);
-                                  },
-                                ),
-                              ],
-                            );
+                    // 服务器卡片 - 简约设计，只显示名字和状态灯
+                    Consumer<AuthProvider>(
+                      builder: (context, authProvider, child) {
+                        final server = authProvider.currentServer;
+                        return Consumer<ServerProvider>(
+                          builder: (context, serverProvider, child) {
+                            final status = server != null
+                                ? serverProvider.getServerStatus(server.id)
+                                : ServerStatus.offline;
+                            return _buildServerCard(context, server, status);
                           },
-                        ),
-                        const SizedBox(height: 12),
-                        const Divider(height: 1, color: Color(0xFFE0E0E0)),
-                        const SizedBox(height: 12),
-                        // 服务器管理按钮
-                        _buildActionItem(
-                          context,
-                          icon: Icons.settings_outlined,
-                          title: '服务器管理',
-                          onTap: () => _navigateToServerManagement(context),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    _buildSection(
-                      context,
-                      title: '偏好设置',
-                      children: [
-                        _buildLanguageSelector(context),
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    _buildSection(
-                      context,
-                      title: '关于',
-                      children: [
-                        _buildInfoItem(
-                          context,
-                          icon: Icons.info_outline,
-                          title: '版本',
-                          value: 'v1.0.0',
-                        ),
-                      ],
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 32),
 
-                    // 退出登录按钮
+                    // 语言选择 - 简约平放设计
+                    _buildLanguageSelector(context),
+
+                    const SizedBox(height: 32),
+
+                    // 断开连接按钮
                     NeumorphicButton(
                       onPressed: () => _handleLogout(context),
                       style: NeumorphicStyle(
@@ -175,15 +103,41 @@ class SettingsScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       child: const Center(
                         child: Text(
-                          '退出登录',
+                          '断开连接',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: Colors.red,
+                            color: Color(0xFF171717),
                           ),
                         ),
                       ),
                     ),
+
+                    const SizedBox(height: 16),
+
+                    // 版本号 - 简约显示
+                    Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 14,
+                            color: Colors.grey[500],
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'v1.0.0',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
@@ -194,103 +148,128 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSection(
-    BuildContext context, {
-    required String title,
-    required List<Widget> children,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 12),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF737373),
+  /// 简约服务器卡片 - 只显示名字和状态灯
+  Widget _buildServerCard(BuildContext context, Server? server, ServerStatus status) {
+    final statusColor = _getStatusColor(status);
+    final serverName = server?.name ?? '未连接';
+
+    return NeumorphicButton(
+      onPressed: () => _navigateToServerManagement(context),
+      style: NeumorphicStyle(
+        depth: 4,
+        intensity: 0.8,
+        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          // 动态涟漪状态灯
+          _buildStatusIndicator(statusColor, status),
+          const SizedBox(width: 16),
+          // 服务器名字
+          Expanded(
+            child: Text(
+              serverName,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF171717),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-        ),
-        Neumorphic(
-          style: NeumorphicStyle(
-            depth: -2,
-            intensity: 0.6,
-            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+          // 右箭头指示
+          Icon(
+            Icons.chevron_right,
+            size: 24,
+            color: Colors.grey[400],
           ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: children,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildInfoItem(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String value,
-  }) {
-    return Row(
+  /// 动态状态指示灯（带涟漪效果）
+  Widget _buildStatusIndicator(Color color, ServerStatus status) {
+    return Stack(
+      alignment: Alignment.center,
       children: [
-        Icon(icon, size: 20, color: const Color(0xFF737373)),
-        const SizedBox(width: 12),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 15,
-            color: Color(0xFF171717),
+        // 外层涟漪
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color.withOpacity(0.2),
           ),
         ),
-        const Spacer(),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14,
-            color: Color(0xFF737373),
+        // 内层光点
+        Container(
+          width: 16,
+          height: 16,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color,
+            boxShadow: status == ServerStatus.checking
+                ? []
+                : [
+                    BoxShadow(
+                      color: color.withOpacity(0.6),
+                      blurRadius: 8,
+                      spreadRadius: 2,
+                    ),
+                  ],
           ),
         ),
       ],
     );
   }
 
+  /// 获取状态颜色
+  Color _getStatusColor(ServerStatus status) {
+    switch (status) {
+      case ServerStatus.online:
+        return Colors.green;
+      case ServerStatus.authError:
+        return Colors.orange;
+      case ServerStatus.offline:
+        return Colors.red;
+      case ServerStatus.checking:
+        return Colors.grey;
+    }
+  }
+
+  /// 简约语言选择器 - 平放设计
   Widget _buildLanguageSelector(BuildContext context) {
     return Row(
       children: [
-        const Icon(Icons.language, size: 20, color: Color(0xFF737373)),
+        const Icon(Icons.language, size: 22, color: Color(0xFF737373)),
         const SizedBox(width: 12),
         const Text(
           '语言',
           style: TextStyle(
-            fontSize: 15,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
             color: Color(0xFF171717),
           ),
         ),
         const Spacer(),
-        Neumorphic(
-          style: NeumorphicStyle(
-            depth: 2,
-            intensity: 0.6,
-            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
-          ),
-          padding: const EdgeInsets.all(4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildLanguageButton(context, 'en', 'EN'),
-              const SizedBox(width: 8),
-              _buildLanguageButton(context, 'zh', '中文'),
-            ],
-          ),
+        // NeumorphicRadio 组
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildLanguageRadio(context, 'en', 'EN'),
+            const SizedBox(width: 12),
+            _buildLanguageRadio(context, 'zh', '中文'),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildLanguageButton(BuildContext context, String langCode, String label) {
+  /// 语言选择 Radio 按钮
+  Widget _buildLanguageRadio(BuildContext context, String langCode, String label) {
     final isActive = context.locale.languageCode == langCode;
 
     return NeumorphicButton(
@@ -298,117 +277,17 @@ class SettingsScreen extends StatelessWidget {
         context.setLocale(Locale(langCode));
       },
       style: NeumorphicStyle(
-        depth: isActive ? -2 : 1,
-        intensity: 0.6,
-        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(6)),
-        color: isActive ? const Color(0xFF171717) : Colors.transparent,
+        depth: isActive ? -3 : 2,
+        intensity: 0.7,
+        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: isActive ? Colors.white : const Color(0xFF525252),
-        ),
-      ),
-    );
-  }
-
-  /// 服务器状态显示项
-  Widget _buildServerStatusItem(BuildContext context, ServerStatus status) {
-    Color statusColor;
-    String statusText;
-
-    switch (status) {
-      case ServerStatus.online:
-        statusColor = Colors.green;
-        statusText = '在线';
-        break;
-      case ServerStatus.authError:
-        statusColor = Colors.orange;
-        statusText = 'API Key 无效';
-        break;
-      case ServerStatus.offline:
-        statusColor = Colors.red;
-        statusText = '离线';
-        break;
-      case ServerStatus.checking:
-        statusColor = Colors.grey;
-        statusText = '检查中...';
-        break;
-    }
-
-    return Row(
-      children: [
-        const Icon(Icons.circle, size: 20, color: Color(0xFF737373)),
-        const SizedBox(width: 12),
-        const Text(
-          '服务器状态',
-          style: TextStyle(
-            fontSize: 15,
-            color: Color(0xFF171717),
-          ),
-        ),
-        const Spacer(),
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: statusColor,
-            boxShadow: [
-              BoxShadow(
-                color: statusColor.withOpacity(0.5),
-                blurRadius: 4,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          statusText,
-          style: TextStyle(
-            fontSize: 14,
-            color: statusColor,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// 可点击的操作项
-  Widget _buildActionItem(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        color: Colors.transparent,
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: const Color(0xFF737373)),
-            const SizedBox(width: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 15,
-                color: Color(0xFF171717),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const Spacer(),
-            const Icon(
-              Icons.chevron_right,
-              size: 20,
-              color: Color(0xFF737373),
-            ),
-          ],
+          fontSize: 14,
+          fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+          color: isActive ? const Color(0xFF171717) : const Color(0xFF737373),
         ),
       ),
     );
