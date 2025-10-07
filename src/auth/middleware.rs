@@ -63,6 +63,7 @@ where
             "/login.html",
             "/auth.js",
             "/api/auth/verify",
+            "/api/health",
             "/common-i18n.js",
             "/material-icons.css",
         ];

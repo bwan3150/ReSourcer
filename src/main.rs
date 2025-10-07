@@ -21,6 +21,14 @@ async fn get_global_config() -> Result<HttpResponse> {
     })))
 }
 
+/// 健康检查 API - 不需要认证
+async fn health_check() -> Result<HttpResponse> {
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "status": "ok",
+        "service": "re-sourcer"
+    })))
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // 获取本机局域网 IP
@@ -101,6 +109,8 @@ async fn main() -> std::io::Result<()> {
             .app_data(api_key_data.clone())
             .app_data(download_task_manager.clone())
             .app_data(upload_task_manager.clone())
+            // 健康检查 API（不需要认证）
+            .route("/api/health", web::get().to(health_check))
             // 认证 API 路由
             .service(web::scope("/api/auth").configure(auth::routes))
             // 全局配置 API（所有模块共用）

@@ -23,6 +23,21 @@ class AuthProvider with ChangeNotifier {
 
     if (_isLoggedIn) {
       _apiService = await ApiService.create();
+
+      // 检查服务器健康状态和 API key 有效性
+      final healthOk = await _apiService!.checkHealth();
+      if (!healthOk) {
+        print('服务器未运行，自动登出');
+        await logout();
+        return;
+      }
+
+      final authOk = await _apiService!.checkAuth();
+      if (!authOk) {
+        print('API Key 无效，自动登出');
+        await logout();
+        return;
+      }
     }
 
     notifyListeners();

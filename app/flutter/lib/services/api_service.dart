@@ -26,7 +26,40 @@ class ApiService {
     return service;
   }
 
-  /// 验证 API Key
+  /// 健康检查 - 检查服务器是否在运行
+  Future<bool> checkHealth() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/health'),
+      ).timeout(const Duration(seconds: 3));
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('健康检查失败: $e');
+      return false;
+    }
+  }
+
+  /// 检查当前 API Key 是否有效
+  Future<bool> checkAuth() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/auth/check'),
+        headers: {'Cookie': 'api_key=$_apiKey'},
+      ).timeout(const Duration(seconds: 3));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['valid'] == true;
+      }
+      return false;
+    } catch (e) {
+      print('认证检查失败: $e');
+      return false;
+    }
+  }
+
+  /// 验证 API Key（用于登录时）
   Future<bool> verifyApiKey(String baseUrl, String apiKey) async {
     try {
       final response = await http.post(
