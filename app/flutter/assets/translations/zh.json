@@ -64,8 +64,8 @@
   },
   "nav": {
     "gallery": "画廊",
-    "classifier": "分类器",
-    "downloader": "下载器",
+    "classifier": "分类",
+    "downloader": "下载",
     "settings": "设置"
   }
 }

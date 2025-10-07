@@ -135,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     SizedBox(width: 6),
                     Text(
-                      '分类器',
+                      '分类',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -166,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     SizedBox(width: 6),
                     Text(
-                      '下载器',
+                      '下载',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,

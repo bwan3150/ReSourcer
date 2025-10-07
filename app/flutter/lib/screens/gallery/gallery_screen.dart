@@ -5,8 +5,8 @@ import '../../providers/gallery_provider.dart';
 import '../../providers/upload_provider.dart';
 import '../../models/gallery_folder.dart';
 import '../../widgets/gallery/image_grid.dart';
-import '../../widgets/gallery/upload_button.dart';
 import '../../widgets/gallery/folder_dropdown.dart';
+import '../upload/upload_tasks_screen.dart';
 
 /// 画廊页面
 class GalleryScreen extends StatefulWidget {
@@ -136,7 +136,6 @@ class _GalleryScreenState extends State<GalleryScreen> {
             ],
           ),
         ),
-        floatingActionButton: const UploadButton(),
       ),
     );
   }
@@ -205,15 +204,21 @@ class _GalleryScreenState extends State<GalleryScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          // 刷新按钮
+          // 上传任务按钮
           NeumorphicButton(
-            onPressed: _handleRefresh,
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const UploadTasksScreen(),
+                ),
+              );
+            },
             style: const NeumorphicStyle(
               boxShape: NeumorphicBoxShape.circle(),
               depth: 2,
             ),
             padding: const EdgeInsets.all(12),
-            child: const Icon(Icons.refresh, size: 20),
+            child: const Icon(Icons.upload_file, size: 25),
           ),
         ],
       ),
