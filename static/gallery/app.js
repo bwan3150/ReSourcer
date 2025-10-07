@@ -111,12 +111,7 @@ async function loadFiles(folderPath) {
         const galleryGrid = document.getElementById('galleryGrid');
         const emptyState = document.getElementById('emptyState');
 
-        if (data.files.length === 0) {
-            galleryGrid.style.display = 'none';
-            emptyState.style.display = 'flex';
-            return;
-        }
-
+        // 始终显示画廊网格（包含上传卡片），即使文件为空
         galleryGrid.style.display = 'grid';
         emptyState.style.display = 'none';
         galleryGrid.innerHTML = '';

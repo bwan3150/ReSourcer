@@ -100,29 +100,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     );
                   }
 
-                  if (provider.files.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.photo_library_outlined,
-                            size: 64,
-                            color: Colors.grey,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            '暂无图片',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
+                  // 始终显示 ImageGrid，即使为空也会显示上传按钮
                   return RefreshIndicator(
                     onRefresh: _handleRefresh,
                     child: ImageGrid(
