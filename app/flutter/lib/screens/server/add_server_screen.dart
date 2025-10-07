@@ -17,6 +17,8 @@ class _AddServerScreenState extends State<AddServerScreen> {
   final _nameController = TextEditingController();
   final _urlController = TextEditingController();
   final _keyController = TextEditingController();
+  bool _isQRMode = true; // 默认二维码模式
+  bool _qrScanned = false; // 是否已扫描二维码
   bool _isVerifying = false;
   String? _errorMessage;
 
@@ -39,81 +41,16 @@ class _AddServerScreenState extends State<AddServerScreen> {
       ),
       child: Scaffold(
         backgroundColor: NeumorphicTheme.baseColor(context),
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildTextField(
-                        controller: _nameController,
-                        label: '服务器名称',
-                        hint: '例如：我的电脑',
-                        icon: Icons.label_outline,
-                      ),
-                      const SizedBox(height: 20),
-                      _buildTextField(
-                        controller: _urlController,
-                        label: '服务器地址',
-                        hint: 'http://192.168.1.100:1234',
-                        icon: Icons.link,
-                      ),
-                      const SizedBox(height: 20),
-                      _buildTextField(
-                        controller: _keyController,
-                        label: 'API Key',
-                        hint: '粘贴 API Key',
-                        icon: Icons.key,
-                        obscureText: true,
-                      ),
-                      if (_errorMessage != null) ...[
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.error_outline, color: Colors.red, size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _errorMessage!,
-                                  style: const TextStyle(color: Colors.red, fontSize: 13),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 32),
-                      _buildAddButton(),
-                      const SizedBox(height: 16),
-                      _buildQRScanButton(),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+        appBar: NeumorphicAppBar(
+          title: const Text(
+            '添加服务器',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF171717),
+            ),
           ),
-        ),
-      ),
-    );
-  }
-
-  /// 标题栏
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        children: [
-          NeumorphicButton(
+          leading: NeumorphicButton(
             onPressed: () => Navigator.of(context).pop(),
             style: const NeumorphicStyle(
               boxShape: NeumorphicBoxShape.circle(),
@@ -122,26 +59,242 @@ class _AddServerScreenState extends State<AddServerScreen> {
             padding: const EdgeInsets.all(12),
             child: const Icon(Icons.arrow_back, size: 20),
           ),
-          const SizedBox(width: 16),
-          const Text(
-            '添加服务器',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF171717),
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Neumorphic(
+              style: NeumorphicStyle(
+                depth: 4,
+                intensity: 0.6,
+                boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
+              ),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // NeumorphicToggle 切换模式
+                  _buildModeToggle(),
+                  const SizedBox(height: 32),
+                  // 根据模式显示不同内容
+                  _isQRMode ? _buildQRMode() : _buildManualMode(),
+                  // 错误提示
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      _errorMessage!,
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  /// 输入框
-  Widget _buildTextField({
-    required TextEditingController controller,
+  /// 模式切换 Toggle
+  Widget _buildModeToggle() {
+    return Center(
+      child: SizedBox(
+        width: 240,
+        child: NeumorphicToggle(
+          height: 40,
+          selectedIndex: _isQRMode ? 0 : 1,
+          displayForegroundOnlyIfSelected: true,
+      children: [
+        ToggleElement(
+          background: const Center(
+            child: Text(
+              '二维码',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF737373),
+              ),
+            ),
+          ),
+          foreground: const Center(
+            child: Text(
+              '二维码',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF171717),
+              ),
+            ),
+          ),
+        ),
+        ToggleElement(
+          background: const Center(
+            child: Text(
+              '手动输入',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF737373),
+              ),
+            ),
+          ),
+          foreground: const Center(
+            child: Text(
+              '手动输入',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF171717),
+              ),
+            ),
+          ),
+        ),
+      ],
+      thumb: Neumorphic(
+        style: NeumorphicStyle(
+          depth: -3,
+          intensity: 0.6,
+          boxShape: NeumorphicBoxShape.roundRect(
+            BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      onChanged: (index) {
+        setState(() {
+          _isQRMode = index == 0;
+          _errorMessage = null;
+          // 切换模式时重置
+          if (_isQRMode) {
+            _urlController.clear();
+            _keyController.clear();
+            _qrScanned = false;
+          }
+        });
+      },
+        ),
+      ),
+    );
+  }
+
+  /// 二维码模式
+  Widget _buildQRMode() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 服务器名称输入框
+        _buildInputField(
+          label: '服务器名称',
+          controller: _nameController,
+        ),
+        const SizedBox(height: 32),
+        // 扫码和确认按钮
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // QR Code 扫描按钮 - 圆形
+            NeumorphicButton(
+              onPressed: _isVerifying ? null : _scanQRCode,
+              style: const NeumorphicStyle(
+                depth: 4,
+                intensity: 0.7,
+                boxShape: NeumorphicBoxShape.circle(),
+              ),
+              padding: const EdgeInsets.all(24),
+              child: const Icon(
+                Icons.qr_code_scanner,
+                size: 32,
+                color: Color(0xFF171717),
+              ),
+            ),
+            // 扫描成功后显示确认按钮
+            if (_qrScanned) ...[
+              const SizedBox(width: 24),
+              NeumorphicButton(
+                onPressed: _isVerifying ? null : _addServer,
+                style: const NeumorphicStyle(
+                  depth: 4,
+                  intensity: 0.7,
+                  boxShape: NeumorphicBoxShape.circle(),
+                ),
+                padding: const EdgeInsets.all(24),
+                child: _isVerifying
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(
+                        Icons.check,
+                        size: 32,
+                        color: Color(0xFF171717),
+                      ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// 手动输入模式
+  Widget _buildManualMode() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 服务器名称
+        _buildInputField(
+          label: '服务器名称',
+          controller: _nameController,
+        ),
+        const SizedBox(height: 20),
+        // 服务器地址
+        _buildInputField(
+          label: '服务器地址',
+          controller: _urlController,
+        ),
+        const SizedBox(height: 20),
+        // API Key
+        _buildInputField(
+          label: 'API Key',
+          controller: _keyController,
+          obscureText: true,
+        ),
+        const SizedBox(height: 32),
+        // 确认按钮 - 圆形
+        Center(
+          child: NeumorphicButton(
+            onPressed: _isVerifying ? null : _addServer,
+            style: const NeumorphicStyle(
+              depth: 4,
+              intensity: 0.7,
+              boxShape: NeumorphicBoxShape.circle(),
+            ),
+            padding: const EdgeInsets.all(24),
+            child: _isVerifying
+                ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(
+                    Icons.check,
+                    size: 32,
+                    color: Color(0xFF171717),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 输入框 - Neumorphic 下陷风格 带上方小字标签
+  Widget _buildInputField({
     required String label,
-    required String hint,
-    required IconData icon,
+    required TextEditingController controller,
     bool obscureText = false,
   }) {
     return Column(
@@ -150,7 +303,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
         Text(
           label,
           style: const TextStyle(
-            fontSize: 14,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
             color: Color(0xFF171717),
           ),
@@ -159,79 +312,59 @@ class _AddServerScreenState extends State<AddServerScreen> {
         Neumorphic(
           style: NeumorphicStyle(
             depth: -4,
-            intensity: 0.8,
-            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+            intensity: 0.6,
+            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(25)),
           ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: TextField(
             controller: controller,
             obscureText: obscureText,
-            decoration: InputDecoration(
-              hintText: hint,
+            decoration: const InputDecoration(
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.all(16),
-              prefixIcon: Icon(icon, color: Colors.grey[600], size: 20),
+              hintText: '',
             ),
-            style: const TextStyle(fontSize: 15),
+            style: const TextStyle(fontSize: 14),
           ),
         ),
       ],
     );
   }
 
-  /// 添加按钮
-  Widget _buildAddButton() {
-    return NeumorphicButton(
-      onPressed: _isVerifying ? null : _addServer,
-      style: NeumorphicStyle(
-        depth: 4,
-        intensity: 0.8,
-        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-        color: _isVerifying ? Colors.grey[300] : const Color(0xFF4CAF50),
+  /// 扫描二维码
+  Future<void> _scanQRCode() async {
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (context) => const _QRScannerScreen(),
       ),
-      padding: const EdgeInsets.symmetric(vertical: 18),
-      child: _isVerifying
-          ? const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Text(
-              '添加服务器',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-              textAlign: TextAlign.center,
-            ),
     );
-  }
 
-  /// 扫码按钮
-  Widget _buildQRScanButton() {
-    return NeumorphicButton(
-      onPressed: _scanQRCode,
-      style: NeumorphicStyle(
-        depth: 4,
-        intensity: 0.8,
-        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 18),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(Icons.qr_code_scanner, size: 20),
-          SizedBox(width: 8),
-          Text(
-            '扫描二维码',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
+    if (result != null && mounted) {
+      // 解析二维码 URL: http://192.168.1.100:1234/login.html?key=xxx
+      try {
+        final uri = Uri.parse(result);
+        final baseUrl = '${uri.scheme}://${uri.host}:${uri.port}';
+        final key = uri.queryParameters['key'];
+
+        if (key != null) {
+          setState(() {
+            _urlController.text = baseUrl;
+            _keyController.text = key;
+            _qrScanned = true;
+            _errorMessage = null;
+          });
+        } else {
+          setState(() {
+            _errorMessage = '二维码格式无效';
+            _qrScanned = false;
+          });
+        }
+      } catch (e) {
+        setState(() {
+          _errorMessage = '无法解析二维码：$e';
+          _qrScanned = false;
+        });
+      }
+    }
   }
 
   /// 添加服务器
@@ -241,9 +374,16 @@ class _AddServerScreenState extends State<AddServerScreen> {
     final key = _keyController.text.trim();
 
     // 验证输入
-    if (name.isEmpty || url.isEmpty || key.isEmpty) {
+    if (name.isEmpty) {
       setState(() {
-        _errorMessage = '请填写所有字段';
+        _errorMessage = '请输入服务器名称';
+      });
+      return;
+    }
+
+    if (url.isEmpty || key.isEmpty) {
+      setState(() {
+        _errorMessage = _isQRMode ? '请先扫描二维码' : '请填写所有字段';
       });
       return;
     }
@@ -286,37 +426,6 @@ class _AddServerScreenState extends State<AddServerScreen> {
         _errorMessage = '添加失败：$e';
         _isVerifying = false;
       });
-    }
-  }
-
-  /// 扫描二维码
-  Future<void> _scanQRCode() async {
-    final result = await Navigator.of(context).push<String>(
-      MaterialPageRoute(
-        builder: (context) => const _QRScannerScreen(),
-      ),
-    );
-
-    if (result != null && mounted) {
-      // 解析二维码 URL: http://192.168.1.100:1234/login.html?key=xxx
-      try {
-        final uri = Uri.parse(result);
-        final baseUrl = '${uri.scheme}://${uri.host}:${uri.port}';
-        final key = uri.queryParameters['key'];
-
-        if (key != null) {
-          _urlController.text = baseUrl;
-          _keyController.text = key;
-        } else {
-          setState(() {
-            _errorMessage = '二维码格式无效';
-          });
-        }
-      } catch (e) {
-        setState(() {
-          _errorMessage = '无法解析二维码：$e';
-        });
-      }
     }
   }
 }
