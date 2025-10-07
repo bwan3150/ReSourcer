@@ -23,7 +23,7 @@ class GalleryFile {
       fileType: json['file_type'] ?? '',
       extension: json['extension'] ?? '',
       size: json['size'] ?? 0,
-      modifiedTime: json['modified_time'] ?? '',
+      modifiedTime: json['modified'] ?? '', // 后端返回的字段名是 modified
     );
   }
 
