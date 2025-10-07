@@ -53,16 +53,9 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
   Widget build(BuildContext context) {
     final file = widget.files[_currentIndex];
 
-    return NeumorphicTheme(
-      theme: const NeumorphicThemeData(
-        baseColor: Color(0xFFF0F0F0),
-        lightSource: LightSource.topLeft,
-        depth: 4,
-        intensity: 0.6,
-      ),
-      child: Scaffold(
-        backgroundColor: NeumorphicTheme.baseColor(context),
-        appBar: NeumorphicAppBar(
+    return Scaffold(
+      backgroundColor: NeumorphicTheme.baseColor(context),
+      appBar: NeumorphicAppBar(
           title: Text(
             file.name,
             style: const TextStyle(
@@ -115,8 +108,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   // 底部控制栏

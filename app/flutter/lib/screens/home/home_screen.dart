@@ -46,15 +46,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return NeumorphicTheme(
-      theme: const NeumorphicThemeData(
-        baseColor: Color(0xFFF0F0F0),
-        lightSource: LightSource.topLeft,
-        depth: 4,
-        intensity: 0.6,
-      ),
-      child: Scaffold(
-        body: AnimatedSwitcher(
+    return Scaffold(
+      body: AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
           switchInCurve: Curves.easeInOut,
           switchOutCurve: Curves.easeInOut,
@@ -70,8 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         bottomNavigationBar: _buildBottomNavigationBar(),
-      ),
-    );
+      );
   }
 
   Widget _buildBottomNavigationBar() {

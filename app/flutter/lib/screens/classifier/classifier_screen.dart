@@ -6,16 +6,9 @@ class ClassifierScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return NeumorphicTheme(
-      theme: const NeumorphicThemeData(
-        baseColor: Color(0xFFF0F0F0),
-        lightSource: LightSource.topLeft,
-        depth: 4,
-        intensity: 0.6,
-      ),
-      child: Scaffold(
-        backgroundColor: NeumorphicTheme.baseColor(context),
-        body: Center(
+    return Scaffold(
+      backgroundColor: NeumorphicTheme.baseColor(context),
+      body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -57,7 +50,6 @@ class ClassifierScreen extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 }

@@ -6,6 +6,7 @@ import 'providers/auth_provider.dart';
 import 'providers/server_provider.dart';
 import 'providers/gallery_provider.dart';
 import 'providers/upload_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/server/server_list_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'utils/constants.dart';
@@ -34,28 +35,39 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => ServerProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => GalleryProvider()),
         ChangeNotifierProvider(create: (_) => UploadProvider()),
       ],
-      child: NeumorphicApp(
-        title: 'app_name'.tr(),
-        debugShowCheckedModeBanner: false,
-        localizationsDelegates: context.localizationDelegates,
-        supportedLocales: context.supportedLocales,
-        locale: context.locale,
-        themeMode: ThemeMode.light,
-        theme: const NeumorphicThemeData(
-          baseColor: Color(0xFFF0F0F0),
-          lightSource: LightSource.topLeft,
-          depth: 4,
-          intensity: 0.6,
-        ),
-        home: const AppInitializer(),
-        routes: {
-          '/servers': (context) => const ServerListScreen(),
-          '/home': (context) => const HomeScreen(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return NeumorphicApp(
+            title: 'app_name'.tr(),
+            debugShowCheckedModeBanner: false,
+            localizationsDelegates: context.localizationDelegates,
+            supportedLocales: context.supportedLocales,
+            locale: context.locale,
+            themeMode: themeProvider.themeMode,
+            theme: const NeumorphicThemeData(
+              baseColor: Color(0xFFF0F0F0),
+              lightSource: LightSource.topLeft,
+              depth: 4,
+              intensity: 0.6,
+            ),
+            darkTheme: const NeumorphicThemeData(
+              baseColor: Color(0xFF333333),
+              lightSource: LightSource.topLeft,
+              depth: 6,
+              intensity: 0.4,
+            ),
+            home: const AppInitializer(),
+            routes: {
+              '/servers': (context) => const ServerListScreen(),
+              '/home': (context) => const HomeScreen(),
+            },
+          );
         },
       ),
     );

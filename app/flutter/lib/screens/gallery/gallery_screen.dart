@@ -48,16 +48,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return NeumorphicTheme(
-      theme: const NeumorphicThemeData(
-        baseColor: Color(0xFFF0F0F0),
-        lightSource: LightSource.topLeft,
-        depth: 4,
-        intensity: 0.6,
-      ),
-      child: Scaffold(
-        backgroundColor: NeumorphicTheme.baseColor(context),
-        body: SafeArea(
+    return Scaffold(
+      backgroundColor: NeumorphicTheme.baseColor(context),
+      body: SafeArea(
           child: Stack(
             children: [
               // 主内容
@@ -138,8 +131,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   void _showFolderSelector() {

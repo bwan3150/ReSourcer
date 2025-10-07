@@ -32,16 +32,9 @@ class _ServerListScreenState extends State<ServerListScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
     final hasCurrentServer = authProvider.currentServer != null;
 
-    return NeumorphicTheme(
-      theme: const NeumorphicThemeData(
-        baseColor: Color(0xFFF0F0F0),
-        lightSource: LightSource.topLeft,
-        depth: 4,
-        intensity: 0.6,
-      ),
-      child: Scaffold(
-        backgroundColor: NeumorphicTheme.baseColor(context),
-        appBar: NeumorphicAppBar(
+    return Scaffold(
+      backgroundColor: NeumorphicTheme.baseColor(context),
+      appBar: NeumorphicAppBar(
           title: const Text(
             '服务器管理',
             style: TextStyle(
@@ -110,8 +103,7 @@ class _ServerListScreenState extends State<ServerListScreen> {
           },
         ),
         floatingActionButton: _buildAddButton(),
-      ),
-    );
+      );
   }
 
   /// 显示状态帮助提示

@@ -129,16 +129,9 @@ class _UploadTasksScreenState extends State<UploadTasksScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return NeumorphicTheme(
-      theme: const NeumorphicThemeData(
-        baseColor: Color(0xFFF0F0F0),
-        lightSource: LightSource.topLeft,
-        depth: 4,
-        intensity: 0.6,
-      ),
-      child: Scaffold(
-        backgroundColor: NeumorphicTheme.baseColor(context),
-        appBar: NeumorphicAppBar(
+    return Scaffold(
+      backgroundColor: NeumorphicTheme.baseColor(context),
+      appBar: NeumorphicAppBar(
           title: const Text(
             '上传任务',
             style: TextStyle(
@@ -225,8 +218,7 @@ class _UploadTasksScreenState extends State<UploadTasksScreen> {
             );
           },
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildTaskItem(UploadTask task) {

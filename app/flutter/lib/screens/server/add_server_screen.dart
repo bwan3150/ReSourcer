@@ -32,16 +32,9 @@ class _AddServerScreenState extends State<AddServerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return NeumorphicTheme(
-      theme: const NeumorphicThemeData(
-        baseColor: Color(0xFFF0F0F0),
-        lightSource: LightSource.topLeft,
-        depth: 4,
-        intensity: 0.6,
-      ),
-      child: Scaffold(
-        backgroundColor: NeumorphicTheme.baseColor(context),
-        appBar: NeumorphicAppBar(
+    return Scaffold(
+      backgroundColor: NeumorphicTheme.baseColor(context),
+      appBar: NeumorphicAppBar(
           title: const Text(
             '添加服务器',
             style: TextStyle(
@@ -95,8 +88,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   /// 模式切换 Toggle
@@ -450,16 +442,9 @@ class _QRScannerScreenState extends State<_QRScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return NeumorphicTheme(
-      theme: const NeumorphicThemeData(
-        baseColor: Color(0xFFF0F0F0),
-        lightSource: LightSource.topLeft,
-        depth: 4,
-        intensity: 0.6,
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: Stack(
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
           children: [
             // 相机预览层
             MobileScanner(
@@ -534,8 +519,7 @@ class _QRScannerScreenState extends State<_QRScannerScreen> {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   /// 扫描框遮罩

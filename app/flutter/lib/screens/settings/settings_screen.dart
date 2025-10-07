@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/server_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../models/server.dart';
 import '../../utils/constants.dart';
 import '../../widgets/common/neumorphic_dialog.dart';
@@ -34,16 +35,9 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return NeumorphicTheme(
-      theme: const NeumorphicThemeData(
-        baseColor: Color(0xFFF0F0F0),
-        lightSource: LightSource.topLeft,
-        depth: 4,
-        intensity: 0.6,
-      ),
-      child: Scaffold(
-        backgroundColor: NeumorphicTheme.baseColor(context),
-        body: SafeArea(
+    return Scaffold(
+      backgroundColor: NeumorphicTheme.baseColor(context),
+      body: SafeArea(
           child: Column(
             children: [
               // 标题
@@ -87,6 +81,11 @@ class SettingsScreen extends StatelessWidget {
 
                     // 语言选择 - 简约平放设计
                     _buildLanguageSelector(context),
+
+                    const SizedBox(height: 24),
+
+                    // 主题切换 - 简约平放设计
+                    _buildThemeSelector(context),
 
                     const SizedBox(height: 32),
 
@@ -144,8 +143,7 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   /// 简约服务器卡片 - 只显示名字和状态灯
@@ -237,6 +235,38 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
+  /// 简约主题选择器 - 平放设计
+  Widget _buildThemeSelector(BuildContext context) {
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return Row(
+          children: [
+            const Icon(Icons.brightness_6, size: 22, color: Color(0xFF737373)),
+            const SizedBox(width: 12),
+            const Text(
+              '主题',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF171717),
+              ),
+            ),
+            const Spacer(),
+            // 主题切换 Radio 组
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildThemeRadio(context, ThemeMode.light, '亮色', themeProvider),
+                const SizedBox(width: 12),
+                _buildThemeRadio(context, ThemeMode.dark, '暗色', themeProvider),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   /// 语言选择 Radio 按钮
   Widget _buildLanguageRadio(BuildContext context, String langCode, String label) {
     final isActive = context.locale.languageCode == langCode;
@@ -244,6 +274,31 @@ class SettingsScreen extends StatelessWidget {
     return NeumorphicButton(
       onPressed: () {
         context.setLocale(Locale(langCode));
+      },
+      style: NeumorphicStyle(
+        depth: isActive ? -3 : 2,
+        intensity: 0.7,
+        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+          color: isActive ? const Color(0xFF171717) : const Color(0xFF737373),
+        ),
+      ),
+    );
+  }
+
+  /// 主题选择 Radio 按钮
+  Widget _buildThemeRadio(BuildContext context, ThemeMode mode, String label, ThemeProvider themeProvider) {
+    final isActive = themeProvider.themeMode == mode;
+
+    return NeumorphicButton(
+      onPressed: () {
+        themeProvider.setThemeMode(mode);
       },
       style: NeumorphicStyle(
         depth: isActive ? -3 : 2,
