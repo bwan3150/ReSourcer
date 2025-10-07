@@ -1,4 +1,5 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import '../../utils/theme_colors.dart';
 
 /// 通用 Neumorphic 对话框
 class NeumorphicDialog {
@@ -27,18 +28,18 @@ class NeumorphicDialog {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF171717),
+                  color: ThemeColors.text(context),
                 ),
               ),
               const SizedBox(height: 16),
               Text(
                 content,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
-                  color: Color(0xFF737373),
+                  color: ThemeColors.textSecondary(context),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -63,10 +64,10 @@ class NeumorphicDialog {
                     ),
                     child: Text(
                       cancelText,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF737373),
+                        color: ThemeColors.textSecondary(context),
                       ),
                     ),
                   ),
@@ -90,7 +91,7 @@ class NeumorphicDialog {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: confirmTextColor ?? const Color(0xFF171717),
+                        color: confirmTextColor ?? ThemeColors.text(context),
                       ),
                     ),
                   ),
@@ -127,18 +128,18 @@ class NeumorphicDialog {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF171717),
+                  color: ThemeColors.text(context),
                 ),
               ),
               const SizedBox(height: 16),
               Text(
                 content,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
-                  color: Color(0xFF737373),
+                  color: ThemeColors.textSecondary(context),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -159,10 +160,10 @@ class NeumorphicDialog {
                 ),
                 child: Text(
                   buttonText,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF171717),
+                    color: ThemeColors.text(context),
                   ),
                 ),
               ),

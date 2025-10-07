@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/gallery_folder.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/gallery_provider.dart';
+import '../../utils/theme_colors.dart';
 
 /// 文件夹下拉选择器
 class FolderDropdown extends StatelessWidget {
@@ -55,7 +56,7 @@ class FolderDropdown extends StatelessWidget {
                         Icon(
                           folder.isSource ? Icons.source : Icons.folder,
                           size: 20,
-                          color: isSelected ? const Color(0xFF171717) : Colors.grey[600],
+                          color: isSelected ? ThemeColors.text(context) : Colors.grey[600],
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -64,7 +65,7 @@ class FolderDropdown extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                              color: isSelected ? const Color(0xFF171717) : Colors.grey[600],
+                              color: isSelected ? ThemeColors.text(context) : Colors.grey[600],
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -83,7 +84,7 @@ class FolderDropdown extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
-                              color: isSelected ? const Color(0xFF171717) : Colors.grey[700],
+                              color: isSelected ? ThemeColors.text(context) : Colors.grey[700],
                             ),
                           ),
                         ),

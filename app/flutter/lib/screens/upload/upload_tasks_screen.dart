@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/upload_task.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/upload_provider.dart';
+import '../../utils/theme_colors.dart';
 import '../../widgets/common/neumorphic_option_sheet.dart';
 
 /// 上传任务列表页面
@@ -182,9 +183,9 @@ class _UploadTasksScreenState extends State<UploadTasksScreen> {
         body: Consumer<UploadProvider>(
           builder: (context, provider, child) {
             if (provider.isLoading && provider.tasks.isEmpty) {
-              return const Center(
+              return Center(
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF171717)),
+                  valueColor: AlwaysStoppedAnimation<Color>(ThemeColors.text(context)),
                 ),
               );
             }
@@ -250,10 +251,10 @@ class _UploadTasksScreenState extends State<UploadTasksScreen> {
                   Expanded(
                     child: Text(
                       task.fileName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF171717),
+                        color: ThemeColors.text(context),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

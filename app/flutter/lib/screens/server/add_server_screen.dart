@@ -4,6 +4,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../models/server.dart';
 import '../../providers/server_provider.dart';
 import '../../services/api_service.dart';
+import '../../utils/theme_colors.dart';
 
 /// 添加服务器界面
 class AddServerScreen extends StatefulWidget {
@@ -35,12 +36,12 @@ class _AddServerScreenState extends State<AddServerScreen> {
     return Scaffold(
       backgroundColor: NeumorphicTheme.baseColor(context),
       appBar: NeumorphicAppBar(
-          title: const Text(
+          title: Text(
             '添加服务器',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF171717),
+              color: ThemeColors.text(context),
             ),
           ),
           leading: NeumorphicButton(
@@ -102,45 +103,45 @@ class _AddServerScreenState extends State<AddServerScreen> {
           displayForegroundOnlyIfSelected: true,
       children: [
         ToggleElement(
-          background: const Center(
+          background: Center(
             child: Text(
               '二维码',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF737373),
+                color: ThemeColors.textSecondary(context),
               ),
             ),
           ),
-          foreground: const Center(
+          foreground: Center(
             child: Text(
               '二维码',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF171717),
+                color: ThemeColors.text(context),
               ),
             ),
           ),
         ),
         ToggleElement(
-          background: const Center(
+          background: Center(
             child: Text(
               '手动输入',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF737373),
+                color: ThemeColors.textSecondary(context),
               ),
             ),
           ),
-          foreground: const Center(
+          foreground: Center(
             child: Text(
               '手动输入',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF171717),
+                color: ThemeColors.text(context),
               ),
             ),
           ),
@@ -196,10 +197,10 @@ class _AddServerScreenState extends State<AddServerScreen> {
                 boxShape: NeumorphicBoxShape.circle(),
               ),
               padding: const EdgeInsets.all(24),
-              child: const Icon(
+              child: Icon(
                 Icons.qr_code_scanner,
                 size: 32,
-                color: Color(0xFF171717),
+                color: ThemeColors.text(context),
               ),
             ),
             // 扫描成功后显示确认按钮
@@ -219,10 +220,10 @@ class _AddServerScreenState extends State<AddServerScreen> {
                         width: 24,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(
+                    : Icon(
                         Icons.check,
                         size: 32,
-                        color: Color(0xFF171717),
+                        color: ThemeColors.text(context),
                       ),
               ),
             ],
@@ -272,10 +273,10 @@ class _AddServerScreenState extends State<AddServerScreen> {
                     width: 24,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(
+                : Icon(
                     Icons.check,
                     size: 32,
-                    color: Color(0xFF171717),
+                    color: ThemeColors.text(context),
                   ),
           ),
         ),
@@ -294,10 +295,10 @@ class _AddServerScreenState extends State<AddServerScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF171717),
+            color: ThemeColors.text(context),
           ),
         ),
         const SizedBox(height: 8),
@@ -480,10 +481,10 @@ class _QRScannerScreenState extends State<_QRScannerScreen> {
                         color: Color(0xFFF0F0F0),
                       ),
                       padding: const EdgeInsets.all(12),
-                      child: const Icon(
+                      child: Icon(
                         Icons.arrow_back,
                         size: 20,
-                        color: Color(0xFF171717),
+                        color: ThemeColors.text(context),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -502,12 +503,12 @@ class _QRScannerScreenState extends State<_QRScannerScreen> {
                           horizontal: 20,
                           vertical: 12,
                         ),
-                        child: const Text(
+                        child: Text(
                           '扫描二维码',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF171717),
+                            color: ThemeColors.text(context),
                           ),
                           textAlign: TextAlign.center,
                         ),

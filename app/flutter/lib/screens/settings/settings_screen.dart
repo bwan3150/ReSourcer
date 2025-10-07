@@ -6,6 +6,7 @@ import '../../providers/server_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../models/server.dart';
 import '../../utils/constants.dart';
+import '../../utils/theme_colors.dart';
 import '../../widgets/common/neumorphic_dialog.dart';
 import '../server/server_list_screen.dart';
 
@@ -44,13 +45,13 @@ class SettingsScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Row(
-                  children: const [
+                  children: [
                     Text(
                       '设置',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF171717),
+                        color: ThemeColors.text(context),
                       ),
                     ),
                   ],
@@ -100,13 +101,13 @@ class SettingsScreen extends StatelessWidget {
                         ),
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: const Center(
+                      child: Center(
                         child: Text(
                           '断开连接',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF171717),
+                            color: ThemeColors.text(context),
                           ),
                         ),
                       ),
@@ -168,10 +169,10 @@ class SettingsScreen extends StatelessWidget {
           Expanded(
             child: Text(
               serverName,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF171717),
+                color: ThemeColors.text(context),
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -211,14 +212,14 @@ class SettingsScreen extends StatelessWidget {
   Widget _buildLanguageSelector(BuildContext context) {
     return Row(
       children: [
-        const Icon(Icons.language, size: 22, color: Color(0xFF737373)),
+        Icon(Icons.language, size: 22, color: ThemeColors.textSecondary(context)),
         const SizedBox(width: 12),
-        const Text(
+        Text(
           '语言',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
-            color: Color(0xFF171717),
+            color: ThemeColors.text(context),
           ),
         ),
         const Spacer(),
@@ -241,14 +242,14 @@ class SettingsScreen extends StatelessWidget {
       builder: (context, themeProvider, child) {
         return Row(
           children: [
-            const Icon(Icons.brightness_6, size: 22, color: Color(0xFF737373)),
+            Icon(Icons.brightness_6, size: 22, color: ThemeColors.textSecondary(context)),
             const SizedBox(width: 12),
-            const Text(
+            Text(
               '主题',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF171717),
+                color: ThemeColors.text(context),
               ),
             ),
             const Spacer(),
@@ -256,9 +257,9 @@ class SettingsScreen extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildThemeRadio(context, ThemeMode.light, '亮色', themeProvider),
+                _buildThemeRadioIcon(context, ThemeMode.light, Icons.light_mode, themeProvider),
                 const SizedBox(width: 12),
-                _buildThemeRadio(context, ThemeMode.dark, '暗色', themeProvider),
+                _buildThemeRadioIcon(context, ThemeMode.dark, Icons.dark_mode, themeProvider),
               ],
             ),
           ],
@@ -271,47 +272,54 @@ class SettingsScreen extends StatelessWidget {
   Widget _buildLanguageRadio(BuildContext context, String langCode, String label) {
     final isActive = context.locale.languageCode == langCode;
 
-    return NeumorphicButton(
-      onPressed: () {
-        context.setLocale(Locale(langCode));
-      },
-      style: NeumorphicStyle(
-        depth: isActive ? -3 : 2,
-        intensity: 0.7,
-        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-          color: isActive ? const Color(0xFF171717) : const Color(0xFF737373),
+    return SizedBox(
+      width: 56,
+      child: NeumorphicButton(
+        onPressed: () {
+          context.setLocale(Locale(langCode));
+        },
+        style: NeumorphicStyle(
+          depth: isActive ? -3 : 2,
+          intensity: 0.7,
+          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+              color: isActive ? ThemeColors.text(context) : ThemeColors.textSecondary(context),
+            ),
+          ),
         ),
       ),
     );
   }
 
-  /// 主题选择 Radio 按钮
-  Widget _buildThemeRadio(BuildContext context, ThemeMode mode, String label, ThemeProvider themeProvider) {
+  /// 主题选择 Radio 按钮（图标版）
+  Widget _buildThemeRadioIcon(BuildContext context, ThemeMode mode, IconData icon, ThemeProvider themeProvider) {
     final isActive = themeProvider.themeMode == mode;
 
-    return NeumorphicButton(
-      onPressed: () {
-        themeProvider.setThemeMode(mode);
-      },
-      style: NeumorphicStyle(
-        depth: isActive ? -3 : 2,
-        intensity: 0.7,
-        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-          color: isActive ? const Color(0xFF171717) : const Color(0xFF737373),
+    return SizedBox(
+      width: 56,
+      child: NeumorphicButton(
+        onPressed: () {
+          themeProvider.setThemeMode(mode);
+        },
+        style: NeumorphicStyle(
+          depth: isActive ? -3 : 2,
+          intensity: 0.7,
+          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
+        ),
+        padding: const EdgeInsets.all(10),
+        child: Center(
+          child: Icon(
+            icon,
+            size: 20,
+            color: isActive ? ThemeColors.text(context) : ThemeColors.textSecondary(context),
+          ),
         ),
       ),
     );

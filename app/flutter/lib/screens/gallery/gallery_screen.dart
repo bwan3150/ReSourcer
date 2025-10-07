@@ -4,6 +4,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/gallery_provider.dart';
 import '../../providers/upload_provider.dart';
 import '../../models/gallery_folder.dart';
+import '../../utils/theme_colors.dart';
 import '../../widgets/gallery/image_grid.dart';
 import '../../widgets/gallery/folder_dropdown.dart';
 import '../upload/upload_tasks_screen.dart';
@@ -64,9 +65,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     child: Consumer<GalleryProvider>(
                 builder: (context, provider, child) {
                   if (provider.isLoading && provider.files.isEmpty) {
-                    return const Center(
+                    return Center(
                       child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF171717)),
+                        valueColor: AlwaysStoppedAnimation<Color>(ThemeColors.text(context)),
                       ),
                     );
                   }
@@ -99,8 +100,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   // 始终显示 ImageGrid，即使为空也会显示上传按钮
                   return RefreshIndicator(
                     onRefresh: _handleRefresh,
-                    backgroundColor: const Color(0xFFF0F0F0),
-                    color: const Color(0xFF171717),
+                    backgroundColor: NeumorphicTheme.baseColor(context),
+                    color: ThemeColors.text(context),
                     child: ImageGrid(
                       files: provider.files,
                       fileCount: provider.files.length,
@@ -173,16 +174,16 @@ class _GalleryScreenState extends State<GalleryScreen> {
                             ? Icons.source
                             : Icons.folder,
                         size: 20,
-                        color: const Color(0xFF171717),
+                        color: ThemeColors.text(context),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           folderName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF171717),
+                            color: ThemeColors.text(context),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -191,7 +192,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                       Icon(
                         _isDropdownOpen ? Icons.expand_less : Icons.expand_more,
                         size: 20,
-                        color: const Color(0xFF737373),
+                        color: ThemeColors.textSecondary(context),
                       ),
                     ],
                   ),
@@ -360,7 +361,7 @@ class _FolderItem extends StatelessWidget {
               Icon(
                 folder.isSource ? Icons.source : Icons.folder,
                 size: 24,
-                color: isSelected ? const Color(0xFF171717) : const Color(0xFF737373),
+                color: isSelected ? ThemeColors.text(context) : ThemeColors.textSecondary(context),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -369,7 +370,7 @@ class _FolderItem extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                    color: const Color(0xFF171717),
+                    color: ThemeColors.text(context),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -388,7 +389,7 @@ class _FolderItem extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: isSelected ? const Color(0xFF171717) : Colors.grey[700],
+                    color: isSelected ? ThemeColors.text(context) : Colors.grey[700],
                   ),
                 ),
               ),

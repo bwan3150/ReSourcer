@@ -8,6 +8,7 @@ import '../../models/gallery_file.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/upload_provider.dart';
 import '../../providers/gallery_provider.dart';
+import '../../utils/theme_colors.dart';
 import '../../screens/gallery/image_detail_screen.dart';
 import '../common/neumorphic_option_sheet.dart';
 
@@ -491,9 +492,9 @@ class _UploadCardState extends State<UploadCard> {
           ),
           child: Center(
             child: _uploading
-                ? const CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF171717)),
-                    backgroundColor: Color(0xFFE0E0E0),
+                ? CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(ThemeColors.text(context)),
+                    backgroundColor: const Color(0xFFE0E0E0),
                   )
                 : const Icon(
                     Icons.add,
@@ -535,13 +536,13 @@ class _GalleryUploadDialogState extends State<_GalleryUploadDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 标题
-              const Center(
+              Center(
                 child: Text(
                   '上传确认',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF171717),
+                    color: ThemeColors.text(context),
                   ),
                 ),
               ),
@@ -550,9 +551,9 @@ class _GalleryUploadDialogState extends State<_GalleryUploadDialog> {
               Center(
                 child: Text(
                   '已选择 ${widget.fileCount} 个文件',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    color: Color(0xFF737373),
+                    color: ThemeColors.textSecondary(context),
                   ),
                 ),
               ),
@@ -582,10 +583,10 @@ class _GalleryUploadDialogState extends State<_GalleryUploadDialog> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: _deleteAfterUpload
-                            ? const Icon(
+                            ? Icon(
                                 Icons.check,
                                 size: 18,
-                                color: Color(0xFF171717),
+                                color: ThemeColors.text(context),
                               )
                             : null,
                       ),
@@ -594,12 +595,12 @@ class _GalleryUploadDialogState extends State<_GalleryUploadDialog> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           '上传后删除原图',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: Color(0xFF171717),
+                            color: ThemeColors.text(context),
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -635,12 +636,12 @@ class _GalleryUploadDialogState extends State<_GalleryUploadDialog> {
                       horizontal: 24,
                       vertical: 12,
                     ),
-                    child: const Text(
+                    child: Text(
                       '取消',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF737373),
+                        color: ThemeColors.textSecondary(context),
                       ),
                     ),
                   ),
@@ -659,12 +660,12 @@ class _GalleryUploadDialogState extends State<_GalleryUploadDialog> {
                       horizontal: 24,
                       vertical: 12,
                     ),
-                    child: const Text(
+                    child: Text(
                       '上传',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF171717),
+                        color: ThemeColors.text(context),
                       ),
                     ),
                   ),

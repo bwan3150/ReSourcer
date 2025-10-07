@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/server.dart';
 import '../../providers/server_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../utils/theme_colors.dart';
 import '../../widgets/common/neumorphic_dialog.dart';
 import '../../widgets/common/neumorphic_option_sheet.dart';
 import 'add_server_screen.dart';
@@ -35,12 +36,12 @@ class _ServerListScreenState extends State<ServerListScreen> {
     return Scaffold(
       backgroundColor: NeumorphicTheme.baseColor(context),
       appBar: NeumorphicAppBar(
-          title: const Text(
+          title: Text(
             '服务器管理',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF171717),
+              color: ThemeColors.text(context),
             ),
           ),
           leading: hasCurrentServer
@@ -76,8 +77,8 @@ class _ServerListScreenState extends State<ServerListScreen> {
 
             return RefreshIndicator(
               onRefresh: () => provider.checkAllServers(),
-              backgroundColor: const Color(0xFFF0F0F0),
-              color: const Color(0xFF171717),
+              backgroundColor: NeumorphicTheme.baseColor(context),
+              color: ThemeColors.text(context),
               child: ListView.builder(
                 padding: const EdgeInsets.all(20),
                 itemCount: provider.servers.length + 1, // +1 for footer
@@ -116,12 +117,12 @@ class _ServerListScreenState extends State<ServerListScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               '状态说明',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF171717),
+                color: ThemeColors.text(context),
               ),
             ),
             const SizedBox(height: 20),
@@ -152,12 +153,12 @@ class _ServerListScreenState extends State<ServerListScreen> {
                   boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                child: const Text(
+                child: Text(
                   'OK',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF171717),
+                    color: ThemeColors.text(context),
                   ),
                 ),
               ),
@@ -243,10 +244,10 @@ class _ServerListScreenState extends State<ServerListScreen> {
               children: [
                 Text(
                   server.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF171717),
+                    color: ThemeColors.text(context),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -344,10 +345,10 @@ class _ServerListScreenState extends State<ServerListScreen> {
         boxShape: const NeumorphicBoxShape.circle(),
         color: NeumorphicTheme.baseColor(context),
       ),
-      child: const Icon(
+      child: Icon(
         Icons.add,
         size: 32,
-        color: Color(0xFF171717),
+        color: ThemeColors.text(context),
       ),
     );
   }
@@ -385,8 +386,8 @@ class _ServerListScreenState extends State<ServerListScreen> {
         SheetOption(
           icon: Icons.delete_outline,
           text: '删除',
-          textColor: const Color(0xFF737373),
-          iconColor: const Color(0xFF737373),
+          textColor: ThemeColors.textSecondary(context),
+          iconColor: ThemeColors.textSecondary(context),
           onTap: () => _deleteServer(server),
         ),
       ],

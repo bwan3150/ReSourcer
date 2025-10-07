@@ -1,5 +1,6 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../utils/constants.dart';
+import '../../utils/theme_colors.dart';
 import '../gallery/gallery_screen.dart';
 import '../classifier/classifier_screen.dart';
 import '../downloader/downloader_screen.dart';
@@ -82,25 +83,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Icon(
                   Icons.photo_library_outlined,
                   size: 24,
-                  color: const Color(0xFF737373),
+                  color: ThemeColors.textSecondary(context),
                 ),
               ),
               foreground: Center(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
+                  children: [
                     Icon(
                       Icons.photo_library,
                       size: 24,
-                      color: Color(0xFF171717),
+                      color: ThemeColors.text(context),
                     ),
-                    SizedBox(width: 6),
+                    const SizedBox(width: 6),
                     Text(
                       '画廊',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF171717),
+                        color: ThemeColors.text(context),
                       ),
                     ),
                   ],
@@ -113,25 +114,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Icon(
                   Icons.category_outlined,
                   size: 24,
-                  color: const Color(0xFF737373),
+                  color: ThemeColors.textSecondary(context),
                 ),
               ),
               foreground: Center(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
+                  children: [
                     Icon(
                       Icons.category,
                       size: 24,
-                      color: Color(0xFF171717),
+                      color: ThemeColors.text(context),
                     ),
-                    SizedBox(width: 6),
+                    const SizedBox(width: 6),
                     Text(
                       '分类',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF171717),
+                        color: ThemeColors.text(context),
                       ),
                     ),
                   ],
@@ -144,25 +145,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Icon(
                   Icons.download_outlined,
                   size: 24,
-                  color: const Color(0xFF737373),
+                  color: ThemeColors.textSecondary(context),
                 ),
               ),
               foreground: Center(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
+                  children: [
                     Icon(
                       Icons.download,
                       size: 24,
-                      color: Color(0xFF171717),
+                      color: ThemeColors.text(context),
                     ),
-                    SizedBox(width: 6),
+                    const SizedBox(width: 6),
                     Text(
                       '下载',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF171717),
+                        color: ThemeColors.text(context),
                       ),
                     ),
                   ],
@@ -175,25 +176,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Icon(
                   Icons.settings_outlined,
                   size: 24,
-                  color: const Color(0xFF737373),
+                  color: ThemeColors.textSecondary(context),
                 ),
               ),
               foreground: Center(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
+                  children: [
                     Icon(
                       Icons.settings,
                       size: 24,
-                      color: Color(0xFF171717),
+                      color: ThemeColors.text(context),
                     ),
-                    SizedBox(width: 6),
+                    const SizedBox(width: 6),
                     Text(
                       '设置',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF171717),
+                        color: ThemeColors.text(context),
                       ),
                     ),
                   ],

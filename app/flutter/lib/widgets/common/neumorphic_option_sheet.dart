@@ -1,4 +1,5 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import '../../utils/theme_colors.dart';
 
 /// 选项数据类
 class SheetOption {
@@ -40,10 +41,10 @@ class NeumorphicOptionSheet {
               if (title != null) ...[
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF171717),
+                    color: ThemeColors.text(context),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -86,7 +87,7 @@ class NeumorphicOptionSheet {
         children: [
           Icon(
             option.icon,
-            color: option.iconColor ?? const Color(0xFF171717),
+            color: option.iconColor ?? ThemeColors.text(context),
             size: 24,
           ),
           const SizedBox(width: 16),
@@ -96,7 +97,7 @@ class NeumorphicOptionSheet {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: option.textColor ?? const Color(0xFF171717),
+                color: option.textColor ?? ThemeColors.text(context),
               ),
             ),
           ),
