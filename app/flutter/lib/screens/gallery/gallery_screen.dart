@@ -6,6 +6,7 @@ import '../../providers/upload_provider.dart';
 import '../../models/gallery_folder.dart';
 import '../../widgets/gallery/image_grid.dart';
 import '../../widgets/gallery/upload_button.dart';
+import '../../widgets/gallery/folder_dropdown.dart';
 
 /// 画廊页面
 class GalleryScreen extends StatefulWidget {
@@ -220,97 +221,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
   }
 
   Widget _buildFolderDropdown() {
-    return Consumer<GalleryProvider>(
-      builder: (context, provider, child) {
-        if (provider.folders.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
-        return Neumorphic(
-          style: NeumorphicStyle(
-            depth: 4,
-            intensity: 0.8,
-            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-          ),
-          child: Container(
-            constraints: const BoxConstraints(maxHeight: 300),
-            decoration: BoxDecoration(
-              color: NeumorphicTheme.baseColor(context),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              shrinkWrap: true,
-              physics: const BouncingScrollPhysics(),
-              itemCount: provider.folders.length,
-              separatorBuilder: (context, index) => Divider(
-                height: 1,
-                color: Colors.grey[300],
-              ),
-              itemBuilder: (context, index) {
-                final folder = provider.folders[index];
-                final isSelected = provider.currentFolder?.path == folder.path;
-                final displayName = folder.isSource ? '源文件夹' : folder.name;
-
-                return NeumorphicButton(
-                  onPressed: () async {
-                    setState(() => _isDropdownOpen = false);
-                    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                    if (authProvider.apiService != null) {
-                      await provider.selectFolder(authProvider.apiService!, folder);
-                    }
-                  },
-                  style: NeumorphicStyle(
-                    depth: isSelected ? -2 : 0,
-                    intensity: 0.6,
-                    boxShape: const NeumorphicBoxShape.rect(),
-                    color: isSelected ? const Color(0xFF171717).withOpacity(0.05) : null,
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Icon(
-                        folder.isSource ? Icons.source : Icons.folder,
-                        size: 20,
-                        color: isSelected ? const Color(0xFF171717) : const Color(0xFF737373),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          displayName,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                            color: const Color(0xFF171717),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? const Color(0xFF171717).withOpacity(0.1)
-                              : Colors.grey[300],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${folder.fileCount}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: isSelected ? const Color(0xFF171717) : Colors.grey[700],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        );
+    return FolderDropdown(
+      onFolderChanged: () {
+        setState(() => _isDropdownOpen = false);
       },
     );
   }
