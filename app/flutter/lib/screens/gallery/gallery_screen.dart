@@ -104,6 +104,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   // 始终显示 ImageGrid，即使为空也会显示上传按钮
                   return RefreshIndicator(
                     onRefresh: _handleRefresh,
+                    backgroundColor: const Color(0xFFF0F0F0),
+                    color: const Color(0xFF171717),
                     child: ImageGrid(
                       files: provider.files,
                       fileCount: provider.files.length,

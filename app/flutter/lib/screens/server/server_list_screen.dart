@@ -83,6 +83,8 @@ class _ServerListScreenState extends State<ServerListScreen> {
 
             return RefreshIndicator(
               onRefresh: () => provider.checkAllServers(),
+              backgroundColor: const Color(0xFFF0F0F0),
+              color: const Color(0xFF171717),
               child: ListView.builder(
                 padding: const EdgeInsets.all(20),
                 itemCount: provider.servers.length + 1, // +1 for footer
