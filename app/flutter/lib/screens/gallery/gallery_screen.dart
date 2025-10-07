@@ -65,7 +65,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 builder: (context, provider, child) {
                   if (provider.isLoading && provider.files.isEmpty) {
                     return const Center(
-                      child: CircularProgressIndicator(),
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF171717)),
+                      ),
                     );
                   }
 

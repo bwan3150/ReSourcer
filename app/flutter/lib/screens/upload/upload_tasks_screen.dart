@@ -182,7 +182,11 @@ class _UploadTasksScreenState extends State<UploadTasksScreen> {
         body: Consumer<UploadProvider>(
           builder: (context, provider, child) {
             if (provider.isLoading && provider.tasks.isEmpty) {
-              return Center(child: CircularProgressIndicator());
+              return const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF171717)),
+                ),
+              );
             }
 
             if (provider.tasks.isEmpty) {

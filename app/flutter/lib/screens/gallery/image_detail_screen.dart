@@ -276,7 +276,9 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;
               return const Center(
-                child: CircularProgressIndicator(),
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF171717)),
+                ),
               );
             },
             errorBuilder: (context, error, stackTrace) {

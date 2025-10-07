@@ -146,7 +146,9 @@ class _UploadTaskSheetState extends State<_UploadTaskSheet> {
               builder: (context, provider, child) {
                 if (provider.isLoading && provider.tasks.isEmpty) {
                   return const Center(
-                    child: CircularProgressIndicator(),
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF171717)),
+                    ),
                   );
                 }
 

@@ -106,7 +106,9 @@ class _AppInitializerState extends State<AppInitializer> {
   Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(
-        child: CircularProgressIndicator(),
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF171717)),
+        ),
       ),
     );
   }

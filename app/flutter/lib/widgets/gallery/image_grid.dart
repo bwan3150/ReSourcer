@@ -491,7 +491,10 @@ class _UploadCardState extends State<UploadCard> {
           ),
           child: Center(
             child: _uploading
-                ? const CircularProgressIndicator()
+                ? const CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF171717)),
+                    backgroundColor: Color(0xFFE0E0E0),
+                  )
                 : const Icon(
                     Icons.add,
                     size: 48,
@@ -519,36 +522,158 @@ class _GalleryUploadDialogState extends State<_GalleryUploadDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('上传确认'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('已选择 ${widget.fileCount} 个文件'),
-          const SizedBox(height: 16),
-          CheckboxListTile(
-            value: _deleteAfterUpload,
-            onChanged: (value) {
-              setState(() => _deleteAfterUpload = value ?? false);
-            },
-            title: const Text('上传后删除原图'),
-            subtitle: const Text('文件将移至回收站'),
-            controlAffinity: ListTileControlAffinity.leading,
-            contentPadding: EdgeInsets.zero,
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: NeumorphicBackground(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 标题
+              const Center(
+                child: Text(
+                  '上传确认',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF171717),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // 文件数量
+              Center(
+                child: Text(
+                  '已选择 ${widget.fileCount} 个文件',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF737373),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // 删除选项
+              Center(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() => _deleteAfterUpload = !_deleteAfterUpload);
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                    // 自定义 Checkbox
+                    Neumorphic(
+                      style: NeumorphicStyle(
+                        depth: _deleteAfterUpload ? -2 : 2,
+                        intensity: 0.6,
+                        boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(6),
+                        ),
+                      ),
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: _deleteAfterUpload
+                            ? const Icon(
+                                Icons.check,
+                                size: 18,
+                                color: Color(0xFF171717),
+                              )
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '上传后删除原图',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF171717),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '文件将移至回收站',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // 按钮组
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 取消按钮
+                  NeumorphicButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: NeumorphicStyle(
+                      depth: 4,
+                      intensity: 0.7,
+                      boxShape: NeumorphicBoxShape.roundRect(
+                        BorderRadius.circular(12),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    child: const Text(
+                      '取消',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF737373),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // 上传按钮
+                  NeumorphicButton(
+                    onPressed: () => Navigator.pop(context, _deleteAfterUpload),
+                    style: NeumorphicStyle(
+                      depth: 4,
+                      intensity: 0.7,
+                      boxShape: NeumorphicBoxShape.roundRect(
+                        BorderRadius.circular(12),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    child: const Text(
+                      '上传',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF171717),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, _deleteAfterUpload),
-          child: const Text('上传'),
-        ),
-      ],
     );
   }
 }
