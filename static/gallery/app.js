@@ -620,6 +620,9 @@ function renderUploadTasks() {
         badge.style.display = 'none';
     }
 
+    // 检查是否有已完成/失败的任务
+    const finishedTasks = uploadTasks.filter(t => t.status === 'completed' || t.status === 'failed').length;
+
     if (uploadTasks.length === 0) {
         container.innerHTML = `
             <div style="text-align: center; padding: 20px; color: #a3a3a3;">
@@ -629,9 +632,21 @@ function renderUploadTasks() {
         return;
     }
 
+    // 添加清除全部按钮（如果有已完成/失败的任务）
+    let headerHtml = '';
+    if (finishedTasks > 0) {
+        headerHtml = `
+            <div style="display: flex; justify-content: flex-end; padding: 8px 12px; border-bottom: 1px solid #e5e5e5;">
+                <button onclick="clearAllFinishedTasks()" style="padding: 6px 16px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">
+                    清除全部 (${finishedTasks})
+                </button>
+            </div>
+        `;
+    }
+
     // 只渲染任务列表，不触发文件列表刷新
 
-    container.innerHTML = uploadTasks.map(task => {
+    container.innerHTML = headerHtml + uploadTasks.map(task => {
         const statusText = {
             'pending': i18nManager.t('pending') || '等待中',
             'uploading': i18nManager.t('uploading') || '上传中',
@@ -704,5 +719,20 @@ function stopUploadPolling() {
     if (uploadPollingInterval) {
         clearInterval(uploadPollingInterval);
         uploadPollingInterval = null;
+    }
+}
+
+// 清除所有已完成/失败的任务
+async function clearAllFinishedTasks() {
+    try {
+        const response = await fetch('/api/uploader/tasks/clear', {
+            method: 'POST'
+        });
+
+        if (response.ok) {
+            await loadUploadTasks();
+        }
+    } catch (error) {
+        console.error('Failed to clear tasks:', error);
     }
 }

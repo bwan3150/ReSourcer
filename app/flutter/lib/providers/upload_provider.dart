@@ -57,6 +57,18 @@ class UploadProvider with ChangeNotifier {
     }
   }
 
+  /// 清除所有已完成/失败的任务
+  Future<int> clearFinishedTasks(ApiService apiService) async {
+    try {
+      final result = await apiService.clearFinishedUploadTasks();
+      await loadTasks(apiService);
+      return result;
+    } catch (e) {
+      print('清除任务失败: $e');
+      return 0;
+    }
+  }
+
   /// 刷新任务列表
   Future<void> refresh(ApiService apiService) async {
     await loadTasks(apiService);

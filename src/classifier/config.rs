@@ -2,6 +2,19 @@ use super::models::{AppState, Preset};
 use std::path::PathBuf;
 use std::fs;
 use std::io;
+use serde::{Deserialize, Serialize};
+
+// 上传历史记录项
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UploadHistoryItem {
+    pub id: String,
+    pub file_name: String,
+    pub target_folder: String,
+    pub status: String, // "completed", "failed"
+    pub file_size: u64,
+    pub error: Option<String>,
+    pub created_at: String,
+}
 
 // 获取配置文件目录 ~/.config/re-sourcer/
 pub fn get_config_dir() -> PathBuf {
@@ -81,3 +94,67 @@ pub const SUPPORTED_EXTENSIONS: &[&str] = &[
     "MP4", "MOV", "AVI", "MKV", "WEBM",
     "heic", "HEIC", "heif", "HEIF"
 ];
+
+// ========== 上传历史记录管理 ==========
+
+// 获取上传历史记录文件路径
+pub fn get_upload_history_path() -> PathBuf {
+    get_config_dir().join("upload_history.json")
+}
+
+// 加载上传历史记录
+pub fn load_upload_history() -> io::Result<Vec<UploadHistoryItem>> {
+    let history_path = get_upload_history_path();
+
+    if !history_path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let content = fs::read_to_string(&history_path)?;
+    let history: Vec<UploadHistoryItem> = serde_json::from_str(&content)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+    Ok(history)
+}
+
+// 保存上传历史记录
+pub fn save_upload_history(history: &[UploadHistoryItem]) -> io::Result<()> {
+    ensure_config_dir()?;
+
+    let history_path = get_upload_history_path();
+    let content = serde_json::to_string_pretty(history)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+    fs::write(&history_path, content)?;
+    Ok(())
+}
+
+// 添加到上传历史记录（去重并限制数量）
+pub fn add_to_upload_history(item: UploadHistoryItem) -> io::Result<()> {
+    let mut history = load_upload_history()?;
+
+    // 去重：如果已存在相同 ID，先移除
+    history.retain(|h| h.id != item.id);
+
+    // 添加到开头
+    history.insert(0, item);
+
+    // 限制数量（最多100条）
+    if history.len() > 100 {
+        history.truncate(100);
+    }
+
+    save_upload_history(&history)
+}
+
+// 从上传历史记录中删除单个条目
+pub fn remove_from_upload_history(task_id: &str) -> io::Result<()> {
+    let mut history = load_upload_history()?;
+    history.retain(|h| h.id != task_id);
+    save_upload_history(&history)
+}
+
+// 清空上传历史记录
+pub fn clear_upload_history() -> io::Result<()> {
+    save_upload_history(&[])
+}

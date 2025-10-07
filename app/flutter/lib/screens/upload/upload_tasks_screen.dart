@@ -63,6 +63,23 @@ class _UploadTasksScreenState extends State<UploadTasksScreen> {
     }
   }
 
+  Future<void> _clearFinishedTasks() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final uploadProvider = Provider.of<UploadProvider>(context, listen: false);
+
+    if (authProvider.apiService != null) {
+      final result = await uploadProvider.clearFinishedTasks(authProvider.apiService!);
+      if (mounted && result > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('已清除 $result 个任务'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return NeumorphicTheme(
@@ -91,11 +108,41 @@ class _UploadTasksScreenState extends State<UploadTasksScreen> {
             padding: const EdgeInsets.all(12),
             child: const Icon(Icons.arrow_back, size: 20),
           ),
+          actions: [
+            Consumer<UploadProvider>(
+              builder: (context, provider, child) {
+                // 检查是否有已完成或失败的任务
+                final hasFinishedTasks = provider.tasks.any((t) =>
+                    t.status == UploadStatus.completed ||
+                    t.status == UploadStatus.failed);
+
+                if (!hasFinishedTasks) {
+                  return const SizedBox.shrink();
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: NeumorphicButton(
+                    onPressed: _clearFinishedTasks,
+                    style: const NeumorphicStyle(
+                      depth: 3,
+                      boxShape: NeumorphicBoxShape.circle(),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: const Icon(
+                      Icons.delete_sweep,
+                      size: 20,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
         body: Consumer<UploadProvider>(
           builder: (context, provider, child) {
             if (provider.isLoading && provider.tasks.isEmpty) {
-              return const Center(child: CircularProgressIndicator());
+              return Center(child: CircularProgressIndicator());
             }
 
             if (provider.tasks.isEmpty) {

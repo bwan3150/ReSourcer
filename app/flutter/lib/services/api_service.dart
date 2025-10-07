@@ -147,6 +147,25 @@ class ApiService {
     }
   }
 
+  /// 清除所有已完成/失败的上传任务
+  Future<int> clearFinishedUploadTasks() async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/uploader/tasks/clear'),
+        headers: {'Cookie': 'api_key=$_apiKey'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['cleared_count'] ?? 0;
+      }
+      return 0;
+    } catch (e) {
+      print('清除上传任务失败: $e');
+      return 0;
+    }
+  }
+
   /// 获取图片缩略图 URL
   String getThumbnailUrl(String filePath) {
     return '$_baseUrl/api/gallery/thumbnail?path=${Uri.encodeComponent(filePath)}&size=300';

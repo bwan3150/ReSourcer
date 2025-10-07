@@ -129,9 +129,8 @@ impl TaskManager {
             return;
         }
 
-        // 上传完成
-        Self::update_status(&tasks, &task_id, UploadStatus::Completed).await;
-        Self::update_progress(&tasks, &task_id, uploaded_size, 100.0).await;
+        // 上传完成，移到历史记录
+        Self::complete_task(&tasks, &task_id, uploaded_size, file_path.to_string_lossy().to_string(), target_folder).await;
     }
 
     /// 获取单个任务
@@ -144,7 +143,7 @@ impl TaskManager {
         self.tasks.lock().await.values().cloned().collect()
     }
 
-    /// 删除任务
+    /// 删除任务（只能删除活跃任务，历史记录在 handlers 中处理）
     pub async fn delete_task(&self, task_id: &str) -> bool {
         self.tasks.lock().await.remove(task_id).is_some()
     }
@@ -192,15 +191,79 @@ impl TaskManager {
         }
     }
 
-    /// 更新任务错误
+    /// 更新任务错误并移到历史记录
     async fn update_error(
         tasks: &Arc<Mutex<HashMap<String, UploadTask>>>,
         task_id: &str,
         error: String,
     ) {
-        if let Some(task) = tasks.lock().await.get_mut(task_id) {
-            task.status = UploadStatus::Failed;
-            task.error = Some(error);
+        // 先更新状态
+        let (file_name, file_size, target_folder, created_at) = {
+            let mut tasks_lock = tasks.lock().await;
+            if let Some(task) = tasks_lock.get_mut(task_id) {
+                task.status = UploadStatus::Failed;
+                task.error = Some(error.clone());
+                (task.file_name.clone(), task.file_size, task.target_folder.clone(), task.created_at.clone())
+            } else {
+                return;
+            }
+        };
+
+        // 然后移除并添加到历史记录
+        tasks.lock().await.remove(task_id);
+
+        let history_item = crate::classifier::config::UploadHistoryItem {
+            id: task_id.to_string(),
+            file_name,
+            target_folder,
+            status: "failed".to_string(),
+            file_size,
+            error: Some(error),
+            created_at,
+        };
+
+        if let Err(e) = crate::classifier::config::add_to_upload_history(history_item) {
+            eprintln!("保存上传历史记录失败: {}", e);
+        }
+    }
+
+    /// 完成任务并移到历史记录
+    async fn complete_task(
+        tasks: &Arc<Mutex<HashMap<String, UploadTask>>>,
+        task_id: &str,
+        uploaded_size: u64,
+        file_path: String,
+        target_folder: String,
+    ) {
+        // 更新进度并获取任务信息
+        let (file_name, created_at) = {
+            let mut tasks_lock = tasks.lock().await;
+            if let Some(task) = tasks_lock.get_mut(task_id) {
+                task.status = UploadStatus::Completed;
+                task.uploaded_size = uploaded_size;
+                task.file_size = uploaded_size;
+                task.progress = 100.0;
+                (task.file_name.clone(), task.created_at.clone())
+            } else {
+                return;
+            }
+        };
+
+        // 移除任务并添加到历史记录
+        tasks.lock().await.remove(task_id);
+
+        let history_item = crate::classifier::config::UploadHistoryItem {
+            id: task_id.to_string(),
+            file_name,
+            target_folder,
+            status: "completed".to_string(),
+            file_size: uploaded_size,
+            error: None,
+            created_at,
+        };
+
+        if let Err(e) = crate::classifier::config::add_to_upload_history(history_item) {
+            eprintln!("保存上传历史记录失败: {}", e);
         }
     }
 }
