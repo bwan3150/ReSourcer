@@ -3,10 +3,10 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:provider/provider.dart';
 import 'package:media_kit/media_kit.dart';
 import 'providers/auth_provider.dart';
+import 'providers/server_provider.dart';
 import 'providers/gallery_provider.dart';
 import 'providers/upload_provider.dart';
-import 'screens/auth/login_screen.dart';
-import 'screens/auth/qr_scan_screen.dart';
+import 'screens/server/server_list_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'utils/constants.dart';
 
@@ -34,6 +34,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ServerProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => GalleryProvider()),
         ChangeNotifierProvider(create: (_) => UploadProvider()),
@@ -53,9 +54,8 @@ class MyApp extends StatelessWidget {
         ),
         home: const AppInitializer(),
         routes: {
-          Constants.routeLogin: (context) => const LoginScreen(),
-          Constants.routeHome: (context) => const HomeScreen(),
-          Constants.routeQrScan: (context) => const QRScanScreen(),
+          '/servers': (context) => const ServerListScreen(),
+          '/home': (context) => const HomeScreen(),
         },
       ),
     );
@@ -83,9 +83,9 @@ class _AppInitializerState extends State<AppInitializer> {
 
     if (mounted) {
       if (authProvider.isLoggedIn) {
-        Navigator.of(context).pushReplacementNamed(Constants.routeHome);
+        Navigator.of(context).pushReplacementNamed('/home');
       } else {
-        Navigator.of(context).pushReplacementNamed(Constants.routeLogin);
+        Navigator.of(context).pushReplacementNamed('/servers');
       }
     }
   }

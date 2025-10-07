@@ -121,7 +121,7 @@ class ImageGridItem extends StatelessWidget {
                   thumbnailUrl,
                   fit: BoxFit.cover,
                   headers: {
-                    'Cookie': 'api_key=${authProvider.apiKey}',
+                    'Cookie': 'api_key=${authProvider.currentServer?.apiKey ?? ''}',
                   },
                   errorBuilder: (context, error, stackTrace) {
                     return _buildPlaceholder(Icons.broken_image);
@@ -137,7 +137,7 @@ class ImageGridItem extends StatelessWidget {
                   authProvider.apiService!.getImageUrl(file.path),
                   fit: BoxFit.cover,
                   headers: {
-                    'Cookie': 'api_key=${authProvider.apiKey}',
+                    'Cookie': 'api_key=${authProvider.currentServer?.apiKey ?? ''}',
                   },
                   errorBuilder: (context, error, stackTrace) {
                     return _buildPlaceholder(Icons.broken_image);
@@ -156,7 +156,7 @@ class ImageGridItem extends StatelessWidget {
                       thumbnailUrl,
                       fit: BoxFit.cover,
                       headers: {
-                        'Cookie': 'api_key=${authProvider.apiKey}',
+                        'Cookie': 'api_key=${authProvider.currentServer?.apiKey ?? ''}',
                       },
                       errorBuilder: (context, error, stackTrace) {
                         return Container(

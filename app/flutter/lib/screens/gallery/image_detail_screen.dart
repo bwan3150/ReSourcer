@@ -279,7 +279,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
         child: Center(
           child: Image.network(
             fileUrl,
-            headers: {'Cookie': 'api_key=${authProvider.apiKey}'},
+            headers: {'Cookie': 'api_key=${authProvider.currentServer?.apiKey ?? ''}'},
             fit: BoxFit.contain,
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;
@@ -316,7 +316,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
       return _VideoPlayer(
         key: ValueKey(fileUrl), // 使用URL作为key，确保每个视频有独立的widget实例
         videoUrl: fileUrl,
-        apiKey: authProvider.apiKey ?? '',
+        apiKey: authProvider.currentServer?.apiKey ?? '',
         onPlayerCreated: (player) {
           _videoPlayer = player;
         },

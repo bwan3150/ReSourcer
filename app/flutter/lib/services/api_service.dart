@@ -1,36 +1,28 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart';
-import 'storage_service.dart';
+import '../models/server.dart';
 
 /// API 服务
 class ApiService {
-  late String _baseUrl;
-  late String _apiKey;
+  final Server server;
   final Dio _dio = Dio();
 
-  ApiService._();
-
-  static Future<ApiService> create() async {
-    final service = ApiService._();
-    final storage = await StorageService.getInstance();
-
-    service._baseUrl = storage.getBaseUrl() ?? '';
-    service._apiKey = storage.getApiKey() ?? '';
-
+  ApiService(this.server) {
     // 配置 Dio
-    service._dio.options.headers['Cookie'] = 'api_key=${service._apiKey}';
-    service._dio.options.connectTimeout = const Duration(seconds: 10);
-    service._dio.options.receiveTimeout = const Duration(seconds: 10);
-
-    return service;
+    _dio.options.headers['Cookie'] = 'api_key=${server.apiKey}';
+    _dio.options.connectTimeout = const Duration(seconds: 10);
+    _dio.options.receiveTimeout = const Duration(seconds: 10);
   }
 
+  String get baseUrl => server.baseUrl;
+  String get apiKey => server.apiKey;
+
   /// 健康检查 - 检查服务器是否在运行
-  Future<bool> checkHealth() async {
+  static Future<bool> checkHealth(String baseUrl) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/health'),
+        Uri.parse('$baseUrl/api/health'),
       ).timeout(const Duration(seconds: 3));
 
       return response.statusCode == 200;
@@ -40,12 +32,12 @@ class ApiService {
     }
   }
 
-  /// 检查当前 API Key 是否有效
-  Future<bool> checkAuth() async {
+  /// 检查 API Key 是否有效
+  static Future<bool> checkAuth(String baseUrl, String apiKey) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/auth/check'),
-        headers: {'Cookie': 'api_key=$_apiKey'},
+        Uri.parse('$baseUrl/api/auth/check'),
+        headers: {'Cookie': 'api_key=$apiKey'},
       ).timeout(const Duration(seconds: 3));
 
       if (response.statusCode == 200) {
@@ -59,8 +51,8 @@ class ApiService {
     }
   }
 
-  /// 验证 API Key（用于登录时）
-  Future<bool> verifyApiKey(String baseUrl, String apiKey) async {
+  /// 验证 API Key（用于添加服务器时）
+  static Future<bool> verifyApiKey(String baseUrl, String apiKey) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/auth/verify'),
@@ -79,41 +71,43 @@ class ApiService {
     }
   }
 
-  /// 获取文件夹列表
-  Future<List<dynamic>> getGalleryFolders() async {
+  /// 获取画廊文件夹列表
+  Future<List<Map<String, dynamic>>> getGalleryFolders() async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/gallery/folders'),
-        headers: {'Cookie': 'api_key=$_apiKey'},
+        Uri.parse('${server.baseUrl}/api/gallery/folders'),
+        headers: {'Cookie': 'api_key=${server.apiKey}'},
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        return data['folders'] ?? [];
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        final List<dynamic> folders = data['folders'];
+        return folders.cast<Map<String, dynamic>>();
       }
-      return [];
+      throw Exception('获取文件夹列表失败');
     } catch (e) {
       print('获取文件夹列表失败: $e');
-      return [];
+      throw e;
     }
   }
 
-  /// 获取指定文件夹的文件列表
-  Future<List<dynamic>> getGalleryFiles(String folderPath) async {
+  /// 获取画廊文件列表
+  Future<List<Map<String, dynamic>>> getGalleryFiles(String folderPath) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/gallery/files?folder=${Uri.encodeComponent(folderPath)}'),
-        headers: {'Cookie': 'api_key=$_apiKey'},
+        Uri.parse('${server.baseUrl}/api/gallery/files?folder=${Uri.encodeComponent(folderPath)}'),
+        headers: {'Cookie': 'api_key=${server.apiKey}'},
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        return data['files'] ?? [];
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        final List<dynamic> files = data['files'];
+        return files.cast<Map<String, dynamic>>();
       }
-      return [];
+      throw Exception('获取文件列表失败');
     } catch (e) {
-      print('获取画廊文件失败: $e');
-      return [];
+      print('获取文件列表失败: $e');
+      throw e;
     }
   }
 
@@ -123,20 +117,16 @@ class ApiService {
       final formData = FormData();
       formData.fields.add(MapEntry('target_folder', targetFolder));
 
-      for (String filePath in filePaths) {
-        String fileName = filePath.split('/').last;
+      for (var filePath in filePaths) {
         formData.files.add(MapEntry(
           'files',
-          await MultipartFile.fromFile(filePath, filename: fileName),
+          await MultipartFile.fromFile(filePath),
         ));
       }
 
       final response = await _dio.post(
-        '$_baseUrl/api/uploader/upload',
+        '${server.baseUrl}/api/uploader/upload',
         data: formData,
-        options: Options(
-          headers: {'Cookie': 'api_key=$_apiKey'},
-        ),
       );
 
       return response.statusCode == 200;
@@ -147,16 +137,16 @@ class ApiService {
   }
 
   /// 获取上传任务列表
-  Future<List<dynamic>> getUploadTasks() async {
+  Future<List<Map<String, dynamic>>> getUploadTasks() async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/uploader/tasks'),
-        headers: {'Cookie': 'api_key=$_apiKey'},
+        Uri.parse('${server.baseUrl}/api/uploader/tasks'),
+        headers: {'Cookie': 'api_key=${server.apiKey}'},
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['tasks'] ?? [];
+        return (data['tasks'] as List<dynamic>).cast<Map<String, dynamic>>();
       }
       return [];
     } catch (e) {
@@ -169,8 +159,8 @@ class ApiService {
   Future<bool> deleteUploadTask(String taskId) async {
     try {
       final response = await http.delete(
-        Uri.parse('$_baseUrl/api/uploader/task/$taskId'),
-        headers: {'Cookie': 'api_key=$_apiKey'},
+        Uri.parse('${server.baseUrl}/api/uploader/task/$taskId'),
+        headers: {'Cookie': 'api_key=${server.apiKey}'},
       );
 
       return response.statusCode == 200;
@@ -184,8 +174,8 @@ class ApiService {
   Future<int> clearFinishedUploadTasks() async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/api/uploader/tasks/clear'),
-        headers: {'Cookie': 'api_key=$_apiKey'},
+        Uri.parse('${server.baseUrl}/api/uploader/tasks/clear'),
+        headers: {'Cookie': 'api_key=${server.apiKey}'},
       );
 
       if (response.statusCode == 200) {
@@ -201,11 +191,11 @@ class ApiService {
 
   /// 获取图片缩略图 URL
   String getThumbnailUrl(String filePath) {
-    return '$_baseUrl/api/gallery/thumbnail?path=${Uri.encodeComponent(filePath)}&size=300';
+    return '${server.baseUrl}/api/gallery/thumbnail?path=${Uri.encodeComponent(filePath)}&size=300';
   }
 
   /// 获取原图 URL
   String getImageUrl(String filePath) {
-    return '$_baseUrl/api/classifier/file/${Uri.encodeComponent(filePath)}';
+    return '${server.baseUrl}/api/classifier/file/${Uri.encodeComponent(filePath)}';
   }
 }

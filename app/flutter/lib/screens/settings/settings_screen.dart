@@ -2,7 +2,10 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/server_provider.dart';
+import '../../models/server.dart';
 import '../../utils/constants.dart';
+import '../server/server_list_screen.dart';
 
 /// 设置页面
 class SettingsScreen extends StatelessWidget {
@@ -33,7 +36,7 @@ class SettingsScreen extends StatelessWidget {
 
       if (context.mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil(
-          Constants.routeLogin,
+          '/servers',
           (route) => false,
         );
       }
@@ -78,30 +81,56 @@ class SettingsScreen extends StatelessWidget {
                   children: [
                     _buildSection(
                       context,
-                      title: '账号信息',
+                      title: '服务器',
                       children: [
+                        // 当前服务器信息
                         Consumer<AuthProvider>(
-                          builder: (context, provider, child) {
-                            return _buildInfoItem(
-                              context,
-                              icon: Icons.link,
-                              title: '服务地址',
-                              value: provider.baseUrl ?? '未连接',
+                          builder: (context, authProvider, child) {
+                            final server = authProvider.currentServer;
+                            if (server == null) {
+                              return _buildInfoItem(
+                                context,
+                                icon: Icons.dns_outlined,
+                                title: '当前服务器',
+                                value: '未连接',
+                              );
+                            }
+
+                            return Column(
+                              children: [
+                                _buildInfoItem(
+                                  context,
+                                  icon: Icons.dns,
+                                  title: '当前服务器',
+                                  value: server.name,
+                                ),
+                                const SizedBox(height: 12),
+                                _buildInfoItem(
+                                  context,
+                                  icon: Icons.link,
+                                  title: '服务地址',
+                                  value: server.baseUrl,
+                                ),
+                                const SizedBox(height: 12),
+                                Consumer<ServerProvider>(
+                                  builder: (context, serverProvider, child) {
+                                    final status = serverProvider.getServerStatus(server.id);
+                                    return _buildServerStatusItem(context, status);
+                                  },
+                                ),
+                              ],
                             );
                           },
                         ),
                         const SizedBox(height: 12),
-                        Consumer<AuthProvider>(
-                          builder: (context, provider, child) {
-                            return _buildInfoItem(
-                              context,
-                              icon: Icons.vpn_key,
-                              title: 'API Key',
-                              value: provider.apiKey != null
-                                  ? '${provider.apiKey!.substring(0, 8)}...'
-                                  : '未设置',
-                            );
-                          },
+                        const Divider(height: 1, color: Color(0xFFE0E0E0)),
+                        const SizedBox(height: 12),
+                        // 服务器管理按钮
+                        _buildActionItem(
+                          context,
+                          icon: Icons.settings_outlined,
+                          title: '服务器管理',
+                          onTap: () => _navigateToServerManagement(context),
                         ),
                       ],
                     ),
@@ -284,5 +313,119 @@ class SettingsScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// 服务器状态显示项
+  Widget _buildServerStatusItem(BuildContext context, ServerStatus status) {
+    Color statusColor;
+    String statusText;
+
+    switch (status) {
+      case ServerStatus.online:
+        statusColor = Colors.green;
+        statusText = '在线';
+        break;
+      case ServerStatus.authError:
+        statusColor = Colors.orange;
+        statusText = 'API Key 无效';
+        break;
+      case ServerStatus.offline:
+        statusColor = Colors.red;
+        statusText = '离线';
+        break;
+      case ServerStatus.checking:
+        statusColor = Colors.grey;
+        statusText = '检查中...';
+        break;
+    }
+
+    return Row(
+      children: [
+        const Icon(Icons.circle, size: 20, color: Color(0xFF737373)),
+        const SizedBox(width: 12),
+        const Text(
+          '服务器状态',
+          style: TextStyle(
+            fontSize: 15,
+            color: Color(0xFF171717),
+          ),
+        ),
+        const Spacer(),
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: statusColor,
+            boxShadow: [
+              BoxShadow(
+                color: statusColor.withOpacity(0.5),
+                blurRadius: 4,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          statusText,
+          style: TextStyle(
+            fontSize: 14,
+            color: statusColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 可点击的操作项
+  Widget _buildActionItem(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        color: Colors.transparent,
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: const Color(0xFF737373)),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 15,
+                color: Color(0xFF171717),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const Spacer(),
+            const Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: Color(0xFF737373),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 跳转到服务器管理页面
+  Future<void> _navigateToServerManagement(BuildContext context) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ServerListScreen(),
+      ),
+    );
+
+    // 返回后刷新服务器状态
+    if (context.mounted) {
+      final serverProvider = Provider.of<ServerProvider>(context, listen: false);
+      await serverProvider.checkAllServers();
+    }
   }
 }
