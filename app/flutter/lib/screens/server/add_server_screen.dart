@@ -5,6 +5,7 @@ import '../../models/server.dart';
 import '../../providers/server_provider.dart';
 import '../../services/api_service.dart';
 import '../../utils/theme_colors.dart';
+import '../../widgets/common/neumorphic_overlay_appbar.dart';
 
 /// 添加服务器界面
 class AddServerScreen extends StatefulWidget {
@@ -466,56 +467,12 @@ class _QRScannerScreenState extends State<_QRScannerScreen> {
             ),
             // 扫描框遮罩层
             _buildScannerOverlay(),
-            // 顶部栏
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    // 返回按钮
-                    NeumorphicButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: const NeumorphicStyle(
-                        boxShape: NeumorphicBoxShape.circle(),
-                        depth: 4,
-                        color: Color(0xFFF0F0F0),
-                      ),
-                      padding: const EdgeInsets.all(12),
-                      child: Icon(
-                        Icons.arrow_back,
-                        size: 20,
-                        color: ThemeColors.text(context),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    // 标题卡片
-                    Expanded(
-                      child: Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: 4,
-                          intensity: 0.6,
-                          color: const Color(0xFFF0F0F0),
-                          boxShape: NeumorphicBoxShape.roundRect(
-                            BorderRadius.circular(25),
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        child: Text(
-                          '扫描二维码',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: ThemeColors.text(context),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+            // 顶部栏 - 使用封装的组件
+            NeumorphicOverlayAppBar(
+              title: '扫描二维码',
+              leading: NeumorphicCircleButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: Icons.arrow_back,
               ),
             ),
           ],
