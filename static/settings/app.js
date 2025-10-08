@@ -1,6 +1,7 @@
 // 设置页面逻辑
 let appState = {
-    source_folder: ''
+    source_folder: '',
+    backup_source_folders: []
 };
 
 // 内存中的文件夹列表 (包含已存在的和用户新添加的)
@@ -27,15 +28,78 @@ async function loadAppState() {
         const response = await fetch('/api/settings/state');
         appState = await response.json();
 
-        // 如果已经配置了源文件夹,显示它并加载分类文件夹
+        // 渲染源文件夹列表
+        renderSourceFolders();
+
+        // 如果已经配置了源文件夹,加载分类文件夹
         if (appState.source_folder) {
-            document.getElementById('sourceFolderInput').value = appState.source_folder;
             await loadFoldersFromPath(appState.source_folder);
         }
 
     } catch (error) {
         console.error('Error loading state:', error);
     }
+}
+
+// 渲染源文件夹列表
+function renderSourceFolders() {
+    const section = document.getElementById('sourceFoldersSection');
+    const container = document.getElementById('sourceFoldersList');
+
+    // 收集所有源文件夹（当前+备用）
+    const allSources = [];
+    if (appState.source_folder) {
+        allSources.push({
+            path: appState.source_folder,
+            isActive: true
+        });
+    }
+    if (appState.backup_source_folders && appState.backup_source_folders.length > 0) {
+        appState.backup_source_folders.forEach(path => {
+            allSources.push({
+                path: path,
+                isActive: false
+            });
+        });
+    }
+
+    // 如果没有源文件夹,隐藏列表区域
+    if (allSources.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+
+    section.style.display = 'block';
+
+    container.innerHTML = allSources.map(source => {
+        const activeClass = source.isActive ? 'active' : '';
+        const activeBadge = source.isActive ?
+            `<span class="source-folder-badge" data-i18n="currentActive">当前</span>` : '';
+
+        return `
+            <div class="source-folder-item ${activeClass}">
+                ${activeBadge}
+                <span class="source-folder-path">${source.path}</span>
+                <div class="source-folder-actions">
+                    ${!source.isActive ? `
+                        <button class="icon-btn" onclick="switchToSourceFolder('${source.path.replace(/'/g, "\\'")}')"
+                                data-i18n-title="switchTo" title="切换到此文件夹">
+                            <span class="material-symbols-outlined">swap_horiz</span>
+                        </button>
+                    ` : ''}
+                    ${!source.isActive ? `
+                        <button class="icon-btn" onclick="removeSourceFolder('${source.path.replace(/'/g, "\\'")}')"
+                                data-i18n-title="remove" title="移除">
+                            <span class="material-symbols-outlined">delete</span>
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // 更新i18n
+    i18nManager.updateUI();
 }
 
 // 渲染文件夹列表
@@ -122,28 +186,117 @@ function toggleFolderVisibility(index) {
     renderFolders();
 }
 
-// 保存源文件夹
-async function saveSourceFolder() {
+// 添加新源文件夹
+async function addNewSourceFolder() {
     const folderPath = document.getElementById('sourceFolderInput').value.trim();
 
     if (!folderPath) {
-        alert('请输入或选择文件夹路径');
+        alert(i18nManager.t('enterFolderPath'));
         return;
     }
 
-    // 保存到状态
-    appState.source_folder = folderPath;
+    try {
+        // 如果是第一个源文件夹,直接设为当前源
+        if (!appState.source_folder) {
+            appState.source_folder = folderPath;
+            await loadFoldersFromPath(folderPath);
+            renderSourceFolders();
+            document.getElementById('sourceFolderInput').value = '';
+            return;
+        }
 
-    // 加载该文件夹下的子文件夹
-    await loadFoldersFromPath(folderPath);
+        // 否则添加到备用列表
+        const response = await fetch('/api/settings/sources/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                folder_path: folderPath
+            })
+        });
+
+        if (response.ok) {
+            // 重新加载状态
+            await loadAppState();
+            document.getElementById('sourceFolderInput').value = '';
+            alert(i18nManager.t('sourceFolderAdded', '源文件夹添加成功'));
+        } else {
+            const error = await response.json();
+            alert(error.error || i18nManager.t('failedAddSourceFolder', '添加源文件夹失败'));
+        }
+    } catch (error) {
+        console.error('Error adding source folder:', error);
+        alert(i18nManager.t('failedAddSourceFolder', '添加源文件夹失败'));
+    }
+}
+
+// 切换到指定源文件夹
+async function switchToSourceFolder(folderPath) {
+    if (!confirm(i18nManager.t('confirmSwitchSource', `确定要切换到此源文件夹吗?\n${folderPath}`))) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/settings/sources/switch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                folder_path: folderPath
+            })
+        });
+
+        if (response.ok) {
+            // 重新加载状态和分类文件夹
+            await loadAppState();
+            alert(i18nManager.t('sourceFolderSwitched', '已切换源文件夹'));
+        } else {
+            const error = await response.json();
+            alert(error.error || i18nManager.t('failedSwitchSourceFolder', '切换源文件夹失败'));
+        }
+    } catch (error) {
+        console.error('Error switching source folder:', error);
+        alert(i18nManager.t('failedSwitchSourceFolder', '切换源文件夹失败'));
+    }
+}
+
+// 移除源文件夹
+async function removeSourceFolder(folderPath) {
+    if (!confirm(i18nManager.t('confirmRemoveSource', `确定要移除此源文件夹吗?\n${folderPath}`))) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/settings/sources/remove', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                folder_path: folderPath
+            })
+        });
+
+        if (response.ok) {
+            // 重新加载状态
+            await loadAppState();
+            alert(i18nManager.t('sourceFolderRemoved', '已移除源文件夹'));
+        } else {
+            const error = await response.json();
+            alert(error.error || i18nManager.t('failedRemoveSourceFolder', '移除源文件夹失败'));
+        }
+    } catch (error) {
+        console.error('Error removing source folder:', error);
+        alert(i18nManager.t('failedRemoveSourceFolder', '移除源文件夹失败'));
+    }
 }
 
 // 保存完整设置
 async function saveSettings() {
-    const folderPath = document.getElementById('sourceFolderInput').value.trim();
-
-    if (!folderPath) {
-        alert('请先设置源文件夹');
+    if (!appState.source_folder) {
+        alert(i18nManager.t('setSourceFolderFirst', '请先添加源文件夹'));
         return;
     }
 
@@ -163,7 +316,7 @@ async function saveSettings() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                source_folder: folderPath,
+                source_folder: appState.source_folder,
                 categories: categories,
                 hidden_folders: hiddenFolders
             })
@@ -383,12 +536,12 @@ async function createNewFolder() {
 }
 
 // 选择当前文件夹
-async function selectCurrentFolder() {
+function selectCurrentFolder() {
     // 优先使用单击选中的文件夹,否则使用当前所在目录
     const pathToSelect = browserState.selectedItemPath || browserState.currentPath;
 
     if (!pathToSelect) {
-        alert('请先浏览到要选择的文件夹');
+        alert(i18nManager.t('pleaseSelectFolder', '请先选择文件夹'));
         return;
     }
 
@@ -397,9 +550,6 @@ async function selectCurrentFolder() {
 
     // 关闭模态窗口
     closeFileBrowser();
-
-    // 自动保存源文件夹
-    await saveSourceFolder();
 }
 
 // 从指定路径加载文件夹
