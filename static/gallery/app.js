@@ -134,8 +134,9 @@ async function loadFiles(folderPath) {
                     <div class="file-type-badge">${file.extension}</div>
                 `;
             } else if (file.file_type === 'video') {
+                // 视频使用缩略图API获取首帧
                 item.innerHTML = `
-                    <video src="/api/classifier/file/${encodeURIComponent(file.path)}#t=0.1" preload="metadata" muted playsinline></video>
+                    <img src="/api/gallery/thumbnail?path=${encodeURIComponent(file.path)}&size=300" alt="${file.name}">
                     <div class="file-type-badge">${file.extension}</div>
                 `;
             } else {
