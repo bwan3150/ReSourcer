@@ -48,34 +48,62 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          switchInCurve: Curves.easeInOut,
-          switchOutCurve: Curves.easeInOut,
-          transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          child: Container(
-            key: ValueKey<int>(_pageIndex),
-            child: _pages[_pageIndex],
+      backgroundColor: NeumorphicTheme.baseColor(context),
+      body: Stack(
+        children: [
+          // 页面内容
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            switchInCurve: Curves.easeInOut,
+            switchOutCurve: Curves.easeInOut,
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            child: Container(
+              key: ValueKey<int>(_pageIndex),
+              child: _pages[_pageIndex],
+            ),
           ),
-        ),
-        bottomNavigationBar: _buildBottomNavigationBar(),
-      );
+          // 底部导航栏（浮动）
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildBottomNavigationBar(),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildBottomNavigationBar() {
-    return SafeArea(
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(20),
+        topRight: Radius.circular(20),
+      ),
       child: Container(
-        color: NeumorphicTheme.baseColor(context),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: NeumorphicToggle(
-          height: 50,
-          selectedIndex: _pageIndex,
-          displayForegroundOnlyIfSelected: true,
+        decoration: BoxDecoration(
+          color: NeumorphicTheme.baseColor(context),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: NeumorphicToggle(
+            height: 60,
+            selectedIndex: _pageIndex,
+            displayForegroundOnlyIfSelected: true,
           children: [
             // 画廊
             ToggleElement(
@@ -215,6 +243,8 @@ class _HomeScreenState extends State<HomeScreen> {
             final actualIndex = _indexMap[index];
             _onTabTapped(actualIndex);
           },
+            ),
+          ),
         ),
       ),
     );
