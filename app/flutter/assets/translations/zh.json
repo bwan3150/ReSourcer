@@ -1,0 +1,71 @@
+{
+  "app_name": "ReSourcer",
+  "login": {
+    "title": "ReSourcer",
+    "subtitle": "请先启动后端服务",
+    "server_address": "服务地址",
+    "server_hint": "http://192.168.1.100:8080",
+    "api_key": "API Key",
+    "api_key_hint": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "login_button": "登录",
+    "scan_qr": "扫描二维码",
+    "error_empty": "请输入服务地址和 API Key",
+    "error_failed": "登录失败，请检查服务地址和 API Key",
+    "verifying": "验证中..."
+  },
+  "qr_scan": {
+    "title": "扫描二维码",
+    "hint": "将二维码放入框内扫描\n请确保后端服务已启动",
+    "error_format": "二维码格式错误",
+    "error_login": "登录失败，请检查服务是否可用",
+    "error_parse": "二维码解析失败"
+  },
+  "gallery": {
+    "title": "画廊",
+    "empty": "暂无图片",
+    "error_load": "加载失败",
+    "retry": "重试",
+    "uploading": "正在上传...",
+    "upload_success": "上传成功",
+    "upload_failed": "上传失败",
+    "service_disconnected": "服务未连接"
+  },
+  "classifier": {
+    "title": "分类器",
+    "coming_soon": "功能开发中..."
+  },
+  "downloader": {
+    "title": "下载器",
+    "coming_soon": "功能开发中..."
+  },
+  "settings": {
+    "title": "设置",
+    "account_info": "账号信息",
+    "server_address": "服务地址",
+    "api_key": "API Key",
+    "not_connected": "未连接",
+    "not_set": "未设置",
+    "about": "关于",
+    "version": "版本",
+    "logout": "退出登录",
+    "logout_confirm_title": "退出登录",
+    "logout_confirm_message": "确定要退出登录吗？",
+    "cancel": "取消",
+    "confirm": "确定"
+  },
+  "upload_task": {
+    "title": "上传任务",
+    "empty": "暂无上传任务",
+    "uploading_count": "上传中 {{count}}",
+    "status_pending": "等待中",
+    "status_uploading": "上传中",
+    "status_completed": "已完成",
+    "status_failed": "失败"
+  },
+  "nav": {
+    "gallery": "画廊",
+    "classifier": "分类",
+    "downloader": "下载",
+    "settings": "设置"
+  }
+}

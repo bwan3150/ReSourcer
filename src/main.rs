@@ -7,6 +7,8 @@ mod uploader;
 mod gallery;
 mod static_files;
 mod auth;
+mod filesystem;
+mod settings;
 
 use static_files::serve_static;
 
@@ -18,6 +20,14 @@ async fn get_global_config() -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "source_folder": config.source_folder,
         "hidden_folders": config.hidden_folders,
+    })))
+}
+
+/// 健康检查 API - 不需要认证
+async fn health_check() -> Result<HttpResponse> {
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "status": "ok",
+        "service": "re-sourcer"
     })))
 }
 
@@ -80,8 +90,8 @@ async fn main() -> std::io::Result<()> {
     }
     println!();
 
-    // 延迟打开浏览器
-    let browser_url = format!("http://{}:1234", local_ip);
+    // 延迟打开浏览器(使用带API Key的登录URL)
+    let browser_url = login_url.clone();
     tokio::spawn(async move {
         tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
         if let Err(e) = open::that(&browser_url) {
@@ -101,6 +111,8 @@ async fn main() -> std::io::Result<()> {
             .app_data(api_key_data.clone())
             .app_data(download_task_manager.clone())
             .app_data(upload_task_manager.clone())
+            // 健康检查 API（不需要认证）
+            .route("/api/health", web::get().to(health_check))
             // 认证 API 路由
             .service(web::scope("/api/auth").configure(auth::routes))
             // 全局配置 API（所有模块共用）
@@ -109,10 +121,14 @@ async fn main() -> std::io::Result<()> {
             .service(web::scope("/api/gallery").configure(gallery::routes))
             // 分类器 API 路由
             .service(web::scope("/api/classifier").configure(classifier::routes))
+            // 设置 API 路由
+            .service(web::scope("/api/settings").configure(settings::routes))
             // 下载器 API 路由
             .service(web::scope("/api/downloader").configure(downloader::routes))
             // 上传器 API 路由
             .service(web::scope("/api/uploader").configure(uploader::routes))
+            // 文件系统浏览 API 路由
+            .service(web::scope("/api/filesystem").configure(filesystem::routes))
             // 静态文件服务（嵌入式）
             .route("/", web::get().to(serve_static))
             .route("/{filename:.*}", web::get().to(serve_static))

@@ -1,7 +1,100 @@
+# Rust
 /target
 
+# macOS
 .DS_Store
 
+# App state
 app_state.json
 
+# Local files
 /local
+
+# ========================================
+# Flutter / Dart
+# ========================================
+
+# FVM (Flutter Version Manager)
+app/flutter/.fvm/
+!app/flutter/.fvm/fvm_config.json
+
+# Flutter/Dart Build
+app/flutter/build/
+app/flutter/.dart_tool/
+app/flutter/.packages
+
+# code generated(build_runner / freezed / auto_route)
+app/flutter/**/*.g.dart
+app/flutter/**/*.freezed.dart
+app/flutter/**/*.gr.dart
+app/flutter/**/*.config.dart
+
+# plugins
+app/flutter/.flutter-plugins
+app/flutter/.flutter-plugins-dependencies
+
+# Pub cahce
+app/flutter/.pub-cache/
+app/flutter/.pub/
+
+# IDE
+app/flutter/.idea/
+app/flutter/*.iml
+app/flutter/*.ipr
+app/flutter/*.iws
+
+# VS Code
+app/flutter/.vscode/
+
+# Android
+app/flutter/android/app/debug/
+app/flutter/android/app/profile/
+app/flutter/android/app/release/
+app/flutter/android/.gradle/
+app/flutter/android/local.properties
+app/flutter/android/key.properties
+app/flutter/android/app/*.jks
+app/flutter/android/app/*.keystore
+app/flutter/android/app/google-services.json
+app/flutter/android/*.apk
+app/flutter/android/*.aab
+app/flutter/android/captures/
+app/flutter/android/.externalNativeBuild/
+app/flutter/android/.cxx/
+
+# iOS
+app/flutter/ios/Pods/
+app/flutter/ios/.symlinks/
+app/flutter/ios/Flutter/.last_build_id
+app/flutter/ios/Flutter/flutter_export_environment.sh
+app/flutter/ios/Flutter/App.framework/
+app/flutter/ios/Flutter/Flutter.framework/
+app/flutter/ios/Flutter/Flutter.podspec
+app/flutter/ios/Runner.xcworkspace/xcshareddata/
+app/flutter/ios/Runner.xcodeproj/xcshareddata/
+app/flutter/ios/ServiceDefinitions.json
+app/flutter/ios/Runner/GoogleService-Info.plist
+app/flutter/ios/*.ipa
+app/flutter/ios/*.dSYM.zip
+
+# macOS
+app/flutter/macos/Pods/
+app/flutter/macos/.symlinks/
+app/flutter/macos/Flutter/ephemeral/
+
+# Web
+app/flutter/web/.env
+
+# temp
+app/flutter/**/*.log
+app/flutter/**/*.swp
+app/flutter/**/*.pyc
+app/flutter/.buildlog/
+app/flutter/.history/
+
+# test?
+app/flutter/coverage/
+app/flutter/test/.test_coverage.dart
+
+app/flutter/flutter_*.png
+app/flutter/flutter_*.json

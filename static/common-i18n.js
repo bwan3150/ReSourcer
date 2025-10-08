@@ -16,20 +16,42 @@ const i18nManager = {
 
             // Settings 页面
             settingsTitle: '设置',
+            back: '返回',
             sourceFolder: '源文件夹',
+            savedSourceFolders: '已保存的源文件夹',
+            addNewSourceFolder: '添加新源文件夹',
+            currentActive: '当前',
+            switchTo: '切换到此文件夹',
+            remove: '移除',
+            sourceFolderAdded: '源文件夹添加成功',
+            sourceFolderSwitched: '已切换源文件夹',
+            sourceFolderRemoved: '已移除源文件夹',
+            failedAddSourceFolder: '添加源文件夹失败',
+            failedSwitchSourceFolder: '切换源文件夹失败',
+            failedRemoveSourceFolder: '移除源文件夹失败',
+            confirmSwitchSource: '确定要切换到此源文件夹吗?',
+            confirmRemoveSource: '确定要移除此源文件夹吗?',
+            folderPath: '文件夹路径',
             folderPlaceholder: '/path/to/your/folder',
+            browse: '浏览',
+            save: '保存',
+            add: '添加',
             categoryFolders: '分类文件夹',
-            addNewFolder: '添加新文件夹',
-            applyPreset: '或应用预设',
-            apply: '应用',
-            backToHome: '返回首页',
+            addNewCategoryFolder: '添加新分类文件夹',
+            newFolderPlaceholder: '输入新文件夹名称',
+            saveSettings: '保存设置',
+            selectFolder: '选择文件夹',
+            loading: '加载中...',
+            newFolderName: '新文件夹名称',
+            createFolder: '创建文件夹',
+            select: '选择',
             noFoldersYet: '暂无文件夹',
             folderExists: '文件夹已存在',
-            selectPreset: '请选择一个预设',
             enterFolderPath: '请输入文件夹路径',
             needAtLeastOneFolder: '请至少添加一个可见文件夹',
             settingsSaved: '设置保存成功!',
             failedSaveSettings: '保存设置失败',
+            pleaseSelectFolder: '请先选择文件夹',
 
             // Classifier 页面
             title: 'Toolkit ReClassifier',
@@ -144,20 +166,42 @@ const i18nManager = {
 
             // Settings page
             settingsTitle: 'Settings',
+            back: 'Back',
             sourceFolder: 'Source Folder',
+            savedSourceFolders: 'Saved Source Folders',
+            addNewSourceFolder: 'Add New Source Folder',
+            currentActive: 'Current',
+            switchTo: 'Switch to this folder',
+            remove: 'Remove',
+            sourceFolderAdded: 'Source folder added successfully',
+            sourceFolderSwitched: 'Source folder switched',
+            sourceFolderRemoved: 'Source folder removed',
+            failedAddSourceFolder: 'Failed to add source folder',
+            failedSwitchSourceFolder: 'Failed to switch source folder',
+            failedRemoveSourceFolder: 'Failed to remove source folder',
+            confirmSwitchSource: 'Switch to this source folder?',
+            confirmRemoveSource: 'Remove this source folder?',
+            folderPath: 'Folder Path',
             folderPlaceholder: '/path/to/your/folder',
+            browse: 'Browse',
+            save: 'Save',
+            add: 'Add',
             categoryFolders: 'Category Folders',
-            addNewFolder: 'Add new folder',
-            applyPreset: 'Or apply a preset',
-            apply: 'Apply',
-            backToHome: 'Back to Home',
+            addNewCategoryFolder: 'Add New Category Folder',
+            newFolderPlaceholder: 'Enter new folder name',
+            saveSettings: 'Save Settings',
+            selectFolder: 'Select Folder',
+            loading: 'Loading...',
+            newFolderName: 'New Folder Name',
+            createFolder: 'Create Folder',
+            select: 'Select',
             noFoldersYet: 'No folders yet',
             folderExists: 'Folder already exists',
-            selectPreset: 'Please select a preset',
             enterFolderPath: 'Please enter a folder path',
             needAtLeastOneFolder: 'Please add at least one visible folder',
             settingsSaved: 'Settings saved successfully!',
             failedSaveSettings: 'Failed to save settings',
+            pleaseSelectFolder: 'Please select a folder first',
 
             // Classifier page
             title: 'Toolkit ReClassifier',
@@ -288,6 +332,12 @@ const i18nManager = {
         document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
             const key = el.getAttribute('data-i18n-placeholder');
             el.placeholder = this.t(key);
+        });
+
+        // 更新所有带 data-i18n-title 属性的元素
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+            const key = el.getAttribute('data-i18n-title');
+            el.title = this.t(key);
         });
 
         // 更新语言切换按钮状态
