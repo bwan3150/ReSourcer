@@ -11,6 +11,7 @@ let folders = [];
 let browserState = {
     currentPath: null,
     selectedPath: null,
+    selectedItemPath: null, // 单击选中的文件夹路径
     items: []
 };
 
@@ -239,6 +240,8 @@ async function browseDirectory(path = null) {
             browserState.currentPath = data.current_path;
             browserState.items = data.items;
             browserState.parentPath = data.parent_path;
+            // 切换目录时清除选中的项
+            browserState.selectedItemPath = null;
 
             renderBreadcrumb();
             renderFileList();
@@ -276,17 +279,17 @@ function renderBreadcrumb() {
         html += `<span class="breadcrumb-item" onclick="browseDirectory('${currentPath}\\\\')">${drive}</span>`;
 
         for (let i = 1; i < parts.length; i++) {
-            currentPath += '\\\\' + parts[i];
             html += '<span class="breadcrumb-separator">/</span>';
+            currentPath += '\\\\' + parts[i];
             html += `<span class="breadcrumb-item" onclick="browseDirectory('${currentPath}')">${parts[i]}</span>`;
         }
     } else {
-        // Unix/Mac路径
+        // Unix/Mac路径 - "/"只在最前面显示一次,可点击跳转到根目录
         html += `<span class="breadcrumb-item" onclick="browseDirectory('/')">/</span>`;
 
         for (let i = 0; i < parts.length; i++) {
-            currentPath += '/' + parts[i];
             html += '<span class="breadcrumb-separator">/</span>';
+            currentPath += '/' + parts[i];
             html += `<span class="breadcrumb-item" onclick="browseDirectory('${currentPath}')">${parts[i]}</span>`;
         }
     }
@@ -308,7 +311,7 @@ function renderFileList() {
     // 添加"返回上一级"选项
     if (browserState.parentPath) {
         html += `
-            <div class="file-item" onclick="browseDirectory('${browserState.parentPath}')">
+            <div class="file-item" onclick="browseDirectory('${browserState.parentPath.replace(/\\/g, '\\\\')}')">
                 <span class="material-symbols-outlined file-icon">arrow_upward</span>
                 <span class="file-name">..</span>
             </div>
@@ -316,22 +319,50 @@ function renderFileList() {
     }
 
     // 渲染文件和文件夹
-    browserState.items.forEach(item => {
+    browserState.items.forEach((item, index) => {
         const icon = item.is_directory ? 'folder' : 'description';
         const iconClass = item.is_directory ? 'file-icon folder' : 'file-icon';
-        const clickHandler = item.is_directory
-            ? `browseDirectory('${item.path.replace(/\\/g, '\\\\')}')`
-            : '';
+        const itemId = `item-${index}`;
 
-        html += `
-            <div class="file-item" ${clickHandler ? `onclick="${clickHandler}"` : ''} style="${!item.is_directory ? 'opacity: 0.5; cursor: default;' : ''}">
-                <span class="material-symbols-outlined ${iconClass}">${icon}</span>
-                <span class="file-name">${item.name}</span>
-            </div>
-        `;
+        if (item.is_directory) {
+            // 文件夹:单击选中,双击打开
+            html += `
+                <div class="file-item" id="${itemId}"
+                     onclick="selectFileItem('${item.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', '${itemId}')"
+                     ondblclick="browseDirectory('${item.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">
+                    <span class="material-symbols-outlined ${iconClass}">${icon}</span>
+                    <span class="file-name">${item.name}</span>
+                </div>
+            `;
+        } else {
+            // 文件:置灰,不可操作
+            html += `
+                <div class="file-item" style="opacity: 0.5; cursor: default;">
+                    <span class="material-symbols-outlined ${iconClass}">${icon}</span>
+                    <span class="file-name">${item.name}</span>
+                </div>
+            `;
+        }
     });
 
     fileList.innerHTML = html;
+}
+
+// 选中文件夹项
+function selectFileItem(path, itemId) {
+    // 清除之前的选中状态
+    document.querySelectorAll('.file-item').forEach(el => {
+        el.classList.remove('selected');
+    });
+
+    // 设置新的选中状态
+    const item = document.getElementById(itemId);
+    if (item) {
+        item.classList.add('selected');
+    }
+
+    // 保存选中的路径
+    browserState.selectedItemPath = path;
 }
 
 // 创建新文件夹
@@ -377,12 +408,15 @@ async function createNewFolder() {
 
 // 选择当前文件夹作为源文件夹
 async function selectCurrentFolder() {
-    if (!browserState.currentPath) {
+    // 优先使用单击选中的文件夹,否则使用当前所在目录
+    const pathToSelect = browserState.selectedItemPath || browserState.currentPath;
+
+    if (!pathToSelect) {
         alert('请先浏览到要选择的文件夹');
         return;
     }
 
-    browserState.selectedPath = browserState.currentPath;
+    browserState.selectedPath = pathToSelect;
 
     // 显示已选择的路径
     document.getElementById('selectedFolderPath').textContent = browserState.selectedPath;
