@@ -7,6 +7,7 @@ import '../../models/gallery_folder.dart';
 import '../../utils/theme_colors.dart';
 import '../../widgets/gallery/image_grid.dart';
 import '../../widgets/gallery/folder_dropdown.dart';
+import '../../widgets/gallery/upload_helper.dart';
 import '../upload/upload_tasks_screen.dart';
 
 /// 画廊页面
@@ -19,6 +20,7 @@ class GalleryScreen extends StatefulWidget {
 
 class _GalleryScreenState extends State<GalleryScreen> {
   bool _isDropdownOpen = false;
+  bool _uploading = false;
 
   @override
   void initState() {
@@ -131,6 +133,37 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   right: 20,
                   child: _buildFolderDropdown(),
                 ),
+
+              // 右下角悬浮上传按钮
+              Positioned(
+                right: 20,
+                bottom: 20,
+                child: NeumorphicButton(
+                  onPressed: _uploading ? null : _showUploadMethodDialog,
+                  style: const NeumorphicStyle(
+                    boxShape: NeumorphicBoxShape.circle(),
+                    depth: 4,
+                    intensity: 0.8,
+                  ),
+                  padding: const EdgeInsets.all(10),
+                  child: _uploading
+                      ? SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(ThemeColors.text(context)),
+                            strokeWidth: 3,
+                          ),
+                        )
+                      : NeumorphicIcon(
+                          Icons.add,
+                          size: 40,
+                          style: NeumorphicStyle(
+                            color: ThemeColors.text(context),
+                          ),
+                        ),
+                ),
+              ),
             ],
           ),
         ),
@@ -141,6 +174,22 @@ class _GalleryScreenState extends State<GalleryScreen> {
     setState(() {
       _isDropdownOpen = !_isDropdownOpen;
     });
+  }
+
+  void _showUploadMethodDialog() {
+    final galleryProvider = Provider.of<GalleryProvider>(context, listen: false);
+    final targetFolder = galleryProvider.currentFolder?.path;
+
+    final helper = UploadHelper(
+      context: context,
+      targetFolder: targetFolder,
+      onUploadingChanged: (uploading) {
+        if (mounted) {
+          setState(() => _uploading = uploading);
+        }
+      },
+    );
+    helper.showUploadMethodDialog();
   }
 
   Widget _buildHeader() {
