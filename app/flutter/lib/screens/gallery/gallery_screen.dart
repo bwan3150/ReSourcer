@@ -132,10 +132,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   child: _buildFolderDropdown(),
                 ),
 
-              // 右下角悬浮上传按钮
+              // 右下角悬浮上传按钮（位置基于导航栏）
               Positioned(
                 right: 20,
-                bottom: 20,
+                bottom: 90, // 底部导航栏高度 + 间距
                 child: NeumorphicButton(
                   onPressed: _uploading ? null : _showUploadMethodDialog,
                   style: const NeumorphicStyle(
