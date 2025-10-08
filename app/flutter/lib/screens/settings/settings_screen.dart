@@ -3,16 +3,29 @@ import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/server_provider.dart';
+import '../../providers/source_folder_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../models/server.dart';
+import '../../models/source_folder.dart';
+import '../../services/api_service.dart';
 import '../../utils/constants.dart';
 import '../../utils/theme_colors.dart';
 import '../../widgets/common/neumorphic_dialog.dart';
+import '../../widgets/settings/source_folder_dropdown.dart';
 import '../server/server_list_screen.dart';
+import '../source_folder/source_folder_list_screen.dart';
 
 /// 设置页面
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isSourceFolderDropdownOpen = false;
+  double _dropdownTop = 0;
 
   Future<void> _handleLogout(BuildContext context) async {
     final confirmed = await NeumorphicDialog.showConfirm(
@@ -39,8 +52,11 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: NeumorphicTheme.baseColor(context),
       body: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
+              // 主内容
+              Column(
+                children: [
               // 标题
               Padding(
                 padding: const EdgeInsets.all(20),
@@ -75,6 +91,31 @@ class SettingsScreen extends StatelessWidget {
                             return _buildServerCard(context, server, status);
                           },
                         );
+                      },
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // 源文件夹标签
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, bottom: 8),
+                      child: Row(
+                        children: [
+                          Text(
+                            '源文件夹',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // 源文件夹选择器 - 下拉式设计
+                    Consumer<SourceFolderProvider>(
+                      builder: (context, folderProvider, child) {
+                        return _buildSourceFolderSelector(context, folderProvider.currentSourceFolder);
                       },
                     ),
 
@@ -141,6 +182,30 @@ class SettingsScreen extends StatelessWidget {
                   ],
                 ),
               ),
+                ],
+              ),
+
+              // 遮罩层（点击关闭下拉菜单）
+              if (_isSourceFolderDropdownOpen)
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _isSourceFolderDropdownOpen = false),
+                    child: Container(color: Colors.black.withOpacity(0.3)),
+                  ),
+                ),
+
+              // 源文件夹下拉菜单
+              if (_isSourceFolderDropdownOpen)
+                Positioned(
+                  top: _dropdownTop,
+                  left: 20,
+                  right: 20,
+                  child: SourceFolderDropdown(
+                    onFolderChanged: () {
+                      setState(() => _isSourceFolderDropdownOpen = false);
+                    },
+                  ),
+                ),
             ],
           ),
         ),
@@ -338,6 +403,75 @@ class SettingsScreen extends StatelessWidget {
       final serverProvider = Provider.of<ServerProvider>(context, listen: false);
       await serverProvider.checkAllServers();
     }
+  }
+
+  /// 源文件夹选择器 - 下拉式设计
+  Widget _buildSourceFolderSelector(BuildContext context, SourceFolder? folder) {
+    final folderName = folder?.displayName ?? '未配置';
+
+    return NeumorphicButton(
+      onPressed: () async {
+        // 先加载源文件夹列表
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final apiService = ApiService(authProvider.currentServer!);
+        final folderProvider = Provider.of<SourceFolderProvider>(context, listen: false);
+        await folderProvider.loadSourceFolders(apiService);
+
+        // 计算下拉菜单位置
+        // 标题 padding: 20, 服务器卡片大约: 68, 间距: 24, 标签: 20, 按钮: 44
+        const double headerPadding = 20;
+        const double titleHeight = 28;
+        const double titlePaddingBottom = 20;
+        const double serverCardHeight = 68;
+        const double spacing1 = 24;
+        const double labelHeight = 20;
+        const double buttonHeight = 44;
+
+        final dropdownTop = headerPadding + titleHeight + titlePaddingBottom +
+                           serverCardHeight + spacing1 + labelHeight + buttonHeight - 4; // 减去 4px 微调
+
+        // 切换下拉菜单状态并更新位置
+        setState(() {
+          _dropdownTop = dropdownTop;
+          _isSourceFolderDropdownOpen = !_isSourceFolderDropdownOpen;
+        });
+      },
+      style: NeumorphicStyle(
+        depth: _isSourceFolderDropdownOpen ? -2 : 2,
+        intensity: 0.6,
+        boxShape: NeumorphicBoxShape.roundRect(
+          BorderRadius.circular(12),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Icon(
+            Icons.folder_outlined,
+            size: 20,
+            color: ThemeColors.text(context),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              folderName,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: ThemeColors.text(context),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Icon(
+            _isSourceFolderDropdownOpen ? Icons.expand_less : Icons.expand_more,
+            size: 20,
+            color: ThemeColors.textSecondary(context),
+          ),
+        ],
+      ),
+    );
   }
 }
 

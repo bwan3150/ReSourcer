@@ -198,4 +198,90 @@ class ApiService {
   String getImageUrl(String filePath) {
     return '${server.baseUrl}/api/classifier/file/${Uri.encodeComponent(filePath)}';
   }
+
+  // ========== 源文件夹管理 API ==========
+
+  /// 获取设置状态（包含源文件夹信息）
+  Future<Map<String, dynamic>> getSettingsState() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${server.baseUrl}/api/settings/state'),
+        headers: {'Cookie': 'api_key=${server.apiKey}'},
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      throw Exception('获取设置状态失败');
+    } catch (e) {
+      print('获取设置状态失败: $e');
+      throw e;
+    }
+  }
+
+  /// 切换源文件夹
+  Future<Map<String, dynamic>> switchSourceFolder(String folderPath) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${server.baseUrl}/api/settings/sources/switch'),
+        headers: {
+          'Cookie': 'api_key=${server.apiKey}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'folder_path': folderPath}),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      throw Exception('切换源文件夹失败');
+    } catch (e) {
+      print('切换源文件夹失败: $e');
+      throw e;
+    }
+  }
+
+  /// 添加源文件夹
+  Future<Map<String, dynamic>> addSourceFolder(String folderPath) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${server.baseUrl}/api/settings/sources/add'),
+        headers: {
+          'Cookie': 'api_key=${server.apiKey}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'folder_path': folderPath}),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      throw Exception('添加源文件夹失败');
+    } catch (e) {
+      print('添加源文件夹失败: $e');
+      throw e;
+    }
+  }
+
+  /// 移除源文件夹
+  Future<Map<String, dynamic>> removeSourceFolder(String folderPath) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${server.baseUrl}/api/settings/sources/remove'),
+        headers: {
+          'Cookie': 'api_key=${server.apiKey}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'folder_path': folderPath}),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      throw Exception('移除源文件夹失败');
+    } catch (e) {
+      print('移除源文件夹失败: $e');
+      throw e;
+    }
+  }
 }
