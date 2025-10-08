@@ -31,6 +31,10 @@ class ImageGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomScrollView(
       slivers: [
+        // 顶部空白区域，避开浮动按钮
+        const SliverToBoxAdapter(
+          child: SizedBox(height: 80),
+        ),
         SliverPadding(
           padding: const EdgeInsets.all(12),
           sliver: SliverGrid(
@@ -70,6 +74,10 @@ class ImageGrid extends StatelessWidget {
               ),
             ),
           ),
+        ),
+        // 底部空白区域，避开底部导航栏
+        const SliverToBoxAdapter(
+          child: SizedBox(height: 100),
         ),
       ],
     );

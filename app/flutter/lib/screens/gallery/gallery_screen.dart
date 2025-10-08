@@ -56,15 +56,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
       body: SafeArea(
           child: Stack(
             children: [
-              // 主内容
-              Column(
-                children: [
-                  // 顶部标题栏
-                  _buildHeader(),
-
-                  // 图片网格
-                  Expanded(
-                    child: Consumer<GalleryProvider>(
+              // 主内容 - 图片网格
+              Consumer<GalleryProvider>(
                 builder: (context, provider, child) {
                   if (provider.isLoading && provider.files.isEmpty) {
                     return Center(
@@ -112,9 +105,14 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   );
                 },
               ),
-            ),
-          ],
-        ),
+
+              // 顶部镂空按钮（浮动）
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: _buildHeader(),
+              ),
 
               // 遮罩层（点击关闭下拉菜单）- 必须在下拉菜单之前，不覆盖下拉菜单区域
               if (_isDropdownOpen)
@@ -128,7 +126,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
               // 下拉菜单 - 在遮罩层之上
               if (_isDropdownOpen)
                 Positioned(
-                  top: 62, // 标题栏高度
+                  top: 76, // 浮动按钮高度
                   left: 20,
                   right: 20,
                   child: _buildFolderDropdown(),
@@ -193,81 +191,94 @@ class _GalleryScreenState extends State<GalleryScreen> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+    return Padding(
+      padding: const EdgeInsets.all(20),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // 文件夹选择器
-          Expanded(
-            child: Consumer<GalleryProvider>(
-              builder: (context, provider, child) {
-                final folderName = provider.currentFolder?.isSource == true
-                    ? '源文件夹'
-                    : (provider.currentFolder?.name ?? '画廊');
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // 文件夹选择器
+            Expanded(
+              child: Consumer<GalleryProvider>(
+                builder: (context, provider, child) {
+                  final folderName = provider.currentFolder?.isSource == true
+                      ? '源文件夹'
+                      : (provider.currentFolder?.name ?? '画廊');
 
-                return NeumorphicButton(
-                  onPressed: _showFolderSelector,
-                  style: NeumorphicStyle(
-                    depth: _isDropdownOpen ? -2 : 2,
-                    intensity: 0.6,
-                    boxShape: NeumorphicBoxShape.roundRect(
-                      BorderRadius.circular(12),
-                    ),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Icon(
-                        provider.currentFolder?.isSource == true
-                            ? Icons.source
-                            : Icons.folder,
-                        size: 20,
-                        color: ThemeColors.text(context),
+                  return Neumorphic(
+                    style: NeumorphicStyle(
+                      depth: _isDropdownOpen ? -2 : 4,
+                      intensity: 0.6,
+                      boxShape: NeumorphicBoxShape.roundRect(
+                        BorderRadius.circular(25),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          folderName,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: ThemeColors.text(context),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                    ),
+                    child: NeumorphicButton(
+                      onPressed: _showFolderSelector,
+                      style: NeumorphicStyle(
+                        depth: 0,
+                        intensity: 0,
+                        boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(25),
                         ),
                       ),
-                      Icon(
-                        _isDropdownOpen ? Icons.expand_less : Icons.expand_more,
-                        size: 20,
-                        color: ThemeColors.textSecondary(context),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      child: Row(
+                        children: [
+                          Icon(
+                            provider.currentFolder?.isSource == true
+                                ? Icons.source
+                                : Icons.folder,
+                            size: 20,
+                            color: ThemeColors.text(context),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              folderName,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: ThemeColors.text(context),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Icon(
+                            _isDropdownOpen ? Icons.expand_less : Icons.expand_more,
+                            size: 20,
+                            color: ThemeColors.textSecondary(context),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 16),
+            // 上传任务按钮
+            NeumorphicButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const UploadTasksScreen(),
                   ),
                 );
               },
+              style: const NeumorphicStyle(
+                boxShape: NeumorphicBoxShape.circle(),
+                depth: 4,
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Icon(
+                Icons.upload_file,
+                size: 20,
+                color: ThemeColors.text(context),
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          // 上传任务按钮
-          NeumorphicButton(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const UploadTasksScreen(),
-                ),
-              );
-            },
-            style: const NeumorphicStyle(
-              boxShape: NeumorphicBoxShape.circle(),
-              depth: 2,
-            ),
-            padding: const EdgeInsets.all(12),
-            child: const Icon(Icons.upload_file, size: 25),
-          ),
-        ],
-      ),
+          ],
+        ),
     );
   }
 

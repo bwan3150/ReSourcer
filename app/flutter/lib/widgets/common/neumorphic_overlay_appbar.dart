@@ -73,7 +73,7 @@ class NeumorphicOverlayAppBar extends StatelessWidget {
                   style: NeumorphicStyle(
                     depth: 4,
                     intensity: 0.6,
-                    color: backgroundColor ?? const Color(0xFFF0F0F0),
+                    color: backgroundColor ?? NeumorphicTheme.baseColor(context),
                     boxShape: NeumorphicBoxShape.roundRect(
                       BorderRadius.circular(25),
                     ),
@@ -150,7 +150,7 @@ class NeumorphicCircleButton extends StatelessWidget {
       style: NeumorphicStyle(
         boxShape: const NeumorphicBoxShape.circle(),
         depth: depth,
-        color: backgroundColor ?? const Color(0xFFF0F0F0),
+        color: backgroundColor ?? NeumorphicTheme.baseColor(context),
       ),
       padding: padding,
       child: Icon(
