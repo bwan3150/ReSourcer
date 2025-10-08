@@ -1,6 +1,7 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/server_provider.dart';
 import '../../providers/source_folder_provider.dart';
@@ -26,6 +27,31 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isSourceFolderDropdownOpen = false;
   double _dropdownTop = 0;
+  String _version = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() {
+          _version = 'v${packageInfo.version}';
+        });
+      }
+    } catch (e) {
+      print('加载版本号失败: $e');
+      if (mounted) {
+        setState(() {
+          _version = '?';
+        });
+      }
+    }
+  }
 
   Future<void> _handleLogout(BuildContext context) async {
     final confirmed = await NeumorphicDialog.showConfirm(
@@ -168,7 +194,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'v1.0.0',
+                            _version,
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[500],

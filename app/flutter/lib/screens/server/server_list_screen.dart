@@ -37,7 +37,7 @@ class _ServerListScreenState extends State<ServerListScreen> {
       backgroundColor: NeumorphicTheme.baseColor(context),
       appBar: NeumorphicAppBar(
           title: Text(
-            '服务器管理',
+            '服务器列表',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -306,31 +306,36 @@ class _ServerListScreenState extends State<ServerListScreen> {
   /// 空状态
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.dns_outlined,
-            size: 80,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '还没有添加服务器',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 120),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Neumorphic(
+              style: NeumorphicStyle(
+                depth: -8,
+                intensity: 0.8,
+                boxShape: const NeumorphicBoxShape.circle(),
+              ),
+              padding: const EdgeInsets.all(20),
+              child: NeumorphicIcon(
+                Icons.dns_outlined,
+                size: 80,
+                style: NeumorphicStyle(
+                  color: Colors.grey[400],
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '点击下方按钮添加服务器',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
+            const SizedBox(height: 24),
+            Text(
+              '点击下方按钮添加服务器',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

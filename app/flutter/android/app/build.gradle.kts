@@ -37,6 +37,14 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // 自定义 APK 输出文件名
+    applicationVariants.all {
+        outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            output.outputFileName = "resourcer-android.apk"
+        }
+    }
 }
 
 flutter {
