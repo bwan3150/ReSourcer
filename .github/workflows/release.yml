@@ -113,7 +113,8 @@ jobs:
 
       - name: Install Android SDK components
         run: |
-          sdkmanager --install "ndk;27.0.12077973" "platforms;android-36" "build-tools;36.0.0"
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --install "ndk;27.0.12077973" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Flutter doctor
         working-directory: app/flutter
