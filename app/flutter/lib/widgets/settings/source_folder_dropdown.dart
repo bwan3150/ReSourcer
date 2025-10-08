@@ -66,7 +66,7 @@ class SourceFolderDropdown extends StatelessWidget {
                           Icon(
                             Icons.settings,
                             size: 20,
-                            color: Colors.grey[600],
+                            color: ThemeColors.textSecondary(context),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -75,14 +75,14 @@ class SourceFolderDropdown extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w400,
-                                color: Colors.grey[600],
+                                color: ThemeColors.textSecondary(context),
                               ),
                             ),
                           ),
                           Icon(
                             Icons.chevron_right,
                             size: 20,
-                            color: Colors.grey[400],
+                            color: ThemeColors.textSecondary(context),
                           ),
                         ],
                       ),
@@ -106,7 +106,11 @@ class SourceFolderDropdown extends StatelessWidget {
                       depth: isSelected ? -3 : 0,
                       intensity: 0.6,
                       boxShape: const NeumorphicBoxShape.rect(),
-                      color: isSelected ? Colors.grey[300] : null,
+                      color: isSelected
+                          ? (NeumorphicTheme.isUsingDark(context)
+                              ? Colors.white.withOpacity(0.1)
+                              : Colors.grey[300])
+                          : null,
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                     child: Row(
@@ -114,7 +118,7 @@ class SourceFolderDropdown extends StatelessWidget {
                         Icon(
                           Icons.folder_outlined,
                           size: 20,
-                          color: isSelected ? ThemeColors.text(context) : Colors.grey[600],
+                          color: isSelected ? ThemeColors.text(context) : ThemeColors.textSecondary(context),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -123,7 +127,7 @@ class SourceFolderDropdown extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                              color: isSelected ? ThemeColors.text(context) : Colors.grey[600],
+                              color: isSelected ? ThemeColors.text(context) : ThemeColors.textSecondary(context),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

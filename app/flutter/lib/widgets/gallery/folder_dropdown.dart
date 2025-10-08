@@ -48,7 +48,11 @@ class FolderDropdown extends StatelessWidget {
                       depth: isSelected ? -3 : 0,
                       intensity: 0.6,
                       boxShape: const NeumorphicBoxShape.rect(),
-                      color: isSelected ? Colors.grey[300] : null,
+                      color: isSelected
+                          ? (NeumorphicTheme.isUsingDark(context)
+                              ? Colors.white.withOpacity(0.1)
+                              : Colors.grey[300])
+                          : null,
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                     child: Row(
@@ -56,7 +60,7 @@ class FolderDropdown extends StatelessWidget {
                         Icon(
                           folder.isSource ? Icons.source : Icons.folder,
                           size: 20,
-                          color: isSelected ? ThemeColors.text(context) : Colors.grey[600],
+                          color: isSelected ? ThemeColors.text(context) : ThemeColors.textSecondary(context),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -65,7 +69,7 @@ class FolderDropdown extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                              color: isSelected ? ThemeColors.text(context) : Colors.grey[600],
+                              color: isSelected ? ThemeColors.text(context) : ThemeColors.textSecondary(context),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -75,8 +79,10 @@ class FolderDropdown extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? const Color(0xFF171717).withOpacity(0.1)
-                                : Colors.grey[300],
+                                ? ThemeColors.text(context).withOpacity(0.1)
+                                : (NeumorphicTheme.isUsingDark(context)
+                                    ? Colors.white.withOpacity(0.15)
+                                    : Colors.grey[300]),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -84,7 +90,7 @@ class FolderDropdown extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
-                              color: isSelected ? ThemeColors.text(context) : Colors.grey[700],
+                              color: isSelected ? ThemeColors.text(context) : ThemeColors.textSecondary(context),
                             ),
                           ),
                         ),
