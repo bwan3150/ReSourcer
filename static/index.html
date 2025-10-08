@@ -235,7 +235,6 @@
         <div class="qr-section">
             <div class="qr-hint" data-i18n="scanToAccess">同局域网下扫描访问</div>
             <div id="qrcode"></div>
-            <div class="server-url" id="serverUrl">Loading...</div>
         </div>
 
         <!-- 工具列表 -->
@@ -314,13 +313,17 @@
         // 生成二维码
         async function generateQRCode() {
             try {
-                const currentUrl = window.location.href;
-                const serverUrl = currentUrl.replace(/\/$/, '');
+                // 获取API Key
+                const apiKey = AuthManager.getApiKey();
 
-                document.getElementById('serverUrl').textContent = serverUrl;
+                // 获取服务器地址(协议+主机+端口)
+                const serverOrigin = window.location.origin; // 例如: http://192.168.50.133:1234
+
+                // 生成包含API Key的登录URL
+                const loginUrl = `${serverOrigin}/login.html?key=${apiKey}`;
 
                 new QRCode(document.getElementById("qrcode"), {
-                    text: serverUrl,
+                    text: loginUrl,
                     width: 200,
                     height: 200,
                     colorDark: "#171717",
@@ -329,7 +332,6 @@
                 });
             } catch (error) {
                 console.error('Failed to generate QR code:', error);
-                document.getElementById('serverUrl').textContent = window.location.href;
             }
         }
 

@@ -7,11 +7,20 @@ let appState = {
 // 内存中的文件夹列表 (包含已存在的和用户新添加的)
 let folders = [];
 
+// 文件浏览器状态
+let browserState = {
+    currentPath: null,
+    selectedPath: null,
+    items: []
+};
+
 // 初始化
 async function init() {
     // 初始化多语言
     i18nManager.updateUI();
     await loadAppState();
+    // 初始化文件浏览器(从用户主目录开始)
+    await browseDirectory();
 }
 
 // 加载应用状态
@@ -20,12 +29,14 @@ async function loadAppState() {
         const response = await fetch('/api/classifier/state');
         appState = await response.json();
 
-        // 更新界面 - 显示源文件夹
+        // 如果已经配置了源文件夹,显示它
         if (appState.source_folder) {
-            document.getElementById('folderInput').value = appState.source_folder;
-            await loadFolders();
+            browserState.selectedPath = appState.source_folder;
+            document.getElementById('selectedFolderPath').textContent = appState.source_folder;
+            document.getElementById('selectedFolderDisplay').style.display = 'block';
+            await loadFoldersFromPath(appState.source_folder);
         } else {
-            // 如果没有源文件夹，隐藏保存按钮
+            // 如果没有源文件夹,隐藏保存按钮
             document.getElementById('saveBtn').style.display = 'none';
         }
 
@@ -37,32 +48,6 @@ async function loadAppState() {
     }
 }
 
-// 加载文件夹列表
-async function loadFolders() {
-    const folderPath = document.getElementById('folderInput').value.trim();
-    if (!folderPath) {
-        document.getElementById('foldersSection').style.display = 'none';
-        document.getElementById('saveBtn').style.display = 'none';
-        return;
-    }
-
-    try {
-        const response = await fetch(`/api/classifier/folders?source_folder=${encodeURIComponent(folderPath)}`);
-        if (response.ok) {
-            const existingFolders = await response.json();
-            // 标记已存在的文件夹
-            folders = existingFolders.map(f => ({
-                ...f,
-                isNew: false  // 已存在的文件夹
-            }));
-            document.getElementById('foldersSection').style.display = 'block';
-            document.getElementById('saveBtn').style.display = 'inline-flex';
-            renderFolders();
-        }
-    } catch (error) {
-        console.error('Error loading folders:', error);
-    }
-}
 
 // 渲染文件夹列表
 function renderFolders() {
@@ -191,32 +176,13 @@ function applyPreset() {
     select.value = '';
 }
 
-// 处理文件夹输入框回车
-function handleFolderInputKeydown(event) {
-    if (event.key === 'Enter') {
-        updateSourceFolder();
-    }
-}
-
-// 更新源文件夹
-async function updateSourceFolder() {
-    const folderPath = document.getElementById('folderInput').value.trim();
-
-    if (!folderPath) {
-        alert(i18nManager.t('enterFolderPath', 'Please enter a folder path'));
-        return;
-    }
-
-    appState.source_folder = folderPath;
-    await loadFolders();
-}
 
 // 保存设置
 async function saveSettings() {
-    const folderPath = document.getElementById('folderInput').value.trim();
+    const folderPath = browserState.selectedPath;
 
     if (!folderPath) {
-        alert(i18nManager.t('enterFolderPath', 'Please enter a folder path'));
+        alert('请先选择源文件夹');
         return;
     }
 
@@ -252,6 +218,197 @@ async function saveSettings() {
     } catch (error) {
         console.error('Error saving settings:', error);
         alert(i18nManager.t('failedSaveSettings', 'Failed to save settings'));
+    }
+}
+
+// ========== 文件浏览器功能 ==========
+
+// 浏览目录
+async function browseDirectory(path = null) {
+    try {
+        const response = await fetch('/api/filesystem/browse', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ path })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            browserState.currentPath = data.current_path;
+            browserState.items = data.items;
+            browserState.parentPath = data.parent_path;
+
+            renderBreadcrumb();
+            renderFileList();
+        } else {
+            const error = await response.json();
+            alert('无法浏览目录: ' + (error.error || ''));
+        }
+    } catch (error) {
+        console.error('Error browsing directory:', error);
+        alert('无法浏览目录');
+    }
+}
+
+// 渲染面包屑导航
+function renderBreadcrumb() {
+    const breadcrumb = document.getElementById('breadcrumb');
+
+    if (!browserState.currentPath) {
+        breadcrumb.innerHTML = '';
+        return;
+    }
+
+    // 分割路径
+    const parts = browserState.currentPath.split(/[/\\]/).filter(p => p);
+
+    let html = '';
+    let currentPath = '';
+
+    // 根目录
+    const isWindows = browserState.currentPath.includes('\\') || /^[A-Z]:/.test(browserState.currentPath);
+    if (isWindows) {
+        // Windows路径
+        const drive = parts[0];
+        currentPath = drive;
+        html += `<span class="breadcrumb-item" onclick="browseDirectory('${currentPath}\\\\')">${drive}</span>`;
+
+        for (let i = 1; i < parts.length; i++) {
+            currentPath += '\\\\' + parts[i];
+            html += '<span class="breadcrumb-separator">/</span>';
+            html += `<span class="breadcrumb-item" onclick="browseDirectory('${currentPath}')">${parts[i]}</span>`;
+        }
+    } else {
+        // Unix/Mac路径
+        html += `<span class="breadcrumb-item" onclick="browseDirectory('/')">/</span>`;
+
+        for (let i = 0; i < parts.length; i++) {
+            currentPath += '/' + parts[i];
+            html += '<span class="breadcrumb-separator">/</span>';
+            html += `<span class="breadcrumb-item" onclick="browseDirectory('${currentPath}')">${parts[i]}</span>`;
+        }
+    }
+
+    breadcrumb.innerHTML = html;
+}
+
+// 渲染文件列表
+function renderFileList() {
+    const fileList = document.getElementById('fileList');
+
+    if (browserState.items.length === 0) {
+        fileList.innerHTML = '<div class="loading">此目录为空</div>';
+        return;
+    }
+
+    let html = '';
+
+    // 添加"返回上一级"选项
+    if (browserState.parentPath) {
+        html += `
+            <div class="file-item" onclick="browseDirectory('${browserState.parentPath}')">
+                <span class="material-symbols-outlined file-icon">arrow_upward</span>
+                <span class="file-name">..</span>
+            </div>
+        `;
+    }
+
+    // 渲染文件和文件夹
+    browserState.items.forEach(item => {
+        const icon = item.is_directory ? 'folder' : 'description';
+        const iconClass = item.is_directory ? 'file-icon folder' : 'file-icon';
+        const clickHandler = item.is_directory
+            ? `browseDirectory('${item.path.replace(/\\/g, '\\\\')}')`
+            : '';
+
+        html += `
+            <div class="file-item" ${clickHandler ? `onclick="${clickHandler}"` : ''} style="${!item.is_directory ? 'opacity: 0.5; cursor: default;' : ''}">
+                <span class="material-symbols-outlined ${iconClass}">${icon}</span>
+                <span class="file-name">${item.name}</span>
+            </div>
+        `;
+    });
+
+    fileList.innerHTML = html;
+}
+
+// 创建新文件夹
+async function createNewFolder() {
+    const input = document.getElementById('newFolderName');
+    const folderName = input.value.trim();
+
+    if (!folderName) {
+        alert('请输入文件夹名称');
+        return;
+    }
+
+    if (!browserState.currentPath) {
+        alert('请先选择一个位置');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/filesystem/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                parent_path: browserState.currentPath,
+                directory_name: folderName
+            })
+        });
+
+        if (response.ok) {
+            input.value = '';
+            // 刷新当前目录
+            await browseDirectory(browserState.currentPath);
+        } else {
+            const error = await response.json();
+            alert('无法创建文件夹: ' + (error.error || ''));
+        }
+    } catch (error) {
+        console.error('Error creating folder:', error);
+        alert('无法创建文件夹');
+    }
+}
+
+// 选择当前文件夹作为源文件夹
+async function selectCurrentFolder() {
+    if (!browserState.currentPath) {
+        alert('请先浏览到要选择的文件夹');
+        return;
+    }
+
+    browserState.selectedPath = browserState.currentPath;
+
+    // 显示已选择的路径
+    document.getElementById('selectedFolderPath').textContent = browserState.selectedPath;
+    document.getElementById('selectedFolderDisplay').style.display = 'block';
+
+    // 加载该文件夹下的子文件夹
+    await loadFoldersFromPath(browserState.selectedPath);
+}
+
+// 从指定路径加载文件夹
+async function loadFoldersFromPath(folderPath) {
+    try {
+        const response = await fetch(`/api/classifier/folders?source_folder=${encodeURIComponent(folderPath)}`);
+        if (response.ok) {
+            const existingFolders = await response.json();
+            // 标记已存在的文件夹
+            folders = existingFolders.map(f => ({
+                ...f,
+                isNew: false  // 已存在的文件夹
+            }));
+            document.getElementById('foldersSection').style.display = 'block';
+            document.getElementById('saveBtn').style.display = 'inline-flex';
+            renderFolders();
+        }
+    } catch (error) {
+        console.error('Error loading folders:', error);
     }
 }
 

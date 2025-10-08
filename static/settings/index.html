@@ -273,6 +273,95 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #a3a3a3;
         }
+
+        /* 文件浏览器样式 */
+        .file-browser {
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+
+        .breadcrumb {
+            padding: 12px 16px;
+            background: #fafafa;
+            border-bottom: 1px solid #e5e5e5;
+            font-size: 13px;
+            color: #525252;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .breadcrumb-item {
+            display: inline-block;
+            cursor: pointer;
+            color: #171717;
+            transition: color 0.2s;
+        }
+
+        .breadcrumb-item:hover {
+            color: #0066cc;
+            text-decoration: underline;
+        }
+
+        .breadcrumb-separator {
+            margin: 0 8px;
+            color: #a3a3a3;
+        }
+
+        .file-list {
+            max-height: 400px;
+            overflow-y: auto;
+            min-height: 200px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        .file-item:hover {
+            background: #fafafa;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-icon {
+            margin-right: 12px;
+            color: #737373;
+            font-size: 20px;
+        }
+
+        .file-icon.folder {
+            color: #f59e0b;
+        }
+
+        .file-name {
+            flex: 1;
+            font-size: 14px;
+            color: #171717;
+        }
+
+        .browser-actions {
+            padding: 12px 16px;
+            background: #fafafa;
+            border-top: 1px solid #e5e5e5;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #a3a3a3;
+        }
     </style>
 </head>
 <body>
@@ -294,17 +383,40 @@
 
             <div class="input-group">
                 <label class="input-label" data-i18n="sourceFolder">Source Folder</label>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <input type="text"
-                           id="folderInput"
-                           class="text-input"
-                           placeholder="/path/to/your/folder"
-                           data-i18n-placeholder="folderPlaceholder"
-                           onkeydown="handleFolderInputKeydown(event)"
-                           style="flex: 1;">
-                    <button class="icon-btn" onclick="updateSourceFolder()" title="Save">
-                        <span class="material-symbols-outlined">save</span>
-                    </button>
+
+                <!-- 文件浏览器 -->
+                <div class="file-browser">
+                    <!-- 面包屑导航 -->
+                    <div class="breadcrumb" id="breadcrumb"></div>
+
+                    <!-- 文件列表 -->
+                    <div class="file-list" id="fileList">
+                        <div class="loading" data-i18n="loading">Loading...</div>
+                    </div>
+
+                    <!-- 底部操作栏 -->
+                    <div class="browser-actions">
+                        <div style="display: flex; gap: 8px; flex: 1;">
+                            <input type="text"
+                                   id="newFolderName"
+                                   class="text-input"
+                                   placeholder="New folder name"
+                                   data-i18n-placeholder="newFolderName"
+                                   style="flex: 1;">
+                            <button class="btn btn-secondary" onclick="createNewFolder()" data-i18n="createFolder">
+                                Create Folder
+                            </button>
+                        </div>
+                        <button class="btn btn-primary" onclick="selectCurrentFolder()" data-i18n="selectFolder">
+                            Select This Folder
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 已选择的文件夹显示 -->
+                <div id="selectedFolderDisplay" style="display: none; margin-top: 12px; padding: 12px; background: #f5f5f5; border-radius: 6px;">
+                    <div style="font-size: 12px; color: #737373; margin-bottom: 4px;" data-i18n="selectedFolder">Selected Folder:</div>
+                    <div id="selectedFolderPath" style="font-size: 14px; font-weight: 500; word-break: break-all;"></div>
                 </div>
             </div>
 

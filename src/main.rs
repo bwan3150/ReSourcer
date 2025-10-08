@@ -7,6 +7,7 @@ mod uploader;
 mod gallery;
 mod static_files;
 mod auth;
+mod filesystem;
 
 use static_files::serve_static;
 
@@ -88,8 +89,8 @@ async fn main() -> std::io::Result<()> {
     }
     println!();
 
-    // 延迟打开浏览器
-    let browser_url = format!("http://{}:1234", local_ip);
+    // 延迟打开浏览器(使用带API Key的登录URL)
+    let browser_url = login_url.clone();
     tokio::spawn(async move {
         tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
         if let Err(e) = open::that(&browser_url) {
@@ -123,6 +124,8 @@ async fn main() -> std::io::Result<()> {
             .service(web::scope("/api/downloader").configure(downloader::routes))
             // 上传器 API 路由
             .service(web::scope("/api/uploader").configure(uploader::routes))
+            // 文件系统浏览 API 路由
+            .service(web::scope("/api/filesystem").configure(filesystem::routes))
             // 静态文件服务（嵌入式）
             .route("/", web::get().to(serve_static))
             .route("/{filename:.*}", web::get().to(serve_static))
