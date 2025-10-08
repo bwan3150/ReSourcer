@@ -476,11 +476,11 @@ class _UploadCardState extends State<UploadCard> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _uploading ? null : _showUploadMethodDialog,
-      child: Neumorphic(
+    // 上传中：显示原来的 Neumorphic 卡片样式
+    if (_uploading) {
+      return Neumorphic(
         style: NeumorphicStyle(
-          depth: _uploading ? -2 : 4,
+          depth: -2,
           intensity: 0.8,
           boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
           color: Colors.grey[200],
@@ -490,16 +490,34 @@ class _UploadCardState extends State<UploadCard> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Center(
-            child: _uploading
-                ? CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(ThemeColors.text(context)),
-                    backgroundColor: const Color(0xFFE0E0E0),
-                  )
-                : const Icon(
-                    Icons.add,
-                    size: 48,
-                    color: Colors.grey,
-                  ),
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(ThemeColors.text(context)),
+              backgroundColor: const Color(0xFFE0E0E0),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // 非上传时：显示和图片卡片一样的 NeumorphicButton
+    return NeumorphicButton(
+      onPressed: _showUploadMethodDialog,
+      style: NeumorphicStyle(
+        depth: 4,
+        intensity: 0.8,
+        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+      ),
+      padding: EdgeInsets.zero,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.grey[200],
+        ),
+        child: const Center(
+          child: Icon(
+            Icons.add,
+            size: 48,
+            color: Colors.grey,
           ),
         ),
       ),
