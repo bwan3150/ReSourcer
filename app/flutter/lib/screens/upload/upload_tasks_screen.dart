@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/upload_provider.dart';
 import '../../utils/theme_colors.dart';
 import '../../widgets/common/neumorphic_option_sheet.dart';
+import '../../widgets/common/neumorphic_toast.dart';
 
 /// 上传任务列表页面
 class UploadTasksScreen extends StatefulWidget {
@@ -72,12 +73,7 @@ class _UploadTasksScreenState extends State<UploadTasksScreen> {
     if (authProvider.apiService != null) {
       final result = await uploadProvider.clearFinishedTasks(authProvider.apiService!);
       if (mounted && result > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('已清除 $result 个任务'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        NeumorphicToast.showSuccess(context, '已清除 $result 个');
       }
     }
   }
@@ -109,23 +105,17 @@ class _UploadTasksScreenState extends State<UploadTasksScreen> {
 
   /// 从相册选择（待实现）
   void _pickFromGallery() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('从相册选择功能即将推出')),
-    );
+    NeumorphicToast.showInfo(context, '即将推出');
   }
 
   /// 拍照（待实现）
   void _takePhoto() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('拍照功能即将推出')),
-    );
+    NeumorphicToast.showInfo(context, '即将推出');
   }
 
   /// 从文件选择（待实现）
   void _pickFromFiles() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('从文件选择功能即将推出')),
-    );
+    NeumorphicToast.showInfo(context, '即将推出');
   }
 
   @override

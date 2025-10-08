@@ -11,6 +11,7 @@ import '../../providers/gallery_provider.dart';
 import '../../utils/theme_colors.dart';
 import '../../screens/gallery/image_detail_screen.dart';
 import '../common/neumorphic_option_sheet.dart';
+import '../common/neumorphic_toast.dart';
 
 /// 图片网格组件
 class ImageGrid extends StatelessWidget {
@@ -292,7 +293,7 @@ class _UploadCardState extends State<UploadCard> {
     } catch (e) {
       print('相机拍摄出错: $e');
       if (mounted) {
-        _showMessage('相机拍摄失败', isError: true);
+        _showMessage('拍摄失败', isError: true);
       }
     }
   }
@@ -332,7 +333,7 @@ class _UploadCardState extends State<UploadCard> {
       }
 
       if (filePaths.isEmpty) {
-        _showMessage('无法获取文件路径', isError: true);
+        _showMessage('获取失败', isError: true);
         return;
       }
 
@@ -345,7 +346,7 @@ class _UploadCardState extends State<UploadCard> {
     } catch (e) {
       print('相册选择出错: $e');
       if (mounted) {
-        _showMessage('相册选择失败', isError: true);
+        _showMessage('选择失败', isError: true);
       }
     }
   }
@@ -373,7 +374,7 @@ class _UploadCardState extends State<UploadCard> {
     } catch (e) {
       print('文件选择出错: $e');
       if (mounted) {
-        _showMessage('文件选择失败', isError: true);
+        _showMessage('选择失败', isError: true);
       }
     }
   }
@@ -391,7 +392,7 @@ class _UploadCardState extends State<UploadCard> {
     final galleryProvider = Provider.of<GalleryProvider>(context, listen: false);
 
     if (authProvider.apiService == null) {
-      _showMessage('服务未连接', isError: true);
+      _showMessage('未连接', isError: true);
       setState(() => _uploading = false);
       return;
     }
@@ -406,7 +407,7 @@ class _UploadCardState extends State<UploadCard> {
 
       if (mounted) {
         if (success) {
-          _showMessage('上传任务已创建');
+          _showMessage('已创建');
 
           // 如果需要删除原文件
           if (deleteAfterUpload) {
@@ -415,7 +416,7 @@ class _UploadCardState extends State<UploadCard> {
               await _deleteAssets(assetEntities);
             } else {
               // 没有 AssetEntity，无法删除
-              _showMessage('无法删除：此上传方式不支持删除原文件', isError: true);
+              _showMessage('不支持删除', isError: true);
             }
           }
 
@@ -448,7 +449,7 @@ class _UploadCardState extends State<UploadCard> {
 
       if (mounted) {
         if (deletedIds.isNotEmpty) {
-          _showMessage('已删除 ${deletedIds.length} 个文件（${Platform.isIOS ? '移至最近删除' : '已删除'}）');
+          _showMessage('已删除 ${deletedIds.length} 个');
           print('成功删除 ${deletedIds.length} 个资源');
         } else {
           _showMessage('删除失败', isError: true);
@@ -458,7 +459,7 @@ class _UploadCardState extends State<UploadCard> {
     } catch (e) {
       print('删除资源出错: $e');
       if (mounted) {
-        _showMessage('删除失败: $e', isError: true);
+        _showMessage('删除失败', isError: true);
       }
     }
   }
@@ -466,13 +467,11 @@ class _UploadCardState extends State<UploadCard> {
   void _showMessage(String message, {bool isError = false}) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    if (isError) {
+      NeumorphicToast.showError(context, message);
+    } else {
+      NeumorphicToast.showSuccess(context, message);
+    }
   }
 
   @override
