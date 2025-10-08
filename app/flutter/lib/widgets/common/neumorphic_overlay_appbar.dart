@@ -41,6 +41,9 @@ class NeumorphicOverlayAppBar extends StatelessWidget {
   /// 顶部/左右内边距
   final EdgeInsets padding;
 
+  /// 标题点击回调（可选）
+  final VoidCallback? onTitleTap;
+
   const NeumorphicOverlayAppBar({
     Key? key,
     required this.title,
@@ -49,6 +52,7 @@ class NeumorphicOverlayAppBar extends StatelessWidget {
     this.backgroundColor,
     this.titleStyle,
     this.padding = const EdgeInsets.all(20),
+    this.onTitleTap,
   }) : super(key: key);
 
   @override
@@ -69,30 +73,33 @@ class NeumorphicOverlayAppBar extends StatelessWidget {
               ],
               // 中间标题栏
               Expanded(
-                child: Neumorphic(
-                  style: NeumorphicStyle(
-                    depth: 4,
-                    intensity: 0.6,
-                    color: backgroundColor ?? NeumorphicTheme.baseColor(context),
-                    boxShape: NeumorphicBoxShape.roundRect(
-                      BorderRadius.circular(25),
+                child: GestureDetector(
+                  onTap: onTitleTap,
+                  child: Neumorphic(
+                    style: NeumorphicStyle(
+                      depth: 4,
+                      intensity: 0.6,
+                      color: backgroundColor ?? NeumorphicTheme.baseColor(context),
+                      boxShape: NeumorphicBoxShape.roundRect(
+                        BorderRadius.circular(25),
+                      ),
                     ),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                  child: Text(
-                    title,
-                    style: titleStyle ??
-                        TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: ThemeColors.text(context),
-                        ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    child: Text(
+                      title,
+                      style: titleStyle ??
+                          TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: ThemeColors.text(context),
+                          ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
               ),
