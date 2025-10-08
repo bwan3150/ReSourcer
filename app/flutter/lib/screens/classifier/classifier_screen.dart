@@ -20,6 +20,7 @@ class ClassifierScreen extends StatefulWidget {
 
 class _ClassifierScreenState extends State<ClassifierScreen> {
   String? _pendingNewName;
+  bool _showOverlayControls = true;
 
   @override
   void initState() {
@@ -300,10 +301,7 @@ class _ClassifierScreenState extends State<ClassifierScreen> {
         // 主内容区域
         Column(
           children: [
-            // 顶部留白，避免被 overlay appbar 覆盖
-            const SizedBox(height: 80),
-
-            // 文件预览区域
+            // 文件预览区域 - 延伸到 overlay appbar 下方
             Expanded(
               child: FilePreview(
                 file: provider.currentFile!,
@@ -312,6 +310,10 @@ class _ClassifierScreenState extends State<ClassifierScreen> {
                 currentCount: provider.processedCount,
                 totalCount: provider.totalFileCount,
                 progress: provider.progressPercentage,
+                showControls: _showOverlayControls,
+                onToggleControls: () {
+                  setState(() => _showOverlayControls = !_showOverlayControls);
+                },
               ),
             ),
 
@@ -343,6 +345,7 @@ class _ClassifierScreenState extends State<ClassifierScreen> {
     return NeumorphicOverlayAppBar(
       title: _pendingNewName ?? currentFile.nameWithoutExtension,
       onTitleTap: () => _showFullFileName(currentFile.name),
+      showTitle: _showOverlayControls,
       leading: NeumorphicCircleButton(
         icon: Icons.undo,
         onPressed: provider.canUndo ? _handleUndo : null,
