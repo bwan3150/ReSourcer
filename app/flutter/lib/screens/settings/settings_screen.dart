@@ -33,6 +33,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadVersion();
+    _loadInitialData();
   }
 
   Future<void> _loadVersion() async {
@@ -50,6 +51,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _version = '?';
         });
       }
+    }
+  }
+
+  /// 加载初始数据：服务器状态和源文件夹列表
+  Future<void> _loadInitialData() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final serverProvider = Provider.of<ServerProvider>(context, listen: false);
+    final sourceFolderProvider = Provider.of<SourceFolderProvider>(context, listen: false);
+
+    // 检查当前服务器状态
+    if (authProvider.currentServer != null) {
+      await serverProvider.checkServerStatus(authProvider.currentServer!);
+    }
+
+    // 加载源文件夹列表
+    if (authProvider.apiService != null) {
+      await sourceFolderProvider.loadSourceFolders(authProvider.apiService!);
     }
   }
 
@@ -424,10 +442,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
 
-    // 返回后刷新服务器状态
+    // 返回后刷新服务器状态和源文件夹列表
     if (context.mounted) {
-      final serverProvider = Provider.of<ServerProvider>(context, listen: false);
-      await serverProvider.checkAllServers();
+      await _loadInitialData();
     }
   }
 

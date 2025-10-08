@@ -41,7 +41,17 @@ class ServerProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// 检查单个服务器状态
+  /// 检查单个服务器状态（公开方法）
+  Future<void> checkServerStatus(Server server) async {
+    _serverStatuses[server.id] = ServerStatus.checking;
+    notifyListeners();
+
+    final status = await _checkServerStatus(server);
+    _serverStatuses[server.id] = status;
+    notifyListeners();
+  }
+
+  /// 检查单个服务器状态（内部方法）
   Future<ServerStatus> _checkServerStatus(Server server) async {
     // 1. 检查健康状态
     final healthOk = await ApiService.checkHealth(server.baseUrl);
