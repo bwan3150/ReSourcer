@@ -16,16 +16,24 @@ const i18nManager = {
 
             // Settings 页面
             settingsTitle: '设置',
+            back: '返回',
             sourceFolder: '源文件夹',
+            folderPath: '文件夹路径',
             folderPlaceholder: '/path/to/your/folder',
+            browse: '浏览',
+            save: '保存',
             categoryFolders: '分类文件夹',
-            addNewFolder: '添加新文件夹',
-            applyPreset: '或应用预设',
-            apply: '应用',
-            backToHome: '返回首页',
+            addNewCategoryFolder: '添加新分类文件夹',
+            newFolderPlaceholder: '输入新文件夹名称',
+            add: '添加',
+            saveSettings: '保存设置',
+            selectFolder: '选择文件夹',
+            loading: '加载中...',
+            newFolderName: '新文件夹名称',
+            createFolder: '创建文件夹',
+            select: '选择',
             noFoldersYet: '暂无文件夹',
             folderExists: '文件夹已存在',
-            selectPreset: '请选择一个预设',
             enterFolderPath: '请输入文件夹路径',
             needAtLeastOneFolder: '请至少添加一个可见文件夹',
             settingsSaved: '设置保存成功!',
@@ -144,16 +152,24 @@ const i18nManager = {
 
             // Settings page
             settingsTitle: 'Settings',
+            back: 'Back',
             sourceFolder: 'Source Folder',
+            folderPath: 'Folder Path',
             folderPlaceholder: '/path/to/your/folder',
+            browse: 'Browse',
+            save: 'Save',
             categoryFolders: 'Category Folders',
-            addNewFolder: 'Add new folder',
-            applyPreset: 'Or apply a preset',
-            apply: 'Apply',
-            backToHome: 'Back to Home',
+            addNewCategoryFolder: 'Add New Category Folder',
+            newFolderPlaceholder: 'Enter new folder name',
+            add: 'Add',
+            saveSettings: 'Save Settings',
+            selectFolder: 'Select Folder',
+            loading: 'Loading...',
+            newFolderName: 'New Folder Name',
+            createFolder: 'Create Folder',
+            select: 'Select',
             noFoldersYet: 'No folders yet',
             folderExists: 'Folder already exists',
-            selectPreset: 'Please select a preset',
             enterFolderPath: 'Please enter a folder path',
             needAtLeastOneFolder: 'Please add at least one visible folder',
             settingsSaved: 'Settings saved successfully!',
@@ -288,6 +304,12 @@ const i18nManager = {
         document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
             const key = el.getAttribute('data-i18n-placeholder');
             el.placeholder = this.t(key);
+        });
+
+        // 更新所有带 data-i18n-title 属性的元素
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+            const key = el.getAttribute('data-i18n-title');
+            el.title = this.t(key);
         });
 
         // 更新语言切换按钮状态

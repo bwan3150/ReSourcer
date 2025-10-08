@@ -6,11 +6,72 @@
     <title>Settings - ReSourcer</title>
     <link rel="stylesheet" href="/material-icons.css">
     <style>
-        /* 语言切换按钮 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif;
+            background: #fafafa;
+            color: #171717;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* 页面容器 */
+        .page-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* 头部 */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 48px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .back-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            color: #525252;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .back-btn:hover {
+            background: #fafafa;
+            border-color: #171717;
+            color: #171717;
+        }
+
+        .page-title {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        /* 语言切换 */
         .lang-switcher {
-            position: absolute;
-            top: 20px;
-            right: 20px;
             display: flex;
             gap: 8px;
             background: white;
@@ -40,82 +101,28 @@
             color: white;
         }
 
-        /* 图标按钮 */
-        .icon-btn {
-            padding: 8px;
-            background: transparent;
-            border: 1px solid #e5e5e5;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 36px;
-            height: 36px;
-        }
-
-        .icon-btn:hover {
-            background: #fafafa;
-            border-color: #171717;
-        }
-
-        .icon-btn svg {
-            width: 18px;
-            height: 18px;
-            fill: #525252;
-        }
-
-        .icon-btn:hover svg {
-            fill: #171717;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif;
-            background: #fafafa;
-            color: #171717;
-            line-height: 1.5;
-            min-height: 100vh;
-        }
-
-        /* 设置界面 */
-        .setup-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .setup-card {
+        /* 卡片容器 */
+        .card {
             background: white;
             border-radius: 12px;
-            padding: 48px;
-            max-width: 600px;
-            width: 100%;
+            padding: 32px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1);
-        }
-
-        .setup-title {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 40px;
-            text-align: center;
-            letter-spacing: -0.5px;
-        }
-
-        .input-group {
             margin-bottom: 24px;
         }
 
-        .input-label {
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #171717;
+        }
+
+        /* 表单元素 */
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
             display: block;
             font-size: 14px;
             font-weight: 500;
@@ -123,8 +130,14 @@
             margin-bottom: 8px;
         }
 
+        .input-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
         .text-input {
-            width: 100%;
+            flex: 1;
             padding: 12px 16px;
             font-size: 14px;
             border: 1px solid #e5e5e5;
@@ -139,8 +152,14 @@
             box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
         }
 
+        .text-input:disabled {
+            background: #f5f5f5;
+            color: #a3a3a3;
+        }
+
+        /* 按钮 */
         .btn {
-            padding: 12px 24px;
+            padding: 12px 20px;
             font-size: 14px;
             font-weight: 500;
             border-radius: 8px;
@@ -151,6 +170,7 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
+            white-space: nowrap;
         }
 
         .btn-primary {
@@ -173,27 +193,34 @@
             border-color: #d4d4d4;
         }
 
-        .btn-group {
-            display: flex;
-            gap: 12px;
-            margin-top: 32px;
+        .icon-btn {
+            padding: 10px;
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .btn-group .btn {
-            flex: 1;
+        .icon-btn:hover {
+            background: #fafafa;
+            border-color: #171717;
         }
 
-        /* 分类管理 */
-        .categories-list {
-            max-height: 300px;
+        /* 文件夹列表 */
+        .folders-list {
+            max-height: 400px;
             overflow-y: auto;
-            margin: 20px 0;
+            margin-bottom: 16px;
             border: 1px solid #e5e5e5;
             border-radius: 8px;
             padding: 8px;
         }
 
-        .category-item {
+        .folder-item {
             display: flex;
             align-items: center;
             padding: 8px 12px;
@@ -202,11 +229,11 @@
             transition: background 0.2s;
         }
 
-        .category-item:hover {
+        .folder-item:hover {
             background: #f5f5f5;
         }
 
-        .category-item input {
+        .folder-item input {
             flex: 1;
             padding: 6px 10px;
             border: 1px solid #e5e5e5;
@@ -215,71 +242,99 @@
             margin-right: 8px;
         }
 
-        .category-item .delete-btn {
+        .delete-btn {
             padding: 4px 8px;
             background: transparent;
             color: #a3a3a3;
             border: none;
             cursor: pointer;
             font-size: 18px;
-            line-height: 1;
             transition: color 0.2s;
         }
 
-        .category-item .delete-btn:hover {
+        .delete-btn:hover {
             color: #ef4444;
         }
 
-        /* 返回按钮 */
-        .back-btn {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            padding: 8px 16px;
-            background: white;
-            border: 1px solid #e5e5e5;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-decoration: none;
-            color: #525252;
-            display: inline-flex;
+        /* 模态弹窗 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
             align-items: center;
-            gap: 8px;
+            justify-content: center;
+            padding: 20px;
+            overflow-y: auto;
         }
 
-        .back-btn:hover {
-            background: #fafafa;
-            border-color: #171717;
+        .modal.active {
+            display: flex;
+        }
+
+        /* 防止背景滚动 */
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e5e5;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #737373;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            transition: color 0.2s;
+        }
+
+        .close-btn:hover {
             color: #171717;
         }
 
-        /* 滚动条样式 */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #d4d4d4;
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #a3a3a3;
-        }
-
-        /* 文件浏览器样式 */
-        .file-browser {
-            border: 1px solid #e5e5e5;
-            border-radius: 8px;
+        .modal-body {
+            flex: 1;
             overflow: hidden;
-            background: white;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;  /* 允许flex子元素正确收缩 */
+        }
+
+        /* 文件浏览器 */
+        .file-browser {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            min-height: 0;  /* 允许flex子元素正确收缩 */
         }
 
         .breadcrumb {
@@ -310,9 +365,9 @@
         }
 
         .file-list {
-            max-height: 400px;
+            flex: 1;
             overflow-y: auto;
-            min-height: 200px;
+            min-height: 0;  /* 重要:允许在flex容器中正确滚动 */
         }
 
         .file-item {
@@ -354,12 +409,19 @@
         }
 
         .browser-actions {
-            padding: 12px 16px;
+            padding: 16px;
             background: #fafafa;
             border-top: 1px solid #e5e5e5;
             display: flex;
             gap: 12px;
             align-items: center;
+            flex-wrap: wrap;
+            flex-shrink: 0;  /* 防止被压缩 */
+        }
+
+        .browser-actions .input-row {
+            flex: 1;
+            min-width: 200px;
         }
 
         .loading {
@@ -367,92 +429,172 @@
             padding: 60px 20px;
             color: #a3a3a3;
         }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .page-container {
+                padding: 20px 16px;
+            }
+
+            .page-header {
+                margin-bottom: 32px;
+            }
+
+            .page-title {
+                font-size: 24px;
+            }
+
+            .card {
+                padding: 24px 16px;
+            }
+
+            .input-row {
+                flex-wrap: wrap;
+            }
+
+            .browser-actions {
+                flex-direction: column;
+            }
+
+            .browser-actions .input-row {
+                width: 100%;
+            }
+        }
+
+        /* 滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #d4d4d4;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a3a3a3;
+        }
     </style>
 </head>
 <body>
-    <!-- 返回主页按钮 -->
-    <a href="/" class="back-btn">
-        <span class="material-symbols-outlined">arrow_back</span>
-    </a>
+    <!-- 页面容器 -->
+    <div class="page-container">
+        <!-- 头部 -->
+        <div class="page-header">
+            <div class="header-left">
+                <a href="/" class="back-btn">
+                    <span class="material-symbols-outlined">arrow_back</span>
+                    <span data-i18n="back">返回</span>
+                </a>
+                <h1 class="page-title" data-i18n="settingsTitle">设置</h1>
+            </div>
 
-    <!-- 语言切换器 -->
-    <div class="lang-switcher">
-        <button class="lang-btn" onclick="i18nManager.setLang('en')" data-lang="en">EN</button>
-        <button class="lang-btn" onclick="i18nManager.setLang('zh')" data-lang="zh">中文</button>
+            <!-- 语言切换 -->
+            <div class="lang-switcher">
+                <button class="lang-btn" onclick="i18nManager.setLang('en')" data-lang="en">EN</button>
+                <button class="lang-btn" onclick="i18nManager.setLang('zh')" data-lang="zh">中文</button>
+            </div>
+        </div>
+
+        <!-- 源文件夹设置 -->
+        <div class="card">
+            <h2 class="card-title" data-i18n="sourceFolder">源文件夹</h2>
+
+            <div class="form-group">
+                <label class="form-label" data-i18n="folderPath">文件夹路径</label>
+                <div class="input-row">
+                    <input type="text"
+                           id="sourceFolderInput"
+                           class="text-input"
+                           placeholder="/path/to/your/folder"
+                           data-i18n-placeholder="folderPlaceholder">
+                    <button class="btn btn-secondary" onclick="openFileBrowser()">
+                        <span class="material-symbols-outlined">folder_open</span>
+                        <span data-i18n="browse">浏览</span>
+                    </button>
+                    <button class="btn btn-primary" onclick="saveSourceFolder()">
+                        <span class="material-symbols-outlined">save</span>
+                        <span data-i18n="save">保存</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分类文件夹管理 (初始隐藏) -->
+        <div id="foldersSection" class="card" style="display: none;">
+            <h2 class="card-title" data-i18n="categoryFolders">分类文件夹</h2>
+
+            <div id="foldersList" class="folders-list"></div>
+
+            <div class="form-group">
+                <label class="form-label" data-i18n="addNewCategoryFolder">添加新分类文件夹</label>
+                <div class="input-row">
+                    <input type="text"
+                           id="newFolderInput"
+                           class="text-input"
+                           placeholder="输入新文件夹名称"
+                           data-i18n-placeholder="newFolderPlaceholder"
+                           onkeydown="if(event.key==='Enter') addFolder()">
+                    <button class="icon-btn" onclick="addFolder()" data-i18n-title="add">
+                        <span class="material-symbols-outlined">add</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 保存设置按钮 (初始隐藏) -->
+        <div id="saveSettingsSection" class="card" style="display: none;">
+            <button class="btn btn-primary" onclick="saveSettings()" style="width: 100%;">
+                <span class="material-symbols-outlined">check_circle</span>
+                <span data-i18n="saveSettings">保存设置</span>
+            </button>
+        </div>
     </div>
 
-    <!-- 设置界面 -->
-    <div id="setupContainer" class="setup-container">
-        <div class="setup-card">
-            <h1 class="setup-title" data-i18n="settingsTitle">Settings</h1>
+    <!-- 文件浏览器模态弹窗 -->
+    <div id="fileBrowserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" data-i18n="selectFolder">选择文件夹</h3>
+                <button class="close-btn" onclick="closeFileBrowser()">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
 
-            <div class="input-group">
-                <label class="input-label" data-i18n="sourceFolder">Source Folder</label>
-
-                <!-- 文件浏览器 -->
+            <div class="modal-body">
                 <div class="file-browser">
                     <!-- 面包屑导航 -->
                     <div class="breadcrumb" id="breadcrumb"></div>
 
                     <!-- 文件列表 -->
                     <div class="file-list" id="fileList">
-                        <div class="loading" data-i18n="loading">Loading...</div>
+                        <div class="loading" data-i18n="loading">加载中...</div>
                     </div>
 
                     <!-- 底部操作栏 -->
                     <div class="browser-actions">
-                        <div style="display: flex; gap: 8px; flex: 1;">
+                        <div class="input-row">
                             <input type="text"
                                    id="newFolderName"
                                    class="text-input"
-                                   placeholder="New folder name"
-                                   data-i18n-placeholder="newFolderName"
-                                   style="flex: 1;">
-                            <button class="btn btn-secondary" onclick="createNewFolder()" data-i18n="createFolder">
-                                Create Folder
+                                   placeholder="新文件夹名称"
+                                   data-i18n-placeholder="newFolderName">
+                            <button class="btn btn-secondary" onclick="createNewFolder()">
+                                <span class="material-symbols-outlined">create_new_folder</span>
+                                <span data-i18n="createFolder">创建文件夹</span>
                             </button>
                         </div>
-                        <button class="btn btn-primary" onclick="selectCurrentFolder()" data-i18n="selectFolder">
-                            选择当前文件夹
+                        <button class="btn btn-primary" onclick="selectCurrentFolder()">
+                            <span class="material-symbols-outlined">check</span>
+                            <span data-i18n="select">选择</span>
                         </button>
                     </div>
                 </div>
-
-                <!-- 已选择的文件夹显示 -->
-                <div id="selectedFolderDisplay" style="display: none; margin-top: 12px; padding: 12px; background: #f5f5f5; border-radius: 6px;">
-                    <div style="font-size: 12px; color: #737373; margin-bottom: 4px;" data-i18n="selectedFolder">Selected Folder:</div>
-                    <div id="selectedFolderPath" style="font-size: 14px; font-weight: 500; word-break: break-all;"></div>
-                </div>
-            </div>
-
-            <div id="foldersSection" style="display: none;">
-                <label class="input-label" data-i18n="categoryFolders">Category Folders</label>
-                <div id="foldersList" class="categories-list"></div>
-                <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-                    <input type="text"
-                           id="newFolderInput"
-                           class="text-input"
-                           placeholder="Add new folder"
-                           data-i18n-placeholder="addNewFolder"
-                           onkeydown="if(event.key==='Enter') addFolder()">
-                    <button class="icon-btn" onclick="addFolder()" title="Add">
-                        <span class="material-symbols-outlined">add</span>
-                    </button>
-                </div>
-
-                <div class="input-group">
-                    <label class="input-label" data-i18n="applyPreset">Or apply a preset</label>
-                    <div style="display: flex; gap: 8px;">
-                        <select id="presetSelect" class="text-input" style="flex: 1;">
-                            <!-- Presets will be loaded here -->
-                        </select>
-                        <button class="btn btn-secondary" onclick="applyPreset()" data-i18n="apply">Apply</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="btn-group">
-                <button id="saveBtn" class="btn btn-primary" onclick="saveSettings()" data-i18n="save">Save</button>
             </div>
         </div>
     </div>

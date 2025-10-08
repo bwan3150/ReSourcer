@@ -1,7 +1,6 @@
 // 设置页面逻辑
 let appState = {
-    source_folder: '',
-    presets: []
+    source_folder: ''
 };
 
 // 内存中的文件夹列表 (包含已存在的和用户新添加的)
@@ -20,8 +19,6 @@ async function init() {
     // 初始化多语言
     i18nManager.updateUI();
     await loadAppState();
-    // 初始化文件浏览器(从用户主目录开始)
-    await browseDirectory();
 }
 
 // 加载应用状态
@@ -30,25 +27,16 @@ async function loadAppState() {
         const response = await fetch('/api/classifier/state');
         appState = await response.json();
 
-        // 如果已经配置了源文件夹,显示它
+        // 如果已经配置了源文件夹,显示它并加载分类文件夹
         if (appState.source_folder) {
-            browserState.selectedPath = appState.source_folder;
-            document.getElementById('selectedFolderPath').textContent = appState.source_folder;
-            document.getElementById('selectedFolderDisplay').style.display = 'block';
+            document.getElementById('sourceFolderInput').value = appState.source_folder;
             await loadFoldersFromPath(appState.source_folder);
-        } else {
-            // 如果没有源文件夹,隐藏保存按钮
-            document.getElementById('saveBtn').style.display = 'none';
         }
-
-        // 构建预设选择器
-        updatePresetSelector();
 
     } catch (error) {
         console.error('Error loading state:', error);
     }
 }
-
 
 // 渲染文件夹列表
 function renderFolders() {
@@ -70,7 +58,7 @@ function renderFolders() {
             `<span style="margin-left: 4px; color: #a3a3a3;"><span class="material-symbols-outlined" style="font-size: 18px;">save</span></span>`;
 
         return `
-            <div class="category-item" style="${folder.hidden ? 'opacity: 0.5;' : ''}">
+            <div class="folder-item" style="${folder.hidden ? 'opacity: 0.5;' : ''}">
                 <input type="text" value="${folder.name}" onchange="updateFolderName(${index}, this.value)" ${folder.hidden ? 'disabled' : ''}>
                 <div style="display: flex; align-items: center; gap: 4px;">
                     <button class="icon-btn" style="border: none; width: auto; padding: 4px;" onclick="toggleFolderVisibility(${index})" title="${folder.hidden ? 'Show' : 'Hide'}">
@@ -81,21 +69,6 @@ function renderFolders() {
             </div>
         `;
     }).join('');
-}
-
-// 更新预设选择器
-function updatePresetSelector() {
-    const select = document.getElementById('presetSelect');
-
-    let options = '<option value="">Select a preset...</option>';
-
-    options += appState.presets.map(preset =>
-        `<option value="${preset.name}">
-            ${preset.name} (${preset.categories.length} folders)
-        </option>`
-    ).join('');
-
-    select.innerHTML = options;
 }
 
 // 添加文件夹
@@ -149,41 +122,28 @@ function toggleFolderVisibility(index) {
     renderFolders();
 }
 
-// 应用预设
-function applyPreset() {
-    const select = document.getElementById('presetSelect');
-    const presetName = select.value;
+// 保存源文件夹
+async function saveSourceFolder() {
+    const folderPath = document.getElementById('sourceFolderInput').value.trim();
 
-    if (!presetName) {
-        alert(i18nManager.t('selectPreset', 'Please select a preset'));
+    if (!folderPath) {
+        alert('请输入或选择文件夹路径');
         return;
     }
 
-    const preset = appState.presets.find(p => p.name === presetName);
-    if (!preset) return;
+    // 保存到状态
+    appState.source_folder = folderPath;
 
-    // 将预设中的分类添加到文件夹列表
-    preset.categories.forEach(category => {
-        if (!folders.some(f => f.name === category)) {
-            folders.push({
-                name: category,
-                hidden: false,
-                isNew: true  // 标记为新文件夹
-            });
-        }
-    });
-
-    renderFolders();
-    select.value = '';
+    // 加载该文件夹下的子文件夹
+    await loadFoldersFromPath(folderPath);
 }
 
-
-// 保存设置
+// 保存完整设置
 async function saveSettings() {
-    const folderPath = browserState.selectedPath;
+    const folderPath = document.getElementById('sourceFolderInput').value.trim();
 
     if (!folderPath) {
-        alert('请先选择源文件夹');
+        alert('请先设置源文件夹');
         return;
     }
 
@@ -222,7 +182,23 @@ async function saveSettings() {
     }
 }
 
-// ========== 文件浏览器功能 ==========
+// ========== 文件浏览器模态弹窗 ==========
+
+// 打开文件浏览器
+async function openFileBrowser() {
+    document.getElementById('fileBrowserModal').classList.add('active');
+    document.body.classList.add('modal-open');  // 防止背景滚动
+
+    // 如果已有源文件夹,从该路径开始,否则从用户主目录开始
+    const startPath = document.getElementById('sourceFolderInput').value.trim() || null;
+    await browseDirectory(startPath);
+}
+
+// 关闭文件浏览器
+function closeFileBrowser() {
+    document.getElementById('fileBrowserModal').classList.remove('active');
+    document.body.classList.remove('modal-open');  // 恢复背景滚动
+}
 
 // 浏览目录
 async function browseDirectory(path = null) {
@@ -406,7 +382,7 @@ async function createNewFolder() {
     }
 }
 
-// 选择当前文件夹作为源文件夹
+// 选择当前文件夹
 async function selectCurrentFolder() {
     // 优先使用单击选中的文件夹,否则使用当前所在目录
     const pathToSelect = browserState.selectedItemPath || browserState.currentPath;
@@ -416,14 +392,14 @@ async function selectCurrentFolder() {
         return;
     }
 
-    browserState.selectedPath = pathToSelect;
+    // 设置到输入框
+    document.getElementById('sourceFolderInput').value = pathToSelect;
 
-    // 显示已选择的路径
-    document.getElementById('selectedFolderPath').textContent = browserState.selectedPath;
-    document.getElementById('selectedFolderDisplay').style.display = 'block';
+    // 关闭模态窗口
+    closeFileBrowser();
 
-    // 加载该文件夹下的子文件夹
-    await loadFoldersFromPath(browserState.selectedPath);
+    // 自动保存源文件夹
+    await saveSourceFolder();
 }
 
 // 从指定路径加载文件夹
@@ -437,8 +413,9 @@ async function loadFoldersFromPath(folderPath) {
                 ...f,
                 isNew: false  // 已存在的文件夹
             }));
+            // 显示分类文件夹部分和保存设置按钮
             document.getElementById('foldersSection').style.display = 'block';
-            document.getElementById('saveBtn').style.display = 'inline-flex';
+            document.getElementById('saveSettingsSection').style.display = 'block';
             renderFolders();
         }
     } catch (error) {
