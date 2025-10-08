@@ -24,7 +24,7 @@ async function init() {
 // 加载应用状态
 async function loadAppState() {
     try {
-        const response = await fetch('/api/classifier/state');
+        const response = await fetch('/api/settings/state');
         appState = await response.json();
 
         // 如果已经配置了源文件夹,显示它并加载分类文件夹
@@ -157,7 +157,7 @@ async function saveSettings() {
     }
 
     try {
-        const response = await fetch('/api/classifier/settings/save', {
+        const response = await fetch('/api/settings/save', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -405,7 +405,7 @@ async function selectCurrentFolder() {
 // 从指定路径加载文件夹
 async function loadFoldersFromPath(folderPath) {
     try {
-        const response = await fetch(`/api/classifier/folders?source_folder=${encodeURIComponent(folderPath)}`);
+        const response = await fetch(`/api/settings/folders?source_folder=${encodeURIComponent(folderPath)}`);
         if (response.ok) {
             const existingFolders = await response.json();
             // 标记已存在的文件夹

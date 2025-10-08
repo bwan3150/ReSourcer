@@ -8,6 +8,7 @@ mod gallery;
 mod static_files;
 mod auth;
 mod filesystem;
+mod settings;
 
 use static_files::serve_static;
 
@@ -120,6 +121,8 @@ async fn main() -> std::io::Result<()> {
             .service(web::scope("/api/gallery").configure(gallery::routes))
             // 分类器 API 路由
             .service(web::scope("/api/classifier").configure(classifier::routes))
+            // 设置 API 路由
+            .service(web::scope("/api/settings").configure(settings::routes))
             // 下载器 API 路由
             .service(web::scope("/api/downloader").configure(downloader::routes))
             // 上传器 API 路由

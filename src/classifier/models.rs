@@ -5,6 +5,8 @@ pub struct AppState {
     pub source_folder: String,
     #[serde(default)]
     pub hidden_folders: Vec<String>, // 隐藏的文件夹列表
+    #[serde(default)]
+    pub backup_source_folders: Vec<String>, // 备用源文件夹列表
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -48,4 +50,20 @@ pub struct SaveSettingsRequest {
     pub source_folder: String,
     pub categories: Vec<String>, // 要显示的分类列表
     pub hidden_folders: Vec<String>, // 要隐藏的文件夹列表
+}
+
+// 源文件夹管理请求
+#[derive(Deserialize)]
+pub struct AddSourceFolderRequest {
+    pub folder_path: String,
+}
+
+#[derive(Deserialize)]
+pub struct SwitchSourceFolderRequest {
+    pub folder_path: String,
+}
+
+#[derive(Deserialize)]
+pub struct RemoveSourceFolderRequest {
+    pub folder_path: String,
 }
