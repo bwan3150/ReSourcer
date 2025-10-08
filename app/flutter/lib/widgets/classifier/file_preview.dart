@@ -11,18 +11,18 @@ class FilePreview extends StatefulWidget {
   final ClassifierFile file;
   final bool useThumbnail;
   final VoidCallback onToggleThumbnail;
-  final TextEditingController renameController;
-  final bool showRenameField;
-  final VoidCallback onToggleRename;
+  final int currentCount;
+  final int totalCount;
+  final double progress;
 
   const FilePreview({
     Key? key,
     required this.file,
     required this.useThumbnail,
     required this.onToggleThumbnail,
-    required this.renameController,
-    required this.showRenameField,
-    required this.onToggleRename,
+    required this.currentCount,
+    required this.totalCount,
+    required this.progress,
   }) : super(key: key);
 
   @override
@@ -32,6 +32,7 @@ class FilePreview extends StatefulWidget {
 class _FilePreviewState extends State<FilePreview> {
   Player? _player;
   VideoController? _videoController;
+  bool _showControls = true;
 
   @override
   void initState() {
@@ -78,30 +79,38 @@ class _FilePreviewState extends State<FilePreview> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.grey[200],
-      child: Stack(
-        children: [
-          // 文件预览
-          Center(
-            child: _buildFileContent(),
-          ),
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _showControls = !_showControls;
+        });
+      },
+      child: Container(
+        color: Colors.black,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 文件预览 - 充满整个空间
+            _buildFileContent(),
 
-          // 右上角缩略图开关
-          Positioned(
-            top: 16,
-            right: 16,
-            child: _buildThumbnailSwitch(),
-          ),
+            // 右上角缩略图开关（可隐藏）
+            if (_showControls)
+              Positioned(
+                top: 16,
+                right: 16,
+                child: _buildThumbnailSwitch(),
+              ),
 
-          // 底部文件信息和重命名区
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: _buildFileInfo(),
-          ),
-        ],
+            // 底部进度条（可隐藏）
+            if (_showControls)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: _buildProgressBar(),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -156,19 +165,23 @@ class _FilePreviewState extends State<FilePreview> {
     return InteractiveViewer(
       minScale: 0.5,
       maxScale: 4.0,
-      child: Image.network(
-        imageUrl,
-        fit: BoxFit.contain,
-        headers: {
-          'Cookie': 'api_key=${authProvider.apiService?.apiKey ?? ''}',
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return _buildPlaceholder(Icons.broken_image);
-        },
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return _buildPlaceholder(Icons.image);
-        },
+      child: Center(
+        child: Image.network(
+          imageUrl,
+          fit: BoxFit.contain,
+          width: double.infinity,
+          height: double.infinity,
+          headers: {
+            'Cookie': 'api_key=${authProvider.apiService?.apiKey ?? ''}',
+          },
+          errorBuilder: (context, error, stackTrace) {
+            return _buildPlaceholder(Icons.broken_image);
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return _buildPlaceholder(Icons.image);
+          },
+        ),
       ),
     );
   }
@@ -178,21 +191,26 @@ class _FilePreviewState extends State<FilePreview> {
     final authProvider = Provider.of<AuthProvider>(context);
 
     return Stack(
+      fit: StackFit.expand,
       alignment: Alignment.center,
       children: [
-        Image.network(
-          thumbnailUrl,
-          fit: BoxFit.contain,
-          headers: {
-            'Cookie': 'api_key=${authProvider.apiService?.apiKey ?? ''}',
-          },
-          errorBuilder: (context, error, stackTrace) {
-            return _buildPlaceholder(Icons.play_circle_outline);
-          },
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return _buildPlaceholder(Icons.videocam);
-          },
+        Center(
+          child: Image.network(
+            thumbnailUrl,
+            fit: BoxFit.contain,
+            width: double.infinity,
+            height: double.infinity,
+            headers: {
+              'Cookie': 'api_key=${authProvider.apiService?.apiKey ?? ''}',
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return _buildPlaceholder(Icons.play_circle_outline);
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return _buildPlaceholder(Icons.videocam);
+            },
+          ),
         ),
         // 播放图标叠加层
         Container(
@@ -222,11 +240,15 @@ class _FilePreviewState extends State<FilePreview> {
   /// 占位符
   Widget _buildPlaceholder(IconData icon) {
     return Container(
-      color: Colors.grey[300],
-      child: Icon(
-        icon,
-        size: 64,
-        color: Colors.grey[500],
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.grey[800],
+      child: Center(
+        child: Icon(
+          icon,
+          size: 64,
+          color: Colors.grey[500],
+        ),
       ),
     );
   }
@@ -270,8 +292,8 @@ class _FilePreviewState extends State<FilePreview> {
     );
   }
 
-  /// 文件信息和重命名区域
-  Widget _buildFileInfo() {
+  /// 底部进度条区域
+  Widget _buildProgressBar() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -288,64 +310,27 @@ class _FilePreviewState extends State<FilePreview> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 文件名
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  widget.file.name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              IconButton(
-                icon: Icon(
-                  widget.showRenameField ? Icons.close : Icons.edit,
-                  color: Colors.white,
-                  size: 20,
-                ),
-                onPressed: widget.onToggleRename,
-              ),
-            ],
-          ),
-
-          // 重命名输入框
-          if (widget.showRenameField) ...[
-            const SizedBox(height: 8),
-            Neumorphic(
-              style: NeumorphicStyle(
-                depth: -2,
-                intensity: 0.6,
-                boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
-              ),
-              child: TextField(
-                controller: widget.renameController,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: ThemeColors.text(context),
-                ),
-                decoration: InputDecoration(
-                  hintText: widget.file.nameWithoutExtension,
-                  hintStyle: TextStyle(
-                    color: ThemeColors.textSecondary(context),
-                  ),
-                  suffixText: widget.file.extension,
-                  suffixStyle: TextStyle(
-                    color: ThemeColors.textSecondary(context),
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                ),
-              ),
+          // 进度信息
+          Text(
+            '${widget.currentCount} / ${widget.totalCount}',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
             ),
-          ],
+          ),
+          const SizedBox(height: 8),
+          // 进度条
+          NeumorphicProgress(
+            height: 8,
+            percent: widget.progress,
+            style: ProgressStyle(
+              depth: 4,
+              border: NeumorphicBorder.none(),
+              accent: Colors.white.withOpacity(0.8),
+              variant: Colors.white.withOpacity(0.3),
+            ),
+          ),
         ],
       ),
     );

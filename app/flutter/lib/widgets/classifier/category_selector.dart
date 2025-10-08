@@ -35,46 +35,29 @@ class CategorySelector extends StatelessWidget {
           ),
         ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 可滚动的分类列表
-          Flexible(
-            child: ListView.builder(
-              shrinkWrap: true,
-              padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
-              itemCount: categories.length,
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                final shortcut = _getShortcutKey(index);
+      child: ListView.builder(
+        shrinkWrap: true,
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 80 + bottomPadding), // 增加底部空白以避免被导航栏覆盖
+        itemCount: categories.length + 1, // 分类数量 + 添加按钮
+        itemBuilder: (context, index) {
+          // 最后一项是添加按钮
+          if (index == categories.length) {
+            return _buildAddButton(context);
+          }
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _buildCategoryButton(
-                    context,
-                    category.name,
-                    shortcut,
-                  ),
-                );
-              },
-            ),
-          ),
+          // 其他项是分类按钮
+          final category = categories[index];
+          final shortcut = _getShortcutKey(index);
 
-          // 底部固定区域：添加按钮
-          Container(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, 12 + bottomPadding),
-            decoration: BoxDecoration(
-              color: NeumorphicTheme.baseColor(context),
-              border: Border(
-                top: BorderSide(
-                  color: ThemeColors.textSecondary(context).withOpacity(0.1),
-                  width: 1,
-                ),
-              ),
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _buildCategoryButton(
+              context,
+              category.name,
+              shortcut,
             ),
-            child: _buildAddButton(context),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:provider/provider.dart';
+import '../../models/classifier_file.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/classifier_provider.dart';
 import '../../utils/theme_colors.dart';
@@ -8,7 +9,6 @@ import '../../widgets/common/neumorphic_dialog.dart';
 import '../../widgets/common/neumorphic_overlay_appbar.dart';
 import '../../widgets/classifier/file_preview.dart';
 import '../../widgets/classifier/category_selector.dart';
-import '../../widgets/classifier/progress_header.dart';
 
 /// 分类器主界面
 class ClassifierScreen extends StatefulWidget {
@@ -19,8 +19,7 @@ class ClassifierScreen extends StatefulWidget {
 }
 
 class _ClassifierScreenState extends State<ClassifierScreen> {
-  final TextEditingController _renameController = TextEditingController();
-  bool _showRenameField = false;
+  String? _pendingNewName;
 
   @override
   void initState() {
@@ -28,12 +27,6 @@ class _ClassifierScreenState extends State<ClassifierScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
-  }
-
-  @override
-  void dispose() {
-    _renameController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -61,17 +54,15 @@ class _ClassifierScreenState extends State<ClassifierScreen> {
 
     if (authProvider.apiService == null) return;
 
-    final newName = _renameController.text.trim();
     final success = await classifierProvider.moveToCategory(
       authProvider.apiService!,
       category,
-      newName: newName.isEmpty ? null : newName,
+      newName: _pendingNewName,
     );
 
     if (success) {
-      // 清空重命名输入框
-      _renameController.clear();
-      setState(() => _showRenameField = false);
+      // 清空重命名
+      setState(() => _pendingNewName = null);
     }
   }
 
@@ -309,12 +300,8 @@ class _ClassifierScreenState extends State<ClassifierScreen> {
         // 主内容区域
         Column(
           children: [
-            // 顶部进度条
-            ProgressHeader(
-              currentCount: provider.processedCount,
-              totalCount: provider.totalFileCount,
-              progress: provider.progressPercentage,
-            ),
+            // 顶部留白，避免被 overlay appbar 覆盖
+            const SizedBox(height: 80),
 
             // 文件预览区域
             Expanded(
@@ -322,11 +309,9 @@ class _ClassifierScreenState extends State<ClassifierScreen> {
                 file: provider.currentFile!,
                 useThumbnail: provider.useThumbnail,
                 onToggleThumbnail: () => provider.toggleThumbnail(),
-                renameController: _renameController,
-                showRenameField: _showRenameField,
-                onToggleRename: () {
-                  setState(() => _showRenameField = !_showRenameField);
-                },
+                currentCount: provider.processedCount,
+                totalCount: provider.totalFileCount,
+                progress: provider.progressPercentage,
               ),
             ),
 
@@ -356,20 +341,16 @@ class _ClassifierScreenState extends State<ClassifierScreen> {
     if (currentFile == null) return const SizedBox.shrink();
 
     return NeumorphicOverlayAppBar(
-      title: currentFile.nameWithoutExtension,
+      title: _pendingNewName ?? currentFile.nameWithoutExtension,
       onTitleTap: () => _showFullFileName(currentFile.name),
-      leading: provider.canUndo
-          ? NeumorphicCircleButton(
-              icon: Icons.undo,
-              onPressed: _handleUndo,
-              iconSize: 20,
-            )
-          : null,
+      leading: NeumorphicCircleButton(
+        icon: Icons.undo,
+        onPressed: provider.canUndo ? _handleUndo : null,
+        iconSize: 20,
+      ),
       trailing: NeumorphicCircleButton(
-        icon: _showRenameField ? Icons.close : Icons.edit,
-        onPressed: () {
-          setState(() => _showRenameField = !_showRenameField);
-        },
+        icon: Icons.edit,
+        onPressed: () => _showRenameDialog(currentFile),
         iconSize: 20,
       ),
     );
@@ -381,6 +362,124 @@ class _ClassifierScreenState extends State<ClassifierScreen> {
       context: context,
       title: '文件名',
       content: fullName,
+    );
+  }
+
+  /// 显示重命名对话框
+  void _showRenameDialog(ClassifierFile file) {
+    final controller = TextEditingController(text: _pendingNewName ?? '');
+
+    NeumorphicDialog.showCustom<void>(
+      context: context,
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '重命名文件',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: ThemeColors.text(context),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Neumorphic(
+              style: NeumorphicStyle(
+                depth: -2,
+                intensity: 0.6,
+                boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(10)),
+              ),
+              child: TextField(
+                controller: controller,
+                autofocus: true,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: ThemeColors.text(context),
+                ),
+                decoration: InputDecoration(
+                  hintText: file.nameWithoutExtension,
+                  hintStyle: TextStyle(
+                    color: ThemeColors.textSecondary(context),
+                  ),
+                  suffixText: file.extension,
+                  suffixStyle: TextStyle(
+                    color: ThemeColors.textSecondary(context),
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+                onSubmitted: (value) {
+                  Navigator.pop(context);
+                  setState(() => _pendingNewName = value.trim().isEmpty ? null : value.trim());
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                NeumorphicButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    setState(() => _pendingNewName = null);
+                  },
+                  style: NeumorphicStyle(
+                    depth: 4,
+                    intensity: 0.7,
+                    boxShape: NeumorphicBoxShape.roundRect(
+                      BorderRadius.circular(10),
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  child: Text(
+                    '清除',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: ThemeColors.textSecondary(context),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                NeumorphicButton(
+                  onPressed: () {
+                    final name = controller.text.trim();
+                    Navigator.pop(context);
+                    setState(() => _pendingNewName = name.isEmpty ? null : name);
+                  },
+                  style: NeumorphicStyle(
+                    depth: 4,
+                    intensity: 0.7,
+                    boxShape: NeumorphicBoxShape.roundRect(
+                      BorderRadius.circular(10),
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  child: Text(
+                    '确定',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: ThemeColors.text(context),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
