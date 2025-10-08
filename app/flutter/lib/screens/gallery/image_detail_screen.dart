@@ -5,6 +5,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import '../../models/gallery_file.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/common/neumorphic_overlay_appbar.dart';
 
 /// 图片详情预览页面
 class ImageDetailScreen extends StatefulWidget {
@@ -55,60 +56,42 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
 
     return Scaffold(
       backgroundColor: NeumorphicTheme.baseColor(context),
-      appBar: NeumorphicAppBar(
-          title: Text(
-            file.name,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+      body: Stack(
+        children: [
+          // 主内容区域 - PageView（全屏显示）
+          PageView.builder(
+            controller: _pageController,
+            onPageChanged: _onPageChanged,
+            physics: const NeverScrollableScrollPhysics(), // 禁用滑动手势
+            itemCount: widget.files.length,
+            itemBuilder: (context, index) {
+              return _buildMediaViewer(widget.files[index]);
+            },
           ),
-          leading: NeumorphicButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: const NeumorphicStyle(
-              boxShape: NeumorphicBoxShape.circle(),
-              depth: 3,
-            ),
-            padding: const EdgeInsets.all(12),
-            child: const Icon(Icons.arrow_back, size: 20),
-          ),
-          actions: [
-            NeumorphicButton(
-              onPressed: () => _showFileInfoBubble(context, file),
-              style: const NeumorphicStyle(
-                boxShape: NeumorphicBoxShape.circle(),
-                depth: 3,
-              ),
-              padding: const EdgeInsets.all(12),
-              child: const Icon(Icons.info_outline, size: 20),
-            ),
-          ],
-        ),
-        body: Stack(
-          children: [
-            // 主内容区域 - PageView
-            PageView.builder(
-              controller: _pageController,
-              onPageChanged: _onPageChanged,
-              physics: const NeverScrollableScrollPhysics(), // 禁用滑动手势
-              itemCount: widget.files.length,
-              itemBuilder: (context, index) {
-                return _buildMediaViewer(widget.files[index]);
-              },
-            ),
 
-            // 底部控制栏
-            Positioned(
-              bottom: 20,
-              left: 20,
-              right: 20,
-              child: _buildBottomControls(),
+          // 底部控制栏
+          Positioned(
+            bottom: 20,
+            left: 20,
+            right: 20,
+            child: _buildBottomControls(),
+          ),
+
+          // 顶部镂空 AppBar
+          NeumorphicOverlayAppBar(
+            title: file.name,
+            leading: NeumorphicCircleButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: Icons.arrow_back,
             ),
-          ],
-        ),
-      );
+            trailing: NeumorphicCircleButton(
+              onPressed: () => _showFileInfoBubble(context, file),
+              icon: Icons.info_outline,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // 底部控制栏
