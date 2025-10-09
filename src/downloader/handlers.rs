@@ -177,12 +177,18 @@ async fn create_task(
 
         let target_folder = Path::new(&config.source_folder).join(&req.save_folder);
 
-        // 如果文件夹不存在，创建它
+        // 检查文件夹是否存在（不自动创建）
         if !target_folder.exists() {
-            fs::create_dir_all(&target_folder)
-                .map_err(|e| actix_web::error::ErrorInternalServerError(
-                    format!("无法创建文件夹: {}", e)
-                ))?;
+            return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+                "error": format!("目标文件夹不存在: {}", req.save_folder)
+            })));
+        }
+
+        // 确保是目录而非文件
+        if !target_folder.is_dir() {
+            return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+                "error": format!("目标路径不是文件夹: {}", req.save_folder)
+            })));
         }
     }
 

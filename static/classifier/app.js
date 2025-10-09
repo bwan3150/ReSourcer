@@ -371,9 +371,11 @@ async function undoLastOperation() {
             
             console.log(`Undone: ${lastOp.file.name} from ${lastOp.category}`);
         } else {
-            // 如果撤销失败，把操作放回历史
+            // 如果撤销失败，把操作放回历史并显示详细错误
             operationHistory.push(lastOp);
-            alert(i18nManager.t('failedUndoMoved', 'Failed to undo operation. The file might have been manually moved.'));
+            const errorData = await response.json();
+            const errorMessage = errorData.error || i18nManager.t('failedUndoMoved', 'Failed to undo operation. The file might have been manually moved.');
+            alert(errorMessage);
         }
     } catch (error) {
         console.error('Error undoing operation:', error);
@@ -645,10 +647,10 @@ async function moveToCategory(category) {
             },
             body: JSON.stringify(requestBody)
         });
-        
+
         if (response.ok) {
             const result = await response.json();
-            
+
             // 保存到历史记录
             operationHistory.push({
                 file: file,
@@ -658,23 +660,29 @@ async function moveToCategory(category) {
                 newPath: result.moved_to,
                 timestamp: Date.now()
             });
-            
+
             // 限制历史记录数量（最多保留20条）
             if (operationHistory.length > 20) {
                 operationHistory.shift();
             }
-            
+
             // 从文件列表中移除已处理的文件
             files.splice(currentIndex, 1);
-            
+
             processedCount++;
-            
+
             updateProgress();
             showCurrentFile();
             updateUndoButton();
+        } else {
+            // 处理错误响应
+            const errorData = await response.json();
+            const errorMessage = errorData.error || '移动文件失败';
+            alert(errorMessage);
         }
     } catch (error) {
         console.error('Error moving file:', error);
+        alert('移动文件时发生错误，请检查网络连接');
     }
 }
 
