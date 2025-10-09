@@ -3,8 +3,8 @@ import '../../models/classifier_category.dart';
 import '../../utils/theme_colors.dart';
 import '../common/neumorphic_dialog.dart';
 
-/// 分类选择器组件 - 可滚动列表，支持几十个分类，支持展开/收起
-class CategorySelector extends StatelessWidget {
+/// 分类选择器组件 - 可滚动列表，支持几十个分类，支持拖拽调整高度
+class CategorySelector extends StatefulWidget {
   final List<ClassifierCategory> categories;
   final Function(String) onSelectCategory;
   final Function(String) onAddCategory;
@@ -21,8 +21,26 @@ class CategorySelector extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<CategorySelector> createState() => _CategorySelectorState();
+}
+
+class _CategorySelectorState extends State<CategorySelector> {
+  static const double _minHeightCollapsed = 80.0; // 最小高度（切换为水平模式的阈值）
+  static const double _maxHeight = 400.0; // 最大高度
+  static const double _defaultHeight = 300.0; // 默认高度
+
+  double _currentHeight = _defaultHeight;
+
+  @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // 限制最大高度为屏幕高度的40%
+    final maxAllowedHeight = (screenHeight * 0.4).clamp(_minHeightCollapsed, _maxHeight);
+
+    // 判断是否应该显示为水平模式
+    final isHorizontalMode = _currentHeight <= _minHeightCollapsed;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -30,42 +48,50 @@ class CategorySelector extends StatelessWidget {
         // 把手
         _buildHandle(context),
 
-        // 分类列表 - 根据展开状态显示不同样式
-        if (isExpanded)
-          _buildExpandedView(context, bottomPadding)
+        // 分类列表 - 根据高度自动切换显示样式
+        if (isHorizontalMode)
+          _buildCollapsedView(context, bottomPadding)
         else
-          _buildCollapsedView(context, bottomPadding),
+          _buildExpandedView(context, bottomPadding, _currentHeight.clamp(_minHeightCollapsed, maxAllowedHeight)),
       ],
     );
   }
 
   /// 构建把手
   Widget _buildHandle(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: NeumorphicTheme.baseColor(context),
-        border: Border(
-          top: BorderSide(
-            color: ThemeColors.textSecondary(context).withOpacity(0.1),
-            width: 1,
+    return GestureDetector(
+      onVerticalDragUpdate: (details) {
+        setState(() {
+          // 向下拖为正，向上拖为负
+          // 我们希望向下拖时增加高度，向上拖时减少高度
+          _currentHeight -= details.delta.dy;
+
+          // 限制在合理范围内
+          final screenHeight = MediaQuery.of(context).size.height;
+          final maxAllowedHeight = (screenHeight * 0.4).clamp(_minHeightCollapsed, _maxHeight);
+          _currentHeight = _currentHeight.clamp(60.0, maxAllowedHeight);
+        });
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: NeumorphicTheme.baseColor(context),
+          border: Border(
+            top: BorderSide(
+              color: ThemeColors.textSecondary(context).withOpacity(0.1),
+              width: 1,
+            ),
           ),
         ),
-      ),
-      child: Center(
-        child: NeumorphicButton(
-          onPressed: onToggleExpanded,
-          style: NeumorphicStyle(
-            depth: 3,
-            intensity: 0.7,
-            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          child: Icon(
-            isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up,
-            size: 24,
-            color: ThemeColors.text(context),
+        child: Center(
+          child: Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: ThemeColors.textSecondary(context).withOpacity(0.4),
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
         ),
       ),
@@ -73,24 +99,22 @@ class CategorySelector extends StatelessWidget {
   }
 
   /// 展开视图 - 垂直列表
-  Widget _buildExpandedView(BuildContext context, double bottomPadding) {
+  Widget _buildExpandedView(BuildContext context, double bottomPadding, double height) {
     return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.4,
-      ),
+      height: height,
       decoration: BoxDecoration(
         color: NeumorphicTheme.baseColor(context),
       ),
       child: ListView.builder(
         shrinkWrap: true,
         padding: EdgeInsets.fromLTRB(16, 12, 16, 80 + bottomPadding),
-        itemCount: categories.length + 1,
+        itemCount: widget.categories.length + 1,
         itemBuilder: (context, index) {
-          if (index == categories.length) {
+          if (index == widget.categories.length) {
             return _buildAddButton(context);
           }
 
-          final category = categories[index];
+          final category = widget.categories[index];
           final shortcut = _getShortcutKey(index);
 
           return Padding(
@@ -119,8 +143,8 @@ class CategorySelector extends StatelessWidget {
         child: Row(
           children: [
             // 分类按钮
-            for (int i = 0; i < categories.length; i++) ...[
-              _buildCompactCategoryButton(context, categories[i].name, _getShortcutKey(i)),
+            for (int i = 0; i < widget.categories.length; i++) ...[
+              _buildCompactCategoryButton(context, widget.categories[i].name, _getShortcutKey(i)),
               const SizedBox(width: 8),
             ],
             // 添加按钮
@@ -138,7 +162,7 @@ class CategorySelector extends StatelessWidget {
     String? shortcut,
   ) {
     return NeumorphicButton(
-      onPressed: () => onSelectCategory(category),
+      onPressed: () => widget.onSelectCategory(category),
       style: NeumorphicStyle(
         depth: 4,
         intensity: 0.8,
@@ -192,7 +216,7 @@ class CategorySelector extends StatelessWidget {
     String? shortcut,
   ) {
     return NeumorphicButton(
-      onPressed: () => onSelectCategory(category),
+      onPressed: () => widget.onSelectCategory(category),
       style: NeumorphicStyle(
         depth: 4,
         intensity: 0.8,
@@ -322,7 +346,7 @@ class CategorySelector extends StatelessWidget {
                 onSubmitted: (value) {
                   if (value.trim().isNotEmpty) {
                     Navigator.pop(context);
-                    onAddCategory(value.trim());
+                    widget.onAddCategory(value.trim());
                   }
                 },
               ),
@@ -359,7 +383,7 @@ class CategorySelector extends StatelessWidget {
                     final name = controller.text.trim();
                     if (name.isNotEmpty) {
                       Navigator.pop(context);
-                      onAddCategory(name);
+                      widget.onAddCategory(name);
                     }
                   },
                   style: NeumorphicStyle(
