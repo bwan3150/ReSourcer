@@ -22,6 +22,7 @@ class ImageDetailScreen extends StatefulWidget {
 
 class _ImageDetailScreenState extends State<ImageDetailScreen> {
   late int _currentIndex;
+  bool _showControls = true; // 控制顶部和底部控件的显示
 
   @override
   void initState() {
@@ -41,6 +42,10 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
     }
   }
 
+  void _toggleControls() {
+    setState(() => _showControls = !_showControls);
+  }
+
   @override
   Widget build(BuildContext context) {
     final file = widget.files[_currentIndex];
@@ -55,8 +60,8 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
             child: _buildMediaViewer(file),
           ),
 
-          // 底部控制栏（仅图片/GIF显示）
-          if (!file.isVideo)
+          // 底部控制栏（仅图片/GIF显示，根据状态显示/隐藏）
+          if (!file.isVideo && _showControls)
             Positioned(
               bottom: 20,
               left: 20,
@@ -64,9 +69,10 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
               child: _buildNavigationControls(),
             ),
 
-          // 顶部 AppBar
+          // 顶部 AppBar（根据状态显示/隐藏）
           NeumorphicOverlayAppBar(
             title: file.name,
+            showTitle: _showControls,
             leading: NeumorphicCircleButton(
               onPressed: () => Navigator.of(context).pop(),
               icon: Icons.arrow_back,
@@ -207,35 +213,38 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
 
     // 图片或GIF
     if (file.isImage || file.isGif) {
-      return InteractiveViewer(
+      return GestureDetector(
         key: ValueKey('image_${file.path}'),
-        minScale: 0.5,
-        maxScale: 4.0,
-        child: Center(
-          child: Image.network(
-            fileUrl,
-            headers: {'Cookie': 'api_key=${authProvider.currentServer?.apiKey ?? ''}'},
-            fit: BoxFit.contain,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF171717)),
-                ),
-              );
-            },
-            errorBuilder: (context, error, stackTrace) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.broken_image, size: 64, color: Colors.grey[400]),
-                    const SizedBox(height: 16),
-                    Text('图片加载失败', style: TextStyle(color: Colors.grey[600])),
-                  ],
-                ),
-              );
-            },
+        onTap: _toggleControls,
+        child: InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 4.0,
+          child: Center(
+            child: Image.network(
+              fileUrl,
+              headers: {'Cookie': 'api_key=${authProvider.currentServer?.apiKey ?? ''}'},
+              fit: BoxFit.contain,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF171717)),
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.broken_image, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text('图片加载失败', style: TextStyle(color: Colors.grey[600])),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
         ),
       );
@@ -251,6 +260,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
         showControls: true,
         onPrevious: _currentIndex > 0 ? _goToPrevious : null,
         onNext: _currentIndex < widget.files.length - 1 ? _goToNext : null,
+        onToggleControls: _toggleControls, // 同步控件显示状态
       );
     }
 

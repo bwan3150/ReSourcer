@@ -144,6 +144,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     if (_showControls) {
       _startHideControlsTimer();
     }
+    // 通知父组件切换控件状态
+    widget.onToggleControls?.call();
   }
 
   void _togglePlayPause() {
@@ -297,6 +299,24 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // 静音图标（进度条上方右侧）
+        Padding(
+          padding: const EdgeInsets.only(right: 12, bottom: 8),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
+              onTap: () {
+                _player.setVolume(_volume > 0 ? 0 : 100);
+                _startHideControlsTimer();
+              },
+              child: Icon(
+                _volume > 0 ? Icons.volume_up : Icons.volume_off,
+                size: 24,
+                color: Colors.white.withOpacity(0.9),
+              ),
+            ),
+          ),
+        ),
         // 进度条
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -316,11 +336,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
           ),
         ),
         const SizedBox(height: 12),
-        // 控制按钮
+        // 控制按钮（左：上一个，中：播放/暂停，右：下一个）
         Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // 上一个按钮
+            // 左侧：上一个按钮
             if (hasNavigation)
               NeumorphicButton(
                 onPressed: widget.onPrevious,
@@ -328,17 +348,17 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
                   boxShape: NeumorphicBoxShape.circle(),
                   depth: 4,
                 ),
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(16),
                 child: Icon(
-                  Icons.skip_previous,
-                  size: 24,
-                  color: widget.onPrevious != null ? Colors.black87 : Colors.grey[400],
+                  Icons.chevron_left,
+                  size: 32,
+                  color: widget.onPrevious != null ? Colors.black87 : Colors.grey,
                 ),
-              ),
+              )
+            else
+              const SizedBox(width: 56), // 占位保持居中
 
-            if (hasNavigation) const SizedBox(width: 12),
-
-            // 播放/暂停
+            // 中间：播放/暂停按钮
             NeumorphicButton(
               onPressed: _togglePlayPause,
               style: const NeumorphicStyle(
@@ -353,29 +373,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
               ),
             ),
 
-            const SizedBox(width: 12),
-
-            // 音量
-            NeumorphicButton(
-              onPressed: () {
-                _player.setVolume(_volume > 0 ? 0 : 100);
-                _startHideControlsTimer();
-              },
-              style: const NeumorphicStyle(
-                boxShape: NeumorphicBoxShape.circle(),
-                depth: 4,
-              ),
-              padding: const EdgeInsets.all(14),
-              child: Icon(
-                _volume > 0 ? Icons.volume_up : Icons.volume_off,
-                size: 24,
-                color: Colors.black87,
-              ),
-            ),
-
-            if (hasNavigation) const SizedBox(width: 12),
-
-            // 下一个按钮
+            // 右侧：下一个按钮
             if (hasNavigation)
               NeumorphicButton(
                 onPressed: widget.onNext,
@@ -383,13 +381,15 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
                   boxShape: NeumorphicBoxShape.circle(),
                   depth: 4,
                 ),
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(16),
                 child: Icon(
-                  Icons.skip_next,
-                  size: 24,
-                  color: widget.onNext != null ? Colors.black87 : Colors.grey[400],
+                  Icons.chevron_right,
+                  size: 32,
+                  color: widget.onNext != null ? Colors.black87 : Colors.grey,
                 ),
-              ),
+              )
+            else
+              const SizedBox(width: 56), // 占位保持居中
           ],
         ),
       ],
