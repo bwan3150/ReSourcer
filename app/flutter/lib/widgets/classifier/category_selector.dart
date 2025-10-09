@@ -3,29 +3,47 @@ import '../../models/classifier_category.dart';
 import '../../utils/theme_colors.dart';
 import '../common/neumorphic_dialog.dart';
 
-/// 分类选择器组件 - 可滚动列表，支持几十个分类
+/// 分类选择器组件 - 可滚动列表，支持几十个分类，支持展开/收起
 class CategorySelector extends StatelessWidget {
   final List<ClassifierCategory> categories;
   final Function(String) onSelectCategory;
   final Function(String) onAddCategory;
+  final bool isExpanded;
+  final VoidCallback onToggleExpanded;
 
   const CategorySelector({
     Key? key,
     required this.categories,
     required this.onSelectCategory,
     required this.onAddCategory,
+    required this.isExpanded,
+    required this.onToggleExpanded,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // 计算底部安全区域高度
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 把手
+        _buildHandle(context),
+
+        // 分类列表 - 根据展开状态显示不同样式
+        if (isExpanded)
+          _buildExpandedView(context, bottomPadding)
+        else
+          _buildCollapsedView(context, bottomPadding),
+      ],
+    );
+  }
+
+  /// 构建把手
+  Widget _buildHandle(BuildContext context) {
     return Container(
-      constraints: BoxConstraints(
-        // 最大高度为屏幕的 40%，确保不会占用太多空间
-        maxHeight: MediaQuery.of(context).size.height * 0.4,
-      ),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: NeumorphicTheme.baseColor(context),
         border: Border(
@@ -35,17 +53,43 @@ class CategorySelector extends StatelessWidget {
           ),
         ),
       ),
+      child: Center(
+        child: NeumorphicButton(
+          onPressed: onToggleExpanded,
+          style: NeumorphicStyle(
+            depth: 3,
+            intensity: 0.7,
+            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Icon(
+            isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up,
+            size: 24,
+            color: ThemeColors.text(context),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 展开视图 - 垂直列表
+  Widget _buildExpandedView(BuildContext context, double bottomPadding) {
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.4,
+      ),
+      decoration: BoxDecoration(
+        color: NeumorphicTheme.baseColor(context),
+      ),
       child: ListView.builder(
         shrinkWrap: true,
-        padding: EdgeInsets.fromLTRB(16, 12, 16, 80 + bottomPadding), // 增加底部空白以避免被导航栏覆盖
-        itemCount: categories.length + 1, // 分类数量 + 添加按钮
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 80 + bottomPadding),
+        itemCount: categories.length + 1,
         itemBuilder: (context, index) {
-          // 最后一项是添加按钮
           if (index == categories.length) {
             return _buildAddButton(context);
           }
 
-          // 其他项是分类按钮
           final category = categories[index];
           final shortcut = _getShortcutKey(index);
 
@@ -58,6 +102,31 @@ class CategorySelector extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+
+  /// 收起视图 - 水平滑动
+  Widget _buildCollapsedView(BuildContext context, double bottomPadding) {
+    return Container(
+      decoration: BoxDecoration(
+        color: NeumorphicTheme.baseColor(context),
+      ),
+      padding: EdgeInsets.only(bottom: 80 + bottomPadding), // 增加底部空白避免被导航栏遮挡
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            // 分类按钮
+            for (int i = 0; i < categories.length; i++) ...[
+              _buildCompactCategoryButton(context, categories[i].name, _getShortcutKey(i)),
+              const SizedBox(width: 8),
+            ],
+            // 添加按钮
+            _buildCompactAddButton(context),
+          ],
+        ),
       ),
     );
   }
@@ -111,6 +180,64 @@ class CategorySelector extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  /// 构建紧凑型分类按钮（水平滑动用）
+  Widget _buildCompactCategoryButton(
+    BuildContext context,
+    String category,
+    String? shortcut,
+  ) {
+    return NeumorphicButton(
+      onPressed: () => onSelectCategory(category),
+      style: NeumorphicStyle(
+        depth: 4,
+        intensity: 0.8,
+        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Text(
+        category,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: ThemeColors.text(context),
+        ),
+        maxLines: 1,
+      ),
+    );
+  }
+
+  /// 构建紧凑型添加按钮（水平滑动用）
+  Widget _buildCompactAddButton(BuildContext context) {
+    return NeumorphicButton(
+      onPressed: () => _showAddCategoryDialog(context),
+      style: NeumorphicStyle(
+        depth: 4,
+        intensity: 0.8,
+        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.add_circle_outline,
+            size: 18,
+            color: ThemeColors.text(context),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '添加',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: ThemeColors.text(context),
+            ),
+          ),
         ],
       ),
     );

@@ -21,6 +21,7 @@ class ClassifierScreen extends StatefulWidget {
 class _ClassifierScreenState extends State<ClassifierScreen> {
   String? _pendingNewName;
   bool _showOverlayControls = true;
+  bool _isCategorySelectorExpanded = true; // 分类列表是否展开
 
   @override
   void initState() {
@@ -326,6 +327,10 @@ class _ClassifierScreenState extends State<ClassifierScreen> {
                 if (authProvider.apiService != null) {
                   await provider.addCategory(authProvider.apiService!, name);
                 }
+              },
+              isExpanded: _isCategorySelectorExpanded,
+              onToggleExpanded: () {
+                setState(() => _isCategorySelectorExpanded = !_isCategorySelectorExpanded);
               },
             ),
           ],

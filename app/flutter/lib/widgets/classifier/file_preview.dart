@@ -82,10 +82,6 @@ class _FilePreviewState extends State<FilePreview> {
 
   @override
   Widget build(BuildContext context) {
-    // 计算缩略图开关的顶部位置：SafeArea顶部 + overlay appbar高度(~60) + 间距(24)
-    final topPadding = MediaQuery.of(context).padding.top;
-    final switchTopPosition = topPadding + 60 + 24;
-
     return GestureDetector(
       onTap: widget.onToggleControls,
       child: Container(
@@ -95,14 +91,6 @@ class _FilePreviewState extends State<FilePreview> {
           children: [
             // 文件预览 - 充满整个空间
             _buildFileContent(),
-
-            // 右上角缩略图开关（可隐藏）- 位置在 overlay appbar 下方
-            if (widget.showControls)
-              Positioned(
-                top: switchTopPosition,
-                right: 16,
-                child: _buildThumbnailSwitch(),
-              ),
 
             // 底部进度条（可隐藏）
             if (widget.showControls)
@@ -256,37 +244,6 @@ class _FilePreviewState extends State<FilePreview> {
     );
   }
 
-  /// 缩略图开关
-  Widget _buildThumbnailSwitch() {
-    return Neumorphic(
-      style: NeumorphicStyle(
-        depth: 4,
-        intensity: 0.8,
-        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.speed,
-            size: 20,
-            color: ThemeColors.textSecondary(context),
-          ),
-          const SizedBox(width: 8),
-          NeumorphicSwitch(
-            value: widget.useThumbnail,
-            onChanged: (_) => widget.onToggleThumbnail(),
-            height: 26,
-            style: const NeumorphicSwitchStyle(
-              thumbDepth: 4,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// 底部进度条区域
   Widget _buildProgressBar() {
     return Container(
@@ -305,24 +262,37 @@ class _FilePreviewState extends State<FilePreview> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 进度信息
-          Text(
-            '${widget.currentCount} / ${widget.totalCount}',
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
+          // 进度信息和缩略图开关
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${widget.currentCount} / ${widget.totalCount}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              NeumorphicSwitch(
+                value: widget.useThumbnail,
+                onChanged: (_) => widget.onToggleThumbnail(),
+                height: 24,
+                style: const NeumorphicSwitchStyle(
+                  thumbDepth: 4,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           // 进度条
           NeumorphicProgress(
-            height: 8,
-            percent: widget.progress,
+            height: 10,
+            percent: widget.progress.clamp(0.0, 1.0),
             style: ProgressStyle(
-              depth: 4,
+              depth: -4,
               border: NeumorphicBorder.none(),
-              accent: Colors.white.withOpacity(0.8),
+              accent: Colors.grey[700]!,
               variant: Colors.white.withOpacity(0.3),
             ),
           ),
