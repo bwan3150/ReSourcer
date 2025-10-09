@@ -9,8 +9,7 @@ import '../../models/gallery_file.dart';
 import '../../utils/theme_colors.dart';
 import '../../widgets/common/neumorphic_dialog.dart';
 import '../../widgets/common/neumorphic_toast.dart';
-import '../../widgets/downloader/task_card.dart';
-import '../../widgets/downloader/folder_selector.dart';
+import '../../widgets/common/neumorphic_option_sheet.dart';
 import '../gallery/image_detail_screen.dart';
 
 /// 下载器页面
@@ -27,14 +26,11 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
 
   UrlDetectResult? _detectResult;
   String _selectedDownloader = 'ytdlp';
-  bool _isTasksExpanded = true;
   Timer? _detectDebounce;
 
   @override
   void initState() {
     super.initState();
-    _initializeData();
-
     // 监听URL输入变化
     _urlController.addListener(_onUrlChanged);
   }
@@ -45,22 +41,6 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     _urlFocusNode.dispose();
     _detectDebounce?.cancel();
     super.dispose();
-  }
-
-  Future<void> _initializeData() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    if (authProvider.apiService != null) {
-      final downloaderProvider =
-          DownloaderProvider(authProvider.apiService!);
-
-      // 使用Future.microtask避免在build期间调用
-      Future.microtask(() {
-        if (mounted) {
-          // 将provider注册到widget树中
-          Provider.of<DownloaderProvider>(context, listen: false).initialize();
-        }
-      });
-    }
   }
 
   /// URL输入变化时的处理
@@ -94,32 +74,31 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     }
   }
 
-  /// 创建下载任务（使用传入的正确context）
+  /// 创建下载任务并导航到任务列表页面
   Future<void> _startDownloadWithContext(BuildContext context) async {
-    debugPrint('点击下载按钮');
-
+    debugPrint('=== 开始创建下载任务 ===');
     final url = _urlController.text.trim();
+    debugPrint('URL: $url');
+
     if (url.isEmpty) {
       NeumorphicToast.showError(context, '请输入URL');
-      debugPrint('URL为空，返回');
       return;
     }
 
-    debugPrint('URL: $url');
-
     try {
+      debugPrint('尝试获取 DownloaderProvider...');
       final downloaderProvider =
           Provider.of<DownloaderProvider>(context, listen: false);
+      debugPrint('DownloaderProvider 获取成功');
 
-      debugPrint('准备创建任务: downloader=$_selectedDownloader, folder=${downloaderProvider.selectedFolder}');
-
+      debugPrint('调用 createTask: downloader=$_selectedDownloader, folder=${downloaderProvider.selectedFolder}');
       final success = await downloaderProvider.createTask(
         url: url,
         downloader: _selectedDownloader,
         saveFolder: downloaderProvider.selectedFolder,
       );
 
-      debugPrint('任务创建结果: $success');
+      debugPrint('createTask 返回结果: $success');
 
       if (mounted) {
         if (success) {
@@ -127,16 +106,19 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
           _urlController.clear();
           setState(() {
             _detectResult = null;
-            _isTasksExpanded = true; // 自动展开任务列表
           });
+          // 导航到任务列表页面
+          debugPrint('导航到任务列表页面');
+          _navigateToTaskList();
         } else {
           final error = downloaderProvider.error ?? '创建任务失败';
-          debugPrint('创建失败: $error');
+          debugPrint('创建任务失败: $error');
           NeumorphicToast.showError(context, error);
         }
       }
     } catch (e, stackTrace) {
-      debugPrint('创建任务异常: $e');
+      debugPrint('=== 创建任务异常 ===');
+      debugPrint('异常: $e');
       debugPrint('堆栈: $stackTrace');
       if (mounted) {
         NeumorphicToast.showError(context, '创建任务异常: $e');
@@ -144,91 +126,110 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     }
   }
 
+  /// 导航到任务列表页面
+  void _navigateToTaskList() {
+    Navigator.of(context).pushNamed('/downloader/tasks');
+  }
+
   /// 显示添加文件夹对话框
   Future<void> _showAddFolderDialog() async {
     final controller = TextEditingController();
 
-    final result = await showDialog<bool>(
+    await NeumorphicDialog.showCustom(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: NeumorphicTheme.baseColor(context),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          '新建文件夹',
-          style: TextStyle(color: ThemeColors.text(context)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '新建文件夹',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: ThemeColors.text(context),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Neumorphic(
+              style: NeumorphicStyle(
+                depth: -2,
+                intensity: 0.6,
+                boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+              ),
+              child: TextField(
+                controller: controller,
+                autofocus: true,
+                style: TextStyle(color: ThemeColors.text(context)),
+                decoration: InputDecoration(
+                  hintText: '文件夹名称',
+                  hintStyle: TextStyle(color: ThemeColors.textSecondary(context)),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.all(16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                NeumorphicButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: NeumorphicStyle(
+                    depth: 4,
+                    boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(10)),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  child: Text(
+                    '取消',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: ThemeColors.textSecondary(context),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                NeumorphicButton(
+                  onPressed: () async {
+                    final name = controller.text.trim();
+                    if (name.isNotEmpty) {
+                      Navigator.pop(context);
+                      final downloaderProvider =
+                          Provider.of<DownloaderProvider>(context, listen: false);
+                      final success = await downloaderProvider.createFolder(name);
+                      if (mounted) {
+                        if (success) {
+                          NeumorphicToast.showSuccess(context, '文件夹已创建');
+                        } else {
+                          NeumorphicToast.showError(
+                            context,
+                            downloaderProvider.error ?? '创建文件夹失败',
+                          );
+                        }
+                      }
+                    }
+                  },
+                  style: NeumorphicStyle(
+                    depth: 4,
+                    boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(10)),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  child: Text(
+                    '创建',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: ThemeColors.text(context),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          style: TextStyle(color: ThemeColors.text(context)),
-          decoration: InputDecoration(
-            hintText: '输入文件夹名称',
-            hintStyle: TextStyle(color: ThemeColors.textSecondary(context)),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: ThemeColors.textSecondary(context)),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(
-              '取消',
-              style: TextStyle(color: ThemeColors.textSecondary(context)),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(
-              '创建',
-              style: TextStyle(color: ThemeColors.text(context)),
-            ),
-          ),
-        ],
       ),
     );
-
-    if (result == true && controller.text.trim().isNotEmpty) {
-      final downloaderProvider =
-          Provider.of<DownloaderProvider>(context, listen: false);
-
-      final success = await downloaderProvider.createFolder(controller.text.trim());
-      if (mounted) {
-        if (success) {
-          NeumorphicToast.showSuccess(context, '文件夹已创建');
-        } else {
-          NeumorphicToast.showError(
-            context,
-            downloaderProvider.error ?? '创建文件夹失败',
-          );
-        }
-      }
-    }
-  }
-
-  /// 取消任务
-  Future<void> _cancelTask(DownloadTask task) async {
-    final confirm = await NeumorphicDialog.showConfirm(
-      context: context,
-      title: '取消下载',
-      content: '确定要取消这个下载任务吗？',
-      confirmText: '取消下载',
-    );
-
-    if (confirm == true) {
-      final downloaderProvider =
-          Provider.of<DownloaderProvider>(context, listen: false);
-
-      final success = await downloaderProvider.cancelTask(task.id);
-      if (mounted) {
-        if (success) {
-          NeumorphicToast.showSuccess(context, '任务已取消');
-        } else {
-          NeumorphicToast.showError(context, '取消任务失败');
-        }
-      }
-    }
   }
 
   /// 删除任务
@@ -246,30 +247,6 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     }
   }
 
-  /// 清空历史记录
-  Future<void> _clearHistory() async {
-    final confirm = await NeumorphicDialog.showConfirm(
-      context: context,
-      title: '清空历史',
-      content: '确定要清空所有已完成、失败和已取消的任务吗？',
-      confirmText: '清空',
-    );
-
-    if (confirm == true) {
-      final downloaderProvider =
-          Provider.of<DownloaderProvider>(context, listen: false);
-
-      final success = await downloaderProvider.clearHistory();
-      if (mounted) {
-        if (success) {
-          NeumorphicToast.showSuccess(context, '历史已清空');
-        } else {
-          NeumorphicToast.showError(context, '清空历史失败');
-        }
-      }
-    }
-  }
-
   /// 从剪贴板粘贴URL
   Future<void> _pasteFromClipboard() async {
     try {
@@ -278,7 +255,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
         final text = clipboardData.text!.trim();
         if (text.isNotEmpty) {
           _urlController.text = text;
-          NeumorphicToast.showSuccess(context, '已粘贴URL');
+          NeumorphicToast.showSuccess(context, '已粘贴');
         } else {
           NeumorphicToast.showInfo(context, '剪贴板为空');
         }
@@ -290,7 +267,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     }
   }
 
-  /// 预览文件（使用画廊的图片视频查看器）
+  /// 预览文件
   void _previewFile(DownloadTask task) {
     if (task.filePath == null) {
       NeumorphicToast.showError(context, '文件路径不存在');
@@ -303,10 +280,8 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
       return;
     }
 
-    // 获取文件扩展名
     final extension = task.filePath!.split('.').last.toLowerCase();
 
-    // 根据扩展名推断文件类型
     String fileType;
     if (extension == 'gif') {
       fileType = 'gif';
@@ -318,17 +293,15 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
       fileType = 'unknown';
     }
 
-    // 创建一个GalleryFile对象用于预览
     final galleryFile = GalleryFile(
       name: task.fileName ?? task.filePath!.split('/').last,
       path: task.filePath!,
       fileType: fileType,
       extension: extension,
-      size: 0, // 大小未知
+      size: 0,
       modifiedTime: task.completedAt?.toIso8601String() ?? '',
     );
 
-    // 使用ImageDetailScreen查看
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => ImageDetailScreen(
@@ -339,10 +312,38 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     );
   }
 
-  /// 打开文件夹（简单实现：显示提示）
-  void _openFolder(DownloadTask task) {
-    NeumorphicToast.showInfo(context, '打开文件夹功能暂不支持移动端');
-    // 移动端无法直接打开系统文件夹
+  /// 显示任务操作菜单（长按）
+  void _showTaskOptions(DownloadTask task) {
+    final options = <SheetOption>[];
+
+    // 预览（已完成的任务）
+    if (task.isCompleted && task.filePath != null) {
+      options.add(
+        SheetOption(
+          icon: Icons.visibility,
+          text: '预览',
+          onTap: () => _previewFile(task),
+          iconColor: ThemeColors.text(context),
+          textColor: ThemeColors.text(context),
+        ),
+      );
+    }
+
+    // 删除
+    options.add(
+      SheetOption(
+        icon: Icons.delete,
+        text: '删除',
+        onTap: () => _deleteTask(task),
+        iconColor: ThemeColors.text(context),
+        textColor: ThemeColors.text(context),
+      ),
+    );
+
+    NeumorphicOptionSheet.show(
+      context: context,
+      options: options,
+    );
   }
 
   @override
@@ -366,53 +367,43 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
 
     return ChangeNotifierProvider(
       create: (_) => DownloaderProvider(authProvider.apiService!)..initialize(),
-      // 使用builder确保子widget可以访问Provider
       builder: (context, child) {
         return Scaffold(
           backgroundColor: NeumorphicTheme.baseColor(context),
           body: SafeArea(
-            child: RefreshIndicator(
-              onRefresh: () async {
-                final provider =
-                    Provider.of<DownloaderProvider>(context, listen: false);
-                await provider.refresh();
+            child: Consumer<DownloaderProvider>(
+              builder: (context, provider, _) {
+                return SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 60),
+
+                      // 标题 "下载器"（黑色文字）
+                      Text(
+                        '下载器',
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          color: ThemeColors.text(context),
+                        ),
+                      ),
+
+                      const SizedBox(height: 40),
+
+                      // 主输入区域（无卡片包装）
+                      _buildMainInputArea(provider),
+
+                      const SizedBox(height: 24),
+
+                      // "下载列表" 文字入口
+                      _buildTaskListLink(),
+
+                      const SizedBox(height: 60),
+                    ],
+                  ),
+                );
               },
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // 标题
-                    _buildHeader(),
-                    const SizedBox(height: 24),
-
-                    // URL输入卡片
-                    _buildUrlInputCard(),
-                    const SizedBox(height: 20),
-
-                    // 文件夹选择
-                    Consumer<DownloaderProvider>(
-                      builder: (context, provider, child) {
-                        return FolderSelector(
-                          folders: provider.folders,
-                          selectedFolder: provider.selectedFolder,
-                          onFolderSelected: provider.selectFolder,
-                          onAddFolder: _showAddFolderDialog,
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 20),
-
-                    // 下载按钮
-                    _buildDownloadButton(),
-                    const SizedBox(height: 24),
-
-                    // 任务列表
-                    _buildTasksSection(),
-                  ],
-                ),
-              ),
             ),
           ),
         );
@@ -420,297 +411,198 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     );
   }
 
-  /// 构建标题
-  Widget _buildHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          '下载器',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: ThemeColors.text(context),
-          ),
-        ),
-        // 认证按钮（暂时隐藏，后续实现）
-        // NeumorphicButton(
-        //   onPressed: _showAuthDialog,
-        //   style: NeumorphicStyle(
-        //     boxShape: NeumorphicBoxShape.circle(),
-        //     depth: 4,
-        //   ),
-        //   padding: const EdgeInsets.all(12),
-        //   child: Icon(
-        //     Icons.key,
-        //     size: 20,
-        //     color: ThemeColors.text(context),
-        //   ),
-        // ),
-      ],
-    );
-  }
-
-  /// 构建URL输入卡片
-  Widget _buildUrlInputCard() {
-    return Neumorphic(
-      style: NeumorphicStyle(
-        depth: 4,
-        intensity: 0.6,
-        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // URL输入框带粘贴按钮
-            Row(
-              children: [
-                // URL输入框
-                Expanded(
-                  child: Neumorphic(
-                    style: NeumorphicStyle(
-                      depth: -2,
-                      intensity: 0.6,
-                      boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-                    ),
-                    child: TextField(
-                      controller: _urlController,
-                      focusNode: _urlFocusNode,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: ThemeColors.text(context),
-                      ),
-                      decoration: InputDecoration(
-                        hintText: '输入视频或图片URL...',
-                        hintStyle: TextStyle(
-                          color: ThemeColors.textSecondary(context),
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.all(14),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // 粘贴按钮
-                NeumorphicButton(
-                  onPressed: _pasteFromClipboard,
-                  style: NeumorphicStyle(
-                    depth: 4,
-                    boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-                  ),
-                  padding: const EdgeInsets.all(14),
-                  child: Icon(
-                    Icons.content_paste,
-                    size: 20,
-                    color: ThemeColors.text(context),
-                  ),
-                ),
-              ],
+  /// 构建主输入区域（无卡片包装）
+  Widget _buildMainInputArea(DownloaderProvider provider) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 小黑字标题
+          Text(
+            '输入链接',
+            style: TextStyle(
+              fontSize: 12,
+              color: ThemeColors.text(context).withOpacity(0.6),
+              fontWeight: FontWeight.w500,
             ),
+          ),
+          const SizedBox(height: 12),
 
-            // 检测结果（平台+下载器选择）
-            if (_detectResult != null) ...[
-              const SizedBox(height: 12),
-              Neumorphic(
-                style: NeumorphicStyle(
-                  depth: 1,
-                  intensity: 0.4,
-                  boxShape: NeumorphicBoxShape.roundRect(
-                    BorderRadius.circular(10),
+          // 输入框 + 圆形粘贴按钮
+          Row(
+            children: [
+              Expanded(
+                child: Neumorphic(
+                  style: NeumorphicStyle(
+                    depth: -3,
+                    intensity: 0.6,
+                    boxShape: NeumorphicBoxShape.roundRect(
+                      BorderRadius.circular(30), // 增大圆角让边缘看起来圆
+                    ),
                   ),
-                  color: NeumorphicTheme.baseColor(context),
+                  child: TextField(
+                    controller: _urlController,
+                    focusNode: _urlFocusNode,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: ThemeColors.text(context),
+                    ),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
+                    ),
+                  ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.public,
-                      size: 16,
-                      color: ThemeColors.textSecondary(context),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _detectResult!.platformName,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: ThemeColors.text(context),
-                      ),
-                    ),
-                    const Spacer(),
-                    // 下载器选择器（简化为文本显示）
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: NeumorphicTheme.isUsingDark(context)
-                            ? Colors.white.withOpacity(0.1)
-                            : Colors.black.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        _selectedDownloader == 'ytdlp' ? 'yt-dlp' : 'pixiv-toolkit',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: ThemeColors.text(context),
-                        ),
-                      ),
-                    ),
-                  ],
+              ),
+              const SizedBox(width: 12),
+              // 圆形粘贴按钮
+              NeumorphicButton(
+                onPressed: _pasteFromClipboard,
+                style: const NeumorphicStyle(
+                  depth: 5,
+                  intensity: 0.7,
+                  boxShape: NeumorphicBoxShape.circle(),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Icon(
+                  Icons.content_paste,
+                  size: 22,
+                  color: ThemeColors.text(context),
                 ),
               ),
             ],
+          ),
+
+          const SizedBox(height: 20),
+
+          // 文件夹选择（极简，参考分类器收起样式）
+          _buildFolderSelector(provider),
+
+          const SizedBox(height: 24),
+
+          // 下载按钮（仅图标，大圆角）
+          Consumer<DownloaderProvider>(
+            builder: (btnContext, provider, _) {
+              return NeumorphicButton(
+                onPressed: () => _startDownloadWithContext(btnContext),
+                style: NeumorphicStyle(
+                  depth: 6,
+                  intensity: 0.8,
+                  boxShape: NeumorphicBoxShape.roundRect(
+                    BorderRadius.circular(30), // 大圆角
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Center(
+                  child: Icon(
+                    Icons.download,
+                    size: 24,
+                    color: ThemeColors.text(context),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 构建文件夹选择器（参考分类器收起样式）
+  Widget _buildFolderSelector(DownloaderProvider provider) {
+    return SizedBox(
+      height: 54, // 增加高度以容纳阴影
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none, // 不裁剪阴影
+        padding: const EdgeInsets.symmetric(vertical: 4), // 上下留出阴影空间
+        child: Row(
+          children: [
+            // 源文件夹
+            _buildFolderChip(
+              name: '',
+              displayName: '源文件夹',
+              isSelected: provider.selectedFolder == '',
+              onTap: () => provider.selectFolder(''),
+            ),
+            const SizedBox(width: 8),
+
+            // 其他文件夹
+            ...provider.folders.map((folder) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _buildFolderChip(
+                  name: folder.name,
+                  displayName: folder.name,
+                  isSelected: provider.selectedFolder == folder.name,
+                  onTap: () => provider.selectFolder(folder.name),
+                ),
+              );
+            }),
+
+            // 添加按钮
+            _buildAddFolderChip(),
           ],
         ),
       ),
     );
   }
 
-  /// 构建下载按钮
-  Widget _buildDownloadButton() {
-    return Consumer<DownloaderProvider>(
-      builder: (context, provider, child) {
-        return NeumorphicButton(
-          onPressed: () => _startDownloadWithContext(context),
-          style: NeumorphicStyle(
-            depth: 4,
-            intensity: 0.8,
-            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.download,
-                size: 20,
-                color: ThemeColors.text(context),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '开始下载',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: ThemeColors.text(context),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+  /// 构建文件夹chip
+  Widget _buildFolderChip({
+    required String name,
+    required String displayName,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return NeumorphicButton(
+      onPressed: onTap,
+      style: NeumorphicStyle(
+        depth: isSelected ? -2 : 4,
+        intensity: 0.7,
+        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Text(
+        displayName,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+          color: ThemeColors.text(context).withOpacity(0.6), // 灰色
+        ),
+      ),
     );
   }
 
-  /// 构建任务列表区域
-  Widget _buildTasksSection() {
-    return Consumer<DownloaderProvider>(
-      builder: (context, provider, child) {
-        return Neumorphic(
-          style: NeumorphicStyle(
-            depth: 4,
-            intensity: 0.6,
-            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-          ),
-          child: Column(
-            children: [
-              // 任务标题栏（可折叠）
-              NeumorphicButton(
-                onPressed: () {
-                  setState(() => _isTasksExpanded = !_isTasksExpanded);
-                },
-                style: NeumorphicStyle(
-                  depth: 0,
-                  boxShape: NeumorphicBoxShape.roundRect(
-                    BorderRadius.circular(16),
-                  ),
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Text(
-                      '任务列表',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: ThemeColors.text(context),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: NeumorphicTheme.isUsingDark(context)
-                            ? Colors.white.withOpacity(0.1)
-                            : Colors.black.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${provider.tasks.length}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: ThemeColors.textSecondary(context),
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    if (provider.completedTaskCount > 0)
-                      NeumorphicButton(
-                        onPressed: _clearHistory,
-                        style: const NeumorphicStyle(
-                          depth: 2,
-                          boxShape: NeumorphicBoxShape.circle(),
-                        ),
-                        padding: const EdgeInsets.all(6),
-                        child: Icon(
-                          Icons.delete,
-                          size: 16,
-                          color: ThemeColors.textSecondary(context),
-                        ),
-                      ),
-                    const SizedBox(width: 8),
-                    Icon(
-                      _isTasksExpanded ? Icons.expand_less : Icons.expand_more,
-                      color: ThemeColors.textSecondary(context),
-                    ),
-                  ],
-                ),
-              ),
-
-              // 任务列表内容
-              if (_isTasksExpanded)
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  child: provider.tasks.isEmpty
-                      ? _buildEmptyState()
-                      : _buildTasksList(provider.tasks),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  /// 构建空状态
-  Widget _buildEmptyState() {
-    return Padding(
-      padding: const EdgeInsets.all(40),
-      child: Column(
+  /// 构建添加文件夹chip
+  Widget _buildAddFolderChip() {
+    return NeumorphicButton(
+      onPressed: _showAddFolderDialog,
+      style: NeumorphicStyle(
+        depth: 4,
+        intensity: 0.7,
+        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.download_outlined,
-            size: 48,
-            color: ThemeColors.textSecondary(context).withOpacity(0.5),
+            Icons.add,
+            size: 16,
+            color: ThemeColors.text(context).withOpacity(0.6), // 灰色
           ),
-          const SizedBox(height: 12),
+          const SizedBox(width: 4),
           Text(
-            '暂无下载任务',
+            '添加',
             style: TextStyle(
-              fontSize: 14,
-              color: ThemeColors.textSecondary(context),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: ThemeColors.text(context).withOpacity(0.6), // 灰色
             ),
           ),
         ],
@@ -718,20 +610,20 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     );
   }
 
-  /// 构建任务列表
-  Widget _buildTasksList(List<DownloadTask> tasks) {
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        children: tasks.map((task) {
-          return TaskCard(
-            task: task,
-            onCancel: task.canCancel ? () => _cancelTask(task) : null,
-            onDelete: task.canDelete ? () => _deleteTask(task) : null,
-            onPreview: task.isCompleted ? () => _previewFile(task) : null,
-            onOpenFolder: task.isCompleted ? () => _openFolder(task) : null,
-          );
-        }).toList(),
+  /// 构建"下载列表"文字入口
+  Widget _buildTaskListLink() {
+    return GestureDetector(
+      onTap: _navigateToTaskList,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Text(
+          '下载列表',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: ThemeColors.text(context).withOpacity(0.7),
+          ),
+        ),
       ),
     );
   }
