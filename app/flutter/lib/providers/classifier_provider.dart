@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../models/classifier_file.dart';
 import '../models/classifier_category.dart';
 import '../models/classifier_operation.dart';
@@ -69,6 +71,7 @@ class ClassifierProvider with ChangeNotifier {
   void toggleThumbnail() {
     _useThumbnail = !_useThumbnail;
     notifyListeners();
+    _saveState(); // 保存缩略图偏好设置
   }
 
   /// 初始化 - 加载状态和文件列表
@@ -78,19 +81,35 @@ class ClassifierProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // 加载状态
-      final state = await apiService.classifier.getState();
-      _sourceFolder = state['source_folder'] as String?;
+      // 先尝试恢复保存的状态
+      final restored = await _restoreState();
 
-      if (_sourceFolder == null || _sourceFolder!.isEmpty) {
+      // 加载最新的配置状态
+      final state = await apiService.classifier.getState();
+      final currentSourceFolder = state['source_folder'] as String?;
+
+      if (currentSourceFolder == null || currentSourceFolder.isEmpty) {
         _error = '请先在设置中配置源文件夹';
         _isLoading = false;
         notifyListeners();
         return;
       }
 
-      // 加载分类文件夹
-      await loadCategories(apiService);
+      // 如果源文件夹变化了，清除保存的状态并重新加载
+      if (_sourceFolder != currentSourceFolder) {
+        await clearSavedState();
+        _sourceFolder = currentSourceFolder;
+        await loadCategories(apiService);
+        await loadFiles(apiService);
+      } else if (!restored || _files.isEmpty) {
+        // 如果没有恢复状态或文件列表为空，重新加载
+        _sourceFolder = currentSourceFolder;
+        await loadCategories(apiService);
+        await loadFiles(apiService);
+      } else {
+        // 已恢复状态，只刷新分类文件夹列表（可能有新增）
+        await loadCategories(apiService);
+      }
 
       if (visibleCategories.isEmpty) {
         _error = '请先在设置中配置分类文件夹';
@@ -98,9 +117,6 @@ class ClassifierProvider with ChangeNotifier {
         notifyListeners();
         return;
       }
-
-      // 加载文件列表
-      await loadFiles(apiService);
 
       _isLoading = false;
       notifyListeners();
@@ -189,6 +205,10 @@ class ClassifierProvider with ChangeNotifier {
       }
 
       notifyListeners();
+
+      // 保存状态
+      await _saveState();
+
       return true;
     } catch (e) {
       print('移动文件失败: $e');
@@ -224,6 +244,10 @@ class ClassifierProvider with ChangeNotifier {
       _operationHistory.removeLast();
 
       notifyListeners();
+
+      // 保存状态
+      await _saveState();
+
       return true;
     } catch (e) {
       print('撤销操作失败: $e');
@@ -276,5 +300,96 @@ class ClassifierProvider with ChangeNotifier {
     _isLoading = false;
     _useThumbnail = true;
     notifyListeners();
+  }
+
+  /// 保存状态到本地存储
+  Future<void> _saveState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // 序列化状态
+      final state = {
+        'source_folder': _sourceFolder,
+        'files': _files.map((f) => f.toJson()).toList(),
+        'categories': _categories.map((c) => c.toJson()).toList(),
+        'operation_history': _operationHistory.map((op) => {
+          'file': op.file.toJson(),
+          'file_index': op.fileIndex,
+          'category': op.category,
+          'original_name': op.originalName,
+          'new_path': op.newPath,
+          'timestamp': op.timestamp.toIso8601String(),
+        }).toList(),
+        'current_index': _currentIndex,
+        'processed_count': _processedCount,
+        'use_thumbnail': _useThumbnail,
+      };
+
+      await prefs.setString('classifier_state', jsonEncode(state));
+    } catch (e) {
+      print('保存分类器状态失败: $e');
+    }
+  }
+
+  /// 从本地存储恢复状态
+  Future<bool> _restoreState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final stateStr = prefs.getString('classifier_state');
+
+      if (stateStr == null) return false;
+
+      final state = jsonDecode(stateStr) as Map<String, dynamic>;
+
+      _sourceFolder = state['source_folder'] as String?;
+      _currentIndex = state['current_index'] as int? ?? 0;
+      _processedCount = state['processed_count'] as int? ?? 0;
+      _useThumbnail = state['use_thumbnail'] as bool? ?? true;
+
+      // 恢复文件列表
+      if (state['files'] != null) {
+        _files = (state['files'] as List)
+            .map((json) => ClassifierFile.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }
+
+      // 恢复分类列表
+      if (state['categories'] != null) {
+        _categories = (state['categories'] as List)
+            .map((json) => ClassifierCategory.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }
+
+      // 恢复操作历史
+      if (state['operation_history'] != null) {
+        _operationHistory = (state['operation_history'] as List).map((json) {
+          final map = json as Map<String, dynamic>;
+          return ClassifierOperation(
+            file: ClassifierFile.fromJson(map['file'] as Map<String, dynamic>),
+            fileIndex: map['file_index'] as int,
+            category: map['category'] as String,
+            originalName: map['original_name'] as String,
+            newPath: map['new_path'] as String,
+            timestamp: DateTime.parse(map['timestamp'] as String),
+          );
+        }).toList();
+      }
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      print('恢复分类器状态失败: $e');
+      return false;
+    }
+  }
+
+  /// 清除保存的状态
+  Future<void> clearSavedState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('classifier_state');
+    } catch (e) {
+      print('清除保存状态失败: $e');
+    }
   }
 }
