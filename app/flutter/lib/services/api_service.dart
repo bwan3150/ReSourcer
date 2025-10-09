@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart';
 import '../models/server.dart';
 import 'classifier_api_service.dart';
+import 'downloader_api_service.dart';
 
 /// API 服务 - 主入口，聚合所有子服务
 class ApiService {
@@ -11,6 +12,7 @@ class ApiService {
 
   // 子服务
   late final ClassifierApiService classifier;
+  late final DownloaderApiService downloader;
 
   ApiService(this.server) {
     // 配置 Dio
@@ -20,10 +22,28 @@ class ApiService {
 
     // 初始化子服务
     classifier = ClassifierApiService(server);
+    downloader = DownloaderApiService(server);
   }
 
   String get baseUrl => server.baseUrl;
   String get apiKey => server.apiKey;
+
+  /// 获取 App 配置（包含 GitHub URL）
+  static Future<Map<String, dynamic>?> getAppConfig(String baseUrl) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/app'),
+      ).timeout(const Duration(seconds: 3));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return null;
+    } catch (e) {
+      print('获取 App 配置失败: $e');
+      return null;
+    }
+  }
 
   /// 健康检查 - 检查服务器是否在运行
   static Future<bool> checkHealth(String baseUrl) async {

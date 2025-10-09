@@ -21,7 +21,7 @@ class ClassifierScreen extends StatefulWidget {
 class _ClassifierScreenState extends State<ClassifierScreen> {
   String? _pendingNewName;
   bool _showOverlayControls = true;
-  bool _isCategorySelectorExpanded = true; // 分类列表是否展开
+  bool _isCategorySelectorExpanded = false; // 分类列表是否展开（默认收起为一行）
 
   @override
   void initState() {

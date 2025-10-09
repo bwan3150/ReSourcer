@@ -11,6 +11,7 @@ import 'providers/source_folder_provider.dart';
 import 'providers/classifier_provider.dart';
 import 'screens/server/server_list_screen.dart';
 import 'screens/home/home_screen.dart';
+import 'screens/downloader/download_tasks_screen.dart';
 import 'utils/constants.dart';
 
 void main() async {
@@ -70,6 +71,7 @@ class MyApp extends StatelessWidget {
             routes: {
               '/servers': (context) => const ServerListScreen(),
               '/home': (context) => const HomeScreen(),
+              '/downloader/tasks': (context) => const DownloadTasksScreen(),
             },
           );
         },
