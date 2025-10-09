@@ -12,6 +12,7 @@ class VideoPlayerWidget extends StatefulWidget {
   final bool showControls;
   final VoidCallback? onPrevious; // 上一个回调（用于多文件浏览）
   final VoidCallback? onNext; // 下一个回调（用于多文件浏览）
+  final bool simpleMode; // 简化模式：只显示中间的播放/暂停按钮
 
   const VideoPlayerWidget({
     Key? key,
@@ -21,6 +22,7 @@ class VideoPlayerWidget extends StatefulWidget {
     this.showControls = true,
     this.onPrevious,
     this.onNext,
+    this.simpleMode = false,
   }) : super(key: key);
 
   @override
@@ -46,7 +48,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   void initState() {
     super.initState();
     _initializePlayer();
-    if (widget.showControls) {
+    if (widget.showControls || widget.simpleMode) {
       _startHideControlsTimer();
     }
   }
@@ -63,6 +65,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
           setState(() => _isPlaying = playing);
           if (playing && _showControls) {
             _startHideControlsTimer();
+          } else if (!playing) {
+            // 暂停时显示控件（简化模式和标准模式都适用）
+            _hideControlsTimer?.cancel();
+            setState(() => _showControls = true);
           }
         }
       });
@@ -119,7 +125,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   }
 
   void _startHideControlsTimer() {
-    if (!widget.showControls) return;
+    if (!widget.showControls && !widget.simpleMode) return;
 
     _hideControlsTimer?.cancel();
     _hideControlsTimer = Timer(const Duration(seconds: 3), () {
@@ -158,6 +164,54 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
       return _buildLoadingView();
     }
 
+    // 简化模式：只显示中间的播放/暂停按钮
+    if (widget.simpleMode) {
+      return Stack(
+        children: [
+          // 视频播放器
+          Center(
+            child: Video(
+              controller: _videoController,
+              controls: NoVideoControls,
+            ),
+          ),
+
+          // 点击区域用于显示/隐藏控件
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () {
+                setState(() => _showControls = !_showControls);
+                if (_showControls) {
+                  _startHideControlsTimer();
+                }
+              },
+              behavior: HitTestBehavior.translucent,
+            ),
+          ),
+
+          // 中间的播放/暂停按钮（根据状态显示/隐藏）
+          if (_showControls)
+            Center(
+              child: NeumorphicButton(
+                onPressed: _togglePlayPause,
+                style: const NeumorphicStyle(
+                  boxShape: NeumorphicBoxShape.circle(),
+                  depth: 4,
+                  intensity: 0.8,
+                ),
+                padding: const EdgeInsets.all(20),
+                child: Icon(
+                  _isPlaying ? Icons.pause : Icons.play_arrow,
+                  size: 40,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+        ],
+      );
+    }
+
+    // 标准模式：底部控制栏
     return Stack(
       children: [
         // 视频播放器

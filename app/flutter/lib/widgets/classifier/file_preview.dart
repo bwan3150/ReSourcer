@@ -1,10 +1,9 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:provider/provider.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
 import '../../models/classifier_file.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/theme_colors.dart';
+import '../video/video_player_widget.dart';
 
 /// 文件预览组件
 class FilePreview extends StatefulWidget {
@@ -34,51 +33,6 @@ class FilePreview extends StatefulWidget {
 }
 
 class _FilePreviewState extends State<FilePreview> {
-  Player? _player;
-  VideoController? _videoController;
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeVideo();
-  }
-
-  @override
-  void didUpdateWidget(FilePreview oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // 文件变化或缩略图开关变化时，重新初始化视频
-    if (oldWidget.file.path != widget.file.path ||
-        oldWidget.useThumbnail != widget.useThumbnail) {
-      _disposeVideo();
-      _initializeVideo();
-    }
-  }
-
-  @override
-  void dispose() {
-    _disposeVideo();
-    super.dispose();
-  }
-
-  void _initializeVideo() {
-    // 只有非缩略图模式且是视频文件才初始化播放器
-    if (!widget.useThumbnail && widget.file.isVideo) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.apiService != null) {
-        _player = Player();
-        _videoController = VideoController(_player!);
-
-        final videoUrl = authProvider.apiService!.classifier.getFileUrl(widget.file.path);
-        _player!.open(Media(videoUrl), play: false);
-      }
-    }
-  }
-
-  void _disposeVideo() {
-    _player?.dispose();
-    _player = null;
-    _videoController = null;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -139,11 +93,14 @@ class _FilePreviewState extends State<FilePreview> {
         );
       }
 
-      // 原图模式：播放视频
-      if (_videoController != null) {
-        return _buildVideoPlayer();
-      }
-      return _buildPlaceholder(Icons.videocam);
+      // 原图模式：使用新的视频播放器组件（简化模式）
+      return VideoPlayerWidget(
+        key: ValueKey('classifier_video_${widget.file.path}'),
+        videoUrl: authProvider.apiService!.classifier.getFileUrl(widget.file.path),
+        apiKey: authProvider.currentServer?.apiKey ?? '',
+        autoPlay: false,
+        simpleMode: true, // 简化模式：只显示中间的播放/暂停按钮
+      );
     }
 
     return _buildPlaceholder(Icons.insert_drive_file);
@@ -217,14 +174,6 @@ class _FilePreviewState extends State<FilePreview> {
           ),
         ),
       ],
-    );
-  }
-
-  /// 构建视频播放器
-  Widget _buildVideoPlayer() {
-    return Video(
-      controller: _videoController!,
-      controls: MaterialVideoControls,
     );
   }
 
