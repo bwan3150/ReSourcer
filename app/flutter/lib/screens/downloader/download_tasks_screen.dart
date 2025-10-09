@@ -5,6 +5,7 @@ import '../../providers/downloader_provider.dart';
 import '../../models/download_task.dart';
 import '../../models/gallery_file.dart';
 import '../../utils/theme_colors.dart';
+import '../../widgets/common/neumorphic_dialog.dart';
 import '../../widgets/common/neumorphic_toast.dart';
 import '../../widgets/common/neumorphic_option_sheet.dart';
 import '../../widgets/common/neumorphic_overlay_appbar.dart';
@@ -74,14 +75,25 @@ class _DownloadTasksScreenState extends State<DownloadTasksScreen> {
 
   /// 清空历史记录
   Future<void> _clearHistory(BuildContext context) async {
+    // 显示确认对话框
+    final confirmed = await NeumorphicDialog.showConfirm(
+      context: context,
+      title: '全部清空',
+      content: '清除全部未在下载中的记录',
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
     final downloaderProvider =
         Provider.of<DownloaderProvider>(context, listen: false);
 
     final success = await downloaderProvider.clearHistory();
     if (success) {
-      NeumorphicToast.showSuccess(context, '历史已清空');
+      NeumorphicToast.showSuccess(context, '已清空');
     } else {
-      NeumorphicToast.showError(context, '清空历史失败');
+      NeumorphicToast.showError(context, '清空失败');
     }
   }
 

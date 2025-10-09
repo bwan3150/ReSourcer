@@ -27,7 +27,7 @@ class CategorySelector extends StatefulWidget {
 class _CategorySelectorState extends State<CategorySelector> {
   static const double _minHeightCollapsed = 80.0; // 最小高度（切换为水平模式的阈值）
   static const double _maxHeight = 400.0; // 最大高度
-  static const double _defaultHeight = 300.0; // 默认高度
+  static const double _defaultHeight = 80.0; // 默认高度（改为收起状态）
 
   double _currentHeight = _defaultHeight;
 
