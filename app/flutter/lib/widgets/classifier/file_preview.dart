@@ -100,6 +100,7 @@ class _FilePreviewState extends State<FilePreview> {
         apiKey: authProvider.currentServer?.apiKey ?? '',
         autoPlay: false,
         simpleMode: true, // 简化模式：只显示中间的播放/暂停按钮
+        onToggleControls: widget.onToggleControls, // 同步父组件的控件状态
       );
     }
 
@@ -138,42 +139,23 @@ class _FilePreviewState extends State<FilePreview> {
   Widget _buildVideoThumbnail(String thumbnailUrl) {
     final authProvider = Provider.of<AuthProvider>(context);
 
-    return Stack(
-      fit: StackFit.expand,
-      alignment: Alignment.center,
-      children: [
-        Center(
-          child: Image.network(
-            thumbnailUrl,
-            fit: BoxFit.contain,
-            width: double.infinity,
-            height: double.infinity,
-            headers: {
-              'Cookie': 'api_key=${authProvider.apiService?.apiKey ?? ''}',
-            },
-            errorBuilder: (context, error, stackTrace) {
-              return _buildPlaceholder(Icons.play_circle_outline);
-            },
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return _buildPlaceholder(Icons.videocam);
-            },
-          ),
-        ),
-        // 播放图标叠加层
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.5),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            Icons.play_arrow,
-            size: 48,
-            color: Colors.white.withOpacity(0.9),
-          ),
-        ),
-      ],
+    return Center(
+      child: Image.network(
+        thumbnailUrl,
+        fit: BoxFit.contain,
+        width: double.infinity,
+        height: double.infinity,
+        headers: {
+          'Cookie': 'api_key=${authProvider.apiService?.apiKey ?? ''}',
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return _buildPlaceholder(Icons.play_circle_outline);
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return _buildPlaceholder(Icons.videocam);
+        },
+      ),
     );
   }
 
@@ -223,13 +205,23 @@ class _FilePreviewState extends State<FilePreview> {
                   color: Colors.white,
                 ),
               ),
-              NeumorphicSwitch(
-                value: widget.useThumbnail,
-                onChanged: (_) => widget.onToggleThumbnail(),
-                height: 24,
-                style: const NeumorphicSwitchStyle(
-                  thumbDepth: 4,
-                ),
+              Row(
+                children: [
+                  Icon(
+                    Icons.photo_size_select_actual_outlined,
+                    size: 18,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                  const SizedBox(width: 8),
+                  NeumorphicSwitch(
+                    value: widget.useThumbnail,
+                    onChanged: (_) => widget.onToggleThumbnail(),
+                    height: 24,
+                    style: const NeumorphicSwitchStyle(
+                      thumbDepth: 4,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

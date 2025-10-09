@@ -13,6 +13,7 @@ class VideoPlayerWidget extends StatefulWidget {
   final VoidCallback? onPrevious; // 上一个回调（用于多文件浏览）
   final VoidCallback? onNext; // 下一个回调（用于多文件浏览）
   final bool simpleMode; // 简化模式：只显示中间的播放/暂停按钮
+  final VoidCallback? onToggleControls; // 切换控件显示/隐藏的回调
 
   const VideoPlayerWidget({
     Key? key,
@@ -23,6 +24,7 @@ class VideoPlayerWidget extends StatefulWidget {
     this.onPrevious,
     this.onNext,
     this.simpleMode = false,
+    this.onToggleControls,
   }) : super(key: key);
 
   @override
@@ -184,6 +186,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
                 if (_showControls) {
                   _startHideControlsTimer();
                 }
+                // 通知父组件切换控件状态
+                widget.onToggleControls?.call();
               },
               behavior: HitTestBehavior.translucent,
             ),
