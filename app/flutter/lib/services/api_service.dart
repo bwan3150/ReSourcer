@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart';
 import '../models/server.dart';
 import 'classifier_api_service.dart';
+import 'downloader_api_service.dart';
 
 /// API 服务 - 主入口，聚合所有子服务
 class ApiService {
@@ -11,6 +12,7 @@ class ApiService {
 
   // 子服务
   late final ClassifierApiService classifier;
+  late final DownloaderApiService downloader;
 
   ApiService(this.server) {
     // 配置 Dio
@@ -20,6 +22,7 @@ class ApiService {
 
     // 初始化子服务
     classifier = ClassifierApiService(server);
+    downloader = DownloaderApiService(server);
   }
 
   String get baseUrl => server.baseUrl;
