@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 import '../models/gallery_file.dart';
 import '../models/gallery_folder.dart';
 import '../services/api_service.dart';
@@ -63,6 +64,10 @@ class GalleryProvider with ChangeNotifier {
 
   /// 刷新画廊（保持当前文件夹）
   Future<void> refresh(ApiService apiService) async {
+    // 清除图片缓存，确保重新加载图片（特别是服务器地址变更后）
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+
     _isLoading = true;
     notifyListeners();
 

@@ -97,6 +97,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     onRefresh: _handleRefresh,
                     backgroundColor: NeumorphicTheme.baseColor(context),
                     color: ThemeColors.text(context),
+                    edgeOffset: 70, // 让刷新指示器显示在文件夹选择器下方
                     child: ImageGrid(
                       files: provider.files,
                       fileCount: provider.files.length,
@@ -143,23 +144,21 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     depth: 4,
                     intensity: 0.8,
                   ),
-                  padding: const EdgeInsets.all(10),
-                  child: _uploading
-                      ? SizedBox(
-                          width: 28,
-                          height: 28,
-                          child: CircularProgressIndicator(
+                  padding: const EdgeInsets.all(16),
+                  child: SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: _uploading
+                        ? CircularProgressIndicator(
                             valueColor: AlwaysStoppedAnimation<Color>(ThemeColors.text(context)),
                             strokeWidth: 3,
-                          ),
-                        )
-                      : NeumorphicIcon(
-                          Icons.add,
-                          size: 40,
-                          style: NeumorphicStyle(
+                          )
+                        : Icon(
+                            Icons.add,
+                            size: 32,
                             color: ThemeColors.text(context),
                           ),
-                        ),
+                  ),
                 ),
               ),
             ],

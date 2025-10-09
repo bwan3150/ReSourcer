@@ -41,6 +41,12 @@ class NeumorphicOverlayAppBar extends StatelessWidget {
   /// 顶部/左右内边距
   final EdgeInsets padding;
 
+  /// 标题点击回调（可选）
+  final VoidCallback? onTitleTap;
+
+  /// 是否显示标题卡片（默认显示）
+  final bool showTitle;
+
   const NeumorphicOverlayAppBar({
     Key? key,
     required this.title,
@@ -49,6 +55,8 @@ class NeumorphicOverlayAppBar extends StatelessWidget {
     this.backgroundColor,
     this.titleStyle,
     this.padding = const EdgeInsets.all(20),
+    this.onTitleTap,
+    this.showTitle = true,
   }) : super(key: key);
 
   @override
@@ -67,32 +75,42 @@ class NeumorphicOverlayAppBar extends StatelessWidget {
                 leading!,
                 const SizedBox(width: 16),
               ],
-              // 中间标题栏
+              // 中间标题栏（可隐藏但保持空间占位）
               Expanded(
-                child: Neumorphic(
-                  style: NeumorphicStyle(
-                    depth: 4,
-                    intensity: 0.6,
-                    color: backgroundColor ?? NeumorphicTheme.baseColor(context),
-                    boxShape: NeumorphicBoxShape.roundRect(
-                      BorderRadius.circular(25),
-                    ),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                  child: Text(
-                    title,
-                    style: titleStyle ??
-                        TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: ThemeColors.text(context),
+                child: AnimatedOpacity(
+                  opacity: showTitle ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: GestureDetector(
+                    onTap: showTitle ? onTitleTap : null,
+                    child: IgnorePointer(
+                      ignoring: !showTitle,
+                      child: Neumorphic(
+                        style: NeumorphicStyle(
+                          depth: 4,
+                          intensity: 0.6,
+                          color: backgroundColor ?? NeumorphicTheme.baseColor(context),
+                          boxShape: NeumorphicBoxShape.roundRect(
+                            BorderRadius.circular(25),
+                          ),
                         ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        child: Text(
+                          title,
+                          style: titleStyle ??
+                              TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: ThemeColors.text(context),
+                              ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),

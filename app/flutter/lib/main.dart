@@ -8,6 +8,7 @@ import 'providers/gallery_provider.dart';
 import 'providers/upload_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/source_folder_provider.dart';
+import 'providers/classifier_provider.dart';
 import 'screens/server/server_list_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'utils/constants.dart';
@@ -42,6 +43,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => GalleryProvider()),
         ChangeNotifierProvider(create: (_) => UploadProvider()),
         ChangeNotifierProvider(create: (_) => SourceFolderProvider()),
+        ChangeNotifierProvider(create: (_) => ClassifierProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {

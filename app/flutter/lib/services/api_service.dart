@@ -2,17 +2,24 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart';
 import '../models/server.dart';
+import 'classifier_api_service.dart';
 
-/// API 服务
+/// API 服务 - 主入口，聚合所有子服务
 class ApiService {
   final Server server;
   final Dio _dio = Dio();
+
+  // 子服务
+  late final ClassifierApiService classifier;
 
   ApiService(this.server) {
     // 配置 Dio
     _dio.options.headers['Cookie'] = 'api_key=${server.apiKey}';
     _dio.options.connectTimeout = const Duration(seconds: 10);
     _dio.options.receiveTimeout = const Duration(seconds: 10);
+
+    // 初始化子服务
+    classifier = ClassifierApiService(server);
   }
 
   String get baseUrl => server.baseUrl;

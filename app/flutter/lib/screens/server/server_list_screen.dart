@@ -7,6 +7,7 @@ import '../../utils/theme_colors.dart';
 import '../../widgets/common/neumorphic_dialog.dart';
 import '../../widgets/common/neumorphic_option_sheet.dart';
 import 'add_server_screen.dart';
+import 'rebind_server_screen.dart';
 
 /// 服务器列表管理界面
 class ServerListScreen extends StatefulWidget {
@@ -381,12 +382,12 @@ class _ServerListScreenState extends State<ServerListScreen> {
         SheetOption(
           icon: Icons.edit,
           text: '重命名',
-          onTap: () => _showComingSoonDialog(),
+          onTap: () => _showRenameDialog(server),
         ),
         SheetOption(
-          icon: Icons.vpn_key,
-          text: '更新 API Key',
-          onTap: () => _showComingSoonDialog(),
+          icon: Icons.refresh,
+          text: '重新绑定服务器',
+          onTap: () => _rebindServer(server),
         ),
         SheetOption(
           icon: Icons.delete_outline,
@@ -399,13 +400,140 @@ class _ServerListScreenState extends State<ServerListScreen> {
     );
   }
 
-  /// 功能即将推出提示
-  void _showComingSoonDialog() {
-    NeumorphicDialog.showInfo(
+  /// 显示重命名对话框
+  void _showRenameDialog(Server server) {
+    final controller = TextEditingController(text: server.name);
+
+    NeumorphicDialog.showCustom<void>(
       context: context,
-      title: '即将推出',
-      content: '此功能即将在未来版本中推出',
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '重命名服务器',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: ThemeColors.text(context),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Neumorphic(
+              style: NeumorphicStyle(
+                depth: -2,
+                intensity: 0.6,
+                boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(10)),
+              ),
+              child: TextField(
+                controller: controller,
+                autofocus: true,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: ThemeColors.text(context),
+                ),
+                decoration: InputDecoration(
+                  hintText: '输入新名称',
+                  hintStyle: TextStyle(
+                    color: ThemeColors.textSecondary(context),
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+                onSubmitted: (value) {
+                  if (value.trim().isNotEmpty) {
+                    Navigator.pop(context);
+                    _renameServer(server, value.trim());
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                NeumorphicButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: NeumorphicStyle(
+                    depth: 4,
+                    intensity: 0.7,
+                    boxShape: NeumorphicBoxShape.roundRect(
+                      BorderRadius.circular(10),
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  child: Text(
+                    '取消',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: ThemeColors.textSecondary(context),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                NeumorphicButton(
+                  onPressed: () {
+                    final name = controller.text.trim();
+                    if (name.isNotEmpty) {
+                      Navigator.pop(context);
+                      _renameServer(server, name);
+                    }
+                  },
+                  style: NeumorphicStyle(
+                    depth: 4,
+                    intensity: 0.7,
+                    boxShape: NeumorphicBoxShape.roundRect(
+                      BorderRadius.circular(10),
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  child: Text(
+                    '确定',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: ThemeColors.text(context),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
+  }
+
+  /// 重命名服务器
+  Future<void> _renameServer(Server server, String newName) async {
+    final serverProvider = Provider.of<ServerProvider>(context, listen: false);
+    await serverProvider.renameServer(server.id, newName);
+  }
+
+  /// 重新绑定服务器
+  Future<void> _rebindServer(Server server) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => RebindServerScreen(server: server),
+      ),
+    );
+
+    // 刷新列表
+    if (mounted) {
+      final serverProvider = Provider.of<ServerProvider>(context, listen: false);
+      await serverProvider.initialize();
+    }
   }
 
   /// 切换服务器

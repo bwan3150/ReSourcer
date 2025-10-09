@@ -140,10 +140,19 @@ pub async fn move_file(req: web::Json<MoveRequest>) -> Result<HttpResponse> {
         target_dir = Path::new(&state.source_folder).join(format!("{}_{}", req.category, dir_counter));
         dir_counter += 1;
     }
-    
-    // 如不存在则创建目录
+
+    // 检查目标文件夹是否存在（不自动创建）
     if !target_dir.exists() {
-        fs::create_dir_all(&target_dir)?;
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": format!("目标文件夹不存在: {}", target_dir.display())
+        })));
+    }
+
+    // 确保是目录而非文件
+    if !target_dir.is_dir() {
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": format!("目标路径不是文件夹: {}", target_dir.display())
+        })));
     }
     
     // 确定目标文件名

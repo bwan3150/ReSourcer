@@ -30,6 +30,7 @@ class ImageGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         // 顶部空白区域，避开浮动按钮
         const SliverToBoxAdapter(
