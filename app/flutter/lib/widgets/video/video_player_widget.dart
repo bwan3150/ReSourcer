@@ -170,11 +170,15 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     if (widget.simpleMode) {
       return Stack(
         children: [
-          // 视频播放器
-          Center(
-            child: Video(
-              controller: _videoController,
-              controls: NoVideoControls,
+          // 视频播放器 - 支持双指缩放
+          InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Center(
+              child: Video(
+                controller: _videoController,
+                controls: NoVideoControls,
+              ),
             ),
           ),
 
@@ -193,7 +197,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
             ),
           ),
 
-          // 中间的播放/暂停按钮（根据状态显示/隐藏）
+          // 中间的播放/暂停按钮（根据状态显示/隐藏，位置固定不受缩放影响）
           if (_showControls)
             Center(
               child: NeumorphicButton(
@@ -218,11 +222,15 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     // 标准模式：底部控制栏
     return Stack(
       children: [
-        // 视频播放器
-        Center(
-          child: Video(
-            controller: _videoController,
-            controls: NoVideoControls,
+        // 视频播放器 - 支持双指缩放
+        InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 4.0,
+          child: Center(
+            child: Video(
+              controller: _videoController,
+              controls: NoVideoControls,
+            ),
           ),
         ),
 
@@ -235,7 +243,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
             ),
           ),
 
-        // 底部控制栏
+        // 底部控制栏（位置固定不受缩放影响）
         if (widget.showControls && _showControls)
           Positioned(
             bottom: 20,
