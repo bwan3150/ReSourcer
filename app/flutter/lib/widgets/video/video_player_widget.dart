@@ -213,7 +213,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
                 child: Icon(
                   _isPlaying ? Icons.pause : Icons.play_arrow,
                   size: 40,
-                  color: Colors.black87,
+                  color: NeumorphicTheme.isUsingDark(context) ? Colors.white : Colors.black87,
                 ),
               ),
             ),
@@ -312,7 +312,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
               child: Icon(
                 _volume > 0 ? Icons.volume_up : Icons.volume_off,
                 size: 24,
-                color: Colors.white.withOpacity(0.9),
+                color: NeumorphicTheme.isUsingDark(context)
+                    ? Colors.white.withOpacity(0.9)
+                    : Colors.black87,
               ),
             ),
           ),
@@ -352,7 +354,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
                 child: Icon(
                   Icons.chevron_left,
                   size: 32,
-                  color: widget.onPrevious != null ? Colors.black87 : Colors.grey,
+                  color: widget.onPrevious != null
+                      ? (NeumorphicTheme.isUsingDark(context) ? Colors.white : Colors.black87)
+                      : Colors.grey,
                 ),
               )
             else
@@ -369,7 +373,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
               child: Icon(
                 _isPlaying ? Icons.pause : Icons.play_arrow,
                 size: 32,
-                color: Colors.black87,
+                color: NeumorphicTheme.isUsingDark(context) ? Colors.white : Colors.black87,
               ),
             ),
 
@@ -385,7 +389,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
                 child: Icon(
                   Icons.chevron_right,
                   size: 32,
-                  color: widget.onNext != null ? Colors.black87 : Colors.grey,
+                  color: widget.onNext != null
+                      ? (NeumorphicTheme.isUsingDark(context) ? Colors.white : Colors.black87)
+                      : Colors.grey,
                 ),
               )
             else

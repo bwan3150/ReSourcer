@@ -102,7 +102,9 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
           child: Icon(
             Icons.chevron_left,
             size: 32,
-            color: _currentIndex > 0 ? Colors.black87 : Colors.grey,
+            color: _currentIndex > 0
+                ? (NeumorphicTheme.isUsingDark(context) ? Colors.white : Colors.black87)
+                : Colors.grey,
           ),
         ),
 
@@ -117,7 +119,9 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
           child: Icon(
             Icons.chevron_right,
             size: 32,
-            color: _currentIndex < widget.files.length - 1 ? Colors.black87 : Colors.grey,
+            color: _currentIndex < widget.files.length - 1
+                ? (NeumorphicTheme.isUsingDark(context) ? Colors.white : Colors.black87)
+                : Colors.grey,
           ),
         ),
       ],
@@ -270,17 +274,31 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.insert_drive_file, size: 64, color: Colors.white54),
+          Icon(
+            Icons.insert_drive_file,
+            size: 64,
+            color: NeumorphicTheme.isUsingDark(context)
+                ? Colors.white.withOpacity(0.54)
+                : Colors.black.withOpacity(0.54),
+          ),
           const SizedBox(height: 16),
           Text(
             file.name,
-            style: const TextStyle(color: Colors.white, fontSize: 16),
+            style: TextStyle(
+              color: NeumorphicTheme.isUsingDark(context) ? Colors.white : Colors.black87,
+              fontSize: 16,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
             file.extension.toUpperCase(),
-            style: const TextStyle(color: Colors.white54, fontSize: 14),
+            style: TextStyle(
+              color: NeumorphicTheme.isUsingDark(context)
+                  ? Colors.white.withOpacity(0.54)
+                  : Colors.black.withOpacity(0.54),
+              fontSize: 14,
+            ),
           ),
         ],
       ),
