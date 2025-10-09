@@ -116,32 +116,45 @@
 
         /* 二维码容器 */
         .qr-section {
-            text-align: center;
             margin-bottom: 40px;
+        }
+
+        .qr-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .qr-card {
+            text-align: center;
             background: white;
             border: 1px solid #e5e5e5;
             border-radius: 12px;
             padding: 24px;
         }
 
+        .qr-card.hidden {
+            display: none;
+        }
+
         .qr-hint {
-            font-size: 13px;
-            color: #737373;
+            font-size: 14px;
+            font-weight: 600;
+            color: #171717;
             margin-bottom: 16px;
         }
 
-        #qrcode {
+        .qr-code {
             display: inline-block;
             padding: 16px;
             background: white;
             border-radius: 8px;
         }
 
-        .server-url {
+        .qr-subtitle {
             margin-top: 12px;
-            font-size: 13px;
-            color: #a3a3a3;
-            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            color: #737373;
         }
 
         .tools-grid {
@@ -233,8 +246,19 @@
 
         <!-- 二维码区域 -->
         <div class="qr-section">
-            <div class="qr-hint" data-i18n="scanToAccess">同局域网下扫描访问</div>
-            <div id="qrcode"></div>
+            <div class="qr-container">
+                <!-- Android App 下载二维码 -->
+                <div id="qr-android-card" class="qr-card hidden">
+                    <div class="qr-hint" data-i18n="downloadAndroidApp">Android App 下载</div>
+                    <div id="qrcode-android" class="qr-code"></div>
+                </div>
+
+                <!-- Web 访问二维码 -->
+                <div class="qr-card">
+                    <div class="qr-hint" data-i18n="scanToAccess">扫码访问网页版或App扫码访问</div>
+                    <div id="qrcode-web" class="qr-code"></div>
+                </div>
+            </div>
         </div>
 
         <!-- 工具列表 -->
@@ -310,8 +334,8 @@
             }
         }
 
-        // 生成二维码
-        async function generateQRCode() {
+        // 生成 Web 访问二维码
+        async function generateWebQRCode() {
             try {
                 // 获取API Key
                 const apiKey = AuthManager.getApiKey();
@@ -322,7 +346,7 @@
                 // 生成包含API Key的登录URL
                 const loginUrl = `${serverOrigin}/login.html?key=${apiKey}`;
 
-                new QRCode(document.getElementById("qrcode"), {
+                new QRCode(document.getElementById("qrcode-web"), {
                     text: loginUrl,
                     width: 200,
                     height: 200,
@@ -331,11 +355,51 @@
                     correctLevel: QRCode.CorrectLevel.M
                 });
             } catch (error) {
-                console.error('Failed to generate QR code:', error);
+                console.error('Failed to generate web QR code:', error);
             }
         }
 
-        window.addEventListener('load', generateQRCode);
+        // 生成 Android App 下载二维码
+        async function generateAndroidQRCode() {
+            try {
+                // 获取 app.json 配置
+                const response = await fetch('/api/app');
+                if (!response.ok) {
+                    console.log('App config not available');
+                    return;
+                }
+
+                const appConfig = await response.json();
+
+                // 检查 Android URL 是否存在
+                if (!appConfig.android_url || appConfig.android_url.trim() === '') {
+                    console.log('Android download URL not configured');
+                    return;
+                }
+
+                // 显示 Android QR code 卡片
+                const androidCard = document.getElementById('qr-android-card');
+                androidCard.classList.remove('hidden');
+
+                // 生成 Android 下载二维码
+                new QRCode(document.getElementById("qrcode-android"), {
+                    text: appConfig.android_url,
+                    width: 200,
+                    height: 200,
+                    colorDark: "#171717",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            } catch (error) {
+                console.error('Failed to generate Android QR code:', error);
+            }
+        }
+
+        // 页面加载时生成所有二维码
+        window.addEventListener('load', async () => {
+            await generateWebQRCode();
+            await generateAndroidQRCode();
+        });
     </script>
 </body>
 </html>

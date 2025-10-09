@@ -27,8 +27,42 @@ async fn get_global_config() -> Result<HttpResponse> {
 async fn health_check() -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "status": "ok",
-        "service": "re-sourcer"
+        "service": "ReSourcer"
     })))
+}
+
+/// App 配置 API - 读取 app.json（包含 Android/iOS 下载链接）
+async fn get_app_config() -> Result<HttpResponse> {
+    use static_files::ConfigAsset;
+    use serde::Deserialize;
+
+    #[derive(Deserialize)]
+    struct AppConfig {
+        version: String,
+        android_url: String,
+        ios_url: String,
+    }
+
+    if let Some(config_file) = ConfigAsset::get("app.json") {
+        match serde_json::from_slice::<AppConfig>(&config_file.data) {
+            Ok(config) => {
+                Ok(HttpResponse::Ok().json(serde_json::json!({
+                    "version": config.version,
+                    "android_url": config.android_url,
+                    "ios_url": config.ios_url,
+                })))
+            }
+            Err(e) => {
+                Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                    "error": format!("无法解析 app.json: {}", e)
+                })))
+            }
+        }
+    } else {
+        Ok(HttpResponse::NotFound().json(serde_json::json!({
+            "error": "app.json 未找到"
+        })))
+    }
 }
 
 #[actix_web::main]
@@ -117,6 +151,8 @@ async fn main() -> std::io::Result<()> {
             .service(web::scope("/api/auth").configure(auth::routes))
             // 全局配置 API（所有模块共用）
             .route("/api/config", web::get().to(get_global_config))
+            // App 配置 API（Android/iOS 下载链接）
+            .route("/api/app", web::get().to(get_app_config))
             // 画廊 API 路由
             .service(web::scope("/api/gallery").configure(gallery::routes))
             // 分类器 API 路由

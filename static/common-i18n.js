@@ -7,7 +7,8 @@ const i18nManager = {
             // 首页
             homeTitle: 'ReSourcer',
             homeSubtitle: '个人资源管理工具',
-            scanToAccess: '同局域网下扫描访问',
+            scanToAccess: '扫码访问网页版或App扫码访问',
+            downloadAndroidApp: 'Android App 下载',
             settings: '设置',
             classifier: '分类器',
             downloader: '下载器',
@@ -156,7 +157,8 @@ const i18nManager = {
         en: {
             // Home
             homeTitle: 'ReSourcer',
-            scanToAccess: 'Scan to access on LAN',
+            scanToAccess: 'Scan for web or app access',
+            downloadAndroidApp: 'Android App Download',
             settings: 'Settings',
             gallery: 'Gallery',
             classifier: 'Classifier',
