@@ -41,6 +41,7 @@ async fn get_app_config() -> Result<HttpResponse> {
         version: String,
         android_url: String,
         ios_url: String,
+        github_url: String,
     }
 
     if let Some(config_file) = ConfigAsset::get("app.json") {
@@ -50,6 +51,7 @@ async fn get_app_config() -> Result<HttpResponse> {
                     "version": config.version,
                     "android_url": config.android_url,
                     "ios_url": config.ios_url,
+                    "github_url": config.github_url,
                 })))
             }
             Err(e) => {

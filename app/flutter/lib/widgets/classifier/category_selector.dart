@@ -25,9 +25,9 @@ class CategorySelector extends StatefulWidget {
 }
 
 class _CategorySelectorState extends State<CategorySelector> {
-  static const double _minHeightCollapsed = 80.0; // 最小高度（切换为水平模式的阈值）
+  static const double _minHeightCollapsed = 150.0; // 最小高度（切换为水平模式的阈值，确保一行按钮完整显示）
   static const double _maxHeight = 400.0; // 最大高度
-  static const double _defaultHeight = 80.0; // 默认高度（改为收起状态）
+  static const double _defaultHeight = 150.0; // 默认高度（改为收起状态）
 
   double _currentHeight = _defaultHeight;
 
@@ -66,10 +66,10 @@ class _CategorySelectorState extends State<CategorySelector> {
           // 我们希望向下拖时增加高度，向上拖时减少高度
           _currentHeight -= details.delta.dy;
 
-          // 限制在合理范围内
+          // 限制在合理范围内（最小为 _minHeightCollapsed，保证一行按钮可见）
           final screenHeight = MediaQuery.of(context).size.height;
           final maxAllowedHeight = (screenHeight * 0.4).clamp(_minHeightCollapsed, _maxHeight);
-          _currentHeight = _currentHeight.clamp(60.0, maxAllowedHeight);
+          _currentHeight = _currentHeight.clamp(_minHeightCollapsed, maxAllowedHeight);
         });
       },
       child: Container(

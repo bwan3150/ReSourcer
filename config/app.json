@@ -1,5 +1,6 @@
 {
-  "version":"0.2.2",
+  "version":"0.2.3",
   "android_url":"https://github.com/bwan3150/ReSourcer/releases/latest/download/resourcer-android.apk",
-  "ios_url":""
+  "ios_url":"",
+  "github_url":"https://github.com/bwan3150/ReSourcer"
 }

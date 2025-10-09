@@ -28,6 +28,23 @@ class ApiService {
   String get baseUrl => server.baseUrl;
   String get apiKey => server.apiKey;
 
+  /// 获取 App 配置（包含 GitHub URL）
+  static Future<Map<String, dynamic>?> getAppConfig(String baseUrl) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/app'),
+      ).timeout(const Duration(seconds: 3));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return null;
+    } catch (e) {
+      print('获取 App 配置失败: $e');
+      return null;
+    }
+  }
+
   /// 健康检查 - 检查服务器是否在运行
   static Future<bool> checkHealth(String baseUrl) async {
     try {

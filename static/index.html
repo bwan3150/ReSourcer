@@ -73,6 +73,33 @@
             color: white;
         }
 
+        /* GitHub 按钮 */
+        .github-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #171717;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .github-btn:hover {
+            background: #404040;
+        }
+
+        .github-btn img {
+            width: 18px;
+            height: 18px;
+            filter: invert(1);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -227,6 +254,10 @@
 <body>
     <!-- 右上角工具栏 -->
     <div class="top-toolbar">
+        <a id="githubBtn" class="github-btn" href="#" target="_blank" rel="noopener noreferrer" style="display: none;">
+            <img src="/assets/github-mark.svg" alt="GitHub">
+            <span>GitHub</span>
+        </a>
         <a href="/settings/" class="settings-icon-btn" title="Settings">
             <span class="material-symbols-outlined">settings</span>
         </a>
@@ -300,6 +331,26 @@
     <script src="/common-i18n.js"></script>
     <script>
         i18nManager.updateUI();
+
+        // 加载 GitHub URL
+        async function loadGitHubUrl() {
+            try {
+                const response = await fetch('/api/app');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.github_url) {
+                        const githubBtn = document.getElementById('githubBtn');
+                        githubBtn.href = data.github_url;
+                        githubBtn.style.display = 'inline-flex';
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load GitHub URL:', error);
+            }
+        }
+
+        // 页面加载时获取 GitHub URL
+        loadGitHubUrl();
 
         // 检查配置并导航
         async function checkConfigAndNavigate(url, event) {

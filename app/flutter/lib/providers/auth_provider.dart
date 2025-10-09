@@ -23,8 +23,10 @@ class AuthProvider with ChangeNotifier {
       // 检查服务器健康状态和 API key 有效性
       final healthOk = await ApiService.checkHealth(_currentServer!.baseUrl);
       if (!healthOk) {
-        print('服务器未运行，自动登出');
-        await logout();
+        print('服务器未运行');
+        // 不自动登出，保留服务器信息
+        _apiService = null;
+        notifyListeners();
         return;
       }
 
@@ -33,8 +35,10 @@ class AuthProvider with ChangeNotifier {
         _currentServer!.apiKey,
       );
       if (!authOk) {
-        print('API Key 无效，自动登出');
-        await logout();
+        print('API Key 无效');
+        // 不自动登出，保留服务器信息
+        _apiService = null;
+        notifyListeners();
         return;
       }
 

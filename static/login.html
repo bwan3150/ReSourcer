@@ -160,11 +160,52 @@
             background: #171717;
             color: white;
         }
+
+        /* GitHub 按钮 */
+        .github-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #171717;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .github-btn:hover {
+            background: #404040;
+        }
+
+        .github-btn img {
+            width: 18px;
+            height: 18px;
+            filter: invert(1);
+        }
+
+        .top-right-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
-    <!-- 语言切换 -->
-    <div style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
+    <!-- 右上角控制按钮 -->
+    <div class="top-right-controls">
+        <a id="githubBtn" class="github-btn" href="#" target="_blank" rel="noopener noreferrer" style="display: none;">
+            <img src="/assets/github-mark.svg" alt="GitHub">
+            <span>GitHub</span>
+        </a>
         <div class="lang-switcher">
             <button class="lang-btn active" data-lang="en" onclick="switchLang('en')">EN</button>
             <button class="lang-btn" data-lang="zh" onclick="switchLang('zh')">中文</button>
@@ -245,6 +286,26 @@
 
         // 初始化语言
         updateUI();
+
+        // 加载 GitHub URL
+        async function loadGitHubUrl() {
+            try {
+                const response = await fetch('/api/app');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.github_url) {
+                        const githubBtn = document.getElementById('githubBtn');
+                        githubBtn.href = data.github_url;
+                        githubBtn.style.display = 'inline-flex';
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load GitHub URL:', error);
+            }
+        }
+
+        // 页面加载时获取 GitHub URL
+        loadGitHubUrl();
 
         const loginForm = document.getElementById('loginForm');
         const loginBtn = document.getElementById('loginBtn');

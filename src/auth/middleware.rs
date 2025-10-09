@@ -64,13 +64,15 @@ where
             "/auth.js",
             "/api/auth/verify",
             "/api/health",
+            "/api/app",
             "/common-i18n.js",
             "/material-icons.css",
         ];
 
         // 检查是否在白名单中
         let is_whitelisted = whitelist.iter().any(|w| path.starts_with(w))
-            || path.starts_with("/fonts/");
+            || path.starts_with("/fonts/")
+            || path.starts_with("/assets/");
 
         if is_whitelisted {
             let fut = self.service.call(req);

@@ -2,6 +2,8 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/server_provider.dart';
 import '../../providers/source_folder_provider.dart';
@@ -12,6 +14,7 @@ import '../../services/api_service.dart';
 import '../../utils/constants.dart';
 import '../../utils/theme_colors.dart';
 import '../../widgets/common/neumorphic_dialog.dart';
+import '../../widgets/common/neumorphic_toast.dart';
 import '../../widgets/settings/source_folder_dropdown.dart';
 import '../server/server_list_screen.dart';
 import '../source_folder/source_folder_list_screen.dart';
@@ -28,6 +31,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isSourceFolderDropdownOpen = false;
   double _dropdownTop = 0;
   String _version = '';
+  String? _githubUrl;
 
   @override
   void initState() {
@@ -36,6 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // 延迟到 build 完成后再加载数据，避免在 build 期间调用 notifyListeners()
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialData();
+      _loadAppConfig();
     });
   }
 
@@ -77,6 +82,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  /// 下拉刷新：重新加载所有数据
+  Future<void> _handleRefresh() async {
+    await _loadInitialData();
+    await _loadAppConfig();
+  }
+
   Future<void> _handleLogout(BuildContext context) async {
     final confirmed = await NeumorphicDialog.showConfirm(
       context: context,
@@ -94,6 +105,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
           (route) => false,
         );
       }
+    }
+  }
+
+  /// 加载 App 配置（获取 GitHub URL）
+  Future<void> _loadAppConfig() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.currentServer != null) {
+      final config = await ApiService.getAppConfig(authProvider.currentServer!.baseUrl);
+      if (config != null && mounted) {
+        setState(() {
+          _githubUrl = config['github_url'];
+        });
+      }
+    }
+  }
+
+  /// 打开 GitHub 页面
+  Future<void> _openGitHub() async {
+    if (_githubUrl == null || _githubUrl!.isEmpty) {
+      NeumorphicToast.showError(context, '无法获取 GitHub 链接');
+      return;
+    }
+
+    final url = Uri.parse(_githubUrl!);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      NeumorphicToast.showError(context, '无法打开链接');
     }
   }
 
@@ -126,9 +165,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               // 设置项列表
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  children: [
+                child: RefreshIndicator(
+                  onRefresh: _handleRefresh,
+                  color: ThemeColors.text(context),
+                  backgroundColor: NeumorphicTheme.baseColor(context),
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    children: [
                     // 服务器卡片 - 简约设计，只显示名字和状态灯
                     Consumer<AuthProvider>(
                       builder: (context, authProvider, child) {
@@ -181,6 +224,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     const SizedBox(height: 32),
 
+                    // GitHub 按钮
+                    if (_githubUrl != null)
+                      NeumorphicButton(
+                        onPressed: _openGitHub,
+                        style: NeumorphicStyle(
+                          depth: 4,
+                          intensity: 0.8,
+                          boxShape: NeumorphicBoxShape.roundRect(
+                            BorderRadius.circular(12),
+                          ),
+                          color: Theme.of(context).brightness == Brightness.light
+                              ? Colors.black
+                              : Colors.white,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SvgPicture.asset(
+                              'assets/external_icon/github-mark.svg',
+                              width: 20,
+                              height: 20,
+                              colorFilter: ColorFilter.mode(
+                                Theme.of(context).brightness == Brightness.light
+                                    ? Colors.white
+                                    : Colors.black,
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'GitHub',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).brightness == Brightness.light
+                                    ? Colors.white
+                                    : Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    if (_githubUrl != null) const SizedBox(height: 16),
+
                     // 断开连接按钮
                     NeumorphicButton(
                       onPressed: () => _handleLogout(context),
@@ -229,7 +318,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
 
                     const SizedBox(height: 32),
-                  ],
+                    ],
+                  ),
                 ),
               ),
                 ],
