@@ -120,6 +120,25 @@ class ServerProvider with ChangeNotifier {
     }
   }
 
+  /// 重命名服务器
+  Future<bool> renameServer(String serverId, String newName) async {
+    try {
+      final server = _servers.firstWhere((s) => s.id == serverId);
+      final updatedServer = Server(
+        id: server.id,
+        name: newName,
+        baseUrl: server.baseUrl,
+        apiKey: server.apiKey,
+        addedAt: server.addedAt,
+      );
+
+      return await updateServer(updatedServer);
+    } catch (e) {
+      print('重命名服务器失败: $e');
+      return false;
+    }
+  }
+
   /// 删除服务器
   Future<bool> deleteServer(String serverId) async {
     try {

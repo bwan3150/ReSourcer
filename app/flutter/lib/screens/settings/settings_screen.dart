@@ -33,7 +33,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadVersion();
-    _loadInitialData();
+    // 延迟到 build 完成后再加载数据，避免在 build 期间调用 notifyListeners()
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialData();
+    });
   }
 
   Future<void> _loadVersion() async {
@@ -59,6 +62,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final serverProvider = Provider.of<ServerProvider>(context, listen: false);
     final sourceFolderProvider = Provider.of<SourceFolderProvider>(context, listen: false);
+
+    // 重新初始化 AuthProvider 以获取最新的服务器信息
+    await authProvider.initialize();
 
     // 检查当前服务器状态
     if (authProvider.currentServer != null) {

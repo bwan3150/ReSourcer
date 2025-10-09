@@ -97,6 +97,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     onRefresh: _handleRefresh,
                     backgroundColor: NeumorphicTheme.baseColor(context),
                     color: ThemeColors.text(context),
+                    edgeOffset: 70, // 让刷新指示器显示在文件夹选择器下方
                     child: ImageGrid(
                       files: provider.files,
                       fileCount: provider.files.length,
