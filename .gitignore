@@ -98,3 +98,26 @@ app/flutter/test/.test_coverage.dart
 
 app/flutter/flutter_*.png
 app/flutter/flutter_*.json
+
+# ========================================
+# Tauri Tray App
+# ========================================
+
+# Node.js
+tray/node_modules/
+tray/package-lock.json
+
+# Tauri Build
+tray/src-tauri/target/
+tray/src-tauri/gen/
+tray/src-tauri/Cargo.lock
+
+# Downloaded binaries (会自动从 GitHub 下载)
+tray/src-tauri/bin/
+
+# Distribution
+tray/dist/
+
+# macOS
+tray/.DS_Store
+tray/src-tauri/.DS_Store

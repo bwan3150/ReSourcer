@@ -47,8 +47,9 @@ Then scan QR code or visit URL on the opened website using any devices under sam
 
 ## Acknowledgments
 
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp) - Binary included
-- [webextension-pixiv-toolkit](https://github.com/leoding86/webextension-pixiv-toolkit) - Reference for Pixiv download logic
+- [ffmpeg](https://github.com/FFmpeg/FFmpeg): Binary Included
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp): Binary Included
+- [webextension-pixiv-toolkit](https://github.com/leoding86/webextension-pixiv-toolkit): Reference for Pixiv download logic
 
 ## License
 

@@ -1,0 +1,19 @@
+{
+  "name": "tray",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "tauri": "tauri",
+    "download": "./download-binaries.sh",
+    "prebuild": "npm run download",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.8.4"
+  }
+}
