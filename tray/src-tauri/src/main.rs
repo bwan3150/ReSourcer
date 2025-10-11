@@ -5,10 +5,9 @@ use std::process::{Child, Command};
 use std::sync::Mutex;
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
-    tray::{TrayIconBuilder, TrayIconEvent},
+    tray::TrayIconBuilder,
     AppHandle, Manager, Runtime,
 };
-use tauri_plugin_shell::ShellExt;
 
 // 全局保存 re-sourcer 进程和服务 URL
 struct AppState {
@@ -18,7 +17,7 @@ struct AppState {
 
 fn main() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_opener::init())
         .manage(AppState {
             child_process: Mutex::new(None),
             service_url: Mutex::new(String::new()),
@@ -36,14 +35,14 @@ fn main() {
             let _tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&menu)
-                .menu_on_left_click(true) // 左键点击显示菜单
+                .show_menu_on_left_click(true) // 左键点击显示菜单
                 .on_menu_event(move |app, event| match event.id().as_ref() {
                     "open" => {
                         // 打开浏览器访问服务
                         let state: tauri::State<AppState> = app.state();
                         let url = state.service_url.lock().unwrap().clone();
                         if !url.is_empty() {
-                            let _ = app.shell().open(&url, None);
+                            let _ = tauri_plugin_opener::open_url(url, None::<String>);
                         }
                     }
                     "quit" => {

@@ -218,7 +218,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform.tauri_artifact }}-dmg
-          path: tray/src-tauri/target/${{ matrix.platform.target }}/release/bundle/dmg/*.dmg
+          path: tray/src-tauri/target/release/bundle/dmg/*.dmg
           retention-days: 7
 
       - name: Upload Tauri artifacts (Linux)
@@ -226,7 +226,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform.tauri_artifact }}-deb
-          path: tray/src-tauri/target/${{ matrix.platform.target }}/release/bundle/deb/*.deb
+          path: tray/src-tauri/target/release/bundle/deb/*.deb
           retention-days: 7
 
       - name: Upload Tauri artifacts (Windows)
@@ -234,7 +234,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform.tauri_artifact }}-msi
-          path: tray/src-tauri/target/${{ matrix.platform.target }}/release/bundle/msi/*.msi
+          path: tray/src-tauri/target/release/bundle/msi/*.msi
           retention-days: 7
 
   build-android:
