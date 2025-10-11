@@ -21,16 +21,22 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             ytdlp: bin/yt-dlp-linux
+            ffmpeg: bin/ffmpeg-linux
+            ffprobe: bin/ffprobe-linux
             artifact_name: re-sourcer-linux-x86_64
 
           - os: macos-latest
             target: aarch64-apple-darwin
             ytdlp: bin/yt-dlp-macos
+            ffmpeg: bin/ffmpeg-macos
+            ffprobe: bin/ffprobe-macos
             artifact_name: re-sourcer-macos-aarch64
 
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             ytdlp: bin/yt-dlp-windows.exe
+            ffmpeg: bin/ffmpeg-windows.exe
+            ffprobe: bin/ffprobe-windows.exe
             artifact_name: re-sourcer-windows-x86_64.exe
 
     steps:
@@ -60,14 +66,29 @@ jobs:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Verify yt-dlp binary exists
+      - name: Verify required binaries exist
         shell: bash
         run: |
+          # 验证 yt-dlp
           if [ ! -f "${{ matrix.platform.ytdlp }}" ]; then
             echo "❌ yt-dlp binary not found: ${{ matrix.platform.ytdlp }}"
             exit 1
           fi
           echo "✅ Found yt-dlp binary: ${{ matrix.platform.ytdlp }}"
+
+          # 验证 ffmpeg
+          if [ ! -f "${{ matrix.platform.ffmpeg }}" ]; then
+            echo "❌ ffmpeg binary not found: ${{ matrix.platform.ffmpeg }}"
+            exit 1
+          fi
+          echo "✅ Found ffmpeg binary: ${{ matrix.platform.ffmpeg }}"
+
+          # 验证 ffprobe
+          if [ ! -f "${{ matrix.platform.ffprobe }}" ]; then
+            echo "❌ ffprobe binary not found: ${{ matrix.platform.ffprobe }}"
+            exit 1
+          fi
+          echo "✅ Found ffprobe binary: ${{ matrix.platform.ffprobe }}"
 
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.platform.target }}
