@@ -122,11 +122,6 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            cli_artifact: re-sourcer-linux-x86_64
-            tauri_artifact: resourcer-tray-linux
-
           - os: macos-latest
             target: aarch64-apple-darwin
             cli_artifact: re-sourcer-macos-aarch64
@@ -176,19 +171,6 @@ jobs:
         with:
           targets: ${{ matrix.platform.target }}
 
-      - name: Install Tauri dependencies (Ubuntu)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev \
-            build-essential \
-            curl \
-            wget \
-            file \
-            libssl-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev
-
       - name: Create dist directory with placeholder
         working-directory: tray
         shell: bash
@@ -223,14 +205,6 @@ jobs:
         with:
           name: ${{ matrix.platform.tauri_artifact }}-dmg
           path: tray/src-tauri/target/release/bundle/dmg/*.dmg
-          retention-days: 7
-
-      - name: Upload Tauri artifacts (Linux)
-        if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.platform.tauri_artifact }}-deb
-          path: tray/src-tauri/target/release/bundle/deb/*.deb
           retention-days: 7
 
       - name: Upload Tauri artifacts (Windows)
