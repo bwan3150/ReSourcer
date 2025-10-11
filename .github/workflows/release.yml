@@ -185,6 +185,26 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev
 
+      - name: Create dist directory with placeholder
+        working-directory: tray
+        shell: bash
+        run: |
+          mkdir -p dist
+          cat > dist/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <meta charset="UTF-8">
+              <title>ReSourcer</title>
+          </head>
+          <body>
+              <h1>ReSourcer</h1>
+          </body>
+          </html>
+          EOF
+          echo "✅ Created dist/index.html"
+          ls -la dist/
+
       - name: Install npm dependencies
         working-directory: tray
         run: npm install
