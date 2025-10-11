@@ -153,9 +153,17 @@ fn start_re_sourcer<R: Runtime>(app_handle: AppHandle<R>) -> Result<(), String> 
     let state: tauri::State<AppState> = app_handle.state();
     *state.service_url.lock().unwrap() = service_url;
 
+    // 获取用户主目录作为工作目录
+    let home_dir = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .unwrap_or_else(|_| ".".to_string());
+
     // 启动进程（不显示终端窗口）
     println!("启动 re-sourcer 进程...");
+    println!("工作目录: {}", home_dir);
+
     let child = Command::new(&resource_path)
+        .current_dir(&home_dir) // 设置工作目录为用户主目录
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .spawn()

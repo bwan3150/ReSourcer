@@ -1,10 +1,13 @@
 use actix_web::{web, HttpResponse, Result};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::fs;
 use super::models::*;
 use std::io::Cursor;
 use std::process::Command;
 use image::ImageFormat;
+
+// 在编译时嵌入对应平台的 ffmpeg 二进制文件
+static FFMPEG_BINARY: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/ffmpeg"));
 
 /// 支持的图片格式
 const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp", "bmp", "tiff", "svg"];
@@ -177,8 +180,61 @@ fn count_media_files(path: &Path) -> usize {
     count
 }
 
+/// 获取 ffmpeg 二进制文件路径（从嵌入的二进制中提取）
+fn get_ffmpeg_path() -> PathBuf {
+    use std::io::Write;
+
+    // 获取临时目录
+    let temp_dir = std::env::temp_dir();
+
+    // 根据操作系统设置可执行文件名
+    let binary_name = if cfg!(target_os = "windows") {
+        "ffmpeg.exe"
+    } else {
+        "ffmpeg"
+    };
+
+    let ffmpeg_path = temp_dir.join(binary_name);
+
+    // 如果文件不存在或者内容不同，则写入
+    let needs_write = if ffmpeg_path.exists() {
+        // 检查文件大小是否一致
+        match fs::metadata(&ffmpeg_path) {
+            Ok(metadata) => metadata.len() != FFMPEG_BINARY.len() as u64,
+            Err(_) => true,
+        }
+    } else {
+        true
+    };
+
+    if needs_write {
+        // 写入嵌入的二进制文件
+        let mut file = fs::File::create(&ffmpeg_path)
+            .expect("无法创建 ffmpeg 临时文件");
+        file.write_all(FFMPEG_BINARY)
+            .expect("无法写入 ffmpeg 二进制文件");
+
+        // 在 Unix 系统上设置可执行权限
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&ffmpeg_path)
+                .expect("无法读取文件元数据")
+                .permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&ffmpeg_path, perms)
+                .expect("无法设置可执行权限");
+        }
+    }
+
+    ffmpeg_path
+}
+
 /// 从视频提取首帧
 fn extract_video_first_frame(video_path: &Path) -> Result<image::DynamicImage> {
+    // 获取内嵌的 ffmpeg 路径
+    let ffmpeg_path = get_ffmpeg_path();
+
     // 创建临时文件保存首帧
     let temp_output = std::env::temp_dir().join(format!("thumb_{}.jpg", uuid::Uuid::new_v4()));
 
@@ -187,7 +243,7 @@ fn extract_video_first_frame(video_path: &Path) -> Result<image::DynamicImage> {
     // -vf "select=eq(n\,0)": 选择第一帧
     // -vframes 1: 只输出1帧
     // -q:v 2: 高质量输出
-    let output = Command::new("ffmpeg")
+    let output = Command::new(&ffmpeg_path)
         .args(&[
             "-i", video_path.to_str().unwrap(),
             "-vf", "select=eq(n\\,0)",
