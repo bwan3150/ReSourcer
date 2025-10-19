@@ -124,15 +124,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// 打开 GitHub 页面
   Future<void> _openGitHub() async {
     if (_githubUrl == null || _githubUrl!.isEmpty) {
-      NeumorphicToast.showError(context, '无法获取 GitHub 链接');
+      NeumorphicToast.showError(context, '无法获取链接');
       return;
     }
 
-    final url = Uri.parse(_githubUrl!);
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      NeumorphicToast.showError(context, '无法打开链接');
+    try {
+      final url = Uri.parse(_githubUrl!);
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        NeumorphicToast.showError(context, '无法打开链接');
+      }
+    } catch (e) {
+      NeumorphicToast.showError(context, '打开失败');
     }
   }
 

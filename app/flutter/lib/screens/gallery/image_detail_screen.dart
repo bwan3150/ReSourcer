@@ -264,7 +264,11 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
         showControls: true,
         onPrevious: _currentIndex > 0 ? _goToPrevious : null,
         onNext: _currentIndex < widget.files.length - 1 ? _goToNext : null,
-        onToggleControls: _toggleControls, // 同步控件显示状态
+        externalControlsVisible: _showControls, // 将外部状态传递给视频播放器
+        onControlsVisibilityChanged: (visible) {
+          // 当视频播放器内部控件状态改变时,同步更新外部状态
+          setState(() => _showControls = visible);
+        },
       );
     }
 

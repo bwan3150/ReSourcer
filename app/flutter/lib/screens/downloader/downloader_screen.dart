@@ -27,6 +27,8 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
   UrlDetectResult? _detectResult;
   String _selectedDownloader = 'ytdlp';
   Timer? _detectDebounce;
+  bool _isDetecting = false; // 是否正在检测URL
+  DownloaderProvider? _downloaderProvider; // 保存Provider引用
 
   @override
   void initState() {
@@ -46,82 +48,113 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
   /// URL输入变化时的处理
   void _onUrlChanged() {
     _detectDebounce?.cancel();
+
+    final url = _urlController.text.trim();
+
+    if (url.isEmpty) {
+      setState(() {
+        _detectResult = null;
+        _isDetecting = false;
+      });
+      return;
+    }
+
+    // 开始检测倒计时
+    setState(() {
+      _isDetecting = true;
+    });
+
     _detectDebounce = Timer(const Duration(milliseconds: 500), () {
-      final url = _urlController.text.trim();
-      if (url.isNotEmpty) {
+      if (mounted) {
         _detectUrl(url);
-      } else {
-        setState(() {
-          _detectResult = null;
-        });
       }
     });
   }
 
   /// 检测URL
   Future<void> _detectUrl(String url) async {
-    final downloaderProvider =
-        Provider.of<DownloaderProvider>(context, listen: false);
+    if (_downloaderProvider == null) {
+      if (mounted) {
+        setState(() {
+          _isDetecting = false;
+        });
+      }
+      return;
+    }
 
-    final result = await downloaderProvider.detectUrl(url);
-    if (mounted) {
-      setState(() {
-        _detectResult = result;
-        if (result != null) {
-          _selectedDownloader = result.downloader;
-        }
-      });
+    try {
+      final result = await _downloaderProvider!.detectUrl(url);
+
+      if (mounted) {
+        setState(() {
+          _detectResult = result;
+          _isDetecting = false;
+          if (result != null) {
+            _selectedDownloader = result.downloader;
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isDetecting = false;
+        });
+      }
     }
   }
 
   /// 创建下载任务并导航到任务列表页面
   Future<void> _startDownloadWithContext(BuildContext context) async {
-    debugPrint('=== 开始创建下载任务 ===');
     final url = _urlController.text.trim();
-    debugPrint('URL: $url');
 
-    if (url.isEmpty) {
-      NeumorphicToast.showError(context, '请输入URL');
+    if (url.isEmpty || _downloaderProvider == null) {
       return;
     }
 
-    try {
-      debugPrint('尝试获取 DownloaderProvider...');
-      final downloaderProvider =
-          Provider.of<DownloaderProvider>(context, listen: false);
-      debugPrint('DownloaderProvider 获取成功');
+    // 静默等待检测完成
+    if (_isDetecting) {
+      return;
+    }
 
-      debugPrint('调用 createTask: downloader=$_selectedDownloader, folder=${downloaderProvider.selectedFolder}');
-      final success = await downloaderProvider.createTask(
+    // 如果检测结果为空,静默检测
+    if (_detectResult == null) {
+      setState(() {
+        _isDetecting = true;
+      });
+
+      await _detectUrl(url);
+
+      // 检测失败
+      if (_detectResult == null) {
+        if (mounted) {
+          NeumorphicToast.showError(context, '检测失败');
+        }
+        return;
+      }
+    }
+
+    try {
+      final success = await _downloaderProvider!.createTask(
         url: url,
         downloader: _selectedDownloader,
-        saveFolder: downloaderProvider.selectedFolder,
+        saveFolder: _downloaderProvider!.selectedFolder,
       );
-
-      debugPrint('createTask 返回结果: $success');
 
       if (mounted) {
         if (success) {
-          NeumorphicToast.showSuccess(context, '任务已创建');
           _urlController.clear();
           setState(() {
             _detectResult = null;
+            _isDetecting = false;
           });
-          // 导航到任务列表页面
-          debugPrint('导航到任务列表页面');
           _navigateToTaskList();
         } else {
-          final error = downloaderProvider.error ?? '创建任务失败';
-          debugPrint('创建任务失败: $error');
-          NeumorphicToast.showError(context, error);
+          NeumorphicToast.showError(context, '失败');
         }
       }
-    } catch (e, stackTrace) {
-      debugPrint('=== 创建任务异常 ===');
-      debugPrint('异常: $e');
-      debugPrint('堆栈: $stackTrace');
+    } catch (e) {
       if (mounted) {
-        NeumorphicToast.showError(context, '创建任务异常: $e');
+        NeumorphicToast.showError(context, '失败');
       }
     }
   }
@@ -373,6 +406,9 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
           body: SafeArea(
             child: Consumer<DownloaderProvider>(
               builder: (context, provider, _) {
+                // 保存Provider引用供State方法使用
+                _downloaderProvider = provider;
+
                 return SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   child: Column(
@@ -485,28 +521,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
           const SizedBox(height: 24),
 
           // 下载按钮（仅图标，大圆角）
-          Consumer<DownloaderProvider>(
-            builder: (btnContext, provider, _) {
-              return NeumorphicButton(
-                onPressed: () => _startDownloadWithContext(btnContext),
-                style: NeumorphicStyle(
-                  depth: 6,
-                  intensity: 0.8,
-                  boxShape: NeumorphicBoxShape.roundRect(
-                    BorderRadius.circular(30), // 大圆角
-                  ),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Center(
-                  child: Icon(
-                    Icons.download,
-                    size: 24,
-                    color: ThemeColors.text(context),
-                  ),
-                ),
-              );
-            },
-          ),
+          _buildDownloadButton(),
         ],
       ),
     );
@@ -626,5 +641,45 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
         ),
       ),
     );
+  }
+
+  /// 构建下载按钮
+  Widget _buildDownloadButton() {
+    final isEnabled = !_isDetecting && _urlController.text.trim().isNotEmpty;
+
+    final buttonContent = Center(
+      child: Icon(
+        Icons.download,
+        size: 24,
+        color: isEnabled
+            ? ThemeColors.text(context)
+            : ThemeColors.text(context).withOpacity(0.3),
+      ),
+    );
+
+    return isEnabled
+        ? NeumorphicButton(
+            onPressed: () => _startDownloadWithContext(context),
+            style: NeumorphicStyle(
+              depth: 6,
+              intensity: 0.8,
+              boxShape: NeumorphicBoxShape.roundRect(
+                BorderRadius.circular(30),
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: buttonContent,
+          )
+        : Neumorphic(
+            style: NeumorphicStyle(
+              depth: -4,
+              intensity: 0.6,
+              boxShape: NeumorphicBoxShape.roundRect(
+                BorderRadius.circular(30),
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: buttonContent,
+          );
   }
 }

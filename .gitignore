@@ -9,6 +9,7 @@ app_state.json
 
 # Local files
 /local
+config/dependencies.json
 
 # ========================================
 # Flutter / Dart

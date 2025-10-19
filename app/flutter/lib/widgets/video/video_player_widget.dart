@@ -13,7 +13,8 @@ class VideoPlayerWidget extends StatefulWidget {
   final VoidCallback? onPrevious; // 上一个回调（用于多文件浏览）
   final VoidCallback? onNext; // 下一个回调（用于多文件浏览）
   final bool simpleMode; // 简化模式：只显示中间的播放/暂停按钮
-  final VoidCallback? onToggleControls; // 切换控件显示/隐藏的回调
+  final ValueChanged<bool>? onControlsVisibilityChanged; // 控件显示/隐藏状态变化回调
+  final bool? externalControlsVisible; // 外部控制的控件显示状态
 
   const VideoPlayerWidget({
     Key? key,
@@ -24,7 +25,8 @@ class VideoPlayerWidget extends StatefulWidget {
     this.onPrevious,
     this.onNext,
     this.simpleMode = false,
-    this.onToggleControls,
+    this.onControlsVisibilityChanged,
+    this.externalControlsVisible,
   }) : super(key: key);
 
   @override
@@ -49,9 +51,25 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   @override
   void initState() {
     super.initState();
+    _showControls = widget.externalControlsVisible ?? true;
     _initializePlayer();
     if (widget.showControls || widget.simpleMode) {
       _startHideControlsTimer();
+    }
+  }
+
+  @override
+  void didUpdateWidget(VideoPlayerWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 当外部控制状态变化时,更新内部状态
+    if (widget.externalControlsVisible != null &&
+        widget.externalControlsVisible != _showControls) {
+      setState(() => _showControls = widget.externalControlsVisible!);
+      if (_showControls && _isPlaying) {
+        _startHideControlsTimer();
+      } else {
+        _hideControlsTimer?.cancel();
+      }
     }
   }
 
@@ -133,6 +151,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     _hideControlsTimer = Timer(const Duration(seconds: 3), () {
       if (mounted && _isPlaying) {
         setState(() => _showControls = false);
+        // 通知父组件控件已隐藏
+        widget.onControlsVisibilityChanged?.call(false);
       }
     });
   }
@@ -144,8 +164,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     if (_showControls) {
       _startHideControlsTimer();
     }
-    // 通知父组件切换控件状态
-    widget.onToggleControls?.call();
+    // 通知父组件控件状态已改变
+    widget.onControlsVisibilityChanged?.call(_showControls);
   }
 
   void _togglePlayPause() {
@@ -192,8 +212,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
                 if (_showControls) {
                   _startHideControlsTimer();
                 }
-                // 通知父组件切换控件状态
-                widget.onToggleControls?.call();
+                // 通知父组件控件状态已改变
+                widget.onControlsVisibilityChanged?.call(_showControls);
               },
               behavior: HitTestBehavior.translucent,
             ),
