@@ -4,12 +4,14 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
+import 'package:photo_manager/photo_manager.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/upload_provider.dart';
 import '../../providers/gallery_provider.dart';
 import '../../utils/theme_colors.dart';
 import '../common/neumorphic_option_sheet.dart';
 import '../common/neumorphic_toast.dart';
+import '../common/neumorphic_dialog.dart';
 
 /// 上传辅助类 - 处理文件上传的通用逻辑
 class UploadHelper {
@@ -75,6 +77,28 @@ class UploadHelper {
   /// 从相册上传（使用 wechat_assets_picker 以支持准确删除）
   Future<void> uploadFromGallery() async {
     try {
+      // 循环请求权限,直到用户授权或取消
+      while (true) {
+        final PermissionState ps = await PhotoManager.requestPermissionExtend();
+
+        // 权限已授权,继续
+        if (ps.isAuth) break;
+
+        // 权限被拒绝,显示对话框
+        final bool? shouldRetry = await NeumorphicDialog.showConfirm(
+          context: context,
+          title: '需要相册权限',
+          content: '需要访问相册以选择照片和视频',
+          cancelText: '取消',
+          confirmText: '开启',
+        );
+
+        // 用户取消,退出
+        if (shouldRetry != true) return;
+
+        // 用户点了"开启",继续循环请求
+      }
+
       // 使用 wechat_assets_picker 选择照片/视频，返回 AssetEntity 列表
       final List<AssetEntity>? assets = await AssetPicker.pickAssets(
         context,
@@ -126,7 +150,7 @@ class UploadHelper {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         allowMultiple: true,
-        type: FileType.media,
+        type: FileType.any,
       );
 
       if (result == null || result.files.isEmpty) return;
