@@ -162,8 +162,9 @@ async function startDownload() {
             body: JSON.stringify({
                 url,
                 downloader,
-                save_folder: selectedFolder,
-                format: 'best' // 固定使用 best 格式
+                save_folder: selectedFolder
+                // 不再设置 format 参数，让 yt-dlp 自动选择最佳格式
+                // 这样可以避免 bilibili 等平台不支持 "best" 预合并格式的问题
             })
         });
 

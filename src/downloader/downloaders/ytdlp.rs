@@ -100,12 +100,12 @@ where
        .arg("--print")
        .arg("after_move:filepath"); // 打印下载完成后的文件路径
 
-    // 格式参数
+    // 格式参数：只在用户明确指定时添加，否则让 yt-dlp 自动选择最佳格式
+    // 这样可以避免 bilibili 等平台不支持 "best" 预合并格式的问题
     if let Some(fmt) = format {
         cmd.arg("-f").arg(fmt);
-    } else {
-        cmd.arg("-f").arg("best"); // 默认最佳质量
     }
+    // 不再设置默认的 "-f best"，让 yt-dlp 自动下载并合并最佳可用格式
 
     // 根据平台添加 cookies（可选，有就用，没有就不加）
     if platform == Platform::X {
