@@ -50,14 +50,12 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     _detectDebounce?.cancel();
 
     final url = _urlController.text.trim();
-    debugPrint('[URL变化] url=$url');
 
     if (url.isEmpty) {
       setState(() {
         _detectResult = null;
         _isDetecting = false;
       });
-      debugPrint('[URL变化] 清空URL, _isDetecting=false');
       return;
     }
 
@@ -65,24 +63,17 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     setState(() {
       _isDetecting = true;
     });
-    debugPrint('[URL变化] 开始检测倒计时, _isDetecting=true');
 
     _detectDebounce = Timer(const Duration(milliseconds: 500), () {
-      debugPrint('[Timer] 500ms到, 开始检测URL');
       if (mounted) {
         _detectUrl(url);
-      } else {
-        debugPrint('[Timer] widget已卸载,取消检测');
       }
     });
   }
 
   /// 检测URL
   Future<void> _detectUrl(String url) async {
-    debugPrint('[检测URL] 方法开始执行');
-
     if (_downloaderProvider == null) {
-      debugPrint('[检测URL] Provider未初始化');
       if (mounted) {
         setState(() {
           _isDetecting = false;
@@ -92,24 +83,18 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     }
 
     try {
-      debugPrint('[检测URL] 开始检测: $url');
       final result = await _downloaderProvider!.detectUrl(url);
-      debugPrint('[检测URL] 检测结果: platform=${result?.platform}, downloader=${result?.downloader}');
 
       if (mounted) {
         setState(() {
           _detectResult = result;
-          _isDetecting = false; // 检测完成
+          _isDetecting = false;
           if (result != null) {
             _selectedDownloader = result.downloader;
-            debugPrint('[检测URL] 设置下载器: $_selectedDownloader');
           }
         });
-        debugPrint('[检测URL] 检测完成, _isDetecting=false');
       }
-    } catch (e, stackTrace) {
-      debugPrint('[检测URL] 异常: $e');
-      debugPrint('[检测URL] 堆栈: $stackTrace');
+    } catch (e) {
       if (mounted) {
         setState(() {
           _isDetecting = false;
@@ -661,7 +646,6 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
   /// 构建下载按钮
   Widget _buildDownloadButton() {
     final isEnabled = !_isDetecting && _urlController.text.trim().isNotEmpty;
-    debugPrint('[下载按钮] _isDetecting=$_isDetecting, url=${_urlController.text.trim()}, isEnabled=$isEnabled');
 
     final buttonContent = Center(
       child: Icon(
