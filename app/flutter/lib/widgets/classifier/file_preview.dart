@@ -100,7 +100,13 @@ class _FilePreviewState extends State<FilePreview> {
         apiKey: authProvider.currentServer?.apiKey ?? '',
         autoPlay: false,
         simpleMode: true, // 简化模式：只显示中间的播放/暂停按钮
-        onToggleControls: widget.onToggleControls, // 同步父组件的控件状态
+        externalControlsVisible: widget.showControls, // 外部控制的显示状态
+        onControlsVisibilityChanged: (visible) {
+          // 简化模式下，当视频播放器控件状态改变时通知父组件
+          if (!visible && widget.showControls || visible && !widget.showControls) {
+            widget.onToggleControls();
+          }
+        },
       );
     }
 
