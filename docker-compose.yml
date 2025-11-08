@@ -9,12 +9,12 @@ services:
     ports:
       - "1234:1234"
     volumes:
-      # 配置文件持久化
-      - /volume1/docker/ReSourcer:/config/.config/re-sourcer
+      # 配置文件持久化 (对应容器内 $HOME/.config/re-sourcer)
+      - /volume1/docker/ReSourcer:/home/appuser/.config/re-sourcer
       # 资源文件夹挂载
       - /volume1/ReSourcer:/data
     environment:
-      - HOME=/config
+      - HOME=/home/appuser
       - RUST_LOG=info
       - UMASK=022
     network_mode: bridge
