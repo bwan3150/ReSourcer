@@ -10,9 +10,9 @@ services:
       - "1234:1234"
     volumes:
       # 配置文件持久化
-      - ./docker-data/config:/config/.config/re-sourcer
+      - /volume1/docker/ReSourcer:/config/.config/re-sourcer
       # 资源文件夹挂载
-      - ./docker-data/resources:/data
+      - /volume1/ReSourcer:/data
     environment:
       - HOME=/config
       - RUST_LOG=info
