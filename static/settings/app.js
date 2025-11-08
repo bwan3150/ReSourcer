@@ -196,12 +196,26 @@ async function addNewSourceFolder() {
     }
 
     try {
-        // 如果是第一个源文件夹,直接设为当前源
+        // 如果是第一个源文件夹,使用 switch API 设置为当前源
         if (!appState.source_folder) {
-            appState.source_folder = folderPath;
-            await loadFoldersFromPath(folderPath);
-            renderSourceFolders();
-            document.getElementById('sourceFolderInput').value = '';
+            const response = await fetch('/api/settings/sources/switch', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    folder_path: folderPath
+                })
+            });
+
+            if (response.ok) {
+                await loadAppState();
+                document.getElementById('sourceFolderInput').value = '';
+                alert(i18nManager.t('sourceFolderAdded', '源文件夹添加成功'));
+            } else {
+                const error = await response.json();
+                alert(error.error || i18nManager.t('failedAddSourceFolder', '添加源文件夹失败'));
+            }
             return;
         }
 
