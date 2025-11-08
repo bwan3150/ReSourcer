@@ -5,15 +5,18 @@ services:
     build: .
     container_name: re-sourcer
     restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"
     ports:
       - "1234:1234"
     volumes:
       # 配置文件持久化
-      - ./docker-data/config:/root/.config/re-sourcer
+      - ./docker-data/config:/config/.config/re-sourcer
       # 资源文件夹挂载
       - ./docker-data/resources:/data
     environment:
+      - HOME=/config
       - RUST_LOG=info
+      - UMASK=022
     network_mode: bridge
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:1234/api/health"]
