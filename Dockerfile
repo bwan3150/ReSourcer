@@ -6,6 +6,7 @@ RUN apt-get update && \
     ca-certificates \
     curl \
     vim \
+    python3 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
