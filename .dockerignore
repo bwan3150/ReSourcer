@@ -1,0 +1,39 @@
+# Git 相关
+.git
+.gitignore
+.gitattributes
+.github
+
+# 构建产物
+target
+*.o
+*.so
+*.dylib
+
+# IDE 和编辑器
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Docker 相关
+docker-data
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 开发文件
+dev.sh
+update.sh
+
+# 文档
+docs
+README.md
+
+# 其他
+app_state.json
+local

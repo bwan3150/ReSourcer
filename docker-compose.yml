@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  re-sourcer:
+    build: .
+    container_name: re-sourcer
+    restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"
+    ports:
+      - "1234:1234"
+    volumes:
+      # 配置文件持久化 (对应容器内 $HOME/.config/re-sourcer)
+      - /volume1/docker/ReSourcer:/home/appuser/.config/re-sourcer
+      # 资源文件夹挂载
+      - /volume1/ReSourcer:/data
+    environment:
+      - HOME=/home/appuser
+      - RUST_LOG=info
+      - UMASK=022
+    network_mode: bridge
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1234/api/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
