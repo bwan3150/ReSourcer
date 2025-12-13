@@ -8,6 +8,7 @@ class CategorySelector extends StatefulWidget {
   final List<ClassifierCategory> categories;
   final Function(String) onSelectCategory;
   final Function(String) onAddCategory;
+  final Function(List<ClassifierCategory>)? onReorderCategories; // 排序回调
   final bool isExpanded;
   final VoidCallback onToggleExpanded;
 
@@ -16,6 +17,7 @@ class CategorySelector extends StatefulWidget {
     required this.categories,
     required this.onSelectCategory,
     required this.onAddCategory,
+    this.onReorderCategories,
     required this.isExpanded,
     required this.onToggleExpanded,
   }) : super(key: key);
@@ -100,6 +102,10 @@ class _CategorySelectorState extends State<CategorySelector> {
 
   /// 展开视图 - 垂直列表
   Widget _buildExpandedView(BuildContext context, double bottomPadding, double height) {
+    // 计算总项数：分类 + 排序按钮(如果有) + 添加按钮
+    final hasReorder = widget.onReorderCategories != null;
+    final totalItems = widget.categories.length + (hasReorder ? 2 : 1);
+
     return Container(
       height: height,
       decoration: BoxDecoration(
@@ -108,14 +114,23 @@ class _CategorySelectorState extends State<CategorySelector> {
       child: ListView.builder(
         shrinkWrap: true,
         padding: EdgeInsets.fromLTRB(16, 12, 16, 80 + bottomPadding),
-        itemCount: widget.categories.length + 1,
+        itemCount: totalItems,
         itemBuilder: (context, index) {
-          if (index == widget.categories.length) {
+          // 最后一项是添加按钮
+          if (index == totalItems - 1) {
             return _buildAddButton(context);
           }
 
-          final category = widget.categories[index];
+          // 如果有排序功能，倒数第二项是排序按钮
+          if (hasReorder && index == totalItems - 2) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _buildReorderButton(context),
+            );
+          }
 
+          // 其他项是分类按钮
+          final category = widget.categories[index];
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: _buildCategoryButton(
@@ -284,6 +299,50 @@ class _CategorySelectorState extends State<CategorySelector> {
     );
   }
 
+  /// 构建排序按钮
+  Widget _buildReorderButton(BuildContext context) {
+    return NeumorphicButton(
+      onPressed: () => _showReorderDialog(context),
+      style: NeumorphicStyle(
+        depth: 4,
+        intensity: 0.8,
+        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.swap_vert,
+            size: 20,
+            color: ThemeColors.text(context),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '分类排序',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: ThemeColors.text(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 显示排序对话框
+  void _showReorderDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.5),
+      builder: (context) => _ReorderDialog(
+        categories: widget.categories,
+        onReorder: widget.onReorderCategories!,
+      ),
+    );
+  }
+
   /// 构建添加按钮
   Widget _buildAddButton(BuildContext context) {
     return NeumorphicButton(
@@ -424,6 +483,211 @@ class _CategorySelectorState extends State<CategorySelector> {
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 排序对话框
+class _ReorderDialog extends StatefulWidget {
+  final List<ClassifierCategory> categories;
+  final Function(List<ClassifierCategory>) onReorder;
+
+  const _ReorderDialog({
+    Key? key,
+    required this.categories,
+    required this.onReorder,
+  }) : super(key: key);
+
+  @override
+  State<_ReorderDialog> createState() => _ReorderDialogState();
+}
+
+class _ReorderDialogState extends State<_ReorderDialog> {
+  late List<ClassifierCategory> _categories;
+
+  @override
+  void initState() {
+    super.initState();
+    _categories = List.from(widget.categories);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(20),
+      child: Neumorphic(
+        style: NeumorphicStyle(
+          depth: 8,
+          intensity: 0.8,
+          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
+        ),
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.7,
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 标题
+              Row(
+                children: [
+                  Icon(
+                    Icons.swap_vert,
+                    size: 24,
+                    color: ThemeColors.text(context),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '分类排序',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: ThemeColors.text(context),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '长按拖拽调整顺序',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: ThemeColors.textSecondary(context),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // 可排序列表
+              Flexible(
+                child: ReorderableListView(
+                  shrinkWrap: true,
+                  onReorder: (oldIndex, newIndex) {
+                    setState(() {
+                      if (newIndex > oldIndex) {
+                        newIndex -= 1;
+                      }
+                      final item = _categories.removeAt(oldIndex);
+                      _categories.insert(newIndex, item);
+                    });
+                  },
+                  children: [
+                    for (int index = 0; index < _categories.length; index++)
+                      _buildReorderItem(context, _categories[index], index),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // 完成按钮
+              SizedBox(
+                width: double.infinity,
+                child: NeumorphicButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    widget.onReorder(_categories);
+                  },
+                  style: NeumorphicStyle(
+                    depth: 4,
+                    intensity: 0.7,
+                    boxShape: NeumorphicBoxShape.roundRect(
+                      BorderRadius.circular(12),
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: Text(
+                    '完成',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: ThemeColors.text(context),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReorderItem(BuildContext context, ClassifierCategory category, int index) {
+    return Container(
+      key: ValueKey(category.name),
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Neumorphic(
+        style: NeumorphicStyle(
+          depth: 3,
+          intensity: 0.7,
+          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            // 拖拽图标
+            Icon(
+              Icons.drag_handle,
+              size: 22,
+              color: ThemeColors.textSecondary(context),
+            ),
+            const SizedBox(width: 16),
+            // 序号
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: ThemeColors.textSecondary(context).withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  '${index + 1}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: ThemeColors.text(context),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // 分类名称
+            Expanded(
+              child: Text(
+                category.name,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: ThemeColors.text(context),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // 文件数量
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: ThemeColors.textSecondary(context).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '${category.fileCount}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: ThemeColors.textSecondary(context),
+                ),
+              ),
             ),
           ],
         ),

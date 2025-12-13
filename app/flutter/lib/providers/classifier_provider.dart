@@ -288,6 +288,34 @@ class ClassifierProvider with ChangeNotifier {
     }
   }
 
+  /// 保存分类顺序
+  Future<bool> reorderCategories(ApiService apiService, List<ClassifierCategory> newOrder) async {
+    if (_sourceFolder == null) {
+      _error = '源文件夹未设置';
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      // 只保存可见分类的名称顺序
+      final categoryNames = newOrder.where((c) => !c.hidden).map((c) => c.name).toList();
+
+      // 调用API保存顺序（传递源文件夹路径）
+      await apiService.classifier.reorderCategories(_sourceFolder!, categoryNames);
+
+      // 更新本地分类列表顺序
+      _categories = newOrder;
+      notifyListeners();
+
+      return true;
+    } catch (e) {
+      print('保存分类顺序失败: $e');
+      _error = '保存排序失败: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// 清除错误信息
   void clearError() {
     _error = null;

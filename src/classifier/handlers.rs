@@ -19,7 +19,9 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
        // 源文件夹管理API
        .service(web::resource("/sources/add").route(web::post().to(add_source_folder)))
        .service(web::resource("/sources/remove").route(web::post().to(remove_source_folder)))
-       .service(web::resource("/sources/switch").route(web::post().to(switch_source_folder)));
+       .service(web::resource("/sources/switch").route(web::post().to(switch_source_folder)))
+       // 分类排序API
+       .service(web::resource("/categories/reorder").route(web::post().to(reorder_categories)));
 }
 
 // 获取应用状态
@@ -306,7 +308,24 @@ pub async fn get_folders(query: web::Query<std::collections::HashMap<String, Str
         }
     }
 
-    folders.sort_by(|a, b| a.name.cmp(&b.name));
+    // 按照保存的顺序排序，如果没有保存的顺序则按名称排序
+    let category_order = super::config::get_category_order(source_folder);
+    if !category_order.is_empty() {
+        folders.sort_by(|a, b| {
+            let pos_a = category_order.iter().position(|x| x == &a.name);
+            let pos_b = category_order.iter().position(|x| x == &b.name);
+
+            match (pos_a, pos_b) {
+                (Some(pa), Some(pb)) => pa.cmp(&pb),
+                (Some(_), None) => std::cmp::Ordering::Less,
+                (None, Some(_)) => std::cmp::Ordering::Greater,
+                (None, None) => a.name.cmp(&b.name),
+            }
+        });
+    } else {
+        folders.sort_by(|a, b| a.name.cmp(&b.name));
+    }
+
     Ok(HttpResponse::Ok().json(folders))
 }
 
@@ -493,6 +512,18 @@ pub async fn switch_source_folder(req: web::Json<SwitchSourceFolderRequest>) -> 
     save_config(&state).map_err(|e| {
         actix_web::error::ErrorInternalServerError(format!("无法保存配置: {}", e))
     })?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "status": "success"
+    })))
+}
+// 保存分类顺序
+pub async fn reorder_categories(req: web::Json<ReorderCategoriesRequest>) -> Result<HttpResponse> {
+    // 保存指定源文件夹的分类顺序
+    super::config::set_category_order(&req.source_folder, req.category_order.clone())
+        .map_err(|e| {
+            actix_web::error::ErrorInternalServerError(format!("无法保存分类顺序: {}", e))
+        })?;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "status": "success"

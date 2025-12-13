@@ -60,4 +60,3 @@ MIT License
 ## To-do List
 - [ ] Gallery File Preview with Auto Play
 - [ ] Could download file from gallery to device photos album
-- [ ] 可以换分类的排列顺序

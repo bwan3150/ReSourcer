@@ -73,6 +73,45 @@ pub fn get_default_state() -> AppState {
     }
 }
 
+// 加载分类排序配置
+pub fn load_category_order_config() -> io::Result<super::models::CategoryOrderConfig> {
+    let config_path = get_config_dir().join("category_order.json");
+
+    if !config_path.exists() {
+        return Ok(super::models::CategoryOrderConfig::default());
+    }
+
+    let content = fs::read_to_string(&config_path)?;
+    let config = serde_json::from_str(&content)?;
+    Ok(config)
+}
+
+// 保存分类排序配置
+pub fn save_category_order_config(config: &super::models::CategoryOrderConfig) -> io::Result<()> {
+    let config_dir = get_config_dir();
+    fs::create_dir_all(&config_dir)?;
+
+    let config_path = config_dir.join("category_order.json");
+    let content = serde_json::to_string_pretty(config)?;
+    fs::write(config_path, content)?;
+    Ok(())
+}
+
+// 获取指定源文件夹的分类排序
+pub fn get_category_order(source_folder: &str) -> Vec<String> {
+    load_category_order_config()
+        .ok()
+        .and_then(|config| config.orders.get(source_folder).cloned())
+        .unwrap_or_default()
+}
+
+// 保存指定源文件夹的分类排序
+pub fn set_category_order(source_folder: &str, order: Vec<String>) -> io::Result<()> {
+    let mut config = load_category_order_config().unwrap_or_default();
+    config.orders.insert(source_folder.to_string(), order);
+    save_category_order_config(&config)
+}
+
 // 加载预设列表 - 从嵌入的 config/presets.json 读取
 pub fn load_presets() -> io::Result<Vec<Preset>> {
     use crate::static_files::ConfigAsset;
