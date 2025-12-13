@@ -196,4 +196,129 @@ class NeumorphicDialog {
       ),
     );
   }
+
+  /// 显示输入对话框
+  static Future<String?> showInput({
+    required BuildContext context,
+    required String title,
+    required String hint,
+    TextEditingController? controller,
+    String cancelText = '取消',
+    String confirmText = '确认',
+  }) {
+    final textController = controller ?? TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.3),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: NeumorphicBackground(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: ThemeColors.text(context),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // 输入框
+                Neumorphic(
+                  style: NeumorphicStyle(
+                    depth: -2,
+                    intensity: 0.6,
+                    boxShape: NeumorphicBoxShape.roundRect(
+                      BorderRadius.circular(12),
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: TextField(
+                    controller: textController,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: hint,
+                      border: InputBorder.none,
+                      hintStyle: TextStyle(
+                        color: ThemeColors.textSecondary(context),
+                      ),
+                    ),
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: ThemeColors.text(context),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // 按钮组
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // 取消按钮
+                    NeumorphicButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: NeumorphicStyle(
+                        depth: 4,
+                        intensity: 0.7,
+                        boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(12),
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      child: Text(
+                        cancelText,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: ThemeColors.textSecondary(context),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // 确认按钮
+                    NeumorphicButton(
+                      onPressed: () {
+                        final text = textController.text.trim();
+                        Navigator.of(context).pop(text.isNotEmpty ? text : null);
+                      },
+                      style: NeumorphicStyle(
+                        depth: 4,
+                        intensity: 0.7,
+                        boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(12),
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      child: Text(
+                        confirmText,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: ThemeColors.text(context),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

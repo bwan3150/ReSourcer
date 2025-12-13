@@ -54,3 +54,9 @@ Then scan QR code or visit URL on the opened website using any devices under sam
 ## License
 
 MIT License
+
+
+
+## To-do List
+- [ ] Gallery File Preview with Auto Play
+- [ ] Could download file from gallery to device photos album

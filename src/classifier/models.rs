@@ -43,6 +43,7 @@ pub struct CreateFolderRequest {
 pub struct FolderInfo {
     pub name: String,
     pub hidden: bool,
+    pub file_count: usize,
 }
 
 #[derive(Deserialize)]
@@ -66,4 +67,18 @@ pub struct SwitchSourceFolderRequest {
 #[derive(Deserialize)]
 pub struct RemoveSourceFolderRequest {
     pub folder_path: String,
+}
+
+// 分类排序请求
+#[derive(Deserialize)]
+pub struct ReorderCategoriesRequest {
+    pub source_folder: String, // 源文件夹路径
+    pub category_order: Vec<String>, // 新的分类顺序
+}
+
+// 分类排序配置 - 按源文件夹存储
+#[derive(Serialize, Deserialize, Default)]
+pub struct CategoryOrderConfig {
+    #[serde(default)]
+    pub orders: std::collections::HashMap<String, Vec<String>>, // 源文件夹 -> 分类顺序
 }

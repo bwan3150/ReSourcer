@@ -129,4 +129,29 @@ class ClassifierApiService {
   String getFileUrl(String filePath) {
     return '${server.baseUrl}/api/classifier/file/${Uri.encodeComponent(filePath)}';
   }
+
+  /// 保存分类顺序
+  Future<Map<String, dynamic>> reorderCategories(String sourceFolder, List<String> categoryOrder) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${server.baseUrl}/api/classifier/categories/reorder'),
+        headers: {
+          'Cookie': 'api_key=${server.apiKey}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'source_folder': sourceFolder,
+          'category_order': categoryOrder,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      throw Exception('保存分类顺序失败');
+    } catch (e) {
+      print('保存分类顺序失败: $e');
+      throw e;
+    }
+  }
 }

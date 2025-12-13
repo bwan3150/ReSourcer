@@ -737,3 +737,141 @@ async function clearAllFinishedTasks() {
         console.error('Failed to clear tasks:', error);
     }
 }
+
+// ============ 文件重命名和移动功能 ============
+
+// 显示重命名对话框
+function showRenameDialog() {
+    const file = currentFiles[currentFileIndex];
+    const modal = document.getElementById('renameModal');
+    const input = document.getElementById('renameInput');
+
+    // 设置当前文件名(不含扩展名)
+    const fileName = file.name;
+    const lastDotIndex = fileName.lastIndexOf('.');
+    const nameWithoutExt = lastDotIndex > 0 ? fileName.substring(0, lastDotIndex) : fileName;
+
+    input.value = nameWithoutExt;
+    modal.style.display = 'flex';
+
+    // 聚焦并选中文本
+    setTimeout(() => {
+        input.focus();
+        input.select();
+    }, 100);
+}
+
+// 关闭重命名对话框
+function closeRenameDialog() {
+    const modal = document.getElementById('renameModal');
+    modal.style.display = 'none';
+}
+
+// 确认重命名
+async function confirmRename() {
+    const file = currentFiles[currentFileIndex];
+    const input = document.getElementById('renameInput');
+    const newNameWithoutExt = input.value.trim();
+
+    if (!newNameWithoutExt) {
+        alert('文件名不能为空');
+        return;
+    }
+
+    // 添加原扩展名
+    const newName = newNameWithoutExt + file.extension;
+
+    try {
+        const response = await fetch('/api/gallery/rename', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                file_path: file.path,
+                new_name: newName
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            // 重新加载文件列表
+            await loadFiles(currentFolder.path);
+            // 关闭对话框
+            closeRenameDialog();
+            closeFileInfo();
+            // 显示成功消息
+            alert('重命名成功');
+        } else {
+            const error = await response.json();
+            alert('重命名失败: ' + (error.error || '未知错误'));
+        }
+    } catch (error) {
+        console.error('Rename failed:', error);
+        alert('重命名失败');
+    }
+}
+
+// 显示移动对话框
+function showMoveDialog() {
+    const modal = document.getElementById('moveModal');
+    const folderList = document.getElementById('moveFolderList');
+
+    // 生成文件夹列表(排除当前文件夹)
+    const file = currentFiles[currentFileIndex];
+    let html = '';
+
+    allFolders.forEach((folder, index) => {
+        // 排除当前文件夹
+        if (folder.path === currentFolder.path) return;
+
+        const displayName = folder.is_source ? '源文件夹' : folder.name;
+        html += `
+            <div class="folder-select-item" onclick="confirmMove('${folder.path.replace(/'/g, "\\'")}', '${displayName.replace(/'/g, "\\'")}')">
+                <span class="material-symbols-outlined">${folder.is_source ? 'source' : 'folder'}</span>
+                <span>${displayName}</span>
+            </div>
+        `;
+    });
+
+    folderList.innerHTML = html;
+    modal.style.display = 'flex';
+}
+
+// 关闭移动对话框
+function closeMoveDialog() {
+    const modal = document.getElementById('moveModal');
+    modal.style.display = 'none';
+}
+
+// 确认移动
+async function confirmMove(targetFolderPath, targetFolderName) {
+    const file = currentFiles[currentFileIndex];
+
+    try {
+        const response = await fetch('/api/gallery/move', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                file_path: file.path,
+                target_folder: targetFolderPath
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            // 重新加载文件列表
+            await loadFiles(currentFolder.path);
+            // 关闭对话框
+            closeMoveDialog();
+            closeFileInfo();
+            closeInlinePreview();
+            // 显示成功消息
+            alert(`文件已移动到 ${targetFolderName}`);
+        } else {
+            const error = await response.json();
+            alert('移动失败: ' + (error.error || '未知错误'));
+        }
+    } catch (error) {
+        console.error('Move failed:', error);
+        alert('移动失败');
+    }
+}

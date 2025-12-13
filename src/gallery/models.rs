@@ -44,3 +44,24 @@ pub struct FilesResponse {
 pub struct FoldersResponse {
     pub folders: Vec<FolderInfo>,
 }
+
+/// 重命名文件请求
+#[derive(Debug, Deserialize)]
+pub struct RenameFileRequest {
+    pub file_path: String,  // 文件路径
+    pub new_name: String,   // 新文件名(不含路径)
+}
+
+/// 移动文件请求
+#[derive(Debug, Deserialize)]
+pub struct MoveFileRequest {
+    pub file_path: String,     // 文件路径
+    pub target_folder: String, // 目标文件夹路径
+}
+
+/// 文件操作响应
+#[derive(Debug, Serialize)]
+pub struct FileOperationResponse {
+    pub status: String,
+    pub new_path: Option<String>,
+}

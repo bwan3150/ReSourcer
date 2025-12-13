@@ -22,7 +22,9 @@ const GIF_EXTENSION: &str = "gif";
 pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("/folders").route(web::get().to(get_folders)))
        .service(web::resource("/files").route(web::get().to(get_files)))
-       .service(web::resource("/thumbnail").route(web::get().to(get_thumbnail)));
+       .service(web::resource("/thumbnail").route(web::get().to(get_thumbnail)))
+       .service(web::resource("/rename").route(web::post().to(rename_file)))
+       .service(web::resource("/move").route(web::post().to(move_file)));
 }
 
 /// GET /api/gallery/folders
@@ -330,4 +332,110 @@ async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, Strin
     Ok(HttpResponse::Ok()
         .content_type("image/jpeg")
         .body(buffer.into_inner()))
+}
+
+/// POST /api/gallery/rename
+/// 重命名文件
+async fn rename_file(req: web::Json<RenameFileRequest>) -> Result<HttpResponse> {
+    let file_path = Path::new(&req.file_path);
+
+    // 检查文件是否存在
+    if !file_path.exists() || !file_path.is_file() {
+        return Err(actix_web::error::ErrorNotFound("文件不存在"));
+    }
+
+    // 获取父目录
+    let parent_dir = file_path.parent()
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("无法获取文件目录"))?;
+
+    // 构建新文件路径,处理重名
+    let new_path = get_unique_path(parent_dir, &req.new_name);
+
+    // 重命名文件
+    fs::rename(file_path, &new_path)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("重命名失败: {}", e)))?;
+
+    Ok(HttpResponse::Ok().json(FileOperationResponse {
+        status: "success".to_string(),
+        new_path: Some(new_path.to_string_lossy().to_string()),
+    }))
+}
+
+/// POST /api/gallery/move
+/// 移动文件到其他文件夹
+async fn move_file(req: web::Json<MoveFileRequest>) -> Result<HttpResponse> {
+    let file_path = Path::new(&req.file_path);
+    let target_folder = Path::new(&req.target_folder);
+
+    // 检查文件是否存在
+    if !file_path.exists() || !file_path.is_file() {
+        return Err(actix_web::error::ErrorNotFound("文件不存在"));
+    }
+
+    // 检查目标文件夹是否存在
+    if !target_folder.exists() || !target_folder.is_dir() {
+        return Err(actix_web::error::ErrorNotFound("目标文件夹不存在"));
+    }
+
+    // 获取文件名
+    let file_name = file_path.file_name()
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("无法获取文件名"))?
+        .to_string_lossy()
+        .to_string();
+
+    // 构建目标路径,处理重名
+    let target_path = get_unique_path(target_folder, &file_name);
+
+    // 移动文件
+    fs::rename(file_path, &target_path)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("移动失败: {}", e)))?;
+
+    Ok(HttpResponse::Ok().json(FileOperationResponse {
+        status: "success".to_string(),
+        new_path: Some(target_path.to_string_lossy().to_string()),
+    }))
+}
+
+/// 获取唯一文件路径(处理重名情况)
+fn get_unique_path(dir: &Path, filename: &str) -> PathBuf {
+    let mut target_path = dir.join(filename);
+
+    // 如果文件不存在,直接返回
+    if !target_path.exists() {
+        return target_path;
+    }
+
+    // 分离文件名和扩展名
+    let path = Path::new(filename);
+    let stem = path.file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(filename);
+    let extension = path.extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+
+    // 尝试添加数字后缀
+    let mut counter = 1;
+    loop {
+        let new_filename = if extension.is_empty() {
+            format!("{}_({})", stem, counter)
+        } else {
+            format!("{}_({}).{}", stem, counter, extension)
+        };
+
+        target_path = dir.join(&new_filename);
+
+        if !target_path.exists() {
+            return target_path;
+        }
+
+        counter += 1;
+
+        // 防止无限循环
+        if counter > 9999 {
+            break;
+        }
+    }
+
+    target_path
 }

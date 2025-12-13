@@ -1,8 +1,12 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:provider/provider.dart';
 import '../../models/gallery_file.dart';
+import '../../models/gallery_folder.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/gallery_provider.dart';
 import '../../widgets/common/neumorphic_overlay_appbar.dart';
+import '../../widgets/common/neumorphic_dialog.dart';
+import '../../widgets/common/neumorphic_toast.dart';
 import '../../widgets/video/video_player_widget.dart';
 
 /// 图片/视频详情预览页面
@@ -158,6 +162,75 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
               _buildInfoItem('大小', _formatFileSize(file.size)),
               const SizedBox(height: 16),
               _buildInfoItem('修改时间', file.modifiedTime),
+              const SizedBox(height: 24),
+              // 操作按钮
+              Row(
+                children: [
+                  Expanded(
+                    child: NeumorphicButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _showRenameDialog(context, file);
+                      },
+                      style: NeumorphicStyle(
+                        depth: 4,
+                        intensity: 0.7,
+                        boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(12),
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.edit, size: 18, color: Color(0xFF171717)),
+                          SizedBox(width: 6),
+                          Text(
+                            '重命名',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF171717),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: NeumorphicButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _showMoveDialog(context, file);
+                      },
+                      style: NeumorphicStyle(
+                        depth: 4,
+                        intensity: 0.7,
+                        boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(12),
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.drive_file_move, size: 18, color: Color(0xFF171717)),
+                          SizedBox(width: 6),
+                          Text(
+                            '移动',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF171717),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -307,5 +380,254 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
         ],
       ),
     );
+  }
+
+  // ========== 重命名对话框 ==========
+  void _showRenameDialog(BuildContext context, GalleryFile file) async {
+    // 在显示对话框前获取 provider 引用
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final galleryProvider = Provider.of<GalleryProvider>(context, listen: false);
+
+    final textController = TextEditingController();
+
+    // 设置当前文件名(不含扩展名)
+    final fileName = file.name;
+    final lastDotIndex = fileName.lastIndexOf('.');
+    final nameWithoutExt = lastDotIndex > 0 ? fileName.substring(0, lastDotIndex) : fileName;
+    textController.text = nameWithoutExt;
+
+    final result = await NeumorphicDialog.showInput(
+      context: context,
+      title: '重命名文件',
+      hint: '输入新文件名',
+      controller: textController,
+      confirmText: '确认',
+      cancelText: '取消',
+    );
+
+    if (result != null && result.isNotEmpty) {
+      _performRename(authProvider, galleryProvider, file, result + file.extension);
+    }
+  }
+
+  void _performRename(
+    AuthProvider authProvider,
+    GalleryProvider galleryProvider,
+    GalleryFile file,
+    String newName,
+  ) async {
+    if (authProvider.apiService == null) {
+      if (mounted) {
+        NeumorphicToast.showError(context, '未连接服务器');
+      }
+      return;
+    }
+
+    try {
+      await authProvider.apiService!.renameFile(file.path, newName);
+
+      if (mounted) {
+        NeumorphicToast.showSuccess(context, '重命名成功');
+      }
+
+      // 刷新文件列表
+      await galleryProvider.refresh(authProvider.apiService!);
+
+      // 切换到下一个文件(如果有的话),否则返回
+      if (mounted) {
+        if (_currentIndex < widget.files.length - 1) {
+          // 有下一个文件,切换过去
+          setState(() {
+            _currentIndex++;
+          });
+        } else if (_currentIndex > 0) {
+          // 没有下一个但有上一个,切换到上一个
+          setState(() {
+            _currentIndex--;
+          });
+        } else {
+          // 只有一个文件,返回画廊
+          Navigator.of(context).pop();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        NeumorphicToast.showError(context, '重命名失败');
+      }
+      print('Rename error: $e');
+    }
+  }
+
+  // ========== 移动对话框 ==========
+  void _showMoveDialog(BuildContext context, GalleryFile file) async {
+    // 在显示对话框前获取 provider 引用
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final galleryProvider = Provider.of<GalleryProvider>(context, listen: false);
+
+    // 获取所有文件夹(排除当前文件夹)
+    final currentFolderPath = galleryProvider.currentFolder?.path;
+    final folders = galleryProvider.folders
+        .where((folder) => folder.path != currentFolderPath)
+        .toList();
+
+    if (folders.isEmpty) {
+      NeumorphicToast.showError(context, '没有可移动的目标文件夹');
+      return;
+    }
+
+    // 显示文件夹选择对话框
+    final selectedFolder = await showDialog<GalleryFolder>(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0F0F0).withOpacity(0.95),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '移动到',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF171717),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                constraints: BoxConstraints(maxHeight: 300),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: folders.length,
+                  itemBuilder: (context, index) {
+                    final folder = folders[index];
+                    final displayName = folder.isSource ? '源文件夹' : folder.name;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: NeumorphicButton(
+                        onPressed: () => Navigator.pop(context, folder),
+                        style: NeumorphicStyle(
+                          depth: 4,
+                          intensity: 0.7,
+                          boxShape: NeumorphicBoxShape.roundRect(
+                            BorderRadius.circular(12),
+                          ),
+                        ),
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Icon(
+                              folder.isSource ? Icons.source : Icons.folder,
+                              size: 24,
+                              color: Color(0xFF525252),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                displayName,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF171717),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              NeumorphicButton(
+                onPressed: () => Navigator.pop(context),
+                style: NeumorphicStyle(
+                  depth: 4,
+                  intensity: 0.7,
+                  boxShape: NeumorphicBoxShape.roundRect(
+                    BorderRadius.circular(12),
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                child: Text(
+                  '取消',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF525252),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (selectedFolder != null) {
+      _performMove(authProvider, galleryProvider, file, selectedFolder);
+    }
+  }
+
+  void _performMove(
+    AuthProvider authProvider,
+    GalleryProvider galleryProvider,
+    GalleryFile file,
+    GalleryFolder targetFolder,
+  ) async {
+    if (authProvider.apiService == null) {
+      if (mounted) {
+        NeumorphicToast.showError(context, '未连接服务器');
+      }
+      return;
+    }
+
+    try {
+      await authProvider.apiService!.moveFile(file.path, targetFolder.path);
+      final displayName = targetFolder.isSource ? '源文件夹' : targetFolder.name;
+
+      if (mounted) {
+        NeumorphicToast.showSuccess(context, '已移动到 $displayName');
+      }
+
+      // 刷新文件列表
+      await galleryProvider.refresh(authProvider.apiService!);
+
+      // 切换到下一个文件(如果有的话),否则返回
+      if (mounted) {
+        if (_currentIndex < widget.files.length - 1) {
+          // 有下一个文件,切换过去
+          setState(() {
+            _currentIndex++;
+          });
+        } else if (_currentIndex > 0) {
+          // 没有下一个但有上一个,切换到上一个
+          setState(() {
+            _currentIndex--;
+          });
+        } else {
+          // 只有一个文件,返回画廊
+          Navigator.of(context).pop();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        NeumorphicToast.showError(context, '移动失败');
+      }
+      print('Move error: $e');
+    }
   }
 }

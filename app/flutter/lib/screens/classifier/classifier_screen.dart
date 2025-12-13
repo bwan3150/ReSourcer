@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/classifier_provider.dart';
 import '../../utils/theme_colors.dart';
 import '../../widgets/common/neumorphic_dialog.dart';
+import '../../widgets/common/neumorphic_toast.dart';
 import '../../widgets/common/neumorphic_overlay_appbar.dart';
 import '../../widgets/classifier/file_preview.dart';
 import '../../widgets/classifier/category_selector.dart';
@@ -326,6 +327,17 @@ class _ClassifierScreenState extends State<ClassifierScreen> {
                 final authProvider = Provider.of<AuthProvider>(context, listen: false);
                 if (authProvider.apiService != null) {
                   await provider.addCategory(authProvider.apiService!, name);
+                }
+              },
+              onReorderCategories: (newOrder) async {
+                final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                if (authProvider.apiService != null) {
+                  final success = await provider.reorderCategories(authProvider.apiService!, newOrder);
+                  if (success && mounted) {
+                    NeumorphicToast.showSuccess(context, '排序已保存');
+                  } else if (!success && mounted) {
+                    NeumorphicToast.showError(context, '保存排序失败');
+                  }
                 }
               },
               isExpanded: _isCategorySelectorExpanded,

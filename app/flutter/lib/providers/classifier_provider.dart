@@ -204,6 +204,9 @@ class ClassifierProvider with ChangeNotifier {
         _currentIndex = _files.length - 1;
       }
 
+      // 重新加载分类文件夹列表以更新文件数量
+      await loadCategories(apiService);
+
       notifyListeners();
 
       // 保存状态
@@ -243,6 +246,9 @@ class ClassifierProvider with ChangeNotifier {
       _processedCount--;
       _operationHistory.removeLast();
 
+      // 重新加载分类文件夹列表以更新文件数量
+      await loadCategories(apiService);
+
       notifyListeners();
 
       // 保存状态
@@ -277,6 +283,34 @@ class ClassifierProvider with ChangeNotifier {
     } catch (e) {
       print('创建分类文件夹失败: $e');
       _error = '创建文件夹失败: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// 保存分类顺序
+  Future<bool> reorderCategories(ApiService apiService, List<ClassifierCategory> newOrder) async {
+    if (_sourceFolder == null) {
+      _error = '源文件夹未设置';
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      // 只保存可见分类的名称顺序
+      final categoryNames = newOrder.where((c) => !c.hidden).map((c) => c.name).toList();
+
+      // 调用API保存顺序（传递源文件夹路径）
+      await apiService.classifier.reorderCategories(_sourceFolder!, categoryNames);
+
+      // 更新本地分类列表顺序
+      _categories = newOrder;
+      notifyListeners();
+
+      return true;
+    } catch (e) {
+      print('保存分类顺序失败: $e');
+      _error = '保存排序失败: $e';
       notifyListeners();
       return false;
     }

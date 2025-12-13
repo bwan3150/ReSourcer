@@ -8,6 +8,7 @@ import '../../utils/theme_colors.dart';
 import '../../widgets/gallery/image_grid.dart';
 import '../../widgets/gallery/folder_dropdown.dart';
 import '../../widgets/gallery/upload_helper.dart';
+import '../../services/api_service.dart';
 import '../upload/upload_tasks_screen.dart';
 
 /// 画廊页面
@@ -36,6 +37,21 @@ class _GalleryScreenState extends State<GalleryScreen> {
     final galleryProvider = Provider.of<GalleryProvider>(context, listen: false);
 
     if (authProvider.apiService != null) {
+      // 检查服务器连接状态
+      final isHealthy = await ApiService.checkHealth(authProvider.apiService!.baseUrl);
+
+      if (!isHealthy) {
+        // 服务器连接失败,返回服务器列表页面
+        if (mounted) {
+          // 清除登录状态
+          await authProvider.logout();
+          // 跳转到服务器列表
+          Navigator.of(context).pushNamedAndRemoveUntil('/servers', (route) => false);
+        }
+        return;
+      }
+
+      // 服务器连接正常,加载数据
       await galleryProvider.loadFolders(authProvider.apiService!);
     }
   }

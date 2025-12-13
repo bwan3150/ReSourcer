@@ -1214,3 +1214,184 @@ body {
         right: 80px;
     }
 }
+
+/* ============ 文件操作按钮区域 ============ */
+.info-actions {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    border-top: 1px solid #e5e5e5;
+}
+
+.action-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: #171717;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    background: #262626;
+    transform: translateY(-1px);
+}
+
+.action-btn:active {
+    transform: translateY(0);
+}
+
+.action-btn .material-symbols-outlined {
+    font-size: 20px;
+}
+
+/* ============ 重命名和移动对话框 ============ */
+.rename-modal,
+.move-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal-dialog {
+    position: relative;
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-dialog h3 {
+    margin: 0 0 16px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #171717;
+}
+
+.rename-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.rename-input:focus {
+    border-color: #171717;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.cancel-btn,
+.confirm-btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cancel-btn {
+    background: #f5f5f5;
+    color: #525252;
+}
+
+.cancel-btn:hover {
+    background: #e5e5e5;
+}
+
+.confirm-btn {
+    background: #171717;
+    color: white;
+}
+
+.confirm-btn:hover {
+    background: #262626;
+}
+
+/* 移动对话框中的文件夹列表 */
+.folder-select-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin: 16px -24px;
+    padding: 0 24px;
+}
+
+.folder-select-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.folder-select-item:hover {
+    background: #f5f5f5;
+}
+
+.folder-select-item .material-symbols-outlined {
+    font-size: 24px;
+    color: #525252;
+}
+
+.folder-select-item span:nth-child(2) {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: #171717;
+}
+
+.folder-select-item .file-count {
+    font-size: 12px;
+    color: #a3a3a3;
+}
