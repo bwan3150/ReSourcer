@@ -1,4 +1,7 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
 import '../../utils/constants.dart';
 import '../../utils/theme_colors.dart';
 import '../gallery/gallery_screen.dart';
@@ -14,7 +17,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentIndex = Constants.tabGallery; // 默认显示画廊
 
   // 4个主要页面
@@ -24,6 +27,64 @@ class _HomeScreenState extends State<HomeScreen> {
     DownloaderScreen(),     // 3: 下载器
     SettingsScreen(),       // 4: 设置
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkAuth();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 当应用从后台回到前台时,检查认证状态
+    if (state == AppLifecycleState.resumed) {
+      _checkAuth();
+    }
+  }
+
+  // 检查认证状态
+  Future<void> _checkAuth() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    if (authProvider.currentServer == null) {
+      // 未登录,返回服务器列表
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/servers', (route) => false);
+      }
+      return;
+    }
+
+    // 检查服务器连接和认证
+    final isHealthy = await ApiService.checkHealth(authProvider.currentServer!.baseUrl);
+    if (!isHealthy) {
+      // 服务器连接失败,返回服务器列表
+      if (mounted) {
+        await authProvider.logout();
+        Navigator.of(context).pushNamedAndRemoveUntil('/servers', (route) => false);
+      }
+      return;
+    }
+
+    // 检查API Key是否有效
+    final isAuthValid = await ApiService.checkAuth(
+      authProvider.currentServer!.baseUrl,
+      authProvider.currentServer!.apiKey,
+    );
+    if (!isAuthValid) {
+      // API Key失效,返回服务器列表
+      if (mounted) {
+        await authProvider.logout();
+        Navigator.of(context).pushNamedAndRemoveUntil('/servers', (route) => false);
+      }
+    }
+  }
 
   // 对应的实际索引映射（因为索引2预留）
   final List<int> _indexMap = const [

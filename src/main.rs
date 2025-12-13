@@ -93,10 +93,33 @@ async fn main() -> std::io::Result<()> {
     // 初始化上传器任务管理器
     let upload_task_manager = web::Data::new(uploader::TaskManager::new());
 
-    // 生成 API Key (优先使用环境变量，否则生成随机 UUID)
-    let api_key = std::env::var("API_KEY").unwrap_or_else(|_| {
-        uuid::Uuid::new_v4().to_string()
-    });
+    // 读取 API Key (优先级: secret.json > 环境变量 > 随机生成)
+    fn load_api_key_from_secret() -> Option<String> {
+        use std::fs;
+        use std::path::PathBuf;
+        use serde::Deserialize;
+
+        #[derive(Deserialize)]
+        struct SecretConfig {
+            apikey: String,
+        }
+
+        // 构建配置文件路径: ~/.config/re-sourcer/secret.json
+        let home_dir = dirs::home_dir()?;
+        let secret_path = home_dir.join(".config").join("re-sourcer").join("secret.json");
+
+        // 读取文件
+        let content = fs::read_to_string(&secret_path).ok()?;
+
+        // 解析 JSON
+        let config: SecretConfig = serde_json::from_str(&content).ok()?;
+
+        Some(config.apikey)
+    }
+
+    let api_key = load_api_key_from_secret()
+        .or_else(|| std::env::var("API_KEY").ok())
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
 
     // 生成登录 URL（带 API Key）
     let login_url = format!("http://{}:1234/login.html?key={}", local_ip, api_key);
