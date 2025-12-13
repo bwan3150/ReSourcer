@@ -290,9 +290,15 @@ pub async fn get_folders(query: web::Query<std::collections::HashMap<String, Str
                     // 跳过隐藏文件夹（以.开头的）
                     if !folder_name.starts_with('.') {
                         let hidden = state.hidden_folders.contains(&folder_name);
+
+                        // 统计文件夹中的文件数量
+                        let folder_path = entry.path();
+                        let file_count = count_files_in_folder(&folder_path);
+
                         folders.push(FolderInfo {
                             name: folder_name,
                             hidden,
+                            file_count,
                         });
                     }
                 }
@@ -302,6 +308,28 @@ pub async fn get_folders(query: web::Query<std::collections::HashMap<String, Str
 
     folders.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(HttpResponse::Ok().json(folders))
+}
+
+/// 统计文件夹中的支持文件数量
+fn count_files_in_folder(folder_path: &Path) -> usize {
+    let mut count = 0;
+
+    if let Ok(entries) = fs::read_dir(folder_path) {
+        for entry in entries.flatten() {
+            if let Ok(metadata) = entry.metadata() {
+                if metadata.is_file() {
+                    let path = entry.path();
+                    if let Some(extension) = path.extension() {
+                        if SUPPORTED_EXTENSIONS.contains(&extension.to_str().unwrap_or("")) {
+                            count += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    count
 }
 
 // 保存设置(创建文件夹并保存配置)

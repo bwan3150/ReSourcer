@@ -204,6 +204,9 @@ class ClassifierProvider with ChangeNotifier {
         _currentIndex = _files.length - 1;
       }
 
+      // 重新加载分类文件夹列表以更新文件数量
+      await loadCategories(apiService);
+
       notifyListeners();
 
       // 保存状态
@@ -242,6 +245,9 @@ class ClassifierProvider with ChangeNotifier {
 
       _processedCount--;
       _operationHistory.removeLast();
+
+      // 重新加载分类文件夹列表以更新文件数量
+      await loadCategories(apiService);
 
       notifyListeners();
 

@@ -43,6 +43,7 @@ pub struct CreateFolderRequest {
 pub struct FolderInfo {
     pub name: String,
     pub hidden: bool,
+    pub file_count: usize,
 }
 
 #[derive(Deserialize)]

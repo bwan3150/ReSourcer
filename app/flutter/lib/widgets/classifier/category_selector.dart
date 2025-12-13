@@ -115,14 +115,13 @@ class _CategorySelectorState extends State<CategorySelector> {
           }
 
           final category = widget.categories[index];
-          final shortcut = _getShortcutKey(index);
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: _buildCategoryButton(
               context,
               category.name,
-              shortcut,
+              category.fileCount,
             ),
           );
         },
@@ -144,7 +143,7 @@ class _CategorySelectorState extends State<CategorySelector> {
           children: [
             // 分类按钮
             for (int i = 0; i < widget.categories.length; i++) ...[
-              _buildCompactCategoryButton(context, widget.categories[i].name, _getShortcutKey(i)),
+              _buildCompactCategoryButton(context, widget.categories[i].name, widget.categories[i].fileCount),
               const SizedBox(width: 8),
             ],
             // 添加按钮
@@ -159,7 +158,7 @@ class _CategorySelectorState extends State<CategorySelector> {
   Widget _buildCategoryButton(
     BuildContext context,
     String category,
-    String? shortcut,
+    int fileCount,
   ) {
     return NeumorphicButton(
       onPressed: () => widget.onSelectCategory(category),
@@ -184,26 +183,23 @@ class _CategorySelectorState extends State<CategorySelector> {
               maxLines: 2,
             ),
           ),
-          // 快捷键提示
-          if (shortcut != null) ...[
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: ThemeColors.textSecondary(context).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                shortcut,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontFamily: 'monospace',
-                  fontWeight: FontWeight.bold,
-                  color: ThemeColors.textSecondary(context),
-                ),
+          // 文件数量
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: ThemeColors.textSecondary(context).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              '$fileCount',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: ThemeColors.textSecondary(context),
               ),
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -213,7 +209,7 @@ class _CategorySelectorState extends State<CategorySelector> {
   Widget _buildCompactCategoryButton(
     BuildContext context,
     String category,
-    String? shortcut,
+    int fileCount,
   ) {
     return NeumorphicButton(
       onPressed: () => widget.onSelectCategory(category),
@@ -223,14 +219,35 @@ class _CategorySelectorState extends State<CategorySelector> {
         boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Text(
-        category,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: ThemeColors.text(context),
-        ),
-        maxLines: 1,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            category,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: ThemeColors.text(context),
+            ),
+            maxLines: 1,
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: ThemeColors.textSecondary(context).withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '$fileCount',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: ThemeColors.textSecondary(context),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -412,15 +429,5 @@ class _CategorySelectorState extends State<CategorySelector> {
         ),
       ),
     );
-  }
-
-  /// 获取快捷键（1-9, a-z）
-  String? _getShortcutKey(int index) {
-    if (index < 9) {
-      return (index + 1).toString();
-    } else if (index < 35) {
-      return String.fromCharCode(97 + (index - 9)); // a-z
-    }
-    return null;
   }
 }
