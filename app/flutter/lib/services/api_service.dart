@@ -226,6 +226,56 @@ class ApiService {
     return '${server.baseUrl}/api/classifier/file/${Uri.encodeComponent(filePath)}';
   }
 
+  /// 重命名文件
+  Future<Map<String, dynamic>> renameFile(String filePath, String newName) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${server.baseUrl}/api/gallery/rename'),
+        headers: {
+          'Cookie': 'api_key=${server.apiKey}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'file_path': filePath,
+          'new_name': newName,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      throw Exception('重命名失败');
+    } catch (e) {
+      print('重命名文件失败: $e');
+      throw e;
+    }
+  }
+
+  /// 移动文件到其他文件夹
+  Future<Map<String, dynamic>> moveFile(String filePath, String targetFolder) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${server.baseUrl}/api/gallery/move'),
+        headers: {
+          'Cookie': 'api_key=${server.apiKey}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'file_path': filePath,
+          'target_folder': targetFolder,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      throw Exception('移动失败');
+    } catch (e) {
+      print('移动文件失败: $e');
+      throw e;
+    }
+  }
+
   // ========== 源文件夹管理 API ==========
 
   /// 获取设置状态（包含源文件夹信息）

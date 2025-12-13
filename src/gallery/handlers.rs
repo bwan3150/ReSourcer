@@ -22,7 +22,9 @@ const GIF_EXTENSION: &str = "gif";
 pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("/folders").route(web::get().to(get_folders)))
        .service(web::resource("/files").route(web::get().to(get_files)))
-       .service(web::resource("/thumbnail").route(web::get().to(get_thumbnail)));
+       .service(web::resource("/thumbnail").route(web::get().to(get_thumbnail)))
+       .service(web::resource("/rename").route(web::post().to(rename_file)))
+       .service(web::resource("/move").route(web::post().to(move_file)));
 }
 
 /// GET /api/gallery/folders
@@ -330,4 +332,74 @@ async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, Strin
     Ok(HttpResponse::Ok()
         .content_type("image/jpeg")
         .body(buffer.into_inner()))
+}
+
+/// POST /api/gallery/rename
+/// 重命名文件
+async fn rename_file(req: web::Json<RenameFileRequest>) -> Result<HttpResponse> {
+    let file_path = Path::new(&req.file_path);
+
+    // 检查文件是否存在
+    if !file_path.exists() || !file_path.is_file() {
+        return Err(actix_web::error::ErrorNotFound("文件不存在"));
+    }
+
+    // 获取父目录
+    let parent_dir = file_path.parent()
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("无法获取文件目录"))?;
+
+    // 构建新文件路径
+    let new_path = parent_dir.join(&req.new_name);
+
+    // 检查新文件名是否已存在
+    if new_path.exists() {
+        return Err(actix_web::error::ErrorConflict("目标文件名已存在"));
+    }
+
+    // 重命名文件
+    fs::rename(file_path, &new_path)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("重命名失败: {}", e)))?;
+
+    Ok(HttpResponse::Ok().json(FileOperationResponse {
+        status: "success".to_string(),
+        new_path: Some(new_path.to_string_lossy().to_string()),
+    }))
+}
+
+/// POST /api/gallery/move
+/// 移动文件到其他文件夹
+async fn move_file(req: web::Json<MoveFileRequest>) -> Result<HttpResponse> {
+    let file_path = Path::new(&req.file_path);
+    let target_folder = Path::new(&req.target_folder);
+
+    // 检查文件是否存在
+    if !file_path.exists() || !file_path.is_file() {
+        return Err(actix_web::error::ErrorNotFound("文件不存在"));
+    }
+
+    // 检查目标文件夹是否存在
+    if !target_folder.exists() || !target_folder.is_dir() {
+        return Err(actix_web::error::ErrorNotFound("目标文件夹不存在"));
+    }
+
+    // 获取文件名
+    let file_name = file_path.file_name()
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("无法获取文件名"))?;
+
+    // 构建目标路径
+    let target_path = target_folder.join(file_name);
+
+    // 检查目标路径是否已存在
+    if target_path.exists() {
+        return Err(actix_web::error::ErrorConflict("目标文件夹中已存在同名文件"));
+    }
+
+    // 移动文件
+    fs::rename(file_path, &target_path)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("移动失败: {}", e)))?;
+
+    Ok(HttpResponse::Ok().json(FileOperationResponse {
+        status: "success".to_string(),
+        new_path: Some(target_path.to_string_lossy().to_string()),
+    }))
 }

@@ -266,7 +266,7 @@ class _GalleryUploadDialog extends StatefulWidget {
 }
 
 class _GalleryUploadDialogState extends State<_GalleryUploadDialog> {
-  bool _deleteAfterUpload = false;
+  bool _deleteAfterUpload = true; // 默认勾选删除原图
 
   @override
   Widget build(BuildContext context) {

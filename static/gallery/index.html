@@ -181,6 +181,43 @@
             <div class="info-content" id="infoContent">
                 <!-- 文件信息将在这里显示 -->
             </div>
+            <div class="info-actions">
+                <button class="action-btn rename-btn" onclick="showRenameDialog()">
+                    <span class="material-symbols-outlined">edit</span>
+                    <span data-i18n="rename">重命名</span>
+                </button>
+                <button class="action-btn move-btn" onclick="showMoveDialog()">
+                    <span class="material-symbols-outlined">drive_file_move</span>
+                    <span data-i18n="move">移动</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 重命名对话框 -->
+    <div class="rename-modal" id="renameModal" style="display: none;">
+        <div class="modal-overlay" onclick="closeRenameDialog()"></div>
+        <div class="modal-dialog">
+            <h3 data-i18n="renameFile">重命名文件</h3>
+            <input type="text" id="renameInput" class="rename-input" placeholder="输入新文件名">
+            <div class="modal-actions">
+                <button class="cancel-btn" onclick="closeRenameDialog()" data-i18n="cancel">取消</button>
+                <button class="confirm-btn" onclick="confirmRename()" data-i18n="confirm">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 移动文件对话框 -->
+    <div class="move-modal" id="moveModal" style="display: none;">
+        <div class="modal-overlay" onclick="closeMoveDialog()"></div>
+        <div class="modal-dialog">
+            <h3 data-i18n="moveFile">移动文件</h3>
+            <div class="folder-select-list" id="moveFolderList">
+                <!-- 文件夹列表将在这里动态生成 -->
+            </div>
+            <div class="modal-actions">
+                <button class="cancel-btn" onclick="closeMoveDialog()" data-i18n="cancel">取消</button>
+            </div>
         </div>
     </div>
 
