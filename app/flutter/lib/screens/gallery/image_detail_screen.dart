@@ -433,9 +433,22 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
       // 刷新文件列表
       await galleryProvider.refresh(authProvider.apiService!);
 
-      // 返回画廊页面
+      // 切换到下一个文件(如果有的话),否则返回
       if (mounted) {
-        Navigator.of(context).pop();
+        if (_currentIndex < widget.files.length - 1) {
+          // 有下一个文件,切换过去
+          setState(() {
+            _currentIndex++;
+          });
+        } else if (_currentIndex > 0) {
+          // 没有下一个但有上一个,切换到上一个
+          setState(() {
+            _currentIndex--;
+          });
+        } else {
+          // 只有一个文件,返回画廊
+          Navigator.of(context).pop();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -531,13 +544,6 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                                 ),
                               ),
                             ),
-                            Text(
-                              '${folder.fileCount} 文件',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFFA3A3A3),
-                              ),
-                            ),
                           ],
                         ),
                       ),
@@ -600,9 +606,22 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
       // 刷新文件列表
       await galleryProvider.refresh(authProvider.apiService!);
 
-      // 返回画廊页面
+      // 切换到下一个文件(如果有的话),否则返回
       if (mounted) {
-        Navigator.of(context).pop();
+        if (_currentIndex < widget.files.length - 1) {
+          // 有下一个文件,切换过去
+          setState(() {
+            _currentIndex++;
+          });
+        } else if (_currentIndex > 0) {
+          // 没有下一个但有上一个,切换到上一个
+          setState(() {
+            _currentIndex--;
+          });
+        } else {
+          // 只有一个文件,返回画廊
+          Navigator.of(context).pop();
+        }
       }
     } catch (e) {
       if (mounted) {

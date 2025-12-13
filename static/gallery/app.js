@@ -828,7 +828,6 @@ function showMoveDialog() {
             <div class="folder-select-item" onclick="confirmMove('${folder.path.replace(/'/g, "\\'")}', '${displayName.replace(/'/g, "\\'")}')">
                 <span class="material-symbols-outlined">${folder.is_source ? 'source' : 'folder'}</span>
                 <span>${displayName}</span>
-                <span class="file-count">${folder.file_count} 文件</span>
             </div>
         `;
     });
