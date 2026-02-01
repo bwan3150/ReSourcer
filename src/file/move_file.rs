@@ -1,0 +1,41 @@
+// 文件移动功能
+use actix_web::{web, HttpResponse, Result};
+use std::path::Path;
+use std::fs;
+use super::models::{MoveFileRequest, FileOperationResponse};
+use super::utils::get_unique_path;
+
+/// POST /api/file/move
+/// 移动文件到其他文件夹
+pub async fn move_file(req: web::Json<MoveFileRequest>) -> Result<HttpResponse> {
+    let file_path = Path::new(&req.file_path);
+    let target_folder = Path::new(&req.target_folder);
+
+    // 检查文件是否存在
+    if !file_path.exists() || !file_path.is_file() {
+        return Err(actix_web::error::ErrorNotFound("文件不存在"));
+    }
+
+    // 检查目标文件夹是否存在
+    if !target_folder.exists() || !target_folder.is_dir() {
+        return Err(actix_web::error::ErrorNotFound("目标文件夹不存在"));
+    }
+
+    // 获取文件名
+    let file_name = file_path.file_name()
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("无法获取文件名"))?
+        .to_string_lossy()
+        .to_string();
+
+    // 构建目标路径,处理重名
+    let target_path = get_unique_path(target_folder, &file_name);
+
+    // 移动文件
+    fs::rename(file_path, &target_path)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("移动失败: {}", e)))?;
+
+    Ok(HttpResponse::Ok().json(FileOperationResponse {
+        status: "success".to_string(),
+        new_path: Some(target_path.to_string_lossy().to_string()),
+    }))
+}

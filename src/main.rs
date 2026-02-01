@@ -1,20 +1,23 @@
 use actix_web::{middleware, web, App, HttpResponse, HttpServer, Result};
 use std::net::UdpSocket;
 
-mod classifier;
-mod downloader;
-mod uploader;
-mod gallery;
+// API模块 - 面向开发者的系统操作
+mod file;
+mod folder;
+mod transfer;
+mod config_api;
+mod preview;
+mod browser;
+
+// 工具模块
 mod static_files;
 mod auth;
-mod filesystem;
-mod settings;
 
 use static_files::serve_static;
 
 /// 全局配置 API - 所有模块共用
 async fn get_global_config() -> Result<HttpResponse> {
-    let config = classifier::config::load_config()
+    let config = config_api::storage::load_config()
         .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法加载配置: {}", e)))?;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
@@ -88,10 +91,10 @@ async fn main() -> std::io::Result<()> {
     println!();
 
     // 初始化下载器任务管理器
-    let download_task_manager = web::Data::new(downloader::TaskManager::new());
+    let download_task_manager = web::Data::new(transfer::download::TaskManager::new());
 
     // 初始化上传器任务管理器
-    let upload_task_manager = web::Data::new(uploader::TaskManager::new());
+    let upload_task_manager = web::Data::new(transfer::upload::TaskManager::new());
 
     // 读取 API Key (优先级: secret.json > 环境变量 > 随机生成)
     fn load_api_key_from_secret() -> Option<String> {
@@ -178,18 +181,19 @@ async fn main() -> std::io::Result<()> {
             .route("/api/config", web::get().to(get_global_config))
             // App 配置 API（Android/iOS 下载链接）
             .route("/api/app", web::get().to(get_app_config))
-            // 画廊 API 路由
-            .service(web::scope("/api/gallery").configure(gallery::routes))
-            // 分类器 API 路由
-            .service(web::scope("/api/classifier").configure(classifier::routes))
-            // 设置 API 路由
-            .service(web::scope("/api/settings").configure(settings::routes))
-            // 下载器 API 路由
-            .service(web::scope("/api/downloader").configure(downloader::routes))
-            // 上传器 API 路由
-            .service(web::scope("/api/uploader").configure(uploader::routes))
+            // === 新的API路由 - 面向开发者的系统操作 ===
+            // 文件操作 API 路由
+            .service(web::scope("/api/file").configure(file::routes))
+            // 文件夹操作 API 路由
+            .service(web::scope("/api/folder").configure(folder::routes))
+            // 传输操作 API 路由（包含 download 和 upload 子模块）
+            .service(web::scope("/api/transfer").configure(transfer::routes))
+            // 配置操作 API 路由
+            .service(web::scope("/api/config").configure(config_api::routes))
+            // 预览操作 API 路由
+            .service(web::scope("/api/preview").configure(preview::routes))
             // 文件系统浏览 API 路由
-            .service(web::scope("/api/filesystem").configure(filesystem::routes))
+            .service(web::scope("/api/browser").configure(browser::routes))
             // 静态文件服务（嵌入式）
             .route("/", web::get().to(serve_static))
             .route("/{filename:.*}", web::get().to(serve_static))
