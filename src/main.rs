@@ -72,6 +72,14 @@ async fn get_app_config() -> Result<HttpResponse> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    // 初始化日志系统 - 自定义格式，只输出消息内容
+    env_logger::Builder::from_env(env_logger::Env::new().default_filter_or("info"))
+        .format(|buf, record| {
+            use std::io::Write;
+            writeln!(buf, "{}", record.args())
+        })
+        .init();
+
     // 获取本机局域网 IP
     fn get_local_ip() -> Option<String> {
         let socket = UdpSocket::bind("0.0.0.0:0").ok()?;

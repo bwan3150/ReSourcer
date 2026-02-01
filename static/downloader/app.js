@@ -54,18 +54,33 @@ async function loadConfig() {
 // 加载文件夹列表
 async function loadFolders() {
     try {
-        const response = await fetch('/api/folder/list');
+        // 获取配置中的source_folder
+        const configResponse = await fetch('/api/config/download');
+        const config = await configResponse.json();
+
+        if (!config.source_folder) {
+            console.warn('Source folder not configured');
+            return;
+        }
+
+        const response = await fetch(`/api/folder/list?source_folder=${encodeURIComponent(config.source_folder)}`);
         const folders = await response.json();
 
         const foldersScroll = document.getElementById('foldersScroll');
 
-        // 保留源文件夹和添加按钮
+        // 保留源文件夹和添加按钮（需要先保存引用）
         const rootChip = foldersScroll.querySelector('[data-folder=""]');
         const addButton = foldersScroll.querySelector('.add-folder');
-        foldersScroll.innerHTML = '';
-        foldersScroll.appendChild(rootChip);
 
-        // 添加其他文件夹
+        // 清空除了源文件夹和添加按钮之外的所有内容
+        const children = Array.from(foldersScroll.children);
+        children.forEach(child => {
+            if (child !== rootChip && child !== addButton) {
+                child.remove();
+            }
+        });
+
+        // 在添加按钮之前插入文件夹
         folders.forEach(folder => {
             if (!folder.hidden) {
                 const chip = document.createElement('div');
@@ -73,12 +88,9 @@ async function loadFolders() {
                 chip.dataset.folder = folder.name;
                 chip.textContent = folder.name;
                 chip.onclick = () => selectFolder(folder.name);
-                foldersScroll.appendChild(chip);
+                foldersScroll.insertBefore(chip, addButton);
             }
         });
-
-        // 添加按钮放在最后
-        foldersScroll.appendChild(addButton);
     } catch (error) {
         console.error('Failed to load folders:', error);
     }

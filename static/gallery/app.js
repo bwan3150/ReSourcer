@@ -124,19 +124,19 @@ async function loadFiles(folderPath) {
             if (file.file_type === 'image') {
                 // 普通图片使用缩略图
                 item.innerHTML = `
-                    <img src="/api/gallery/thumbnail?path=${encodeURIComponent(file.path)}&size=300" alt="${file.name}">
+                    <img src="/api/preview/thumbnail?path=${encodeURIComponent(file.path)}&size=300" alt="${file.name}">
                     <div class="file-type-badge">${file.extension}</div>
                 `;
             } else if (file.file_type === 'gif') {
                 // GIF直接加载以显示动画
                 item.innerHTML = `
-                    <img src="/api/classifier/file/${encodeURIComponent(file.path)}" alt="${file.name}">
+                    <img src="/api/preview/content/${encodeURIComponent(file.path)}" alt="${file.name}">
                     <div class="file-type-badge">${file.extension}</div>
                 `;
             } else if (file.file_type === 'video') {
                 // 视频使用缩略图API获取首帧
                 item.innerHTML = `
-                    <img src="/api/gallery/thumbnail?path=${encodeURIComponent(file.path)}&size=300" alt="${file.name}">
+                    <img src="/api/preview/thumbnail?path=${encodeURIComponent(file.path)}&size=300" alt="${file.name}">
                     <div class="file-type-badge">${file.extension}</div>
                 `;
             } else {
@@ -200,10 +200,10 @@ function updateInlinePreview() {
     counter.textContent = `${currentFileIndex + 1} / ${currentFiles.length}`;
 
     if (file.file_type === 'image' || file.file_type === 'gif') {
-        media.innerHTML = `<img src="/api/classifier/file/${encodeURIComponent(file.path)}" alt="${file.name}">`;
+        media.innerHTML = `<img src="/api/preview/content/${encodeURIComponent(file.path)}" alt="${file.name}">`;
         videoControls.style.display = 'none';
     } else if (file.file_type === 'video') {
-        media.innerHTML = `<video id="previewVideoInline" src="/api/classifier/file/${encodeURIComponent(file.path)}" autoplay playsinline onclick="togglePlayPauseInline()"></video>`;
+        media.innerHTML = `<video id="previewVideoInline" src="/api/preview/content/${encodeURIComponent(file.path)}" autoplay playsinline onclick="togglePlayPauseInline()"></video>`;
         videoElement = document.getElementById('previewVideoInline');
         videoControls.style.display = 'flex';
         setupVideoControlsInline();

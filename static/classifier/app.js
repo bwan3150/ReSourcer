@@ -503,9 +503,10 @@ async function startClassification() {
 // 加载文件列表
 async function loadFiles() {
     try {
-        const response = await fetch('/api/preview/files');
-        files = await response.json();
-        
+        const response = await fetch(`/api/preview/files?folder=${encodeURIComponent(appState.source_folder)}`);
+        const data = await response.json();
+        files = data.files || data;  // 支持两种格式
+
         if (files.length === 0) {
             alert(i18nManager.t('noFilesFound', 'No supported files found in: {folder}').replace('{folder}', appState.source_folder));
             return;

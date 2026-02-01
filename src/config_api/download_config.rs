@@ -5,7 +5,7 @@ use crate::config_api::models::{DownloadConfigResponse as ConfigResponse, SaveDo
 /// GET /api/config/download
 /// 获取下载器配置和认证状态
 pub async fn get_download_config() -> Result<HttpResponse> {
-    let config = crate::transfer::download::storage::load_config()
+    let config = crate::config_api::storage::load_config()
         .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
 
     let auth_status = crate::transfer::download::auth::check_all_auth_status();
@@ -46,15 +46,17 @@ pub async fn get_download_config() -> Result<HttpResponse> {
 /// POST /api/config/download
 /// 保存下载器配置
 pub async fn save_download_config(req: web::Json<SaveConfigRequest>) -> Result<HttpResponse> {
-    use crate::transfer::download::storage::ConfigData;
+    // 加载现有配置
+    let mut config = crate::config_api::storage::load_config()
+        .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
 
-    let config = ConfigData {
-        source_folder: req.source_folder.clone(),
-        hidden_folders: req.hidden_folders.clone(),
-        use_cookies: req.use_cookies,
-    };
+    // 更新下载器相关字段
+    config.source_folder = req.source_folder.clone();
+    config.hidden_folders = req.hidden_folders.clone();
+    config.use_cookies = req.use_cookies;
 
-    crate::transfer::download::storage::save_config(&config)
+    // 保存配置
+    crate::config_api::storage::save_config(&config)
         .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({

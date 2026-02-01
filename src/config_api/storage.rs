@@ -58,6 +58,7 @@ pub fn get_default_state() -> AppState {
         source_folder: String::new(),
         hidden_folders: Vec::new(),
         backup_source_folders: Vec::new(),
+        use_cookies: true,
     }
 }
 

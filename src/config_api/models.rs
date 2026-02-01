@@ -10,6 +10,12 @@ pub struct AppState {
     pub hidden_folders: Vec<String>, // 隐藏的文件夹列表
     #[serde(default)]
     pub backup_source_folders: Vec<String>, // 备用源文件夹列表
+    #[serde(default = "default_use_cookies")]
+    pub use_cookies: bool, // 下载器是否使用cookies
+}
+
+fn default_use_cookies() -> bool {
+    true
 }
 
 /// 分类排序配置
