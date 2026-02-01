@@ -1,6 +1,6 @@
 // 配置操作模块 - 处理应用配置、下载器配置、源文件夹、认证等配置相关操作
 pub mod models;
-mod storage;
+pub mod storage;
 mod state;
 mod sources;
 mod download_config;

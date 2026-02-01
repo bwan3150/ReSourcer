@@ -4,6 +4,11 @@ pub mod detector;
 mod task;
 pub mod downloaders;
 pub mod auth;
+pub mod storage;
+mod task_manager;
+
+// 导出 TaskManager
+pub use task_manager::TaskManager;
 
 use actix_web::web;
 

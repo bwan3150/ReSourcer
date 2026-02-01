@@ -1,8 +1,9 @@
 // 上传任务管理功能（从transfer/upload.rs迁移）
 use actix_web::{web, HttpResponse, Result};
 use actix_multipart::Multipart;
-use crate::transfer::upload::models::*;
-use crate::transfer::upload::TaskManager;
+use super::models::*;
+use super::TaskManager;
+use super::storage;
 use futures_util::StreamExt;
 
 /// POST /api/transfer/upload/task
@@ -79,7 +80,7 @@ pub async fn get_tasks(task_manager: web::Data<TaskManager>) -> Result<HttpRespo
     let mut tasks = task_manager.get_all_tasks().await;
 
     // 加载历史记录并转换为任务格式
-    if let Ok(history) = crate::config_api::storage::load_upload_history() {
+    if let Ok(history) = storage::load_history() {
         for item in history {
             let status = match item.status.as_str() {
                 "completed" => UploadStatus::Completed,
@@ -134,7 +135,7 @@ pub async fn delete_task(
     }
 
     // 如果不是活跃任务，尝试从历史记录中删除
-    match crate::config_api::storage::remove_from_upload_history(&task_id) {
+    match storage::remove_from_history(&task_id) {
         Ok(_) => Ok(HttpResponse::Ok().json(serde_json::json!({
             "message": "历史记录已删除"
         }))),
@@ -150,13 +151,13 @@ pub async fn clear_finished_tasks(
     _task_manager: web::Data<TaskManager>,
 ) -> Result<HttpResponse> {
     // 获取历史记录数量
-    let history_count = match crate::config_api::storage::load_upload_history() {
+    let history_count = match storage::load_history() {
         Ok(history) => history.len(),
         Err(_) => 0,
     };
 
     // 清空历史记录
-    match crate::config_api::storage::clear_upload_history() {
+    match storage::clear_history() {
         Ok(_) => Ok(HttpResponse::Ok().json(serde_json::json!({
             "message": format!("已清除 {} 个历史记录", history_count),
             "cleared_count": history_count

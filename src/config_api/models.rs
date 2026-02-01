@@ -1,5 +1,23 @@
 // 配置API相关的数据模型
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+/// 应用状态（主配置结构）
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AppState {
+    pub source_folder: String,
+    #[serde(default)]
+    pub hidden_folders: Vec<String>, // 隐藏的文件夹列表
+    #[serde(default)]
+    pub backup_source_folders: Vec<String>, // 备用源文件夹列表
+}
+
+/// 分类排序配置
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct CategoryOrderConfig {
+    #[serde(default)]
+    pub orders: HashMap<String, Vec<String>>, // 源文件夹 -> 分类顺序
+}
 
 /// 配置状态响应
 #[derive(Debug, Serialize)]
@@ -88,3 +106,12 @@ pub struct PresetLoadResponse {
     pub categories: Vec<String>,
     pub preset_name: String,
 }
+
+/// 支持的文件扩展名列表
+pub const SUPPORTED_EXTENSIONS: &[&str] = &[
+    "png", "jpg", "jpeg", "webp", "gif", "bmp",
+    "PNG", "JPG", "JPEG", "WEBP", "GIF", "BMP",
+    "mp4", "mov", "avi", "mkv", "webm",
+    "MP4", "MOV", "AVI", "MKV", "WEBM",
+    "heic", "HEIC", "heif", "HEIF"
+];

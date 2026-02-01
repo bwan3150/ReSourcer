@@ -1,8 +1,10 @@
 // 下载任务管理功能（从transfer/download.rs迁移）
 use actix_web::{web, HttpResponse, Result};
 use std::path::Path;
-use crate::transfer::download::models::*;
-use crate::transfer::download::TaskManager;
+use super::models::*;
+use super::TaskManager;
+use super::detector;
+use super::storage;
 
 // TaskManager 的共享状态类型
 pub type TaskManagerState = web::Data<TaskManager>;
@@ -10,7 +12,7 @@ pub type TaskManagerState = web::Data<TaskManager>;
 /// POST /api/transfer/download/detect
 /// 检测 URL 对应的平台和下载器
 pub async fn detect_url(req: web::Json<DetectRequest>) -> Result<HttpResponse> {
-    let result = crate::downloader::detector::detect(&req.url);
+    let result = detector::detect(&req.url);
     Ok(HttpResponse::Ok().json(result))
 }
 
@@ -21,7 +23,7 @@ pub async fn create_task(
     task_manager: TaskManagerState,
 ) -> Result<HttpResponse> {
     // 1. 检测 URL 的平台和下载器
-    let detect_result = crate::downloader::detector::detect(&req.url);
+    let detect_result = detector::detect(&req.url);
 
     // 2. 确定使用的下载器（用户可覆盖）
     let downloader = req.downloader.clone()
@@ -29,7 +31,7 @@ pub async fn create_task(
 
     // 3. 验证 save_folder（如果非空）
     if !req.save_folder.is_empty() {
-        let config = crate::transfer::download::storage::load_config()
+        let config = storage::load_config()
             .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
 
         if config.source_folder.is_empty() {
@@ -56,7 +58,7 @@ pub async fn create_task(
     }
 
     // 4. 构建完整的保存路径
-    let config = crate::transfer::download::storage::load_config()
+    let config = storage::load_config()
         .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
 
     let save_path = if req.save_folder.is_empty() {
@@ -93,7 +95,7 @@ pub async fn get_tasks(task_manager: TaskManagerState) -> Result<HttpResponse> {
     let mut tasks = task_manager.get_all_tasks().await;
 
     // 加载历史记录并转换为任务格式
-    if let Ok(history) = crate::transfer::download::storage::load_history() {
+    if let Ok(history) = storage::load_history() {
         for item in history {
             // 将字符串转换为 Platform 枚举
             let platform = match item.platform.as_str() {
@@ -175,7 +177,7 @@ pub async fn cancel_task(
         }
         Err(_) => {
             // 如果不是进行中的任务，尝试从历史记录中删除
-            match crate::transfer::download::storage::remove_from_history(&task_id) {
+            match storage::remove_from_history(&task_id) {
                 Ok(_) => {
                     return Ok(HttpResponse::Ok().json(serde_json::json!({
                         "status": "success",
@@ -195,7 +197,7 @@ pub async fn cancel_task(
 /// DELETE /api/transfer/download/history
 /// 清空历史记录（进行中的任务不受影响）
 pub async fn clear_history() -> Result<HttpResponse> {
-    crate::transfer::download::storage::clear_history()
+    storage::clear_history()
         .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({

@@ -2,7 +2,7 @@
 pub mod x;
 pub mod pixiv;
 
-use crate::transfer::download::models::AuthStatus;
+use crate::config_api::models::AuthStatus;
 
 // 检查所有平台的认证状态
 pub fn check_all_auth_status() -> AuthStatus {

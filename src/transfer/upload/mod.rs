@@ -1,6 +1,11 @@
 // 上传传输模块 - 处理文件上传任务的创建、管理等操作
 pub mod models;
 mod task;
+pub mod storage;
+mod task_manager;
+
+// 导出 TaskManager
+pub use task_manager::TaskManager;
 
 use actix_web::web;
 

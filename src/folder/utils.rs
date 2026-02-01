@@ -33,7 +33,7 @@ pub fn count_media_files(path: &Path) -> usize {
 
 /// 统计文件夹中的支持文件数量（使用 classifier 的 SUPPORTED_EXTENSIONS）
 pub fn count_files_in_folder(folder_path: &Path) -> usize {
-    use crate::config_api::storage::SUPPORTED_EXTENSIONS;
+    use crate::config_api::models::SUPPORTED_EXTENSIONS;
 
     let mut count = 0;
 
