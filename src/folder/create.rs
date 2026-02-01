@@ -2,13 +2,12 @@
 use actix_web::{web, HttpResponse, Result};
 use std::fs;
 use std::path::Path;
+use super::models::CreateFolderRequest;
 
 /// POST /api/folder/create
 /// 创建新文件夹 - 整合了 classifier/folder/create, downloader/create-folder, settings/folder/create
-pub async fn create_folder(req: web::Json<serde_json::Value>) -> Result<HttpResponse> {
-    let folder_name = req["folder_name"]
-        .as_str()
-        .ok_or_else(|| actix_web::error::ErrorBadRequest("缺少 folder_name 参数"))?;
+pub async fn create_folder(req: web::Json<CreateFolderRequest>) -> Result<HttpResponse> {
+    let folder_name = &req.folder_name;
 
     // 验证文件夹名称
     if folder_name.is_empty() || folder_name.contains('/') || folder_name.contains('\\') {

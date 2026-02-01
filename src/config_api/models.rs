@@ -19,15 +19,6 @@ pub struct CategoryOrderConfig {
     pub orders: HashMap<String, Vec<String>>, // 源文件夹 -> 分类顺序
 }
 
-/// 配置状态响应
-#[derive(Debug, Serialize)]
-pub struct ConfigStateResponse {
-    pub source_folder: String,
-    pub hidden_folders: Vec<String>,
-    pub backup_source_folders: Vec<String>,
-    pub presets: Vec<Preset>,
-}
-
 /// 预设信息
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Preset {

@@ -43,6 +43,8 @@ pub struct RenameFileRequest {
 pub struct MoveFileRequest {
     pub file_path: String,
     pub target_folder: String,
+    #[serde(default)]
+    pub new_name: Option<String>,  // 可选：移动时同时重命名
 }
 
 /// 文件操作响应

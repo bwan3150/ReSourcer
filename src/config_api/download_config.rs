@@ -1,6 +1,6 @@
 // 下载器配置管理
 use actix_web::{web, HttpResponse, Result};
-use crate::config_api::models::{AuthStatus, DownloadConfigResponse as ConfigResponse, SaveDownloadConfigRequest as SaveConfigRequest};
+use crate::config_api::models::{DownloadConfigResponse as ConfigResponse, SaveDownloadConfigRequest as SaveConfigRequest};
 
 /// GET /api/config/download
 /// 获取下载器配置和认证状态

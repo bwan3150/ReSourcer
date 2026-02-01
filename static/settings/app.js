@@ -25,7 +25,7 @@ async function init() {
 // 加载应用状态
 async function loadAppState() {
     try {
-        const response = await fetch('/api/settings/state');
+        const response = await fetch('/api/config/state');
         appState = await response.json();
 
         // 渲染源文件夹列表
@@ -198,7 +198,7 @@ async function addNewSourceFolder() {
     try {
         // 如果是第一个源文件夹,使用 switch API 设置为当前源
         if (!appState.source_folder) {
-            const response = await fetch('/api/settings/sources/switch', {
+            const response = await fetch('/api/config/sources/switch', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -220,7 +220,7 @@ async function addNewSourceFolder() {
         }
 
         // 否则添加到备用列表
-        const response = await fetch('/api/settings/sources/add', {
+        const response = await fetch('/api/config/sources/add', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -252,7 +252,7 @@ async function switchToSourceFolder(folderPath) {
     }
 
     try {
-        const response = await fetch('/api/settings/sources/switch', {
+        const response = await fetch('/api/config/sources/switch', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -283,7 +283,7 @@ async function removeSourceFolder(folderPath) {
     }
 
     try {
-        const response = await fetch('/api/settings/sources/remove', {
+        const response = await fetch('/api/config/sources/remove', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -324,7 +324,7 @@ async function saveSettings() {
     }
 
     try {
-        const response = await fetch('/api/settings/save', {
+        const response = await fetch('/api/config/save', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -370,7 +370,7 @@ function closeFileBrowser() {
 // 浏览目录
 async function browseDirectory(path = null) {
     try {
-        const response = await fetch('/api/filesystem/browse', {
+        const response = await fetch('/api/browser/browse', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -524,7 +524,7 @@ async function createNewFolder() {
     }
 
     try {
-        const response = await fetch('/api/filesystem/create', {
+        const response = await fetch('/api/browser/create', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -569,7 +569,7 @@ function selectCurrentFolder() {
 // 从指定路径加载文件夹
 async function loadFoldersFromPath(folderPath) {
     try {
-        const response = await fetch(`/api/settings/folders?source_folder=${encodeURIComponent(folderPath)}`);
+        const response = await fetch(`/api/folder/list?source_folder=${encodeURIComponent(folderPath)}`);
         if (response.ok) {
             const existingFolders = await response.json();
             // 标记已存在的文件夹

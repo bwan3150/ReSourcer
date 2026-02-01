@@ -15,7 +15,7 @@ window.addEventListener('load', async () => {
 // 加载文件夹列表
 async function loadFolders() {
     try {
-        const response = await fetch('/api/gallery/folders');
+        const response = await fetch('/api/folder/list');
         const data = await response.json();
 
         allFolders = data.folders; // 保存所有文件夹
@@ -98,7 +98,7 @@ async function selectFolder(folder, element, displayName) {
 // 加载文件列表
 async function loadFiles(folderPath) {
     try {
-        const response = await fetch(`/api/gallery/files?folder=${encodeURIComponent(folderPath)}`);
+        const response = await fetch(`/api/preview/files?folder=${encodeURIComponent(folderPath)}`);
         const data = await response.json();
 
         currentFiles = data.files;
@@ -571,7 +571,7 @@ async function uploadFiles(files, targetFolder) {
     }
 
     try {
-        const response = await fetch('/api/uploader/upload', {
+        const response = await fetch('/api/transfer/upload/task', {
             method: 'POST',
             body: formData
         });
@@ -597,7 +597,7 @@ async function uploadFiles(files, targetFolder) {
 // 加载上传任务列表
 async function loadUploadTasks() {
     try {
-        const response = await fetch('/api/uploader/tasks');
+        const response = await fetch('/api/transfer/upload/tasks');
         const data = await response.json();
 
         uploadTasks = data.tasks || [];
@@ -688,7 +688,7 @@ function renderUploadTasks() {
 // 删除上传任务
 async function deleteUploadTask(taskId) {
     try {
-        const response = await fetch(`/api/uploader/task/${taskId}`, {
+        const response = await fetch(`/api/transfer/upload/task/${taskId}`, {
             method: 'DELETE'
         });
 
@@ -726,7 +726,7 @@ function stopUploadPolling() {
 // 清除所有已完成/失败的任务
 async function clearAllFinishedTasks() {
     try {
-        const response = await fetch('/api/uploader/tasks/clear', {
+        const response = await fetch('/api/transfer/upload/tasks/clear', {
             method: 'POST'
         });
 
@@ -782,7 +782,7 @@ async function confirmRename() {
     const newName = newNameWithoutExt + file.extension;
 
     try {
-        const response = await fetch('/api/gallery/rename', {
+        const response = await fetch('/api/file/rename', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -847,7 +847,7 @@ async function confirmMove(targetFolderPath, targetFolderName) {
     const file = currentFiles[currentFileIndex];
 
     try {
-        const response = await fetch('/api/gallery/move', {
+        const response = await fetch('/api/file/move', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

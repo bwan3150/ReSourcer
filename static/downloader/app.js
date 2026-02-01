@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // 加载配置
 async function loadConfig() {
     try {
-        const response = await fetch('/api/downloader/config');
+        const response = await fetch('/api/config/download');
         const data = await response.json();
 
         // 显示 yt-dlp 版本
@@ -54,7 +54,7 @@ async function loadConfig() {
 // 加载文件夹列表
 async function loadFolders() {
     try {
-        const response = await fetch('/api/downloader/folders');
+        const response = await fetch('/api/folder/list');
         const folders = await response.json();
 
         const foldersScroll = document.getElementById('foldersScroll');
@@ -100,7 +100,7 @@ function selectFolder(folderName) {
 // 检测 URL
 async function detectURL(url) {
     try {
-        const response = await fetch('/api/downloader/detect', {
+        const response = await fetch('/api/transfer/download/detect', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url })
@@ -156,7 +156,7 @@ async function startDownload() {
     downloadBtn.disabled = true;
 
     try {
-        const response = await fetch('/api/downloader/task', {
+        const response = await fetch('/api/transfer/download/task', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -195,7 +195,7 @@ async function startDownload() {
 // 加载任务列表
 async function loadTasks() {
     try {
-        const response = await fetch('/api/downloader/tasks');
+        const response = await fetch('/api/transfer/download/tasks');
         const data = await response.json();
 
         currentTasks = data.tasks || [];
@@ -348,7 +348,7 @@ async function cancelTask(taskId) {
     }
 
     try {
-        const response = await fetch(`/api/downloader/task/${taskId}`, {
+        const response = await fetch(`/api/transfer/download/task/${taskId}`, {
             method: 'DELETE'
         });
 
@@ -434,7 +434,7 @@ function closePreview() {
 async function openFolder(filePath) {
     try {
         // 调用后端 API 打开文件夹
-        const response = await fetch('/api/downloader/open-folder', {
+        const response = await fetch('/api/folder/open', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ path: filePath })
@@ -476,7 +476,7 @@ window.addEventListener('beforeunload', () => {
 // 删除单个任务
 async function deleteTask(taskId) {
     try {
-        const response = await fetch(`/api/downloader/task/${taskId}`, {
+        const response = await fetch(`/api/transfer/download/task/${taskId}`, {
             method: 'DELETE'
         });
 
@@ -502,7 +502,7 @@ async function clearHistory() {
     }
 
     try {
-        const response = await fetch('/api/downloader/history', {
+        const response = await fetch('/api/transfer/download/history', {
             method: 'DELETE'
         });
 
@@ -527,7 +527,7 @@ async function createNewFolder() {
     }
 
     try {
-        const response = await fetch('/api/downloader/create-folder', {
+        const response = await fetch('/api/folder/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ folder_name: folderName.trim() })
@@ -571,7 +571,7 @@ function closeAuthModal() {
 // 加载认证状态
 async function loadAuthStatus() {
     try {
-        const response = await fetch('/api/downloader/config');
+        const response = await fetch('/api/config/download');
         const data = await response.json();
 
         const authList = document.getElementById('authList');
@@ -665,7 +665,7 @@ async function uploadAuthText(platform, type) {
 // 提交认证信息
 async function submitAuth(platform, content) {
     try {
-        const response = await fetch(`/api/downloader/credentials/${platform}`, {
+        const response = await fetch(`/api/config/credentials/${platform}`, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
             body: content
@@ -692,7 +692,7 @@ async function deleteAuth(platform) {
     }
 
     try {
-        const response = await fetch(`/api/downloader/credentials/${platform}`, {
+        const response = await fetch(`/api/config/credentials/${platform}`, {
             method: 'DELETE'
         });
 

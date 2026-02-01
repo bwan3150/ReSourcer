@@ -99,7 +99,6 @@ async fn main() -> std::io::Result<()> {
     // 读取 API Key (优先级: secret.json > 环境变量 > 随机生成)
     fn load_api_key_from_secret() -> Option<String> {
         use std::fs;
-        use std::path::PathBuf;
         use serde::Deserialize;
 
         #[derive(Deserialize)]
@@ -166,7 +165,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
-            .wrap(middleware::Logger::default())
+            .wrap(middleware::Logger::new("[%t] %r - %s"))
             // 全局 API Key 验证中间件
             .wrap(auth::middleware::ApiKeyAuth::new(api_key.clone()))
             // 注入 API Key 和任务管理器

@@ -34,7 +34,7 @@ function setupEventListeners() {
 // 加载应用状态
 async function loadAppState() {
     try {
-        const response = await fetch('/api/classifier/state');
+        const response = await fetch('/api/config/state');
         appState = await response.json();
     } catch (error) {
         console.error('Error loading state:', error);
@@ -53,7 +53,7 @@ async function loadCategories() {
     }
 
     try {
-        const response = await fetch(`/api/classifier/folders?source_folder=${encodeURIComponent(appState.source_folder)}`);
+        const response = await fetch(`/api/folder/list?source_folder=${encodeURIComponent(appState.source_folder)}`);
         if (response.ok) {
             const folders = await response.json();
             // 只保存未隐藏的文件夹
@@ -126,7 +126,7 @@ async function saveCurrentAsPreset() {
 // 保存预设到服务器
 async function savePresetToServer(name, categories) {
     try {
-        const response = await fetch('/api/classifier/preset/save', {
+        const response = await fetch('/api/config/preset/save', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -136,7 +136,7 @@ async function savePresetToServer(name, categories) {
                 categories: categories
             })
         });
-        
+
         if (response.ok) {
             const data = await response.json();
             appState = data.state;
@@ -163,7 +163,7 @@ async function deleteSelectedPreset() {
     if (!confirm(i18nManager.t('confirmDelete', {name: selectedValue}))) return;
     
     try {
-        const response = await fetch('/api/classifier/preset/delete', {
+        const response = await fetch('/api/config/preset/delete', {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
@@ -219,18 +219,20 @@ async function setSourceFolder() {
     // 如果路径改变了，更新它
     if (folderPath !== appState.source_folder) {
         appState.source_folder = folderPath;
-        
+
         try {
-            const response = await fetch('/api/classifier/folder', {
+            const response = await fetch('/api/config/save', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    source_folder: folderPath
+                    source_folder: folderPath,
+                    categories: getCurrentCategories(),
+                    hidden_folders: appState.hidden_folders || []
                 })
             });
-            
+
             if (response.ok) {
                 console.log('Source folder updated to:', folderPath);
             } else {
@@ -341,14 +343,14 @@ async function undoLastOperation() {
     
     try {
         // 移回原位置
-        const response = await fetch('/api/classifier/move', {
+        const response = await fetch('/api/file/move', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
                 file_path: lastOp.newPath,
-                category: '',  // 移回源文件夹根目录
+                target_folder: appState.source_folder,  // 移回源文件夹根目录
                 new_name: lastOp.originalName
             })
         });
@@ -501,7 +503,7 @@ async function startClassification() {
 // 加载文件列表
 async function loadFiles() {
     try {
-        const response = await fetch('/api/classifier/files');
+        const response = await fetch('/api/preview/files');
         files = await response.json();
         
         if (files.length === 0) {
@@ -563,11 +565,11 @@ function showCurrentFile() {
     
     let mediaHtml = '';
     if (file.file_type === 'image') {
-        mediaHtml = `<img src="/api/classifier/file/${encodedPath}" alt="${file.name}">`;
+        mediaHtml = `<img src="/api/preview/content/${encodedPath}" alt="${file.name}">`;
     } else if (file.file_type === 'video') {
         mediaHtml = `
             <video controls autoplay muted>
-                <source src="/api/classifier/file/${encodedPath}">
+                <source src="/api/preview/content/${encodedPath}">
             </video>
         `;
     }
@@ -629,18 +631,21 @@ async function moveToCategory(category) {
     const file = files[currentIndex];
     const renameInput = document.getElementById('renameInput');
     const newName = renameInput ? renameInput.value.trim() : '';
-    
+
+    // 构建完整的目标文件夹路径
+    const targetFolder = `${appState.source_folder}/${category}`;
+
     const requestBody = {
         file_path: file.path,
-        category: category
+        target_folder: targetFolder
     };
-    
+
     if (newName) {
         requestBody.new_name = newName;
     }
-    
+
     try {
-        const response = await fetch('/api/classifier/move', {
+        const response = await fetch('/api/file/move', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -700,7 +705,7 @@ async function quickAddNewCategory() {
 
     // 直接创建文件夹
     try {
-        const response = await fetch('/api/classifier/folder/create', {
+        const response = await fetch('/api/folder/create', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

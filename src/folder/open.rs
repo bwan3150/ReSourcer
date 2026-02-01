@@ -1,15 +1,12 @@
 // 打开文件夹功能
 use actix_web::{web, HttpResponse, Result};
 use std::path::Path;
+use super::models::OpenFolderRequest;
 
 /// POST /api/folder/open
 /// 打开文件所在文件夹
-pub async fn open_folder(req: web::Json<serde_json::Value>) -> Result<HttpResponse> {
-    let file_path = req["path"]
-        .as_str()
-        .ok_or_else(|| actix_web::error::ErrorBadRequest("缺少 path 参数"))?;
-
-    let path = Path::new(file_path);
+pub async fn open_folder(req: web::Json<OpenFolderRequest>) -> Result<HttpResponse> {
+    let path = Path::new(&req.path);
 
     if !path.exists() {
         return Ok(HttpResponse::NotFound().json(serde_json::json!({

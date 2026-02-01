@@ -21,11 +21,15 @@ pub async fn move_file(req: web::Json<MoveFileRequest>) -> Result<HttpResponse> 
         return Err(actix_web::error::ErrorNotFound("目标文件夹不存在"));
     }
 
-    // 获取文件名
-    let file_name = file_path.file_name()
-        .ok_or_else(|| actix_web::error::ErrorBadRequest("无法获取文件名"))?
-        .to_string_lossy()
-        .to_string();
+    // 获取文件名（如果提供了new_name则使用它，否则使用原文件名）
+    let file_name = if let Some(new_name) = &req.new_name {
+        new_name.clone()
+    } else {
+        file_path.file_name()
+            .ok_or_else(|| actix_web::error::ErrorBadRequest("无法获取文件名"))?
+            .to_string_lossy()
+            .to_string()
+    };
 
     // 构建目标路径,处理重名
     let target_path = get_unique_path(target_folder, &file_name);

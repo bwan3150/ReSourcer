@@ -80,31 +80,3 @@ pub async fn get_files(query: web::Query<std::collections::HashMap<String, Strin
 
     Ok(HttpResponse::Ok().json(FilesResponse { files }))
 }
-
-/// 统计文件夹中的媒体文件数量
-pub fn count_media_files(path: &Path) -> usize {
-    let mut count = 0;
-
-    if let Ok(entries) = fs::read_dir(path) {
-        for entry in entries.flatten() {
-            if let Ok(metadata) = entry.metadata() {
-                if metadata.is_file() {
-                    let file_path = entry.path();
-                    let extension = file_path
-                        .extension()
-                        .and_then(|e| e.to_str())
-                        .unwrap_or("")
-                        .to_lowercase();
-
-                    if extension == GIF_EXTENSION
-                        || IMAGE_EXTENSIONS.contains(&extension.as_str())
-                        || VIDEO_EXTENSIONS.contains(&extension.as_str()) {
-                        count += 1;
-                    }
-                }
-            }
-        }
-    }
-
-    count
-}
