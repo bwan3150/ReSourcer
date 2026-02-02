@@ -7,25 +7,25 @@ fn main() {
 
     // yt-dlp 二进制文件
     let yt_dlp_source = match target_os.as_str() {
-        "linux" => "bin/yt-dlp-linux",
-        "macos" => "bin/yt-dlp-macos",
-        "windows" => "bin/yt-dlp-windows.exe",
+        "linux" => "../bin/yt-dlp-linux",
+        "macos" => "../bin/yt-dlp-macos",
+        "windows" => "../bin/yt-dlp-windows.exe",
         _ => panic!("Unsupported target OS: {}", target_os),
     };
 
     // ffmpeg 二进制文件
     let ffmpeg_source = match target_os.as_str() {
-        "linux" => "bin/ffmpeg-linux",
-        "macos" => "bin/ffmpeg-macos",
-        "windows" => "bin/ffmpeg-windows.exe",
+        "linux" => "../bin/ffmpeg-linux",
+        "macos" => "../bin/ffmpeg-macos",
+        "windows" => "../bin/ffmpeg-windows.exe",
         _ => panic!("Unsupported target OS: {}", target_os),
     };
 
     // ffprobe 二进制文件（可选）
     let ffprobe_source = match target_os.as_str() {
-        "linux" => "bin/ffprobe-linux",
-        "macos" => "bin/ffprobe-macos",
-        "windows" => "bin/ffprobe-windows.exe",
+        "linux" => "../bin/ffprobe-linux",
+        "macos" => "../bin/ffprobe-macos",
+        "windows" => "../bin/ffprobe-windows.exe",
         _ => panic!("Unsupported target OS: {}", target_os),
     };
 

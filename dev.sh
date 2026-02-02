@@ -19,6 +19,10 @@ print_warning() {
     echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
+# 获取脚本所在目录（项目根目录）
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SERVER_DIR="${SCRIPT_DIR}/server"
+
 update_dependencies() {
     print_status "Checking dependencies..."
 
@@ -26,13 +30,13 @@ update_dependencies() {
     OS_TYPE=$(uname -s)
     case "$OS_TYPE" in
         Linux*)
-            YTDLP_BIN="bin/yt-dlp-linux"
+            YTDLP_BIN="${SCRIPT_DIR}/bin/yt-dlp-linux"
             ;;
         Darwin*)
-            YTDLP_BIN="bin/yt-dlp-macos"
+            YTDLP_BIN="${SCRIPT_DIR}/bin/yt-dlp-macos"
             ;;
         MINGW*|MSYS*|CYGWIN*)
-            YTDLP_BIN="bin/yt-dlp-windows.exe"
+            YTDLP_BIN="${SCRIPT_DIR}/bin/yt-dlp-windows.exe"
             ;;
         *)
             print_error "Unsupported OS: $OS_TYPE"
@@ -54,7 +58,7 @@ update_dependencies() {
     TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
     # 更新 config/dependencies.json
-    cat > config/dependencies.json << EOF
+    cat > "${SERVER_DIR}/config/dependencies.json" << EOF
 {
   "yt-dlp": {
     "version": "$YTDLP_VERSION",
@@ -81,7 +85,7 @@ main() {
     update_dependencies
 
     print_status "Building project (release mode)..."
-    if cargo build --release; then
+    if cargo build --release --manifest-path "${SERVER_DIR}/Cargo.toml"; then
         print_status "Build successful"
     else
         print_error "Build failed"
@@ -89,10 +93,10 @@ main() {
     fi
 
     print_status "Launching re-sourcer..."
-    if [ -f "./target/release/re-sourcer" ]; then
-        ./target/release/re-sourcer
+    if [ -f "${SERVER_DIR}/target/release/re-sourcer" ]; then
+        "${SERVER_DIR}/target/release/re-sourcer"
     else
-        print_error "Executable not found: ./target/release/re-sourcer"
+        print_error "Executable not found: ${SERVER_DIR}/target/release/re-sourcer"
         exit 1
     fi
 }
