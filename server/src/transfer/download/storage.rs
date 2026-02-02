@@ -84,7 +84,8 @@ pub fn load_config() -> Result<ConfigData, String> {
         .map_err(|e| format!("配置文件格式错误: {}", e))
 }
 
-// 保存主配置文件
+// 保存主配置文件（预留接口，暂未使用）
+#[allow(dead_code)]
 pub fn save_config(config: &ConfigData) -> Result<(), String> {
     ensure_config_dir()?;
 

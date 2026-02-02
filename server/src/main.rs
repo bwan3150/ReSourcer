@@ -1,4 +1,4 @@
-use actix_web::{middleware, web, App, HttpResponse, HttpServer, Result};
+use actix_web::{web, App, HttpResponse, HttpServer, Result};
 use std::net::UdpSocket;
 
 // API模块 - 面向开发者的系统操作
@@ -12,6 +12,7 @@ mod browser;
 // 工具模块
 mod static_files;
 mod auth;
+mod logger;
 
 use static_files::serve_static;
 
@@ -72,14 +73,6 @@ async fn get_app_config() -> Result<HttpResponse> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // 初始化日志系统 - 自定义格式，只输出消息内容
-    env_logger::Builder::from_env(env_logger::Env::new().default_filter_or("info"))
-        .format(|buf, record| {
-            use std::io::Write;
-            writeln!(buf, "{}", record.args())
-        })
-        .init();
-
     // 获取本机局域网 IP
     fn get_local_ip() -> Option<String> {
         let socket = UdpSocket::bind("0.0.0.0:0").ok()?;
@@ -173,7 +166,8 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
-            .wrap(middleware::Logger::new("[%t] %r - %s"))
+            // 彩色日志中间件
+            .wrap(logger::ColorLogger::new())
             // 全局 API Key 验证中间件
             .wrap(auth::middleware::ApiKeyAuth::new(api_key.clone()))
             // 注入 API Key 和任务管理器
