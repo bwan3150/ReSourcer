@@ -1,58 +1,90 @@
-// 配置存储功能 - 从classifier/config.rs迁移的存储相关功能
+// 配置存储功能 - 使用 SQLite 数据库
 use super::models::{AppState, Preset, CategoryOrderConfig};
+use crate::database;
 use std::path::PathBuf;
-use std::fs;
 use std::io;
+use std::collections::HashMap;
 
-/// 获取配置文件目录 ~/.config/re-sourcer/
+/// 获取配置文件目录 ~/.config/re-sourcer/（仍需要用于 secret.json 和 credentials）
+#[allow(dead_code)]
 pub fn get_config_dir() -> PathBuf {
-    let home = std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
-        .unwrap_or_else(|_| ".".to_string());
-
-    PathBuf::from(home).join(".config").join("re-sourcer")
+    database::get_config_dir()
 }
 
-/// 获取配置文件路径
-pub fn get_config_path() -> PathBuf {
-    get_config_dir().join("config.json")
-}
-
-/// 确保配置目录存在
-pub fn ensure_config_dir() -> io::Result<()> {
-    let config_dir = get_config_dir();
-    if !config_dir.exists() {
-        fs::create_dir_all(&config_dir)?;
-    }
-    Ok(())
-}
-
-/// 读取配置
+/// 读取配置（从 SQLite 数据库）
 pub fn load_config() -> io::Result<AppState> {
-    let config_path = get_config_path();
+    let conn = database::get_connection()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
 
-    if !config_path.exists() {
-        return Ok(get_default_state());
-    }
+    // 读取 config 表
+    let (hidden_folders_json, use_cookies): (String, i32) = conn.query_row(
+        "SELECT hidden_folders, use_cookies FROM config WHERE id = 1",
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("读取配置失败: {}", e)))?;
 
-    let content = fs::read_to_string(config_path)?;
-    let state: AppState = serde_json::from_str(&content)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    let hidden_folders: Vec<String> = serde_json::from_str(&hidden_folders_json)
+        .unwrap_or_default();
 
-    Ok(state)
+    // 读取当前选中的源文件夹
+    let source_folder: String = conn.query_row(
+        "SELECT folder_path FROM source_folders WHERE is_selected = 1 LIMIT 1",
+        [],
+        |row| row.get(0),
+    ).unwrap_or_default();
+
+    // 读取备用源文件夹列表
+    let mut stmt = conn.prepare(
+        "SELECT folder_path FROM source_folders WHERE is_selected = 0 ORDER BY created_at DESC"
+    ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("准备查询失败: {}", e)))?;
+
+    let backup_source_folders: Vec<String> = stmt.query_map([], |row| row.get(0))
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("查询备用文件夹失败: {}", e)))?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    Ok(AppState {
+        source_folder,
+        hidden_folders,
+        backup_source_folders,
+        use_cookies: use_cookies != 0,
+    })
 }
 
-/// 保存配置
+/// 保存配置（写入 SQLite 数据库）
 pub fn save_config(state: &AppState) -> io::Result<()> {
-    ensure_config_dir()?;
-    let config_path = get_config_path();
-    let content = serde_json::to_string_pretty(state)
+    let conn = database::get_connection()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
+
+    // 更新 config 表
+    let hidden_folders_json = serde_json::to_string(&state.hidden_folders)
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-    fs::write(config_path, content)?;
+
+    conn.execute(
+        "UPDATE config SET hidden_folders = ?1, use_cookies = ?2 WHERE id = 1",
+        rusqlite::params![hidden_folders_json, state.use_cookies as i32],
+    ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("更新配置失败: {}", e)))?;
+
+    // 更新源文件夹
+    if !state.source_folder.is_empty() {
+        // 先取消所有选中状态
+        conn.execute("UPDATE source_folders SET is_selected = 0", [])
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("更新源文件夹失败: {}", e)))?;
+
+        // 插入或更新当前选中的源文件夹
+        let now = chrono::Utc::now().to_rfc3339();
+        conn.execute(
+            "INSERT INTO source_folders (folder_path, is_selected, created_at)
+             VALUES (?1, 1, ?2)
+             ON CONFLICT(folder_path) DO UPDATE SET is_selected = 1",
+            rusqlite::params![state.source_folder, now],
+        ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("插入源文件夹失败: {}", e)))?;
+    }
+
     Ok(())
 }
 
-/// 默认应用状态 - 不设置默认文件夹，由用户在设置页面指定
+/// 默认应用状态
 pub fn get_default_state() -> AppState {
     AppState {
         source_folder: String::new(),
@@ -62,43 +94,214 @@ pub fn get_default_state() -> AppState {
     }
 }
 
-/// 加载分类排序配置
+/// 加载分类排序配置（从 SQLite）
+#[allow(dead_code)]
 pub fn load_category_order_config() -> io::Result<CategoryOrderConfig> {
-    let config_path = get_config_dir().join("category_order.json");
+    let conn = database::get_connection()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
 
-    if !config_path.exists() {
-        return Ok(CategoryOrderConfig::default());
+    let mut stmt = conn.prepare("SELECT source_folder, order_list FROM category_order")
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("准备查询失败: {}", e)))?;
+
+    let mut orders = HashMap::new();
+    let rows = stmt.query_map([], |row| {
+        let source_folder: String = row.get(0)?;
+        let order_list_json: String = row.get(1)?;
+        Ok((source_folder, order_list_json))
+    }).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("查询分类排序失败: {}", e)))?;
+
+    for row in rows {
+        if let Ok((source_folder, order_list_json)) = row {
+            if let Ok(order_list) = serde_json::from_str::<Vec<String>>(&order_list_json) {
+                orders.insert(source_folder, order_list);
+            }
+        }
     }
 
-    let content = fs::read_to_string(&config_path)?;
-    let config = serde_json::from_str(&content)?;
-    Ok(config)
+    Ok(CategoryOrderConfig { orders })
 }
 
-/// 保存分类排序配置
+/// 保存分类排序配置（写入 SQLite）
+#[allow(dead_code)]
 pub fn save_category_order_config(config: &CategoryOrderConfig) -> io::Result<()> {
-    let config_dir = get_config_dir();
-    fs::create_dir_all(&config_dir)?;
+    let conn = database::get_connection()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
 
-    let config_path = config_dir.join("category_order.json");
-    let content = serde_json::to_string_pretty(config)?;
-    fs::write(config_path, content)?;
+    for (source_folder, order_list) in &config.orders {
+        let order_list_json = serde_json::to_string(order_list)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+        conn.execute(
+            "INSERT OR REPLACE INTO category_order (source_folder, order_list) VALUES (?1, ?2)",
+            rusqlite::params![source_folder, order_list_json],
+        ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("保存分类排序失败: {}", e)))?;
+    }
+
     Ok(())
 }
 
 /// 获取指定源文件夹的分类排序
 pub fn get_category_order(source_folder: &str) -> Vec<String> {
-    load_category_order_config()
-        .ok()
-        .and_then(|config| config.orders.get(source_folder).cloned())
-        .unwrap_or_default()
+    let conn = match database::get_connection() {
+        Ok(c) => c,
+        Err(_) => return Vec::new(),
+    };
+
+    conn.query_row(
+        "SELECT order_list FROM category_order WHERE source_folder = ?1",
+        rusqlite::params![source_folder],
+        |row| {
+            let order_list_json: String = row.get(0)?;
+            Ok(serde_json::from_str::<Vec<String>>(&order_list_json).unwrap_or_default())
+        },
+    ).unwrap_or_default()
 }
 
 /// 保存指定源文件夹的分类排序
 pub fn set_category_order(source_folder: &str, order: Vec<String>) -> io::Result<()> {
-    let mut config = load_category_order_config().unwrap_or_default();
-    config.orders.insert(source_folder.to_string(), order);
-    save_category_order_config(&config)
+    let conn = database::get_connection()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
+
+    let order_json = serde_json::to_string(&order)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+    conn.execute(
+        "INSERT OR REPLACE INTO category_order (source_folder, order_list) VALUES (?1, ?2)",
+        rusqlite::params![source_folder, order_json],
+    ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("保存分类排序失败: {}", e)))?;
+
+    Ok(())
+}
+
+// ==================== 源文件夹操作 ====================
+
+/// 列出所有源文件夹
+#[allow(dead_code)]
+pub fn list_source_folders() -> io::Result<Vec<(String, bool)>> {
+    let conn = database::get_connection()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
+
+    let mut stmt = conn.prepare(
+        "SELECT folder_path, is_selected FROM source_folders ORDER BY is_selected DESC, created_at DESC"
+    ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("准备查询失败: {}", e)))?;
+
+    let folders: Vec<(String, bool)> = stmt.query_map([], |row| {
+        let path: String = row.get(0)?;
+        let is_selected: i32 = row.get(1)?;
+        Ok((path, is_selected != 0))
+    })
+    .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("查询源文件夹失败: {}", e)))?
+    .filter_map(|r| r.ok())
+    .collect();
+
+    Ok(folders)
+}
+
+/// 获取当前选中的源文件夹
+#[allow(dead_code)]
+pub fn get_selected_source_folder() -> io::Result<Option<String>> {
+    let conn = database::get_connection()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
+
+    let result = conn.query_row(
+        "SELECT folder_path FROM source_folders WHERE is_selected = 1 LIMIT 1",
+        [],
+        |row| row.get(0),
+    );
+
+    match result {
+        Ok(path) => Ok(Some(path)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(io::Error::new(io::ErrorKind::Other, format!("查询选中文件夹失败: {}", e))),
+    }
+}
+
+/// 添加源文件夹
+#[allow(dead_code)]
+pub fn add_source_folder(folder_path: &str) -> io::Result<()> {
+    let conn = database::get_connection()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
+
+    let now = chrono::Utc::now().to_rfc3339();
+
+    // 检查是否已存在
+    let exists: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM source_folders WHERE folder_path = ?1",
+        rusqlite::params![folder_path],
+        |row| row.get(0),
+    ).unwrap_or(false);
+
+    if exists {
+        return Err(io::Error::new(io::ErrorKind::AlreadyExists, "源文件夹已存在"));
+    }
+
+    // 检查是否有选中的文件夹，如果没有则将新添加的设为选中
+    let has_selected: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM source_folders WHERE is_selected = 1",
+        [],
+        |row| row.get(0),
+    ).unwrap_or(false);
+
+    let is_selected = if has_selected { 0 } else { 1 };
+
+    conn.execute(
+        "INSERT INTO source_folders (folder_path, is_selected, created_at) VALUES (?1, ?2, ?3)",
+        rusqlite::params![folder_path, is_selected, now],
+    ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("添加源文件夹失败: {}", e)))?;
+
+    Ok(())
+}
+
+/// 删除源文件夹
+#[allow(dead_code)]
+pub fn remove_source_folder(folder_path: &str) -> io::Result<()> {
+    let conn = database::get_connection()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
+
+    // 检查是否是当前选中的文件夹
+    let is_selected: bool = conn.query_row(
+        "SELECT is_selected = 1 FROM source_folders WHERE folder_path = ?1",
+        rusqlite::params![folder_path],
+        |row| row.get(0),
+    ).unwrap_or(false);
+
+    conn.execute(
+        "DELETE FROM source_folders WHERE folder_path = ?1",
+        rusqlite::params![folder_path],
+    ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("删除源文件夹失败: {}", e)))?;
+
+    // 如果删除的是选中的文件夹，自动选中第一个
+    if is_selected {
+        conn.execute(
+            "UPDATE source_folders SET is_selected = 1 WHERE id = (SELECT MIN(id) FROM source_folders)",
+            [],
+        ).ok();
+    }
+
+    Ok(())
+}
+
+/// 切换选中的源文件夹
+#[allow(dead_code)]
+pub fn select_source_folder(folder_path: &str) -> io::Result<()> {
+    let conn = database::get_connection()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
+
+    // 先取消所有选中状态
+    conn.execute("UPDATE source_folders SET is_selected = 0", [])
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("更新源文件夹失败: {}", e)))?;
+
+    // 设置目标文件夹为选中
+    let affected = conn.execute(
+        "UPDATE source_folders SET is_selected = 1 WHERE folder_path = ?1",
+        rusqlite::params![folder_path],
+    ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("选中源文件夹失败: {}", e)))?;
+
+    if affected == 0 {
+        return Err(io::Error::new(io::ErrorKind::NotFound, "源文件夹不存在"));
+    }
+
+    Ok(())
 }
 
 /// 加载预设列表 - 从嵌入的 config/presets.json 读取

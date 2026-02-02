@@ -1,4 +1,5 @@
-// 下载模块的存储功能 - 历史记录和配置管理
+// 下载模块的存储功能 - 使用 SQLite 数据库
+use crate::database;
 use std::path::PathBuf;
 use std::fs;
 use serde::{Deserialize, Serialize};
@@ -26,11 +27,7 @@ pub struct ConfigData {
 
 // 获取配置目录路径 ~/.config/re-sourcer
 pub fn get_config_dir() -> Result<PathBuf, String> {
-    let home = std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
-        .map_err(|_| "无法获取 HOME 环境变量".to_string())?;
-
-    Ok(PathBuf::from(home).join(".config").join("re-sourcer"))
+    Ok(database::get_config_dir())
 }
 
 // 获取认证文件根目录
@@ -38,7 +35,8 @@ pub fn get_credentials_dir() -> Result<PathBuf, String> {
     Ok(get_config_dir()?.join("credentials"))
 }
 
-// 确保配置目录存在
+// 确保配置目录存在（用于 credentials 目录）
+#[allow(dead_code)]
 pub fn ensure_config_dir() -> Result<(), String> {
     let config_dir = get_config_dir()?;
     if !config_dir.exists() {
@@ -56,6 +54,7 @@ pub fn ensure_config_dir() -> Result<(), String> {
 }
 
 // 默认配置
+#[allow(dead_code)]
 fn get_default_config() -> ConfigData {
     ConfigData {
         source_folder: String::new(),
@@ -64,101 +63,118 @@ fn get_default_config() -> ConfigData {
     }
 }
 
-// 获取配置文件路径
-fn get_config_path() -> Result<PathBuf, String> {
-    Ok(get_config_dir()?.join("config.json"))
-}
-
-// 加载主配置文件
+// 加载主配置文件（从 SQLite 数据库）
 pub fn load_config() -> Result<ConfigData, String> {
-    let config_path = get_config_path()?;
+    let conn = database::get_connection()
+        .map_err(|e| format!("数据库连接失败: {}", e))?;
 
-    if !config_path.exists() {
-        return Ok(get_default_config());
-    }
+    // 读取 config 表
+    let (hidden_folders_json, use_cookies): (String, i32) = conn.query_row(
+        "SELECT hidden_folders, use_cookies FROM config WHERE id = 1",
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    ).map_err(|e| format!("读取配置失败: {}", e))?;
 
-    let content = fs::read_to_string(&config_path)
-        .map_err(|e| format!("无法读取配置文件: {}", e))?;
+    let hidden_folders: Vec<String> = serde_json::from_str(&hidden_folders_json)
+        .unwrap_or_default();
 
-    serde_json::from_str(&content)
-        .map_err(|e| format!("配置文件格式错误: {}", e))
+    // 读取当前选中的源文件夹
+    let source_folder: String = conn.query_row(
+        "SELECT folder_path FROM source_folders WHERE is_selected = 1 LIMIT 1",
+        [],
+        |row| row.get(0),
+    ).unwrap_or_default();
+
+    Ok(ConfigData {
+        source_folder,
+        hidden_folders,
+        use_cookies: use_cookies != 0,
+    })
 }
 
-// 保存主配置文件（预留接口，暂未使用）
-#[allow(dead_code)]
-pub fn save_config(config: &ConfigData) -> Result<(), String> {
-    ensure_config_dir()?;
-
-    let config_path = get_config_path()?;
-    let content = serde_json::to_string_pretty(config)
-        .map_err(|e| format!("序列化配置失败: {}", e))?;
-
-    fs::write(&config_path, content)
-        .map_err(|e| format!("无法写入配置文件: {}", e))?;
-
-    Ok(())
-}
-
-// 获取历史记录文件路径
-fn get_history_path() -> Result<PathBuf, String> {
-    Ok(get_config_dir()?.join("download_history.json"))
-}
-
-// 加载历史记录
+// 加载历史记录（从 SQLite 数据库）
 pub fn load_history() -> Result<Vec<HistoryItem>, String> {
-    let history_path = get_history_path()?;
+    let conn = database::get_connection()
+        .map_err(|e| format!("数据库连接失败: {}", e))?;
 
-    if !history_path.exists() {
-        return Ok(Vec::new());
-    }
+    let mut stmt = conn.prepare(
+        "SELECT id, url, platform, status, file_name, file_path, error, created_at
+         FROM download_history
+         ORDER BY created_at DESC
+         LIMIT 100"
+    ).map_err(|e| format!("准备查询失败: {}", e))?;
 
-    let content = fs::read_to_string(&history_path)
-        .map_err(|e| format!("无法读取历史记录: {}", e))?;
+    let history: Vec<HistoryItem> = stmt.query_map([], |row| {
+        Ok(HistoryItem {
+            id: row.get(0)?,
+            url: row.get(1)?,
+            platform: row.get(2)?,
+            status: row.get(3)?,
+            file_name: row.get(4)?,
+            file_path: row.get(5)?,
+            error: row.get(6)?,
+            created_at: row.get(7)?,
+        })
+    })
+    .map_err(|e| format!("查询历史记录失败: {}", e))?
+    .filter_map(|r| r.ok())
+    .collect();
 
-    serde_json::from_str(&content)
-        .map_err(|e| format!("历史记录格式错误: {}", e))
-}
-
-// 保存历史记录
-fn save_history(history: &[HistoryItem]) -> Result<(), String> {
-    ensure_config_dir()?;
-
-    let history_path = get_history_path()?;
-    let content = serde_json::to_string_pretty(history)
-        .map_err(|e| format!("序列化历史记录失败: {}", e))?;
-
-    fs::write(&history_path, content)
-        .map_err(|e| format!("无法写入历史记录: {}", e))?;
-
-    Ok(())
+    Ok(history)
 }
 
 // 添加到历史记录（去重并限制数量）
 pub fn add_to_history(item: HistoryItem) -> Result<(), String> {
-    let mut history = load_history()?;
+    let conn = database::get_connection()
+        .map_err(|e| format!("数据库连接失败: {}", e))?;
 
-    // 去重：如果已存在相同 ID，先移除
-    history.retain(|h| h.id != item.id);
+    // 使用 INSERT OR REPLACE 实现去重
+    conn.execute(
+        "INSERT OR REPLACE INTO download_history (id, url, platform, status, file_name, file_path, error, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        rusqlite::params![
+            item.id,
+            item.url,
+            item.platform,
+            item.status,
+            item.file_name,
+            item.file_path,
+            item.error,
+            item.created_at
+        ],
+    ).map_err(|e| format!("添加历史记录失败: {}", e))?;
 
-    // 添加到开头
-    history.insert(0, item);
+    // 限制数量（保留最新100条）
+    conn.execute(
+        "DELETE FROM download_history WHERE id NOT IN (
+            SELECT id FROM download_history ORDER BY created_at DESC LIMIT 100
+        )",
+        [],
+    ).ok();
 
-    // 限制数量（最多100条）
-    if history.len() > 100 {
-        history.truncate(100);
-    }
-
-    save_history(&history)
+    Ok(())
 }
 
 // 从历史记录中删除单个条目
 pub fn remove_from_history(task_id: &str) -> Result<(), String> {
-    let mut history = load_history()?;
-    history.retain(|h| h.id != task_id);
-    save_history(&history)
+    let conn = database::get_connection()
+        .map_err(|e| format!("数据库连接失败: {}", e))?;
+
+    conn.execute(
+        "DELETE FROM download_history WHERE id = ?1",
+        rusqlite::params![task_id],
+    ).map_err(|e| format!("删除历史记录失败: {}", e))?;
+
+    Ok(())
 }
 
 // 清空历史记录
 pub fn clear_history() -> Result<(), String> {
-    save_history(&[])
+    let conn = database::get_connection()
+        .map_err(|e| format!("数据库连接失败: {}", e))?;
+
+    conn.execute("DELETE FROM download_history", [])
+        .map_err(|e| format!("清空历史记录失败: {}", e))?;
+
+    Ok(())
 }

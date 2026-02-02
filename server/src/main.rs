@@ -13,6 +13,7 @@ mod browser;
 mod static_files;
 mod auth;
 mod logger;
+mod database;
 
 use static_files::serve_static;
 
@@ -73,6 +74,12 @@ async fn get_app_config() -> Result<HttpResponse> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    // 初始化数据库
+    if let Err(e) = database::init_db() {
+        eprintln!("数据库初始化失败: {}", e);
+        return Err(std::io::Error::new(std::io::ErrorKind::Other, e.to_string()));
+    }
+
     // 获取本机局域网 IP
     fn get_local_ip() -> Option<String> {
         let socket = UdpSocket::bind("0.0.0.0:0").ok()?;

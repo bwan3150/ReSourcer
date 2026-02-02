@@ -1,6 +1,5 @@
-// 上传模块的存储功能 - 历史记录管理
-use std::path::PathBuf;
-use std::fs;
+// 上传模块的存储功能 - 使用 SQLite 数据库
+use crate::database;
 use std::io;
 use serde::{Deserialize, Serialize};
 
@@ -16,82 +15,88 @@ pub struct HistoryItem {
     pub created_at: String,
 }
 
-// 获取配置目录路径 ~/.config/re-sourcer
-fn get_config_dir() -> PathBuf {
-    let home = std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
-        .unwrap_or_else(|_| ".".to_string());
-
-    PathBuf::from(home).join(".config").join("re-sourcer")
-}
-
-// 确保配置目录存在
-fn ensure_config_dir() -> io::Result<()> {
-    let config_dir = get_config_dir();
-    if !config_dir.exists() {
-        fs::create_dir_all(&config_dir)?;
-    }
-    Ok(())
-}
-
-// 获取上传历史记录文件路径
-fn get_upload_history_path() -> PathBuf {
-    get_config_dir().join("upload_history.json")
-}
-
-// 加载上传历史记录
+// 加载上传历史记录（从 SQLite 数据库）
 pub fn load_history() -> io::Result<Vec<HistoryItem>> {
-    let history_path = get_upload_history_path();
+    let conn = database::get_connection()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
 
-    if !history_path.exists() {
-        return Ok(Vec::new());
-    }
+    let mut stmt = conn.prepare(
+        "SELECT id, file_name, target_folder, status, file_size, error, created_at
+         FROM upload_history
+         ORDER BY created_at DESC
+         LIMIT 100"
+    ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("准备查询失败: {}", e)))?;
 
-    let content = fs::read_to_string(&history_path)?;
-    let history: Vec<HistoryItem> = serde_json::from_str(&content)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    let history: Vec<HistoryItem> = stmt.query_map([], |row| {
+        let file_size: i64 = row.get(4)?;
+        Ok(HistoryItem {
+            id: row.get(0)?,
+            file_name: row.get(1)?,
+            target_folder: row.get(2)?,
+            status: row.get(3)?,
+            file_size: file_size as u64,
+            error: row.get(5)?,
+            created_at: row.get(6)?,
+        })
+    })
+    .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("查询历史记录失败: {}", e)))?
+    .filter_map(|r| r.ok())
+    .collect();
 
     Ok(history)
 }
 
-// 保存上传历史记录
-fn save_history(history: &[HistoryItem]) -> io::Result<()> {
-    ensure_config_dir()?;
-
-    let history_path = get_upload_history_path();
-    let content = serde_json::to_string_pretty(history)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-
-    fs::write(&history_path, content)?;
-    Ok(())
-}
-
 // 添加到上传历史记录（去重并限制数量）
 pub fn add_to_history(item: HistoryItem) -> io::Result<()> {
-    let mut history = load_history()?;
+    let conn = database::get_connection()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
 
-    // 去重：如果已存在相同 ID，先移除
-    history.retain(|h| h.id != item.id);
+    // 使用 INSERT OR REPLACE 实现去重
+    conn.execute(
+        "INSERT OR REPLACE INTO upload_history (id, file_name, target_folder, status, file_size, error, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        rusqlite::params![
+            item.id,
+            item.file_name,
+            item.target_folder,
+            item.status,
+            item.file_size as i64,
+            item.error,
+            item.created_at
+        ],
+    ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("添加历史记录失败: {}", e)))?;
 
-    // 添加到开头
-    history.insert(0, item);
+    // 限制数量（保留最新100条）
+    conn.execute(
+        "DELETE FROM upload_history WHERE id NOT IN (
+            SELECT id FROM upload_history ORDER BY created_at DESC LIMIT 100
+        )",
+        [],
+    ).ok();
 
-    // 限制数量（最多100条）
-    if history.len() > 100 {
-        history.truncate(100);
-    }
-
-    save_history(&history)
+    Ok(())
 }
 
 // 从上传历史记录中删除单个条目
 pub fn remove_from_history(task_id: &str) -> io::Result<()> {
-    let mut history = load_history()?;
-    history.retain(|h| h.id != task_id);
-    save_history(&history)
+    let conn = database::get_connection()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
+
+    conn.execute(
+        "DELETE FROM upload_history WHERE id = ?1",
+        rusqlite::params![task_id],
+    ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("删除历史记录失败: {}", e)))?;
+
+    Ok(())
 }
 
 // 清空上传历史记录
 pub fn clear_history() -> io::Result<()> {
-    save_history(&[])
+    let conn = database::get_connection()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
+
+    conn.execute("DELETE FROM upload_history", [])
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("清空历史记录失败: {}", e)))?;
+
+    Ok(())
 }
