@@ -110,7 +110,51 @@ class _FilePreviewState extends State<FilePreview> {
       );
     }
 
-    return _buildPlaceholder(Icons.insert_drive_file);
+    // 其他类型文件：显示文件图标和名称
+    return _buildOtherFilePreview();
+  }
+
+  /// 构建其他类型文件的预览（显示图标和文件名）
+  Widget _buildOtherFilePreview() {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.grey[800],
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.insert_drive_file,
+              size: 80,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                widget.file.name,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[300],
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '不支持预览',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// 构建图片组件

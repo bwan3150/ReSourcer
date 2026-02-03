@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/classifier_provider.dart';
 import '../../providers/server_provider.dart';
 import '../../providers/source_folder_provider.dart';
 import '../../providers/theme_provider.dart';
@@ -225,6 +226,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     // 主题切换 - 简约平放设计
                     _buildThemeSelector(context),
+
+                    const SizedBox(height: 24),
+
+                    // 清除缓存按钮
+                    _buildClearCacheButton(context),
 
                     const SizedBox(height: 32),
 
@@ -532,6 +538,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  /// 清除缓存按钮
+  Widget _buildClearCacheButton(BuildContext context) {
+    return NeumorphicButton(
+      onPressed: () => _handleClearCache(context),
+      style: NeumorphicStyle(
+        depth: 2,
+        intensity: 0.6,
+        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Icon(
+            Icons.cleaning_services_outlined,
+            size: 20,
+            color: ThemeColors.text(context),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            '清除缓存',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: ThemeColors.text(context),
+            ),
+          ),
+          const Spacer(),
+          Icon(
+            Icons.chevron_right,
+            size: 20,
+            color: ThemeColors.textSecondary(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 处理清除缓存
+  Future<void> _handleClearCache(BuildContext context) async {
+    final confirmed = await NeumorphicDialog.showConfirm(
+      context: context,
+      title: '清除缓存',
+      content: '将清除分类器进度等本地缓存数据，确定继续吗？',
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        final classifierProvider = Provider.of<ClassifierProvider>(context, listen: false);
+        await classifierProvider.clearSavedState();
+        classifierProvider.reset();
+
+        if (context.mounted) {
+          NeumorphicToast.showSuccess(context, '缓存已清除');
+        }
+      } catch (e) {
+        if (context.mounted) {
+          NeumorphicToast.showError(context, '清除失败');
+        }
+      }
+    }
   }
 
   /// 跳转到服务器管理页面

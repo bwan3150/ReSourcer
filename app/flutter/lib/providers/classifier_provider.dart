@@ -189,7 +189,7 @@ class ClassifierProvider with ChangeNotifier {
         fileIndex: _currentIndex,
         category: category,
         originalName: file.nameWithoutExtension,
-        newPath: result['moved_to'] as String,
+        newPath: result['new_path'] as String? ?? result['moved_to'] as String? ?? '',
         timestamp: DateTime.now(),
       );
 

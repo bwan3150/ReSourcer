@@ -663,7 +663,7 @@ async function moveToCategory(category) {
                 fileIndex: currentIndex,
                 category: category,
                 originalName: getFileNameWithoutExtension(file.name),
-                newPath: result.moved_to,
+                newPath: result.new_path || result.moved_to,
                 timestamp: Date.now()
             });
 
