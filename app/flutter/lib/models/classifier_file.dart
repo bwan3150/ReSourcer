@@ -17,9 +17,9 @@ class ClassifierFile {
 
   factory ClassifierFile.fromJson(Map<String, dynamic> json) {
     return ClassifierFile(
-      name: json['name'] as String,
-      path: json['path'] as String,
-      fileType: json['file_type'] as String,
+      name: json['name'] ?? '',
+      path: json['path'] ?? '',
+      fileType: json['file_type'] ?? '',
     );
   }
 

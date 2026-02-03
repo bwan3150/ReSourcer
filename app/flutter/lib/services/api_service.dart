@@ -102,7 +102,7 @@ class ApiService {
   Future<List<Map<String, dynamic>>> getGalleryFolders() async {
     try {
       final response = await http.get(
-        Uri.parse('${server.baseUrl}/api/gallery/folders'),
+        Uri.parse('${server.baseUrl}/api/folder/list'),
         headers: {'Cookie': 'api_key=${server.apiKey}'},
       );
 
@@ -122,7 +122,7 @@ class ApiService {
   Future<List<Map<String, dynamic>>> getGalleryFiles(String folderPath) async {
     try {
       final response = await http.get(
-        Uri.parse('${server.baseUrl}/api/gallery/files?folder=${Uri.encodeComponent(folderPath)}'),
+        Uri.parse('${server.baseUrl}/api/preview/files?folder=${Uri.encodeComponent(folderPath)}'),
         headers: {'Cookie': 'api_key=${server.apiKey}'},
       );
 
@@ -152,7 +152,7 @@ class ApiService {
       }
 
       final response = await _dio.post(
-        '${server.baseUrl}/api/uploader/upload',
+        '${server.baseUrl}/api/transfer/upload/task',
         data: formData,
       );
 
@@ -167,7 +167,7 @@ class ApiService {
   Future<List<Map<String, dynamic>>> getUploadTasks() async {
     try {
       final response = await http.get(
-        Uri.parse('${server.baseUrl}/api/uploader/tasks'),
+        Uri.parse('${server.baseUrl}/api/transfer/upload/tasks'),
         headers: {'Cookie': 'api_key=${server.apiKey}'},
       );
 
@@ -186,7 +186,7 @@ class ApiService {
   Future<bool> deleteUploadTask(String taskId) async {
     try {
       final response = await http.delete(
-        Uri.parse('${server.baseUrl}/api/uploader/task/$taskId'),
+        Uri.parse('${server.baseUrl}/api/transfer/upload/task/$taskId'),
         headers: {'Cookie': 'api_key=${server.apiKey}'},
       );
 
@@ -201,7 +201,7 @@ class ApiService {
   Future<int> clearFinishedUploadTasks() async {
     try {
       final response = await http.post(
-        Uri.parse('${server.baseUrl}/api/uploader/tasks/clear'),
+        Uri.parse('${server.baseUrl}/api/transfer/upload/tasks/clear'),
         headers: {'Cookie': 'api_key=${server.apiKey}'},
       );
 
@@ -218,19 +218,19 @@ class ApiService {
 
   /// 获取图片缩略图 URL
   String getThumbnailUrl(String filePath) {
-    return '${server.baseUrl}/api/gallery/thumbnail?path=${Uri.encodeComponent(filePath)}&size=300';
+    return '${server.baseUrl}/api/preview/thumbnail?path=${Uri.encodeComponent(filePath)}&size=300';
   }
 
   /// 获取原图 URL
   String getImageUrl(String filePath) {
-    return '${server.baseUrl}/api/classifier/file/${Uri.encodeComponent(filePath)}';
+    return '${server.baseUrl}/api/preview/content/${Uri.encodeComponent(filePath)}';
   }
 
   /// 重命名文件
   Future<Map<String, dynamic>> renameFile(String filePath, String newName) async {
     try {
       final response = await http.post(
-        Uri.parse('${server.baseUrl}/api/gallery/rename'),
+        Uri.parse('${server.baseUrl}/api/file/rename'),
         headers: {
           'Cookie': 'api_key=${server.apiKey}',
           'Content-Type': 'application/json',
@@ -255,7 +255,7 @@ class ApiService {
   Future<Map<String, dynamic>> moveFile(String filePath, String targetFolder) async {
     try {
       final response = await http.post(
-        Uri.parse('${server.baseUrl}/api/gallery/move'),
+        Uri.parse('${server.baseUrl}/api/file/move'),
         headers: {
           'Cookie': 'api_key=${server.apiKey}',
           'Content-Type': 'application/json',
@@ -282,7 +282,7 @@ class ApiService {
   Future<Map<String, dynamic>> getSettingsState() async {
     try {
       final response = await http.get(
-        Uri.parse('${server.baseUrl}/api/settings/state'),
+        Uri.parse('${server.baseUrl}/api/config/state'),
         headers: {'Cookie': 'api_key=${server.apiKey}'},
       );
 
@@ -300,7 +300,7 @@ class ApiService {
   Future<Map<String, dynamic>> switchSourceFolder(String folderPath) async {
     try {
       final response = await http.post(
-        Uri.parse('${server.baseUrl}/api/settings/sources/switch'),
+        Uri.parse('${server.baseUrl}/api/config/sources/switch'),
         headers: {
           'Cookie': 'api_key=${server.apiKey}',
           'Content-Type': 'application/json',
@@ -322,7 +322,7 @@ class ApiService {
   Future<Map<String, dynamic>> addSourceFolder(String folderPath) async {
     try {
       final response = await http.post(
-        Uri.parse('${server.baseUrl}/api/settings/sources/add'),
+        Uri.parse('${server.baseUrl}/api/config/sources/add'),
         headers: {
           'Cookie': 'api_key=${server.apiKey}',
           'Content-Type': 'application/json',
@@ -344,7 +344,7 @@ class ApiService {
   Future<Map<String, dynamic>> removeSourceFolder(String folderPath) async {
     try {
       final response = await http.post(
-        Uri.parse('${server.baseUrl}/api/settings/sources/remove'),
+        Uri.parse('${server.baseUrl}/api/config/sources/remove'),
         headers: {
           'Cookie': 'api_key=${server.apiKey}',
           'Content-Type': 'application/json',

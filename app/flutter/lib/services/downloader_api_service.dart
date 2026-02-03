@@ -8,13 +8,12 @@ class DownloaderApiService {
 
   DownloaderApiService(this.server);
 
-  String get _baseUrl => '${server.baseUrl}/api/downloader';
   Map<String, String> get _headers => {'Cookie': 'api_key=${server.apiKey}'};
 
   /// 获取配置信息
   Future<Map<String, dynamic>> getConfig() async {
     final response = await http.get(
-      Uri.parse('$_baseUrl/config'),
+      Uri.parse('${server.baseUrl}/api/config/download'),
       headers: _headers,
     );
 
@@ -27,7 +26,7 @@ class DownloaderApiService {
   /// 获取文件夹列表
   /// 如果不传source_folder参数，后端会从配置文件读取
   Future<List<dynamic>> getFolders({String? sourceFolder}) async {
-    var url = '$_baseUrl/folders';
+    var url = '${server.baseUrl}/api/folder/list';
     if (sourceFolder != null && sourceFolder.isNotEmpty) {
       url += '?source_folder=${Uri.encodeComponent(sourceFolder)}';
     }
@@ -46,7 +45,7 @@ class DownloaderApiService {
   /// 创建新文件夹
   Future<void> createFolder(String folderName) async {
     final response = await http.post(
-      Uri.parse('$_baseUrl/create-folder'),
+      Uri.parse('${server.baseUrl}/api/folder/create'),
       headers: {..._headers, 'Content-Type': 'application/json'},
       body: jsonEncode({'folder_name': folderName}),
     );
@@ -60,7 +59,7 @@ class DownloaderApiService {
   /// 检测URL
   Future<Map<String, dynamic>> detectUrl(String url) async {
     final response = await http.post(
-      Uri.parse('$_baseUrl/detect'),
+      Uri.parse('${server.baseUrl}/api/transfer/download/detect'),
       headers: {..._headers, 'Content-Type': 'application/json'},
       body: jsonEncode({'url': url}),
     );
@@ -79,7 +78,7 @@ class DownloaderApiService {
     String format = 'best',
   }) async {
     final response = await http.post(
-      Uri.parse('$_baseUrl/task'),
+      Uri.parse('${server.baseUrl}/api/transfer/download/task'),
       headers: {..._headers, 'Content-Type': 'application/json'},
       body: jsonEncode({
         'url': url,
@@ -100,7 +99,7 @@ class DownloaderApiService {
   /// 获取任务列表
   Future<Map<String, dynamic>> getTasks() async {
     final response = await http.get(
-      Uri.parse('$_baseUrl/tasks'),
+      Uri.parse('${server.baseUrl}/api/transfer/download/tasks'),
       headers: _headers,
     );
 
@@ -113,7 +112,7 @@ class DownloaderApiService {
   /// 删除任务（取消/删除）
   Future<void> deleteTask(String taskId) async {
     final response = await http.delete(
-      Uri.parse('$_baseUrl/task/$taskId'),
+      Uri.parse('${server.baseUrl}/api/transfer/download/task/$taskId'),
       headers: _headers,
     );
 
@@ -126,7 +125,7 @@ class DownloaderApiService {
   /// 清空历史记录
   Future<void> clearHistory() async {
     final response = await http.delete(
-      Uri.parse('$_baseUrl/history'),
+      Uri.parse('${server.baseUrl}/api/transfer/download/history'),
       headers: _headers,
     );
 
@@ -139,13 +138,13 @@ class DownloaderApiService {
   /// 获取文件URL（用于预览）
   String getFileUrl(String filePath) {
     final encodedPath = Uri.encodeComponent(filePath);
-    return '${server.baseUrl}/api/downloader/file/$encodedPath';
+    return '${server.baseUrl}/api/preview/content/$encodedPath';
   }
 
   /// 上传认证信息
   Future<void> uploadCredentials(String platform, String content) async {
     final response = await http.post(
-      Uri.parse('$_baseUrl/credentials/$platform'),
+      Uri.parse('${server.baseUrl}/api/config/credentials/$platform'),
       headers: {..._headers, 'Content-Type': 'text/plain'},
       body: content,
     );
@@ -159,7 +158,7 @@ class DownloaderApiService {
   /// 删除认证信息
   Future<void> deleteCredentials(String platform) async {
     final response = await http.delete(
-      Uri.parse('$_baseUrl/credentials/$platform'),
+      Uri.parse('${server.baseUrl}/api/config/credentials/$platform'),
       headers: _headers,
     );
 

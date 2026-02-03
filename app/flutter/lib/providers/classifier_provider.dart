@@ -144,8 +144,12 @@ class ClassifierProvider with ChangeNotifier {
 
   /// 加载待分类文件列表
   Future<void> loadFiles(ApiService apiService) async {
+    if (_sourceFolder == null) {
+      throw Exception('源文件夹未设置');
+    }
+
     try {
-      final data = await apiService.classifier.getFiles();
+      final data = await apiService.classifier.getFiles(_sourceFolder!);
       _files = data.map((json) => ClassifierFile.fromJson(json)).toList();
       _currentIndex = 0;
       _processedCount = 0;
@@ -168,12 +172,13 @@ class ClassifierProvider with ChangeNotifier {
     String category, {
     String? newName,
   }) async {
-    if (currentFile == null) return false;
+    if (currentFile == null || _sourceFolder == null) return false;
 
     try {
       final file = currentFile!;
       final result = await apiService.classifier.moveFile(
         filePath: file.path,
+        sourceFolder: _sourceFolder!,
         category: category,
         newName: newName,
       );
@@ -223,7 +228,7 @@ class ClassifierProvider with ChangeNotifier {
 
   /// 撤销上一步操作
   Future<bool> undo(ApiService apiService) async {
-    if (_operationHistory.isEmpty) return false;
+    if (_operationHistory.isEmpty || _sourceFolder == null) return false;
 
     try {
       final lastOp = _operationHistory.last;
@@ -231,6 +236,7 @@ class ClassifierProvider with ChangeNotifier {
       // 移回原位置（category 为空表示移回源文件夹根目录）
       await apiService.classifier.moveFile(
         filePath: lastOp.newPath,
+        sourceFolder: _sourceFolder!,
         category: '',
         newName: lastOp.originalName,
       );
