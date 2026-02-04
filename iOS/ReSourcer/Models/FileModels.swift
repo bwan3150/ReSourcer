@@ -8,11 +8,12 @@
 import Foundation
 
 /// 文件类型枚举
+/// 注意：后端使用 serde rename_all = "lowercase"，返回小写值
 enum FileType: String, Codable, CaseIterable {
-    case image = "Image"
-    case video = "Video"
-    case gif = "Gif"
-    case other = "Other"
+    case image = "image"
+    case video = "video"
+    case gif = "gif"
+    case other = "other"
 
     /// 从扩展名推断文件类型
     static func from(extension ext: String) -> FileType {

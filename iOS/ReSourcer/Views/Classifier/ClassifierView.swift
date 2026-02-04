@@ -23,6 +23,11 @@ struct ClassifierView: View {
     // 操作历史（用于撤销）
     @State private var operationHistory: [ClassifyOperation] = []
 
+    // 分类选择器高度状态
+    @State private var selectorHeight: CGFloat = 150  // 默认收起高度
+    private let minHeight: CGFloat = 150  // 最小高度（水平模式）
+    private let maxHeight: CGFloat = 400  // 最大高度
+
     // MARK: - Body
 
     var body: some View {
@@ -79,6 +84,11 @@ struct ClassifierView: View {
         return files[currentIndex]
     }
 
+    // 是否为水平模式（收起状态）
+    private var isHorizontalMode: Bool {
+        selectorHeight <= minHeight
+    }
+
     // MARK: - Classifier Content
 
     private var classifierContent: some View {
@@ -87,8 +97,8 @@ struct ClassifierView: View {
             filePreviewSection
                 .frame(maxHeight: .infinity)
 
-            // 分类按钮区域
-            categoryButtonsSection
+            // 可拖动的分类选择器
+            draggableCategorySelector
         }
     }
 
@@ -161,22 +171,19 @@ struct ClassifierView: View {
         }
     }
 
-    // MARK: - Category Buttons Section
+    // MARK: - Draggable Category Selector
 
-    private var categoryButtonsSection: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: AppTheme.Spacing.sm) {
-                ForEach(categories) { category in
-                    categoryButton(for: category)
-                }
+    private var draggableCategorySelector: some View {
+        VStack(spacing: 0) {
+            // 拖动把手
+            dragHandle
 
-                // 新建分类按钮
-                GlassButton(icon: "plus", style: .secondary, size: .medium) {
-                    // TODO: 显示新建分类弹窗
-                }
+            // 分类列表内容
+            if isHorizontalMode {
+                horizontalCategoryList
+            } else {
+                verticalCategoryList
             }
-            .padding(.horizontal, AppTheme.Spacing.lg)
-            .padding(.vertical, AppTheme.Spacing.md)
         }
         .glassEffect(.regular, in: UnevenRoundedRectangle(
             topLeadingRadius: AppTheme.CornerRadius.xl,
@@ -184,16 +191,160 @@ struct ClassifierView: View {
         ))
     }
 
-    @ViewBuilder
-    private func categoryButton(for category: FolderInfo) -> some View {
-        GlassButton(
-            category.name,
-            icon: "folder.fill",
-            style: .primary,
-            size: .medium
-        ) {
-            classifyToCategory(category)
+    // MARK: - Drag Handle
+
+    private var dragHandle: some View {
+        VStack(spacing: 0) {
+            // 把手指示条
+            RoundedRectangle(cornerRadius: 2)
+                .fill(Color.secondary.opacity(0.4))
+                .frame(width: 40, height: 4)
+                .padding(.vertical, 12)
         }
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    // 向上拖动增加高度，向下拖动减少高度
+                    let newHeight = selectorHeight - value.translation.height
+                    selectorHeight = min(max(newHeight, minHeight), maxHeight)
+                }
+        )
+    }
+
+    // MARK: - Horizontal Category List（收起模式）
+
+    private var horizontalCategoryList: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                ForEach(categories) { category in
+                    compactCategoryButton(for: category)
+                }
+
+                // 添加按钮
+                compactAddButton
+            }
+            .padding(.horizontal, AppTheme.Spacing.lg)
+            .padding(.bottom, AppTheme.Spacing.md)
+        }
+    }
+
+    // MARK: - Vertical Category List（展开模式）
+
+    private var verticalCategoryList: some View {
+        ScrollView {
+            LazyVStack(spacing: AppTheme.Spacing.sm) {
+                ForEach(categories) { category in
+                    fullCategoryButton(for: category)
+                }
+
+                // 添加按钮
+                fullAddButton
+            }
+            .padding(.horizontal, AppTheme.Spacing.lg)
+            .padding(.bottom, AppTheme.Spacing.lg)
+        }
+        .frame(height: selectorHeight - 40) // 减去把手高度
+    }
+
+    // MARK: - Compact Category Button（水平滑动用）
+
+    private func compactCategoryButton(for category: FolderInfo) -> some View {
+        Button {
+            classifyToCategory(category)
+        } label: {
+            HStack(spacing: AppTheme.Spacing.xs) {
+                Text(category.name)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+
+                Text("\(category.fileCount)")
+                    .font(.caption2)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.secondary.opacity(0.15), in: .capsule)
+            }
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+        }
+        .glassEffect(.regular.interactive(), in: .capsule)
+    }
+
+    // MARK: - Full Category Button（垂直列表用）
+
+    private func fullCategoryButton(for category: FolderInfo) -> some View {
+        Button {
+            classifyToCategory(category)
+        } label: {
+            HStack(spacing: AppTheme.Spacing.md) {
+                Image(systemName: "folder.fill")
+                    .font(.title3)
+                    .foregroundStyle(.yellow)
+
+                Text(category.name)
+                    .font(.body)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+
+                Spacer()
+
+                Text("\(category.fileCount)")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.secondary.opacity(0.1), in: .capsule)
+            }
+            .padding(.horizontal, AppTheme.Spacing.md)
+            .padding(.vertical, AppTheme.Spacing.sm)
+        }
+        .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+    }
+
+    // MARK: - Add Buttons
+
+    private var compactAddButton: some View {
+        Button {
+            // TODO: 显示添加分类对话框
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "plus.circle")
+                    .font(.subheadline)
+                Text("添加")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+            }
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+        }
+        .glassEffect(.regular.interactive(), in: .capsule)
+    }
+
+    private var fullAddButton: some View {
+        Button {
+            // TODO: 显示添加分类对话框
+        } label: {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                Image(systemName: "plus.circle")
+                    .font(.title3)
+
+                Text("添加新分类")
+                    .font(.body)
+                    .fontWeight(.semibold)
+
+                Spacer()
+            }
+            .foregroundStyle(.primary)
+            .padding(.horizontal, AppTheme.Spacing.md)
+            .padding(.vertical, AppTheme.Spacing.sm)
+        }
+        .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
     }
 
     // MARK: - Empty View

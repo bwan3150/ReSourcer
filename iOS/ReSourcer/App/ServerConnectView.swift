@@ -15,14 +15,18 @@ struct ServerConnectView: View {
 
     @State private var serverURL = ""
     @State private var apiKey = ""
+    @State private var serverName = ""
     @State private var isConnecting = false
     @State private var errorMessage: String?
 
     /// 已保存的服务器列表
     @State private var savedServers: [Server] = []
 
-    /// 是否显示添加服务器表单
-    @State private var showAddForm = false
+    /// 是否显示添加/编辑服务器表单
+    @State private var showForm = false
+
+    /// 正在编辑的服务器（nil 表示添加新服务器）
+    @State private var editingServer: Server?
 
     // MARK: - Body
 
@@ -30,7 +34,7 @@ struct ServerConnectView: View {
         ZStack {
             // 背景
             LinearGradient(
-                colors: [Color.blue.opacity(0.2), Color.purple.opacity(0.2)],
+                colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -43,20 +47,35 @@ struct ServerConnectView: View {
                     headerSection
 
                     // 已保存的服务器列表
-                    if !savedServers.isEmpty && !showAddForm {
+                    if !savedServers.isEmpty && !showForm {
                         savedServersSection
                     }
 
-                    // 添加新服务器
-                    if showAddForm || savedServers.isEmpty {
-                        addServerSection
+                    // 添加/编辑服务器表单
+                    if showForm || savedServers.isEmpty {
+                        serverFormSection
                     } else {
                         // 添加新服务器按钮
-                        GlassButton.secondary("添加新服务器", icon: "plus") {
+                        Button {
                             withAnimation {
-                                showAddForm = true
+                                editingServer = nil
+                                serverURL = ""
+                                apiKey = ""
+                                serverName = ""
+                                showForm = true
                             }
+                        } label: {
+                            HStack(spacing: AppTheme.Spacing.sm) {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.title3)
+                                Text("添加新服务器")
+                                    .fontWeight(.semibold)
+                            }
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, AppTheme.Spacing.lg)
+                            .padding(.vertical, AppTheme.Spacing.md)
                         }
+                        .glassEffect(.regular.interactive(), in: .capsule)
                     }
 
                     Spacer(minLength: 50)
@@ -77,18 +96,18 @@ struct ServerConnectView: View {
             // App 图标
             Image(systemName: "photo.stack.fill")
                 .font(.system(size: 60, weight: .light))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .padding(AppTheme.Spacing.lg)
                 .glassEffect(.regular, in: .circle)
 
             Text("ReSourcer")
                 .font(.largeTitle)
                 .fontWeight(.bold)
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
 
             Text("连接到您的服务器开始使用")
                 .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(.secondary)
         }
         .padding(.top, AppTheme.Spacing.xxxl)
     }
@@ -99,7 +118,7 @@ struct ServerConnectView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("已保存的服务器")
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
 
             ForEach(savedServers) { server in
                 serverRow(server)
@@ -113,7 +132,7 @@ struct ServerConnectView: View {
             // 服务器图标
             Image(systemName: "server.rack")
                 .font(.title2)
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .frame(width: 44, height: 44)
                 .glassEffect(.regular, in: .circle)
 
@@ -121,19 +140,38 @@ struct ServerConnectView: View {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 Text(server.name)
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
 
                 Text(server.displayURL)
                     .font(.caption)
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
 
-            // 连接按钮
-            GlassButton("连接", style: .primary, size: .small) {
-                connect(to: server)
+            // 编辑按钮
+            Button {
+                editServer(server)
+            } label: {
+                Image(systemName: "pencil")
+                    .font(.system(size: 16))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 36, height: 36)
             }
+            .glassEffect(.clear.interactive(), in: .circle)
+
+            // 连接按钮
+            Button {
+                connect(to: server)
+            } label: {
+                Text("连接")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, AppTheme.Spacing.md)
+                    .padding(.vertical, AppTheme.Spacing.sm)
+            }
+            .glassEffect(.regular.interactive(), in: .capsule)
 
             // 删除按钮
             Button {
@@ -141,35 +179,47 @@ struct ServerConnectView: View {
             } label: {
                 Image(systemName: "trash")
                     .font(.system(size: 14))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(.tertiary)
             }
         }
         .padding(AppTheme.Spacing.md)
         .glassEffect(.clear, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
     }
 
-    // MARK: - Add Server Section
+    // MARK: - Server Form Section
 
-    private var addServerSection: some View {
+    private var serverFormSection: some View {
         VStack(spacing: AppTheme.Spacing.lg) {
-            if showAddForm && !savedServers.isEmpty {
-                HStack {
-                    Text("添加新服务器")
-                        .font(.headline)
-                        .foregroundStyle(.white)
+            // 标题栏
+            HStack {
+                Text(editingServer != nil ? "编辑服务器" : "添加新服务器")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
 
-                    Spacer()
+                Spacer()
 
+                if !savedServers.isEmpty {
                     Button("取消") {
                         withAnimation {
-                            showAddForm = false
+                            showForm = false
+                            editingServer = nil
                             errorMessage = nil
                         }
                     }
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(.secondary)
                 }
             }
 
+            // 服务器名称
+            GlassTextField(
+                "服务器名称（可选）",
+                text: $serverName,
+                placeholder: "我的服务器",
+                icon: "tag"
+            )
+            .textInputAutocapitalization(.never)
+
+            // 服务器地址
             GlassTextField(
                 "服务器地址",
                 text: $serverURL,
@@ -179,6 +229,7 @@ struct ServerConnectView: View {
             .textInputAutocapitalization(.never)
             .keyboardType(.URL)
 
+            // API Key
             GlassTextField(
                 "API Key",
                 text: $apiKey,
@@ -198,11 +249,48 @@ struct ServerConnectView: View {
                 .foregroundStyle(.red)
             }
 
-            // 连接按钮
-            GlassButton.primary("连接服务器", icon: "arrow.right", size: .large) {
-                connectWithInput()
+            // 按钮
+            HStack(spacing: AppTheme.Spacing.md) {
+                if editingServer != nil {
+                    // 保存按钮（编辑模式）
+                    Button {
+                        saveEditedServer()
+                    } label: {
+                        HStack(spacing: AppTheme.Spacing.sm) {
+                            Image(systemName: "checkmark")
+                            Text("保存")
+                        }
+                        .font(.body)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, AppTheme.Spacing.md)
+                    }
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .disabled(serverURL.isEmpty || apiKey.isEmpty)
+                }
+
+                // 连接按钮
+                Button {
+                    if editingServer != nil {
+                        saveAndConnect()
+                    } else {
+                        connectWithInput()
+                    }
+                } label: {
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        Image(systemName: "arrow.right.circle.fill")
+                        Text(editingServer != nil ? "保存并连接" : "连接服务器")
+                    }
+                    .font(.body)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, AppTheme.Spacing.md)
+                }
+                .glassEffect(.regular.interactive(), in: .capsule)
+                .disabled(serverURL.isEmpty || apiKey.isEmpty)
             }
-            .disabled(serverURL.isEmpty || apiKey.isEmpty)
         }
         .padding(AppTheme.Spacing.lg)
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
@@ -212,6 +300,53 @@ struct ServerConnectView: View {
 
     private func loadSavedServers() {
         savedServers = LocalStorageService.shared.getServers()
+    }
+
+    private func editServer(_ server: Server) {
+        editingServer = server
+        serverName = server.name
+        serverURL = server.baseURL
+        apiKey = server.apiKey
+        errorMessage = nil
+        withAnimation {
+            showForm = true
+        }
+    }
+
+    private func saveEditedServer() {
+        guard let oldServer = editingServer else { return }
+
+        let updatedServer = Server(
+            id: oldServer.id,
+            name: serverName.isEmpty ? extractServerName(from: serverURL) : serverName,
+            baseURL: normalizeURL(serverURL),
+            apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+
+        LocalStorageService.shared.updateServer(updatedServer)
+        loadSavedServers()
+
+        withAnimation {
+            showForm = false
+            editingServer = nil
+        }
+
+        GlassAlertManager.shared.showSuccess("服务器已更新")
+    }
+
+    private func saveAndConnect() {
+        guard let oldServer = editingServer else { return }
+
+        let updatedServer = Server(
+            id: oldServer.id,
+            name: serverName.isEmpty ? extractServerName(from: serverURL) : serverName,
+            baseURL: normalizeURL(serverURL),
+            apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+
+        LocalStorageService.shared.updateServer(updatedServer)
+        loadSavedServers()
+        connect(to: updatedServer)
     }
 
     private func connect(to server: Server) {
@@ -233,6 +368,8 @@ struct ServerConnectView: View {
                 case .online:
                     LocalStorageService.shared.setCurrentServer(server.id)
                     LocalStorageService.shared.setLoggedIn(true)
+                    showForm = false
+                    editingServer = nil
                     onConnected(apiService)
 
                 case .authError:
@@ -249,14 +386,10 @@ struct ServerConnectView: View {
     }
 
     private func connectWithInput() {
-        // 标准化 URL
-        var url = serverURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !url.hasPrefix("http://") && !url.hasPrefix("https://") {
-            url = "http://" + url
-        }
+        let url = normalizeURL(serverURL)
 
         let server = Server(
-            name: extractServerName(from: url),
+            name: serverName.isEmpty ? extractServerName(from: url) : serverName,
             baseURL: url,
             apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         )
@@ -285,7 +418,8 @@ struct ServerConnectView: View {
                     // 清空输入
                     serverURL = ""
                     apiKey = ""
-                    showAddForm = false
+                    serverName = ""
+                    showForm = false
 
                     onConnected(apiService)
 
@@ -305,6 +439,14 @@ struct ServerConnectView: View {
     private func deleteServer(_ server: Server) {
         LocalStorageService.shared.deleteServer(server.id)
         loadSavedServers()
+    }
+
+    private func normalizeURL(_ url: String) -> String {
+        var normalized = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !normalized.hasPrefix("http://") && !normalized.hasPrefix("https://") {
+            normalized = "http://" + normalized
+        }
+        return normalized
     }
 
     private func extractServerName(from url: String) -> String {

@@ -8,11 +8,12 @@
 import Foundation
 
 /// 上传任务状态枚举
+/// 注意：后端使用 serde rename_all = "lowercase"
 enum UploadTaskStatus: String, Codable {
-    case pending = "Pending"
-    case uploading = "Uploading"
-    case completed = "Completed"
-    case failed = "Failed"
+    case pending = "pending"
+    case uploading = "uploading"
+    case completed = "completed"
+    case failed = "failed"
 
     /// 是否为活跃状态
     var isActive: Bool {

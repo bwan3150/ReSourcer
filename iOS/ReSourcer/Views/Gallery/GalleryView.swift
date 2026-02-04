@@ -17,7 +17,9 @@ struct GalleryView: View {
     @State private var selectedFolder: GalleryFolderInfo?
     @State private var files: [FileInfo] = []
     @State private var isLoading = false
-    @State private var showFolderPicker = false
+
+    // 下拉菜单状态
+    @State private var isDropdownOpen = false
 
     // 显示模式
     @State private var viewMode: GalleryViewMode = .grid
@@ -26,58 +28,163 @@ struct GalleryView: View {
     // MARK: - Body
 
     var body: some View {
-        // 使用 NavigationStack，iOS 26 自动应用 Liquid Glass
         NavigationStack {
-            Group {
-                // 内容区域
-                if isLoading && files.isEmpty {
-                    loadingView
-                } else if files.isEmpty {
-                    emptyView
-                } else {
-                    contentView
-                }
-            }
-            .navigationTitle(selectedFolder?.displayName ?? "画廊")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        showFolderPicker = true
-                    } label: {
-                        Image(systemName: "folder")
+            ZStack(alignment: .top) {
+                // 主内容区域
+                Group {
+                    if isLoading && files.isEmpty {
+                        loadingView
+                    } else if files.isEmpty {
+                        emptyView
+                    } else {
+                        contentView
                     }
+                }
+                .padding(.top, 70) // 给顶部浮动栏留空间
+
+                // 遮罩层
+                if isDropdownOpen {
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                isDropdownOpen = false
+                            }
+                        }
                 }
 
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    // 视图模式切换
-                    Button {
-                        withAnimation {
-                            viewMode = viewMode == .grid ? .list : .grid
-                        }
-                    } label: {
-                        Image(systemName: viewMode == .grid ? "list.bullet" : "square.grid.2x2")
+                // 顶部浮动栏
+                VStack(spacing: 0) {
+                    floatingHeader
+                        .padding(.horizontal, AppTheme.Spacing.lg)
+                        .padding(.top, AppTheme.Spacing.md)
+
+                    // 下拉菜单
+                    if isDropdownOpen {
+                        folderDropdown
+                            .padding(.horizontal, AppTheme.Spacing.lg)
+                            .padding(.top, AppTheme.Spacing.sm)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                     }
 
-                    // 刷新
-                    Button {
-                        Task {
-                            await refreshFiles()
-                        }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
+                    Spacer()
                 }
             }
+            .navigationBarHidden(true)
         }
         .task {
             await loadFolders()
         }
-        .glassBottomSheet(
-            isPresented: $showFolderPicker,
-            title: "选择文件夹"
-        ) {
-            folderPickerContent
+    }
+
+    // MARK: - Floating Header
+
+    private var floatingHeader: some View {
+        HStack(spacing: AppTheme.Spacing.md) {
+            // 文件夹选择器按钮
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isDropdownOpen.toggle()
+                }
+            } label: {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Image(systemName: selectedFolder?.isSource == true ? "folder.fill.badge.gearshape" : "folder.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(selectedFolder?.isSource == true ? .orange : .yellow)
+
+                    Text(selectedFolder?.displayName ?? "画廊")
+                        .font(.body)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    Spacer()
+
+                    Image(systemName: isDropdownOpen ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+            }
+            .glassEffect(isDropdownOpen ? .regular : .regular.interactive(), in: .capsule)
+
+            // 视图切换按钮
+            Button {
+                withAnimation {
+                    viewMode = viewMode == .grid ? .list : .grid
+                }
+            } label: {
+                Image(systemName: viewMode == .grid ? "list.bullet" : "square.grid.2x2")
+                    .font(.system(size: 18))
+                    .foregroundStyle(.primary)
+                    .frame(width: 44, height: 44)
+            }
+            .glassEffect(.regular.interactive(), in: .circle)
+
+            // 刷新按钮
+            Button {
+                Task { await refreshFiles() }
+            } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 18))
+                    .foregroundStyle(.primary)
+                    .frame(width: 44, height: 44)
+            }
+            .glassEffect(.regular.interactive(), in: .circle)
         }
+    }
+
+    // MARK: - Folder Dropdown
+
+    private var folderDropdown: some View {
+        VStack(spacing: AppTheme.Spacing.sm) {
+            if folders.isEmpty {
+                HStack {
+                    Spacer()
+                    Text("暂无文件夹")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .padding(.vertical, AppTheme.Spacing.lg)
+            } else {
+                ForEach(folders) { folder in
+                    Button {
+                        selectFolder(folder)
+                    } label: {
+                        HStack(spacing: AppTheme.Spacing.md) {
+                            Image(systemName: folder.isSource ? "folder.fill.badge.gearshape" : "folder.fill")
+                                .font(.title3)
+                                .foregroundStyle(folder.isSource ? .orange : .yellow)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(folder.displayName)
+                                    .font(.body)
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
+
+                                Text("\(folder.fileCount) 个文件")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            if selectedFolder?.id == folder.id {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                            }
+                        }
+                        .padding(.horizontal, AppTheme.Spacing.md)
+                        .padding(.vertical, AppTheme.Spacing.sm)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(AppTheme.Spacing.sm)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
     }
 
     // MARK: - Content View
@@ -129,7 +236,9 @@ struct GalleryView: View {
             message: selectedFolder == nil ? "请选择一个文件夹" : "该文件夹中没有媒体文件",
             actionTitle: "选择文件夹"
         ) {
-            showFolderPicker = true
+            withAnimation {
+                isDropdownOpen = true
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -139,55 +248,6 @@ struct GalleryView: View {
     private var loadingView: some View {
         GlassLoadingView("加载中...")
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    // MARK: - Folder Picker
-
-    private var folderPickerContent: some View {
-        VStack(spacing: AppTheme.Spacing.sm) {
-            if folders.isEmpty {
-                GlassEmptyView(
-                    icon: "folder",
-                    title: "暂无文件夹",
-                    message: "请在服务器上配置源文件夹"
-                )
-            } else {
-                ForEach(folders) { folder in
-                    Button {
-                        selectFolder(folder)
-                    } label: {
-                        HStack(spacing: AppTheme.Spacing.md) {
-                            Image(systemName: folder.isSource ? "folder.fill.badge.gearshape" : "folder.fill")
-                                .font(.title2)
-                                .foregroundStyle(folder.isSource ? .orange : .yellow)
-
-                            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-                                Text(folder.displayName)
-                                    .font(.body)
-                                    .foregroundStyle(.primary)
-
-                                Text("\(folder.fileCount) 个文件")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Spacer()
-
-                            if selectedFolder?.id == folder.id {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.green)
-                            }
-                        }
-                        .padding(AppTheme.Spacing.md)
-                        .glassEffect(
-                            selectedFolder?.id == folder.id ? .regular : .clear,
-                            in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
     }
 
     // MARK: - Methods
@@ -207,7 +267,9 @@ struct GalleryView: View {
 
     private func selectFolder(_ folder: GalleryFolderInfo) {
         selectedFolder = folder
-        showFolderPicker = false
+        withAnimation(.easeOut(duration: 0.2)) {
+            isDropdownOpen = false
+        }
 
         Task {
             await loadFiles(in: folder)

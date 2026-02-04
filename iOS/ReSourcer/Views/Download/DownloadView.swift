@@ -2,7 +2,7 @@
 //  DownloadView.swift
 //  ReSourcer
 //
-//  下载页面 - 管理下载任务
+//  下载页面 - 主界面显示输入框和下载按钮，任务列表在二级页面
 //
 
 import SwiftUI
@@ -13,66 +13,306 @@ struct DownloadView: View {
 
     let apiService: APIService
 
-    @State private var tasks: [DownloadTask] = []
-    @State private var isLoading = false
-    @State private var showAddTask = false
-    @State private var selectedSegment: DownloadSegment = .active
-
-    // 新建任务表单
-    @State private var newTaskURL = ""
+    // 输入状态
+    @State private var urlText = ""
     @State private var detectResult: UrlDetectResponse?
     @State private var isDetecting = false
     @State private var isCreatingTask = false
 
-    // 自动刷新
-    @State private var refreshTimer: Timer?
+    // 文件夹选择
+    @State private var folders: [FolderInfo] = []
+    @State private var selectedFolder = ""  // 空字符串表示源文件夹
+
+    // 导航
+    @State private var showTaskList = false
 
     // MARK: - Body
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // 分段控制器
-                segmentControl
-                    .padding(.horizontal, AppTheme.Spacing.lg)
+            ScrollView {
+                VStack(spacing: AppTheme.Spacing.xl) {
+                    // 标题
+                    Text("下载器")
+                        .font(.system(size: 36, weight: .bold))
+                        .foregroundStyle(.primary)
+                        .padding(.top, 40)
+
+                    // 主输入区域
+                    mainInputArea
+                        .padding(.horizontal, AppTheme.Spacing.lg)
+
+                    // 下载列表入口
+                    Button {
+                        showTaskList = true
+                    } label: {
+                        Text("下载列表")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.secondary)
+                    }
                     .padding(.vertical, AppTheme.Spacing.md)
 
-                // 任务列表
-                if isLoading && tasks.isEmpty {
-                    loadingView
-                } else if filteredTasks.isEmpty {
-                    emptyView
-                } else {
-                    taskList
+                    Spacer(minLength: 60)
                 }
             }
-            .navigationTitle("下载")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    // 清空历史
-                    Button {
-                        clearHistory()
-                    } label: {
-                        Image(systemName: "trash")
+            .navigationDestination(isPresented: $showTaskList) {
+                DownloadTaskListView(apiService: apiService)
+            }
+        }
+        .task {
+            await loadFolders()
+        }
+    }
+
+    // MARK: - Main Input Area
+
+    private var mainInputArea: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+            // 小标题
+            Text("输入链接")
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+
+            // 输入框 + 粘贴按钮
+            HStack(spacing: AppTheme.Spacing.md) {
+                // 输入框
+                TextField("", text: $urlText)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .background {
+                        Capsule()
+                            .fill(.ultraThinMaterial)
                     }
-                    .disabled(completedTasks.isEmpty)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
+                    .onChange(of: urlText) { _, newValue in
+                        detectURL(newValue)
+                    }
+
+                // 粘贴按钮
+                Button {
+                    pasteFromClipboard()
+                } label: {
+                    Image(systemName: "doc.on.clipboard")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.primary)
+                        .frame(width: 50, height: 50)
+                }
+                .glassEffect(.regular.interactive(), in: .circle)
+            }
+
+            // 文件夹选择器
+            folderSelector
+
+            // 下载按钮
+            downloadButton
+        }
+    }
+
+    // MARK: - Folder Selector
+
+    private var folderSelector: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                // 源文件夹
+                folderChip(name: "", displayName: "源文件夹")
+
+                // 其他文件夹
+                ForEach(folders) { folder in
+                    folderChip(name: folder.name, displayName: folder.name)
                 }
 
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    // 刷新
-                    Button {
-                        Task { await loadTasks() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
+                // 添加按钮
+                addFolderChip
+            }
+            .padding(.vertical, 4)
+        }
+    }
 
-                    // 添加任务
-                    Button {
-                        showAddTask = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
+    private func folderChip(name: String, displayName: String) -> some View {
+        let isSelected = selectedFolder == name
+
+        return Button {
+            selectedFolder = name
+        } label: {
+            Text(displayName)
+                .font(.subheadline)
+                .fontWeight(isSelected ? .bold : .semibold)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+        }
+        .glassEffect(isSelected ? .regular : .clear, in: .capsule)
+    }
+
+    private var addFolderChip: some View {
+        Button {
+            // TODO: 显示添加文件夹对话框
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "plus")
+                    .font(.caption)
+                Text("添加")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+            }
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+        }
+        .glassEffect(.clear, in: .capsule)
+    }
+
+    // MARK: - Download Button
+
+    private var downloadButton: some View {
+        let isEnabled = !isDetecting && !urlText.trimmingCharacters(in: .whitespaces).isEmpty
+
+        return Button {
+            startDownload()
+        } label: {
+            Group {
+                if isCreatingTask {
+                    ProgressView()
+                        .tint(.primary)
+                } else {
+                    Image(systemName: "arrow.down")
+                        .font(.title2)
+                        .fontWeight(.medium)
                 }
+            }
+            .foregroundStyle(isEnabled ? .primary : .tertiary)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+        }
+        .glassEffect(isEnabled ? .regular.interactive() : .clear, in: .capsule)
+        .disabled(!isEnabled || isCreatingTask)
+    }
+
+    // MARK: - Methods
+
+    private func loadFolders() async {
+        do {
+            let configState = try await apiService.config.getConfigState()
+            folders = try await apiService.folder.getSubfolders(in: configState.sourceFolder)
+                .filter { !$0.hidden }
+        } catch {
+            print("加载文件夹失败: \(error)")
+        }
+    }
+
+    private func detectURL(_ url: String) {
+        let trimmed = url.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else {
+            detectResult = nil
+            isDetecting = false
+            return
+        }
+
+        isDetecting = true
+
+        Task {
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s 防抖
+
+            guard urlText.trimmingCharacters(in: .whitespaces) == trimmed else { return }
+
+            do {
+                let result = try await apiService.download.detectUrl(trimmed)
+                await MainActor.run {
+                    detectResult = result
+                    isDetecting = false
+                }
+            } catch {
+                await MainActor.run {
+                    isDetecting = false
+                }
+            }
+        }
+    }
+
+    private func pasteFromClipboard() {
+        if let text = UIPasteboard.general.string?.trimmingCharacters(in: .whitespaces), !text.isEmpty {
+            urlText = text
+            GlassAlertManager.shared.showSuccess("已粘贴")
+        } else {
+            GlassAlertManager.shared.showInfo("剪贴板为空")
+        }
+    }
+
+    private func startDownload() {
+        let url = urlText.trimmingCharacters(in: .whitespaces)
+        guard !url.isEmpty else { return }
+
+        isCreatingTask = true
+
+        Task {
+            do {
+                let config = try await apiService.config.getConfigState()
+                let saveFolder = selectedFolder.isEmpty ? config.sourceFolder : "\(config.sourceFolder)/\(selectedFolder)"
+
+                _ = try await apiService.download.createTask(url: url, saveFolder: saveFolder)
+
+                await MainActor.run {
+                    isCreatingTask = false
+                    urlText = ""
+                    detectResult = nil
+                    showTaskList = true
+                    GlassAlertManager.shared.showSuccess("已添加到下载队列")
+                }
+            } catch {
+                await MainActor.run {
+                    isCreatingTask = false
+                    GlassAlertManager.shared.showError("创建失败", message: error.localizedDescription)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Download Task List View (二级页面)
+
+struct DownloadTaskListView: View {
+    let apiService: APIService
+
+    @State private var tasks: [DownloadTask] = []
+    @State private var isLoading = false
+    @State private var selectedSegment: DownloadSegment = .active
+    @State private var refreshTimer: Timer?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // 分段控制器
+            GlassSegmentedControl(selection: $selectedSegment, items: [
+                (.active, "进行中"),
+                (.completed, "已完成"),
+                (.failed, "失败")
+            ])
+            .padding(.horizontal, AppTheme.Spacing.lg)
+            .padding(.vertical, AppTheme.Spacing.md)
+
+            // 任务列表
+            if isLoading && tasks.isEmpty {
+                GlassLoadingView("加载中...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if filteredTasks.isEmpty {
+                emptyView
+            } else {
+                taskList
+            }
+        }
+        .navigationTitle("下载列表")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    clearHistory()
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .disabled(completedTasks.isEmpty && failedTasks.isEmpty)
             }
         }
         .task {
@@ -82,50 +322,19 @@ struct DownloadView: View {
         .onDisappear {
             stopAutoRefresh()
         }
-        .glassBottomSheet(
-            isPresented: $showAddTask,
-            title: "新建下载"
-        ) {
-            addTaskContent
-        }
     }
-
-    // MARK: - Segment Control
-
-    private var segmentControl: some View {
-        GlassSegmentedControl(selection: $selectedSegment, items: [
-            (.active, "进行中"),
-            (.completed, "已完成"),
-            (.failed, "失败")
-        ])
-    }
-
-    // MARK: - Filtered Tasks
 
     private var filteredTasks: [DownloadTask] {
         switch selectedSegment {
-        case .active:
-            return activeTasks
-        case .completed:
-            return completedTasks
-        case .failed:
-            return failedTasks
+        case .active: return activeTasks
+        case .completed: return completedTasks
+        case .failed: return failedTasks
         }
     }
 
-    private var activeTasks: [DownloadTask] {
-        tasks.filter { $0.status.isActive }
-    }
-
-    private var completedTasks: [DownloadTask] {
-        tasks.filter { $0.status == .completed }
-    }
-
-    private var failedTasks: [DownloadTask] {
-        tasks.filter { $0.status == .failed || $0.status == .cancelled }
-    }
-
-    // MARK: - Task List
+    private var activeTasks: [DownloadTask] { tasks.filter { $0.status.isActive } }
+    private var completedTasks: [DownloadTask] { tasks.filter { $0.status == .completed } }
+    private var failedTasks: [DownloadTask] { tasks.filter { $0.status == .failed || $0.status == .cancelled } }
 
     private var taskList: some View {
         ScrollView {
@@ -143,17 +352,12 @@ struct DownloadView: View {
         }
     }
 
-    // MARK: - Empty View
-
     private var emptyView: some View {
         GlassEmptyView(
             icon: emptyIcon,
             title: emptyTitle,
-            message: emptyMessage,
-            actionTitle: selectedSegment == .active ? "添加下载" : nil
-        ) {
-            showAddTask = true
-        }
+            message: emptyMessage
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -174,105 +378,8 @@ struct DownloadView: View {
     }
 
     private var emptyMessage: String? {
-        switch selectedSegment {
-        case .active: return "点击右上角 + 添加新下载"
-        case .completed: return nil
-        case .failed: return nil
-        }
+        selectedSegment == .active ? "返回上一页添加新下载" : nil
     }
-
-    // MARK: - Loading View
-
-    private var loadingView: some View {
-        GlassLoadingView("加载中...")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    // MARK: - Add Task Content
-
-    private var addTaskContent: some View {
-        VStack(spacing: AppTheme.Spacing.lg) {
-            // URL 输入
-            GlassTextField(
-                "下载链接",
-                text: $newTaskURL,
-                placeholder: "粘贴视频/图片链接",
-                icon: "link"
-            )
-            .textInputAutocapitalization(.never)
-            .keyboardType(.URL)
-            .onChange(of: newTaskURL) { _, newValue in
-                if !newValue.isEmpty {
-                    detectURL(newValue)
-                } else {
-                    detectResult = nil
-                }
-            }
-
-            // 检测结果
-            if isDetecting {
-                HStack {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                    Text("正在检测...")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            } else if let result = detectResult {
-                HStack(spacing: AppTheme.Spacing.md) {
-                    Image(systemName: result.platform.iconName)
-                        .font(.title2)
-                        .foregroundStyle(platformColor(result.platform))
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(result.platformName)
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
-
-                        Text("使用 \(result.downloader.displayName) 下载")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer()
-
-                    if result.requiresAuth {
-                        Label("需要登录", systemImage: "exclamationmark.triangle")
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                    }
-                }
-                .padding(AppTheme.Spacing.md)
-                .glassEffect(.clear, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
-            }
-
-            // 创建按钮
-            GlassButton.primary(
-                "开始下载",
-                icon: "arrow.down.circle",
-                size: .large,
-                isLoading: isCreatingTask
-            ) {
-                createTask()
-            }
-            .disabled(newTaskURL.isEmpty || detectResult == nil)
-        }
-        .padding(.vertical, AppTheme.Spacing.md)
-    }
-
-    private func platformColor(_ platform: Platform) -> Color {
-        switch platform {
-        case .youtube: return .red
-        case .bilibili: return .pink
-        case .x: return .blue
-        case .tiktok: return .cyan
-        case .pixiv: return .blue
-        case .xiaohongshu: return .red
-        case .unknown: return .gray
-        }
-    }
-
-    // MARK: - Methods
 
     private func loadTasks() async {
         isLoading = true
@@ -282,65 +389,6 @@ struct DownloadView: View {
             GlassAlertManager.shared.showError("加载失败", message: error.localizedDescription)
         }
         isLoading = false
-    }
-
-    private func detectURL(_ url: String) {
-        // 防抖
-        isDetecting = true
-        detectResult = nil
-
-        Task {
-            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
-
-            guard newTaskURL == url else { return } // URL 已变化
-
-            do {
-                let result = try await apiService.download.detectUrl(url)
-                await MainActor.run {
-                    detectResult = result
-                    isDetecting = false
-                }
-            } catch {
-                await MainActor.run {
-                    isDetecting = false
-                }
-            }
-        }
-    }
-
-    private func createTask() {
-        guard !newTaskURL.isEmpty else { return }
-
-        isCreatingTask = true
-
-        Task {
-            do {
-                // 获取保存路径（使用配置的源文件夹）
-                let config = try await apiService.config.getConfigState()
-
-                _ = try await apiService.download.createTask(
-                    url: newTaskURL,
-                    saveFolder: config.sourceFolder
-                )
-
-                await MainActor.run {
-                    isCreatingTask = false
-                    showAddTask = false
-                    newTaskURL = ""
-                    detectResult = nil
-                    GlassAlertManager.shared.showSuccess("已添加到下载队列")
-                }
-
-                // 刷新任务列表
-                await loadTasks()
-
-            } catch {
-                await MainActor.run {
-                    isCreatingTask = false
-                    GlassAlertManager.shared.showError("创建失败", message: error.localizedDescription)
-                }
-            }
-        }
     }
 
     private func deleteTask(_ task: DownloadTask) {
@@ -368,9 +416,7 @@ struct DownloadView: View {
 
     private func startAutoRefresh() {
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in
-            Task {
-                await loadTasks()
-            }
+            Task { await loadTasks() }
         }
     }
 
@@ -411,9 +457,8 @@ struct DownloadTaskRow: View {
                     .lineLimit(1)
 
                 HStack(spacing: AppTheme.Spacing.sm) {
-                    // 状态/进度
                     if task.status == .downloading {
-                        Text("\(task.progressText)")
+                        Text(task.progressText)
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
@@ -433,7 +478,6 @@ struct DownloadTaskRow: View {
                         .foregroundStyle(.tertiary)
                 }
 
-                // 进度条
                 if task.status == .downloading {
                     GeometryReader { geometry in
                         ZStack(alignment: .leading) {
@@ -497,6 +541,5 @@ struct DownloadTaskRow: View {
     let server = Server(name: "Test", baseURL: "http://localhost:1234", apiKey: "test")
     if let api = APIService.create(for: server) {
         DownloadView(apiService: api)
-            .previewWithGlassBackground()
     }
 }

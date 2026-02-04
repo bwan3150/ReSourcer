@@ -8,14 +8,15 @@
 import Foundation
 
 /// 平台类型枚举
+/// 注意：后端使用小写 serde rename
 enum Platform: String, Codable, CaseIterable {
-    case youtube = "YouTube"
-    case bilibili = "Bilibili"
-    case x = "X"
-    case tiktok = "TikTok"
-    case pixiv = "Pixiv"
-    case xiaohongshu = "Xiaohongshu"
-    case unknown = "Unknown"
+    case youtube = "youtube"
+    case bilibili = "bilibili"
+    case x = "x"
+    case tiktok = "tiktok"
+    case pixiv = "pixiv"
+    case xiaohongshu = "xiaohongshu"
+    case unknown = "unknown"
 
     /// 平台显示名称
     var displayName: String {
@@ -45,10 +46,11 @@ enum Platform: String, Codable, CaseIterable {
 }
 
 /// 下载器类型枚举
+/// 注意：后端使用小写 serde rename
 enum DownloaderType: String, Codable {
-    case ytDlp = "YtDlp"
-    case pixivToolkit = "PixivToolkit"
-    case unknown = "Unknown"
+    case ytDlp = "ytdlp"
+    case pixivToolkit = "pixiv_toolkit"
+    case unknown = "unknown"
 
     /// 显示名称
     var displayName: String {
@@ -61,12 +63,13 @@ enum DownloaderType: String, Codable {
 }
 
 /// 下载任务状态枚举
+/// 注意：后端使用小写 serde rename
 enum DownloadTaskStatus: String, Codable {
-    case pending = "Pending"
-    case downloading = "Downloading"
-    case completed = "Completed"
-    case failed = "Failed"
-    case cancelled = "Cancelled"
+    case pending = "pending"
+    case downloading = "downloading"
+    case completed = "completed"
+    case failed = "failed"
+    case cancelled = "cancelled"
 
     /// 是否为活跃状态
     var isActive: Bool {
