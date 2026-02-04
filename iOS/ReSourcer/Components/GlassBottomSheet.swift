@@ -168,7 +168,7 @@ struct GlassBottomSheet<Content: View>: View {
             if let title = title {
                 Text(title)
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
             }
 
             Spacer()
@@ -180,7 +180,7 @@ struct GlassBottomSheet<Content: View>: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(.secondary)
                         .frame(width: 44, height: 44)
                 }
             }
@@ -346,12 +346,12 @@ struct GlassActionSheet: View {
                         if let title = title {
                             Text(title)
                                 .font(.headline)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(.primary)
                         }
                         if let message = message {
                             Text(message)
                                 .font(.subheadline)
-                                .foregroundStyle(.white.opacity(0.7))
+                                .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
                         }
                     }
@@ -450,7 +450,7 @@ extension View {
                             Image(systemName: "folder.fill")
                                 .foregroundStyle(.yellow)
                             Text("文件夹 \(index)")
-                                .foregroundStyle(.white)
+                                .foregroundStyle(.primary)
                             Spacer()
                         }
                         .padding()
@@ -479,7 +479,7 @@ extension View {
                     ForEach(1...20, id: \.self) { index in
                         HStack {
                             Text("项目 \(index)")
-                                .foregroundStyle(.white)
+                                .foregroundStyle(.primary)
                             Spacer()
                         }
                         .padding()

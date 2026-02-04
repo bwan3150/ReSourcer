@@ -178,7 +178,7 @@ struct GlassFloatingTabBar<Tab: GlassTabItem>: View {
                         .fontWeight(.medium)
                 }
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(.primary)
             .padding(.horizontal, isSelected ? AppTheme.Spacing.lg : AppTheme.Spacing.md)
             .padding(.vertical, AppTheme.Spacing.md)
             .glassEffect(
@@ -249,7 +249,7 @@ enum MainTab: String, GlassTabItem, CaseIterable {
 
                     Text("当前: \(selectedTab.title)")
                         .font(.title)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
 
                     Spacer()
 

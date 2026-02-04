@@ -68,12 +68,12 @@ struct GlassNavigationBar<Leading: View, Trailing: View>: View {
             VStack(spacing: 0) {
                 Text(title)
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
 
                 if let subtitle = subtitle {
                     Text(subtitle)
                         .font(.caption)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -104,12 +104,12 @@ struct GlassNavigationBar<Leading: View, Trailing: View>: View {
                 Text(title)
                     .font(.largeTitle)
                     .fontWeight(.bold)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
 
                 if let subtitle = subtitle {
                     Text(subtitle)
                         .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(.secondary)
                 }
             }
             .padding(.bottom, AppTheme.Spacing.sm)
@@ -137,7 +137,7 @@ struct GlassNavBarButton: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .frame(width: 44, height: 44)
                 .overlay(alignment: .topTrailing) {
                     if let badge = badge, badge > 0 {
@@ -171,7 +171,7 @@ struct GlassBackButton: View {
                         .font(.body)
                 }
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(.primary)
         }
     }
 }
@@ -368,10 +368,10 @@ private struct ScrollOffsetPreferenceKey: PreferenceKey {
 
                     VStack(alignment: .leading) {
                         Text("项目 \(index + 1)")
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.primary)
                         Text("描述信息")
                             .font(.caption)
-                            .foregroundStyle(.white.opacity(0.6))
+                            .foregroundStyle(.secondary)
                     }
 
                     Spacer()

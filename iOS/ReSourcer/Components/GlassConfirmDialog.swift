@@ -131,14 +131,14 @@ struct GlassConfirmDialog: View {
                 Text(config.title)
                     .font(.title3)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .multilineTextAlignment(.center)
 
                 // 消息
                 if let message = config.message {
                     Text(message)
                         .font(.body)
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }

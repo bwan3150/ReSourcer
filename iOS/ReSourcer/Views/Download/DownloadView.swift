@@ -30,22 +30,49 @@ struct DownloadView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
-            // 顶部导航栏
-            navigationBar
+        NavigationStack {
+            VStack(spacing: 0) {
+                // 分段控制器
+                segmentControl
+                    .padding(.horizontal, AppTheme.Spacing.lg)
+                    .padding(.vertical, AppTheme.Spacing.md)
 
-            // 分段控制器
-            segmentControl
-                .padding(.horizontal, AppTheme.Spacing.lg)
-                .padding(.vertical, AppTheme.Spacing.md)
+                // 任务列表
+                if isLoading && tasks.isEmpty {
+                    loadingView
+                } else if filteredTasks.isEmpty {
+                    emptyView
+                } else {
+                    taskList
+                }
+            }
+            .navigationTitle("下载")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    // 清空历史
+                    Button {
+                        clearHistory()
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                    .disabled(completedTasks.isEmpty)
+                }
 
-            // 任务列表
-            if isLoading && tasks.isEmpty {
-                loadingView
-            } else if filteredTasks.isEmpty {
-                emptyView
-            } else {
-                taskList
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    // 刷新
+                    Button {
+                        Task { await loadTasks() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+
+                    // 添加任务
+                    Button {
+                        showAddTask = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
             }
         }
         .task {
@@ -61,35 +88,6 @@ struct DownloadView: View {
         ) {
             addTaskContent
         }
-    }
-
-    // MARK: - Navigation Bar
-
-    private var navigationBar: some View {
-        GlassNavigationBar(
-            title: "下载",
-            subtitle: activeTasks.isEmpty ? nil : "\(activeTasks.count) 个任务进行中",
-            leading: {
-                // 清空历史
-                GlassNavBarButton("trash") {
-                    clearHistory()
-                }
-                .opacity(completedTasks.isEmpty ? 0.3 : 1)
-            },
-            trailing: {
-                HStack(spacing: AppTheme.Spacing.xs) {
-                    // 刷新
-                    GlassNavBarButton("arrow.clockwise") {
-                        Task { await loadTasks() }
-                    }
-
-                    // 添加任务
-                    GlassNavBarButton("plus") {
-                        showAddTask = true
-                    }
-                }
-            }
-        )
     }
 
     // MARK: - Segment Control
@@ -218,7 +216,7 @@ struct DownloadView: View {
                         .scaleEffect(0.8)
                     Text("正在检测...")
                         .font(.caption)
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(.secondary)
                 }
             } else if let result = detectResult {
                 HStack(spacing: AppTheme.Spacing.md) {
@@ -229,11 +227,11 @@ struct DownloadView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(result.platformName)
                             .font(.subheadline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.primary)
 
                         Text("使用 \(result.downloader.displayName) 下载")
                             .font(.caption)
-                            .foregroundStyle(.white.opacity(0.6))
+                            .foregroundStyle(.secondary)
                     }
 
                     Spacer()
@@ -409,7 +407,7 @@ struct DownloadTaskRow: View {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 Text(task.fileName ?? "下载中...")
                     .font(.body)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
 
                 HStack(spacing: AppTheme.Spacing.sm) {
@@ -417,12 +415,12 @@ struct DownloadTaskRow: View {
                     if task.status == .downloading {
                         Text("\(task.progressText)")
                             .font(.caption)
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(.secondary)
 
                         if let speed = task.speed {
                             Text(speed)
                                 .font(.caption)
-                                .foregroundStyle(.white.opacity(0.7))
+                                .foregroundStyle(.secondary)
                         }
                     } else {
                         Text(statusText)
@@ -432,7 +430,7 @@ struct DownloadTaskRow: View {
 
                     Text(task.formattedCreatedAt)
                         .font(.caption)
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(.tertiary)
                 }
 
                 // 进度条
@@ -458,7 +456,7 @@ struct DownloadTaskRow: View {
                 Button(action: onDelete) {
                     Image(systemName: "xmark")
                         .font(.caption)
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(.tertiary)
                 }
             } else if task.canCancel {
                 Button(action: onDelete) {

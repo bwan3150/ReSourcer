@@ -26,53 +26,50 @@ struct ClassifierView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
-            // 顶部导航栏
-            navigationBar
+        NavigationStack {
+            Group {
+                // 内容区域
+                if isLoading {
+                    loadingView
+                } else if files.isEmpty {
+                    emptyView
+                } else {
+                    classifierContent
+                }
+            }
+            .navigationTitle("分类")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    // 撤销按钮
+                    Button {
+                        undoLastOperation()
+                    } label: {
+                        Image(systemName: "arrow.uturn.backward")
+                    }
+                    .disabled(operationHistory.isEmpty)
+                }
 
-            // 内容区域
-            if isLoading {
-                loadingView
-            } else if files.isEmpty {
-                emptyView
-            } else {
-                classifierContent
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    // 跳过按钮
+                    Button {
+                        skipCurrentFile()
+                    } label: {
+                        Image(systemName: "forward")
+                    }
+                    .disabled(currentFile == nil)
+
+                    // 刷新
+                    Button {
+                        Task { await loadData() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                }
             }
         }
         .task {
             await loadData()
         }
-    }
-
-    // MARK: - Navigation Bar
-
-    private var navigationBar: some View {
-        GlassNavigationBar(
-            title: "分类",
-            subtitle: files.isEmpty ? nil : "剩余 \(files.count - currentIndex) 个",
-            leading: {
-                // 撤销按钮
-                GlassNavBarButton("arrow.uturn.backward") {
-                    undoLastOperation()
-                }
-                .opacity(operationHistory.isEmpty ? 0.3 : 1)
-                .disabled(operationHistory.isEmpty)
-            },
-            trailing: {
-                HStack(spacing: AppTheme.Spacing.xs) {
-                    // 跳过按钮
-                    GlassNavBarButton("forward") {
-                        skipCurrentFile()
-                    }
-                    .opacity(currentFile == nil ? 0.3 : 1)
-
-                    // 刷新
-                    GlassNavBarButton("arrow.clockwise") {
-                        Task { await loadData() }
-                    }
-                }
-            }
-        )
     }
 
     // MARK: - Current File
@@ -126,11 +123,11 @@ struct ClassifierView: View {
                         VStack(spacing: AppTheme.Spacing.md) {
                             Image(systemName: file.isVideo ? "film" : "photo")
                                 .font(.system(size: 48))
-                                .foregroundStyle(.white.opacity(0.5))
+                                .foregroundStyle(.tertiary)
 
                             Text("无法加载预览")
                                 .font(.caption)
-                                .foregroundStyle(.white.opacity(0.6))
+                                .foregroundStyle(.secondary)
                         }
 
                     @unknown default:
@@ -144,7 +141,7 @@ struct ClassifierView: View {
                 VStack(spacing: AppTheme.Spacing.xxs) {
                     Text(file.name)
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
 
@@ -156,7 +153,7 @@ struct ClassifierView: View {
                         }
                     }
                     .font(.caption)
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, AppTheme.Spacing.lg)
             }

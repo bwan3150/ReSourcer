@@ -32,11 +32,11 @@ struct GlassSearchBar: View {
         HStack(spacing: AppTheme.Spacing.sm) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(.secondary)
 
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .tint(.white)
                 .focused($isFocused)
                 .submitLabel(.search)
@@ -50,7 +50,7 @@ struct GlassSearchBar: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 16))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(.tertiary)
                 }
             }
         }
@@ -94,7 +94,7 @@ struct GlassTextField: View {
             if !title.isEmpty {
                 Text(title)
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(.primary)
             }
 
             // 输入区域
@@ -102,7 +102,7 @@ struct GlassTextField: View {
                 if let icon = icon {
                     Image(systemName: icon)
                         .font(.system(size: 16))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(.secondary)
                 }
 
                 Group {
@@ -113,7 +113,7 @@ struct GlassTextField: View {
                     }
                 }
                 .textFieldStyle(.plain)
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .tint(.white)
             }
             .padding(.horizontal, AppTheme.Spacing.md)
@@ -186,12 +186,12 @@ struct GlassListRow<Leading: View, Trailing: View>: View {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                     Text(title)
                         .font(.body)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
 
                     if let subtitle = subtitle {
                         Text(subtitle)
                             .font(.caption)
-                            .foregroundStyle(.white.opacity(0.6))
+                            .foregroundStyle(.secondary)
                     }
                 }
 
@@ -229,7 +229,7 @@ struct GlassLoadingView: View {
             if let message = message {
                 Text(message)
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(.primary)
             }
         }
         .padding(AppTheme.Spacing.xxl)
@@ -292,17 +292,17 @@ struct GlassEmptyView: View {
         VStack(spacing: AppTheme.Spacing.lg) {
             Image(systemName: icon)
                 .font(.system(size: 48, weight: .light))
-                .foregroundStyle(.white.opacity(0.5))
+                .foregroundStyle(.tertiary)
 
             VStack(spacing: AppTheme.Spacing.xs) {
                 Text(title)
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
 
                 if let message = message {
                     Text(message)
                         .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
             }
@@ -349,7 +349,7 @@ struct GlassSegmentedControl<T: Hashable>: View {
             Text(item.label)
                 .font(.subheadline)
                 .fontWeight(isSelected ? .semibold : .regular)
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.vertical, AppTheme.Spacing.sm)
                 .glassEffect(isSelected ? .regular : .identity, in: .capsule)
@@ -377,7 +377,7 @@ struct GlassBadge: View {
             Text(count > maxCount ? "\(maxCount)+" : "\(count)")
                 .font(.caption2)
                 .fontWeight(.semibold)
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .padding(.horizontal, AppTheme.Spacing.sm)
                 .padding(.vertical, AppTheme.Spacing.xxs)
                 .glassEffect(.regular.tint(.red), in: .capsule)
@@ -412,7 +412,7 @@ struct GlassChip: View {
                 Text(label)
                     .font(.subheadline)
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(.primary)
             .padding(.horizontal, AppTheme.Spacing.md)
             .padding(.vertical, AppTheme.Spacing.sm)
             .glassEffect(isSelected ? .regular : .clear, in: .capsule)
@@ -474,10 +474,10 @@ extension View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("这是一个卡片")
                                     .font(.headline)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(.primary)
                                 Text("卡片内容描述")
                                     .font(.subheadline)
-                                    .foregroundStyle(.white.opacity(0.7))
+                                    .foregroundStyle(.secondary)
                             }
                         }
 
@@ -487,11 +487,11 @@ extension View {
                             subtitle: "点击查看详情",
                             leading: {
                                 Image(systemName: "gear")
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(.primary)
                             },
                             trailing: {
                                 Image(systemName: "chevron.right")
-                                    .foregroundStyle(.white.opacity(0.5))
+                                    .foregroundStyle(.tertiary)
                             }
                         )
 

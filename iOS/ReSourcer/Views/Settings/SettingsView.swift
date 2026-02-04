@@ -31,10 +31,7 @@ struct SettingsView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
-            // 顶部导航栏
-            navigationBar
-
+        NavigationStack {
             // 设置列表
             ScrollView {
                 VStack(spacing: AppTheme.Spacing.lg) {
@@ -58,6 +55,16 @@ struct SettingsView: View {
                 }
                 .padding(AppTheme.Spacing.lg)
             }
+            .navigationTitle("设置")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task { await loadSettings() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                }
+            }
         }
         .task {
             await loadSettings()
@@ -69,19 +76,6 @@ struct SettingsView: View {
         ) {
             disconnect()
         }
-    }
-
-    // MARK: - Navigation Bar
-
-    private var navigationBar: some View {
-        GlassNavigationBar(
-            title: "设置",
-            trailing: {
-                GlassNavBarButton("arrow.clockwise") {
-                    Task { await loadSettings() }
-                }
-            }
-        )
     }
 
     // MARK: - Server Info Section
@@ -307,7 +301,7 @@ struct SettingsSection<Content: View>: View {
             Text(title)
                 .font(.subheadline)
                 .fontWeight(.semibold)
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(.secondary)
                 .padding(.leading, AppTheme.Spacing.sm)
 
             content()
@@ -356,12 +350,12 @@ struct SettingsRow<Trailing: View>: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.body)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
 
                     if let subtitle = subtitle {
                         Text(subtitle)
                             .font(.caption)
-                            .foregroundStyle(.white.opacity(0.6))
+                            .foregroundStyle(.secondary)
                     }
                 }
 
@@ -372,7 +366,7 @@ struct SettingsRow<Trailing: View>: View {
                 if action != nil {
                     Image(systemName: "chevron.right")
                         .font(.caption)
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(.tertiary)
                 }
             }
             .contentShape(Rectangle())
@@ -401,12 +395,12 @@ struct SettingsToggleRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.body)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
 
                 if let subtitle = subtitle {
                     Text(subtitle)
                         .font(.caption)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(.secondary)
                 }
             }
 

@@ -26,17 +26,47 @@ struct GalleryView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
-            // 顶部导航栏
-            navigationBar
+        // 使用 NavigationStack，iOS 26 自动应用 Liquid Glass
+        NavigationStack {
+            Group {
+                // 内容区域
+                if isLoading && files.isEmpty {
+                    loadingView
+                } else if files.isEmpty {
+                    emptyView
+                } else {
+                    contentView
+                }
+            }
+            .navigationTitle(selectedFolder?.displayName ?? "画廊")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showFolderPicker = true
+                    } label: {
+                        Image(systemName: "folder")
+                    }
+                }
 
-            // 内容区域
-            if isLoading && files.isEmpty {
-                loadingView
-            } else if files.isEmpty {
-                emptyView
-            } else {
-                contentView
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    // 视图模式切换
+                    Button {
+                        withAnimation {
+                            viewMode = viewMode == .grid ? .list : .grid
+                        }
+                    } label: {
+                        Image(systemName: viewMode == .grid ? "list.bullet" : "square.grid.2x2")
+                    }
+
+                    // 刷新
+                    Button {
+                        Task {
+                            await refreshFiles()
+                        }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                }
             }
         }
         .task {
@@ -48,37 +78,6 @@ struct GalleryView: View {
         ) {
             folderPickerContent
         }
-    }
-
-    // MARK: - Navigation Bar
-
-    private var navigationBar: some View {
-        GlassNavigationBar(
-            title: selectedFolder?.displayName ?? "首页",
-            subtitle: files.isEmpty ? nil : "\(files.count) 个文件",
-            leading: {
-                GlassNavBarButton("folder") {
-                    showFolderPicker = true
-                }
-            },
-            trailing: {
-                HStack(spacing: AppTheme.Spacing.xs) {
-                    // 视图模式切换
-                    GlassNavBarButton(viewMode == .grid ? "list.bullet" : "square.grid.2x2") {
-                        withAnimation {
-                            viewMode = viewMode == .grid ? .list : .grid
-                        }
-                    }
-
-                    // 刷新
-                    GlassNavBarButton("arrow.clockwise") {
-                        Task {
-                            await refreshFiles()
-                        }
-                    }
-                }
-            }
-        )
     }
 
     // MARK: - Content View
@@ -165,11 +164,11 @@ struct GalleryView: View {
                             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                                 Text(folder.displayName)
                                     .font(.body)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(.primary)
 
                                 Text("\(folder.fileCount) 个文件")
                                     .font(.caption)
-                                    .foregroundStyle(.white.opacity(0.6))
+                                    .foregroundStyle(.secondary)
                             }
 
                             Spacer()
@@ -270,7 +269,7 @@ struct GalleryGridItem: View {
                 case .failure:
                     Image(systemName: file.isVideo ? "film" : "photo")
                         .font(.title)
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(.tertiary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(Color.white.opacity(0.1))
 
@@ -288,7 +287,7 @@ struct GalleryGridItem: View {
                 Text(duration)
                     .font(.caption2)
                     .fontWeight(.medium)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .glassEffect(.regular, in: .capsule)
@@ -300,7 +299,7 @@ struct GalleryGridItem: View {
                 Text("GIF")
                     .font(.caption2)
                     .fontWeight(.bold)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .glassEffect(.regular.tint(.purple), in: .capsule)
@@ -340,7 +339,7 @@ struct GalleryListItem: View {
 
                 case .failure:
                     Image(systemName: file.isVideo ? "film" : "photo")
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(.tertiary)
 
                 @unknown default:
                     EmptyView()
@@ -354,25 +353,25 @@ struct GalleryListItem: View {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 Text(file.name)
                     .font(.body)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
 
                 HStack(spacing: AppTheme.Spacing.sm) {
                     // 类型标签
                     Text(file.fileType.rawValue)
                         .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(.secondary)
 
                     // 大小
                     Text(file.formattedSize)
                         .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(.secondary)
 
                     // 视频时长
                     if let duration = file.formattedDuration {
                         Text(duration)
                             .font(.caption2)
-                            .foregroundStyle(.white.opacity(0.6))
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -381,7 +380,7 @@ struct GalleryListItem: View {
 
             // 更多按钮
             Image(systemName: "ellipsis")
-                .foregroundStyle(.white.opacity(0.5))
+                .foregroundStyle(.tertiary)
         }
         .padding(AppTheme.Spacing.md)
         .glassEffect(.clear, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))

@@ -79,12 +79,12 @@ struct GlassToast: View {
                 Text(data.title)
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
 
                 if let message = data.message {
                     Text(message)
                         .font(.caption)
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(.primary)
                         .lineLimit(2)
                 }
             }
@@ -97,7 +97,7 @@ struct GlassToast: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.caption)
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(.secondary)
                     .padding(AppTheme.Spacing.xs)
             }
         }
@@ -172,14 +172,14 @@ struct GlassAlertDialog: View {
                 Text(data.title)
                     .font(.title3)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .multilineTextAlignment(.center)
 
                 // 消息
                 if let message = data.message {
                     Text(message)
                         .font(.body)
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(.primary)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
