@@ -291,7 +291,7 @@ struct GlassScrollableNavigationView<Content: View, Leading: View, Trailing: Vie
 // MARK: - Preference Key
 
 private struct ScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
+    nonisolated(unsafe) static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = nextValue()
     }

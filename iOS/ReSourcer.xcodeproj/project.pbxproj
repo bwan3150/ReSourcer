@@ -7,11 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		/* App */
 		A1000001233F0001 /* ReSourcerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001233F0000 /* ReSourcerApp.swift */; };
 		A1000002233F0001 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002233F0000 /* MainTabView.swift */; };
 		A1000003233F0001 /* ServerConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000003233F0000 /* ServerConnectView.swift */; };
-		/* Components */
 		A1000010233F0001 /* GlassAlert.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000010233F0000 /* GlassAlert.swift */; };
 		A1000011233F0001 /* GlassBottomSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000011233F0000 /* GlassBottomSheet.swift */; };
 		A1000012233F0001 /* GlassButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000012233F0000 /* GlassButton.swift */; };
@@ -19,9 +17,7 @@
 		A1000014233F0001 /* GlassConfirmDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000014233F0000 /* GlassConfirmDialog.swift */; };
 		A1000015233F0001 /* GlassNavigationBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000015233F0000 /* GlassNavigationBar.swift */; };
 		A1000016233F0001 /* GlassTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000016233F0000 /* GlassTabBar.swift */; };
-		/* Extensions */
 		A1000020233F0001 /* View+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000020233F0000 /* View+Extensions.swift */; };
-		/* Models */
 		A1000030233F0001 /* AuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000030233F0000 /* AuthModels.swift */; };
 		A1000031233F0001 /* ConfigModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000031233F0000 /* ConfigModels.swift */; };
 		A1000032233F0001 /* DownloadModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000032233F0000 /* DownloadModels.swift */; };
@@ -29,11 +25,9 @@
 		A1000034233F0001 /* FolderModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000034233F0000 /* FolderModels.swift */; };
 		A1000035233F0001 /* Server.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000035233F0000 /* Server.swift */; };
 		A1000036233F0001 /* UploadModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000036233F0000 /* UploadModels.swift */; };
-		/* Network */
 		A1000040233F0001 /* APIEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000040233F0000 /* APIEndpoint.swift */; };
 		A1000041233F0001 /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000041233F0000 /* APIError.swift */; };
 		A1000042233F0001 /* NetworkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000042233F0000 /* NetworkManager.swift */; };
-		/* Services */
 		A1000050233F0001 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000050233F0000 /* APIService.swift */; };
 		A1000051233F0001 /* APIServiceUsageExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000051233F0000 /* APIServiceUsageExamples.swift */; };
 		A1000052233F0001 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000052233F0000 /* AuthService.swift */; };
@@ -45,25 +39,20 @@
 		A1000058233F0001 /* LocalStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000058233F0000 /* LocalStorageService.swift */; };
 		A1000059233F0001 /* PreviewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000059233F0000 /* PreviewService.swift */; };
 		A100005A233F0001 /* UploadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100005A233F0000 /* UploadService.swift */; };
-		/* Theme */
 		A1000060233F0001 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000060233F0000 /* AppTheme.swift */; };
-		/* Views */
 		A1000070233F0001 /* ClassifierView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000070233F0000 /* ClassifierView.swift */; };
 		A1000071233F0001 /* DownloadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000071233F0000 /* DownloadView.swift */; };
 		A1000072233F0001 /* GalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000072233F0000 /* GalleryView.swift */; };
 		A1000073233F0001 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000073233F0000 /* SettingsView.swift */; };
-		/* Resources */
 		A1000080233F0001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000080233F0000 /* Assets.xcassets */; };
 		A1000081233F0001 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000081233F0000 /* Preview Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		A1000000233F0000 /* ReSourcer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReSourcer.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		/* App */
 		A1000001233F0000 /* ReSourcerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReSourcerApp.swift; sourceTree = "<group>"; };
 		A1000002233F0000 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		A1000003233F0000 /* ServerConnectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConnectView.swift; sourceTree = "<group>"; };
-		/* Components */
 		A1000010233F0000 /* GlassAlert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassAlert.swift; sourceTree = "<group>"; };
 		A1000011233F0000 /* GlassBottomSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassBottomSheet.swift; sourceTree = "<group>"; };
 		A1000012233F0000 /* GlassButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassButton.swift; sourceTree = "<group>"; };
@@ -71,9 +60,7 @@
 		A1000014233F0000 /* GlassConfirmDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassConfirmDialog.swift; sourceTree = "<group>"; };
 		A1000015233F0000 /* GlassNavigationBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassNavigationBar.swift; sourceTree = "<group>"; };
 		A1000016233F0000 /* GlassTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassTabBar.swift; sourceTree = "<group>"; };
-		/* Extensions */
 		A1000020233F0000 /* View+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+Extensions.swift"; sourceTree = "<group>"; };
-		/* Models */
 		A1000030233F0000 /* AuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthModels.swift; sourceTree = "<group>"; };
 		A1000031233F0000 /* ConfigModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigModels.swift; sourceTree = "<group>"; };
 		A1000032233F0000 /* DownloadModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadModels.swift; sourceTree = "<group>"; };
@@ -81,11 +68,9 @@
 		A1000034233F0000 /* FolderModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderModels.swift; sourceTree = "<group>"; };
 		A1000035233F0000 /* Server.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Server.swift; sourceTree = "<group>"; };
 		A1000036233F0000 /* UploadModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadModels.swift; sourceTree = "<group>"; };
-		/* Network */
 		A1000040233F0000 /* APIEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIEndpoint.swift; sourceTree = "<group>"; };
 		A1000041233F0000 /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
 		A1000042233F0000 /* NetworkManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkManager.swift; sourceTree = "<group>"; };
-		/* Services */
 		A1000050233F0000 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		A1000051233F0000 /* APIServiceUsageExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIServiceUsageExamples.swift; sourceTree = "<group>"; };
 		A1000052233F0000 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
@@ -97,14 +82,11 @@
 		A1000058233F0000 /* LocalStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStorageService.swift; sourceTree = "<group>"; };
 		A1000059233F0000 /* PreviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewService.swift; sourceTree = "<group>"; };
 		A100005A233F0000 /* UploadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadService.swift; sourceTree = "<group>"; };
-		/* Theme */
 		A1000060233F0000 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
-		/* Views */
 		A1000070233F0000 /* ClassifierView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassifierView.swift; sourceTree = "<group>"; };
 		A1000071233F0000 /* DownloadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadView.swift; sourceTree = "<group>"; };
 		A1000072233F0000 /* GalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryView.swift; sourceTree = "<group>"; };
 		A1000073233F0000 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		/* Resources */
 		A1000080233F0000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1000081233F0000 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -314,7 +296,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1600;
-				LastUpgradeCheck = 1600;
+				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					A10000D0233F0000 = {
 						CreatedOnToolsVersion = 16.0;
@@ -405,6 +387,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -435,6 +418,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 925YHK2R4K;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -458,6 +442,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -468,6 +453,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -498,6 +484,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 925YHK2R4K;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -514,6 +501,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -531,18 +519,21 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ReSourcer/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ReSourcer;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "ReSourcer 需要访问相册以保存下载的媒体文件";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "ReSourcer 需要访问相册以上传媒体文件";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiredDeviceCapabilities = arm64;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.resourcer.ios;
+				MARKETING_VERSION = 0.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.resourcer.apple;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -565,18 +556,21 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ReSourcer/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ReSourcer;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "ReSourcer 需要访问相册以保存下载的媒体文件";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "ReSourcer 需要访问相册以上传媒体文件";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiredDeviceCapabilities = arm64;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.resourcer.ios;
+				MARKETING_VERSION = 0.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.resourcer.apple;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;

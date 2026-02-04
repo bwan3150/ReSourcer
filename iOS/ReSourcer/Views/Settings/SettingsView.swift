@@ -118,20 +118,22 @@ struct SettingsView: View {
                         icon: "folder.fill",
                         iconColor: .yellow,
                         title: "当前文件夹",
-                        subtitle: config.sourceFolder.components(separatedBy: "/").last ?? config.sourceFolder
-                    ) {
-                        showSourceFolderPicker = true
-                    }
+                        subtitle: config.sourceFolder.components(separatedBy: "/").last ?? config.sourceFolder,
+                        action: {
+                            showSourceFolderPicker = true
+                        }
+                    )
 
                     if !config.backupSourceFolders.isEmpty {
                         SettingsRow(
                             icon: "folder.badge.plus",
                             iconColor: .orange,
                             title: "备用文件夹",
-                            subtitle: "\(config.backupSourceFolders.count) 个"
-                        ) {
-                            showSourceFolderPicker = true
-                        }
+                            subtitle: "\(config.backupSourceFolders.count) 个",
+                            action: {
+                                showSourceFolderPicker = true
+                            }
+                        )
                     }
                 } else {
                     SettingsRow(

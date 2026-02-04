@@ -8,7 +8,7 @@
 import Foundation
 
 /// 本地存储服务 - 单例模式
-final class LocalStorageService {
+final class LocalStorageService: @unchecked Sendable {
 
     // MARK: - Singleton
 

@@ -138,7 +138,7 @@ extension APIService {
     ///   - apiKey: API Key
     /// - Returns: 连接结果（成功/失败原因）
     static func testConnection(baseURL: String, apiKey: String) async -> Result<Void, APIError> {
-        guard let url = URL(string: baseURL) else {
+        guard URL(string: baseURL) != nil else {
             return .failure(.invalidURL)
         }
 

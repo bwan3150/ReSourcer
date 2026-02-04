@@ -29,7 +29,7 @@ enum APIServiceUsageExamples {
         )
 
         // 创建 API 服务
-        guard let apiService = APIService.create(for: server) else {
+        guard let apiService = await APIService.create(for: server) else {
             print("无效的服务器 URL")
             return
         }
@@ -216,7 +216,7 @@ enum APIServiceUsageExamples {
 
                 #if canImport(UIKit)
                 // 转换为 UIImage
-                if let image = await apiService.preview.getThumbnailImage(for: file.path) {
+                if let image = try await apiService.preview.getThumbnailImage(for: file.path) {
                     print("图片尺寸: \(image.size)")
                 }
                 #endif

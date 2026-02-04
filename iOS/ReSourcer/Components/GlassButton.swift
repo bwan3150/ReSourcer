@@ -188,23 +188,28 @@ struct GlassButtonStyleModifier: ViewModifier {
         switch style {
         case .primary:
             content
-                .glassEffect(.regular.interactive(), in: .capsule, isEnabled: isEnabled)
+                .glassEffect(.regular.interactive(), in: .capsule)
+                .opacity(isEnabled ? 1.0 : 0.5)
 
         case .secondary:
             content
-                .glassEffect(.clear.interactive(), in: .capsule, isEnabled: isEnabled)
+                .glassEffect(.clear.interactive(), in: .capsule)
+                .opacity(isEnabled ? 1.0 : 0.5)
 
         case .destructive:
             content
-                .glassEffect(.regular.tint(.red).interactive(), in: .capsule, isEnabled: isEnabled)
+                .glassEffect(.regular.tint(.red).interactive(), in: .capsule)
+                .opacity(isEnabled ? 1.0 : 0.5)
 
         case .icon:
             content
-                .glassEffect(.regular.interactive(), in: .circle, isEnabled: isEnabled)
+                .glassEffect(.regular.interactive(), in: .circle)
+                .opacity(isEnabled ? 1.0 : 0.5)
 
         case .text:
             content
                 .contentShape(Capsule())
+                .opacity(isEnabled ? 1.0 : 0.5)
         }
     }
 }
