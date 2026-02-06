@@ -28,10 +28,21 @@ struct GalleryView: View {
     @State private var viewMode: GalleryViewMode = .grid
     @State private var gridColumns = 3
 
+    // 导航
+    @State private var navPath = NavigationPath()
+
+    // 文件信息弹窗
+    @State private var selectedFile: FileInfo?
+    @State private var showFileInfoSheet = false
+    @State private var showRenameAlert = false
+    @State private var renameText = ""
+    @State private var showMoveSheet = false
+    @State private var targetFolders: [FolderInfo] = []
+
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navPath) {
             ZStack(alignment: .top) {
                 // 主内容区域
                 Group {
@@ -80,6 +91,24 @@ struct GalleryView: View {
         }
         .task {
             await loadFolders()
+        }
+        // 文件信息面板
+        .glassBottomSheet(isPresented: $showFileInfoSheet, title: "文件信息") {
+            galleryFileInfoContent
+        }
+        // 重命名弹窗
+        .alert("重命名", isPresented: $showRenameAlert) {
+            TextField("新文件名", text: $renameText)
+            Button("取消", role: .cancel) {}
+            Button("确认") {
+                Task { await performRename() }
+            }
+        } message: {
+            Text("输入新的文件名（不含扩展名）")
+        }
+        // 移动面板
+        .glassBottomSheet(isPresented: $showMoveSheet, title: "移动到") {
+            galleryMoveSheetContent
         }
     }
 
@@ -265,10 +294,15 @@ struct GalleryView: View {
     private var listView: some View {
         LazyVStack(spacing: AppTheme.Spacing.sm) {
             ForEach(Array(files.enumerated()), id: \.element.id) { index, file in
-                NavigationLink(value: index) {
-                    GalleryListItem(file: file, apiService: apiService)
-                }
-                .buttonStyle(.plain)
+                GalleryListItem(
+                    file: file,
+                    apiService: apiService,
+                    onTap: { navPath.append(index) },
+                    onInfoTap: {
+                        selectedFile = file
+                        showFileInfoSheet = true
+                    }
+                )
             }
         }
         .padding(AppTheme.Spacing.md)
@@ -363,6 +397,138 @@ struct GalleryView: View {
             await loadFiles(path: sourceFolder + "/" + folder.name)
         }
     }
+
+    // MARK: - 文件信息面板内容
+
+    @ViewBuilder
+    private var galleryFileInfoContent: some View {
+        if let file = selectedFile {
+            VStack(spacing: AppTheme.Spacing.lg) {
+                galleryInfoRow("文件名", value: file.name)
+                galleryInfoRow("类型", value: file.extension.uppercased())
+                galleryInfoRow("大小", value: file.formattedSize)
+                galleryInfoRow("修改时间", value: file.modified)
+
+                if let width = file.width, let height = file.height {
+                    galleryInfoRow("分辨率", value: "\(width) × \(height)")
+                }
+                if let duration = file.formattedDuration {
+                    galleryInfoRow("时长", value: duration)
+                }
+
+                // 操作按钮
+                HStack(spacing: AppTheme.Spacing.md) {
+                    GlassButton("重命名", icon: "pencil", style: .secondary, size: .medium) {
+                        showFileInfoSheet = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            renameText = file.baseName
+                            showRenameAlert = true
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    GlassButton("移动", icon: "folder", style: .secondary, size: .medium) {
+                        showFileInfoSheet = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            Task { await loadTargetFolders() }
+                            showMoveSheet = true
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(.top, AppTheme.Spacing.sm)
+
+                // 给底部 navbar 留空间
+                Spacer().frame(height: 60)
+            }
+            .padding(.vertical, AppTheme.Spacing.md)
+        }
+    }
+
+    private func galleryInfoRow(_ label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.body)
+                .foregroundStyle(.primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - 移动面板内容
+
+    @ViewBuilder
+    private var galleryMoveSheetContent: some View {
+        VStack(spacing: AppTheme.Spacing.sm) {
+            if targetFolders.isEmpty {
+                GlassEmptyView(icon: "folder", title: "暂无可用文件夹")
+                    .padding(.vertical, AppTheme.Spacing.xl)
+            } else {
+                ForEach(targetFolders) { folder in
+                    Button {
+                        Task { await performMove(to: folder) }
+                    } label: {
+                        HStack(spacing: AppTheme.Spacing.md) {
+                            Image(systemName: "folder.fill")
+                                .font(.title3)
+                                .foregroundStyle(.yellow)
+                            Text(folder.name)
+                                .font(.body)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Text("\(folder.fileCount)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(AppTheme.Spacing.md)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            // 给底部 navbar 留空间
+            Spacer().frame(height: 60)
+        }
+        .padding(.vertical, AppTheme.Spacing.md)
+    }
+
+    // MARK: - 文件操作
+
+    private func loadTargetFolders() async {
+        do {
+            targetFolders = try await apiService.folder.getSubfolders(in: sourceFolder)
+                .filter { !$0.hidden }
+        } catch {
+            GlassAlertManager.shared.showError("加载文件夹失败", message: error.localizedDescription)
+        }
+    }
+
+    private func performRename() async {
+        guard let file = selectedFile, !renameText.isEmpty else { return }
+        let newName = renameText + file.extension
+        do {
+            _ = try await apiService.file.renameFile(at: file.path, to: newName)
+            GlassAlertManager.shared.showSuccess("重命名成功")
+            await refreshFiles()
+        } catch {
+            GlassAlertManager.shared.showError("重命名失败", message: error.localizedDescription)
+        }
+    }
+
+    private func performMove(to folder: FolderInfo) async {
+        guard let file = selectedFile else { return }
+        do {
+            let targetPath = sourceFolder + "/" + folder.name
+            _ = try await apiService.file.moveFile(at: file.path, to: targetPath)
+            showMoveSheet = false
+            GlassAlertManager.shared.showSuccess("已移动到 \(folder.name)")
+            await refreshFiles()
+        } catch {
+            GlassAlertManager.shared.showError("移动失败", message: error.localizedDescription)
+        }
+    }
 }
 
 // MARK: - View Mode
@@ -447,73 +613,88 @@ struct GalleryGridItem: View {
 struct GalleryListItem: View {
     let file: FileInfo
     let apiService: APIService
+    var onTap: (() -> Void)?
+    var onInfoTap: (() -> Void)?
 
     var body: some View {
-        HStack(spacing: AppTheme.Spacing.md) {
-            // 缩略图
-            AsyncImage(
-                url: apiService.preview.getThumbnailURL(
-                    for: file.path,
-                    size: 150,
-                    baseURL: apiService.baseURL,
-                    apiKey: apiService.apiKey
-                )
-            ) { phase in
-                switch phase {
-                case .empty:
-                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.sm)
-                        .fill(Color.white.opacity(0.1))
-                        .shimmer()
+        HStack(spacing: 0) {
+            // 主内容区域 — 点击进入预览
+            Button {
+                onTap?()
+            } label: {
+                HStack(spacing: AppTheme.Spacing.md) {
+                    // 缩略图
+                    AsyncImage(
+                        url: apiService.preview.getThumbnailURL(
+                            for: file.path,
+                            size: 150,
+                            baseURL: apiService.baseURL,
+                            apiKey: apiService.apiKey
+                        )
+                    ) { phase in
+                        switch phase {
+                        case .empty:
+                            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.sm)
+                                .fill(Color.white.opacity(0.1))
+                                .shimmer()
 
-                case .success(let image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
 
-                case .failure:
-                    Image(systemName: file.isVideo ? "film" : "photo")
-                        .foregroundStyle(.tertiary)
+                        case .failure:
+                            Image(systemName: file.isVideo ? "film" : "photo")
+                                .foregroundStyle(.tertiary)
 
-                @unknown default:
-                    EmptyView()
-                }
-            }
-            .frame(width: 60, height: 60)
-            .clipped()
-            .cornerRadius(AppTheme.CornerRadius.sm)
-
-            // 文件信息
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-                Text(file.name)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    // 类型标签
-                    Text(file.fileType.rawValue)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-
-                    // 大小
-                    Text(file.formattedSize)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-
-                    // 视频时长
-                    if let duration = file.formattedDuration {
-                        Text(duration)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                        @unknown default:
+                            EmptyView()
+                        }
                     }
+                    .frame(width: 60, height: 60)
+                    .clipped()
+                    .cornerRadius(AppTheme.CornerRadius.sm)
+
+                    // 文件信息
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                        Text(file.name)
+                            .font(.body)
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+
+                        HStack(spacing: AppTheme.Spacing.sm) {
+                            Text(file.fileType.rawValue)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+
+                            Text(file.formattedSize)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+
+                            if let duration = file.formattedDuration {
+                                Text(duration)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+
+                    Spacer()
                 }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
 
-            Spacer()
-
-            // 更多按钮
-            Image(systemName: "ellipsis")
-                .foregroundStyle(.tertiary)
+            // 更多按钮 — 点击弹出文件信息
+            Button {
+                onInfoTap?()
+            } label: {
+                Image(systemName: "ellipsis")
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         }
         .padding(AppTheme.Spacing.md)
         .glassEffect(.clear, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))

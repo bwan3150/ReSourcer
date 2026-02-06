@@ -96,6 +96,7 @@ struct GlassBottomSheet<Content: View>: View {
             }
             .animation(AppTheme.Animation.spring, value: isPresented)
         }
+        .ignoresSafeArea(edges: .bottom)
     }
 
     // MARK: - Sheet Content

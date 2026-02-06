@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AVKit
+import AVFoundation
 
 // MARK: - FilePreviewView
 
@@ -39,6 +40,9 @@ struct FilePreviewView: View {
     @State private var targetFolders: [FolderInfo] = []
     @State private var sourceFolder = ""
 
+    // 视频播放状态
+    @State private var isVideoPlaying = false
+
     // 操作状态
     @State private var isOperating = false
 
@@ -63,29 +67,26 @@ struct FilePreviewView: View {
             // 黑色背景
             Color.black.ignoresSafeArea()
 
-            // 主内容 - 左右滑动切换
-            TabView(selection: $currentIndex) {
-                ForEach(Array(currentFiles.enumerated()), id: \.element.id) { index, file in
-                    fileContentView(for: file)
-                        .tag(index)
-                }
+            // 直接显示当前文件（替代 TabView 避免索引跳跃）
+            if !currentFiles.isEmpty {
+                fileContentView(for: currentFile)
+                    .id(currentIndex) // 切换时重建视图
+                    .ignoresSafeArea()
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .ignoresSafeArea()
 
             // 控制层
             if showControls {
                 VStack {
                     topBar
                     Spacer()
-                    if !currentFile.isVideo {
-                        bottomControls
-                    }
+                    bottomControls
                 }
                 .transition(.opacity)
             }
         }
+        .ignoresSafeArea(edges: .bottom)
         .navigationBarHidden(true)
+        .toolbar(.hidden, for: .tabBar)
         .statusBarHidden(!showControls)
         .animation(AppTheme.Animation.standard, value: showControls)
         .onChange(of: currentIndex) { _, _ in
@@ -128,9 +129,8 @@ struct FilePreviewView: View {
             VideoPreviewContent(
                 file: file,
                 apiService: apiService,
-                showControls: $showControls,
-                onPrevious: currentIndex > 0 ? { withAnimation { currentIndex -= 1 } } : nil,
-                onNext: currentIndex < currentFiles.count - 1 ? { withAnimation { currentIndex += 1 } } : nil
+                isPlaying: $isVideoPlaying,
+                showControls: $showControls
             )
         case .other:
             OtherFilePreviewContent(
@@ -149,40 +149,52 @@ struct FilePreviewView: View {
                 dismiss()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(.black)
+                    .frame(width: 40, height: 40)
+                    .background(.white.opacity(0.85))
+                    .clipShape(Circle())
             }
-            .glassEffect(.regular.interactive(), in: .circle)
 
-            Spacer()
-
-            // 文件名 + 计数
-            VStack(spacing: 2) {
-                Text(currentFile.name)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-
-                Text("\(currentIndex + 1) / \(currentFiles.count)")
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.7))
+            // 文件名（自动滚动 + 手动拖动）
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    Text(currentFile.name)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .id("fileName")
+                }
+                .frame(maxWidth: .infinity)
+                .task(id: currentIndex) {
+                    // 等待后开始自动来回滚动
+                    try? await Task.sleep(for: .seconds(2))
+                    while !Task.isCancelled {
+                        withAnimation(.linear(duration: 3)) {
+                            proxy.scrollTo("fileName", anchor: .trailing)
+                        }
+                        try? await Task.sleep(for: .seconds(5))
+                        guard !Task.isCancelled else { break }
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            proxy.scrollTo("fileName", anchor: .leading)
+                        }
+                        try? await Task.sleep(for: .seconds(2.5))
+                    }
+                }
             }
-            .frame(maxWidth: 200)
-
-            Spacer()
 
             // 信息按钮
             Button {
                 showInfoSheet = true
             } label: {
                 Image(systemName: "info.circle")
-                    .font(.system(size: 18))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(.black)
+                    .frame(width: 40, height: 40)
+                    .background(.white.opacity(0.85))
+                    .clipShape(Circle())
             }
-            .glassEffect(.regular.interactive(), in: .circle)
         }
         .padding(.horizontal, AppTheme.Spacing.lg)
         .padding(.top, AppTheme.Spacing.sm)
@@ -197,13 +209,30 @@ struct FilePreviewView: View {
                 withAnimation { currentIndex = max(0, currentIndex - 1) }
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 56, height: 56)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(.black)
+                    .frame(width: 48, height: 48)
+                    .background(.white.opacity(0.85))
+                    .clipShape(Circle())
             }
-            .glassEffect(.regular.interactive(), in: .circle)
             .opacity(currentIndex > 0 ? 1.0 : 0.3)
             .disabled(currentIndex <= 0)
+
+            Spacer()
+
+            // 视频播放/暂停按钮
+            if currentFile.isVideo {
+                Button {
+                    isVideoPlaying.toggle()
+                } label: {
+                    Image(systemName: isVideoPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(.black)
+                        .frame(width: 56, height: 56)
+                        .background(.white.opacity(0.85))
+                        .clipShape(Circle())
+                }
+            }
 
             Spacer()
 
@@ -212,11 +241,12 @@ struct FilePreviewView: View {
                 withAnimation { currentIndex = min(currentFiles.count - 1, currentIndex + 1) }
             } label: {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 56, height: 56)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(.black)
+                    .frame(width: 48, height: 48)
+                    .background(.white.opacity(0.85))
+                    .clipShape(Circle())
             }
-            .glassEffect(.regular.interactive(), in: .circle)
             .opacity(currentIndex < currentFiles.count - 1 ? 1.0 : 0.3)
             .disabled(currentIndex >= currentFiles.count - 1)
         }
@@ -229,6 +259,7 @@ struct FilePreviewView: View {
     private var fileInfoContent: some View {
         VStack(spacing: AppTheme.Spacing.lg) {
             infoRow("文件名", value: currentFile.name)
+            infoRow("位置", value: "\(currentIndex + 1) / \(currentFiles.count)")
             infoRow("类型", value: currentFile.extension.uppercased())
             infoRow("大小", value: currentFile.formattedSize)
             infoRow("修改时间", value: currentFile.modified)
@@ -324,8 +355,10 @@ struct FilePreviewView: View {
 
     private func scheduleAutoHide() {
         hideControlsTask?.cancel()
+        // 仅视频播放时自动隐藏（10秒），图片和其他文件始终显示控制栏
+        guard currentFile.isVideo else { return }
         hideControlsTask = Task {
-            try? await Task.sleep(for: .seconds(3))
+            try? await Task.sleep(for: .seconds(10))
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 withAnimation(AppTheme.Animation.standard) {
@@ -525,117 +558,76 @@ struct VideoPreviewContent: View {
 
     let file: FileInfo
     let apiService: APIService
+    @Binding var isPlaying: Bool
     @Binding var showControls: Bool
-    let onPrevious: (() -> Void)?
-    let onNext: (() -> Void)?
 
     @State private var player: AVPlayer?
-    @State private var isPlaying = false
     @State private var currentTime: Double = 0
     @State private var duration: Double = 1
     @State private var timeObserver: Any?
-    @State private var hideTimer: Task<Void, Never>?
 
     var body: some View {
         ZStack {
-            // 视频播放器
+            // 纯视频画面（无内置控制栏）
             if let player = player {
-                VideoPlayer(player: player)
+                AVPlayerView(player: player)
                     .ignoresSafeArea()
-                    .onTapGesture { toggleVideoControls() }
             } else {
                 ProgressView()
                     .tint(.white)
                     .scaleEffect(1.5)
             }
 
-            // 自定义控制层
+            // 点击区域 — 切换控制栏显隐
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(AppTheme.Animation.standard) {
+                        showControls.toggle()
+                    }
+                }
+
+            // 进度条控制层（跟随控制栏显隐）
             if showControls {
-                videoControlsOverlay
-                    .transition(.opacity)
+                VStack {
+                    Spacer()
+
+                    // 进度条 + 时间
+                    VStack(spacing: AppTheme.Spacing.sm) {
+                        Slider(value: $currentTime, in: 0...max(duration, 0.1)) { editing in
+                            if !editing {
+                                player?.seek(to: CMTime(seconds: currentTime, preferredTimescale: 600))
+                            }
+                        }
+                        .tint(.white)
+
+                        HStack {
+                            Text(formatTime(currentTime))
+                                .font(.caption)
+                                .monospacedDigit()
+                                .foregroundStyle(.white.opacity(0.8))
+                            Spacer()
+                            Text(formatTime(duration))
+                                .font(.caption)
+                                .monospacedDigit()
+                                .foregroundStyle(.white.opacity(0.8))
+                        }
+                    }
+                    .padding(.horizontal, AppTheme.Spacing.lg)
+                    .padding(.bottom, 100) // 给底部统一控制栏留空间
+                }
+                .transition(.opacity)
             }
         }
         .onAppear { setupPlayer() }
         .onDisappear { cleanupPlayer() }
-    }
-
-    // MARK: - 视频控制层
-
-    private var videoControlsOverlay: some View {
-        VStack {
-            Spacer()
-
-            // 中央播放/暂停
-            Button {
-                togglePlayback()
-            } label: {
-                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 36))
-                    .foregroundStyle(.white)
-                    .frame(width: 72, height: 72)
+        .onChange(of: isPlaying) { _, newValue in
+            guard let player = player else { return }
+            if newValue {
+                player.play()
+            } else {
+                player.pause()
             }
-            .glassEffect(.regular.interactive(), in: .circle)
-
-            Spacer()
-
-            // 底部控制栏
-            VStack(spacing: AppTheme.Spacing.md) {
-                // 进度条
-                Slider(value: $currentTime, in: 0...max(duration, 0.1)) { editing in
-                    if !editing {
-                        seekTo(currentTime)
-                    }
-                }
-                .tint(.white)
-
-                // 时间 + 导航
-                HStack {
-                    Text(formatTime(currentTime))
-                        .font(.caption)
-                        .monospacedDigit()
-                        .foregroundStyle(.white.opacity(0.8))
-
-                    Spacer()
-
-                    // 上一个/下一个
-                    HStack(spacing: AppTheme.Spacing.xl) {
-                        if let onPrevious = onPrevious {
-                            Button {
-                                cleanupPlayer()
-                                onPrevious()
-                            } label: {
-                                Image(systemName: "backward.fill")
-                                    .font(.system(size: 20))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 44, height: 44)
-                            }
-                            .glassEffect(.regular.interactive(), in: .circle)
-                        }
-
-                        if let onNext = onNext {
-                            Button {
-                                cleanupPlayer()
-                                onNext()
-                            } label: {
-                                Image(systemName: "forward.fill")
-                                    .font(.system(size: 20))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 44, height: 44)
-                            }
-                            .glassEffect(.regular.interactive(), in: .circle)
-                        }
-                    }
-
-                    Spacer()
-
-                    Text(formatTime(duration))
-                        .font(.caption)
-                        .monospacedDigit()
-                        .foregroundStyle(.white.opacity(0.8))
-                }
-            }
-            .padding(.horizontal, AppTheme.Spacing.lg)
-            .padding(.bottom, AppTheme.Spacing.xxl)
         }
     }
 
@@ -663,7 +655,7 @@ struct VideoPreviewContent: View {
             }
         }
 
-        // 监听播放状态
+        // 监听播放结束
         NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
             object: avPlayer.currentItem,
@@ -675,57 +667,15 @@ struct VideoPreviewContent: View {
 
         avPlayer.play()
         isPlaying = true
-        scheduleHideControls()
     }
 
     private func cleanupPlayer() {
-        hideTimer?.cancel()
         if let observer = timeObserver, let player = player {
             player.removeTimeObserver(observer)
         }
         player?.pause()
         player = nil
         timeObserver = nil
-    }
-
-    private func togglePlayback() {
-        guard let player = player else { return }
-        if isPlaying {
-            player.pause()
-            hideTimer?.cancel()
-        } else {
-            player.play()
-            scheduleHideControls()
-        }
-        isPlaying.toggle()
-    }
-
-    private func seekTo(_ time: Double) {
-        player?.seek(to: CMTime(seconds: time, preferredTimescale: 600))
-    }
-
-    private func toggleVideoControls() {
-        withAnimation(AppTheme.Animation.standard) {
-            showControls.toggle()
-        }
-        if showControls && isPlaying {
-            scheduleHideControls()
-        }
-    }
-
-    private func scheduleHideControls() {
-        hideTimer?.cancel()
-        hideTimer = Task {
-            try? await Task.sleep(for: .seconds(3))
-            guard !Task.isCancelled else { return }
-            await MainActor.run {
-                if isPlaying {
-                    withAnimation(AppTheme.Animation.standard) {
-                        showControls = false
-                    }
-                }
-            }
-        }
     }
 
     private func formatTime(_ seconds: Double) -> String {
@@ -806,6 +756,30 @@ struct OtherFilePreviewContent: View {
         default:
             return "doc.fill"
         }
+    }
+}
+
+// MARK: - AVPlayerView
+
+/// 纯视频画面（无内置控制栏）
+struct AVPlayerView: UIViewRepresentable {
+
+    let player: AVPlayer
+
+    func makeUIView(context: Context) -> UIView {
+        let view = PlayerUIView()
+        view.playerLayer.player = player
+        view.playerLayer.videoGravity = .resizeAspect
+        view.backgroundColor = .black
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {}
+
+    /// 内部 UIView，承载 AVPlayerLayer
+    private class PlayerUIView: UIView {
+        override class var layerClass: AnyClass { AVPlayerLayer.self }
+        var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
     }
 }
 
