@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import CoreMotion
 
 struct ServerConnectView: View {
 
@@ -32,11 +31,6 @@ struct ServerConnectView: View {
     /// 是否显示扫码器
     @State private var showScanner = false
 
-    /// 陀螺仪 / 拖拽姿态
-    @State private var pitch: Double = 0
-    @State private var roll: Double = 0
-    @State private var isDragging = false
-    @State private var motionManager: CMMotionManager?
 
     // MARK: - Body
 
@@ -150,125 +144,16 @@ struct ServerConnectView: View {
     private var headerSection: some View {
         HStack {
             Spacer()
-            ZStack {
-                // 底层光晕 — 跟随陀螺仪偏移
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [.white.opacity(0.25), .cyan.opacity(0.08), .clear],
-                            center: UnitPoint(
-                                x: 0.5 + roll * 0.3,
-                                y: 0.5 - pitch * 0.3
-                            ),
-                            startRadius: 10,
-                            endRadius: 90
-                        )
-                    )
-                    .frame(width: 150, height: 150)
-                    .blur(radius: 20)
-
-                // Icon 主体
-                Image("AppLogo")
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 110, height: 110)
-                    .clipShape(Circle())
-                    // 高光反射 — 模拟玻璃折射
-                    .overlay(
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        .white.opacity(0.5),
-                                        .white.opacity(0.1),
-                                        .clear,
-                                        .clear,
-                                    ],
-                                    startPoint: UnitPoint(
-                                        x: 0.2 + roll * 0.3,
-                                        y: 0.0 - pitch * 0.2
-                                    ),
-                                    endPoint: UnitPoint(
-                                        x: 0.8 + roll * 0.3,
-                                        y: 1.0 - pitch * 0.2
-                                    )
-                                )
-                            )
-                            .blendMode(.overlay)
-                    )
-                    // 玻璃边框
-                    .overlay(
-                        Circle()
-                            .strokeBorder(
-                                LinearGradient(
-                                    colors: [
-                                        .white.opacity(0.6),
-                                        .white.opacity(0.1),
-                                        .white.opacity(0.3),
-                                    ],
-                                    startPoint: UnitPoint(
-                                        x: 0.3 + roll * 0.2,
-                                        y: 0.0 - pitch * 0.2
-                                    ),
-                                    endPoint: .bottom
-                                ),
-                                lineWidth: 1.5
-                            )
-                    )
-                    // 3D 旋转 — 跟随设备姿态
-                    .rotation3DEffect(
-                        .degrees(roll * 12),
-                        axis: (x: 0, y: 1, z: 0),
-                        perspective: 0.4
-                    )
-                    .rotation3DEffect(
-                        .degrees(pitch * 10),
-                        axis: (x: -1, y: 0, z: 0),
-                        perspective: 0.4
-                    )
-                    // 动态阴影 — 随倾斜偏移
-                    .shadow(
-                        color: .black.opacity(0.25),
-                        radius: 16,
-                        x: CGFloat(roll * 10),
-                        y: CGFloat(pitch * 10) + 6
-                    )
-                    // 手指拖拽手势
-                    .gesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { value in
-                                if !isDragging {
-                                    isDragging = true
-                                    motionManager?.stopDeviceMotionUpdates()
-                                }
-                                // 拖拽距离 → 姿态值（±0.6 弧度范围）
-                                withAnimation(.interactiveSpring(duration: 0.08)) {
-                                    roll = min(max(Double(value.translation.width / 150), -0.6), 0.6)
-                                    pitch = min(max(Double(-value.translation.height / 150), -0.6), 0.6)
-                                }
-                            }
-                            .onEnded { _ in
-                                isDragging = false
-                                // 弹回原位
-                                withAnimation(.spring(duration: 0.6, bounce: 0.4)) {
-                                    pitch = 0
-                                    roll = 0
-                                }
-                                // 延迟恢复陀螺仪
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                                    if !isDragging {
-                                        startMotionUpdates()
-                                    }
-                                }
-                            }
-                    )
-            }
+            Image("AppLogo")
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 110, height: 110)
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.2), radius: 16, x: 0, y: 6)
             Spacer()
         }
         .padding(.top, 120)
         .padding(.bottom, 60)
-        .onAppear { startMotionUpdates() }
-        .onDisappear { stopMotionUpdates() }
     }
 
     // MARK: - Server Row
@@ -415,27 +300,6 @@ struct ServerConnectView: View {
         .if(savedServers.isEmpty) { view in
             view.glassEffect(.regular, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
         }
-    }
-
-    // MARK: - Motion
-
-    private func startMotionUpdates() {
-        let manager = CMMotionManager()
-        guard manager.isDeviceMotionAvailable else { return }
-        manager.deviceMotionUpdateInterval = 1.0 / 30.0
-        manager.startDeviceMotionUpdates(to: .main) { motion, _ in
-            guard let motion = motion, !isDragging else { return }
-            withAnimation(.interactiveSpring(duration: 0.15)) {
-                pitch = motion.attitude.pitch
-                roll = motion.attitude.roll
-            }
-        }
-        motionManager = manager
-    }
-
-    private func stopMotionUpdates() {
-        motionManager?.stopDeviceMotionUpdates()
-        motionManager = nil
     }
 
     // MARK: - Methods

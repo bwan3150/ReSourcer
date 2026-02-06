@@ -210,7 +210,7 @@ struct GlassListRow<Leading: View, Trailing: View>: View {
 
 // MARK: - GlassLoadingView
 
-/// 液态玻璃风格加载视图
+/// 液态玻璃风格加载视图 — 弹跳圆点动画
 struct GlassLoadingView: View {
 
     let message: String?
@@ -219,19 +219,25 @@ struct GlassLoadingView: View {
         self.message = message
     }
 
-    var body: some View {
-        VStack(spacing: AppTheme.Spacing.lg) {
-            ProgressView()
-                .progressViewStyle(.circular)
-                .scaleEffect(1.5)
-                .tint(.white)
+    @State private var animating = false
 
-            if let message = message {
-                Text(message)
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(0..<3, id: \.self) { index in
+                Circle()
+                    .fill(Color.primary)
+                    .frame(width: 10, height: 10)
+                    .scaleEffect(animating ? 1.0 : 0.4)
+                    .opacity(animating ? 1.0 : 0.3)
+                    .animation(
+                        .easeInOut(duration: 0.5)
+                            .repeatForever(autoreverses: true)
+                            .delay(Double(index) * 0.15),
+                        value: animating
+                    )
             }
         }
+        .onAppear { animating = true }
         .padding(AppTheme.Spacing.xxl)
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
     }
