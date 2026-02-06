@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AVFoundation
 
 struct ClassifierView: View {
 
@@ -38,6 +39,12 @@ struct ClassifierView: View {
     // 排序
     @State private var showReorder = false
 
+    // 预览模式（缩略图 / 原图）
+    @State private var useThumbnail = true
+
+    // 视频播放器（原图模式）
+    @State private var videoPlayer: AVPlayer?
+
     // 分类选择器高度状态
     @State private var selectorHeight: CGFloat = 150  // 默认收起高度
     private let minHeight: CGFloat = 150  // 最小高度（水平模式）
@@ -57,7 +64,8 @@ struct ClassifierView: View {
                     classifierContent
                 }
             }
-            .navigationTitle("分类")
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     // 撤销按钮
@@ -149,6 +157,21 @@ struct ClassifierView: View {
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.bottom, AppTheme.Spacing.sm)
         }
+        // 切换文件或切换模式时管理视频播放器
+        .onChange(of: currentIndex) { _, _ in
+            if !useThumbnail, let file = currentFile, file.isVideo {
+                setupVideoPlayer(for: file)
+            } else {
+                cleanupVideoPlayer()
+            }
+        }
+        .onChange(of: useThumbnail) { _, newValue in
+            if !newValue, let file = currentFile, file.isVideo {
+                setupVideoPlayer(for: file)
+            } else {
+                cleanupVideoPlayer()
+            }
+        }
     }
 
     // MARK: - File Preview Section
@@ -156,45 +179,86 @@ struct ClassifierView: View {
     @ViewBuilder
     private var filePreviewSection: some View {
         if let file = currentFile {
-            // 文件预览（不含文件信息，信息移至右上角按钮）
-            AsyncImage(
-                url: apiService.preview.getThumbnailURL(
-                    for: file.path,
-                    size: 600,
-                    baseURL: apiService.baseURL,
-                    apiKey: apiService.apiKey
-                )
-            ) { phase in
-                switch phase {
-                case .empty:
-                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg)
-                        .fill(Color.white.opacity(0.1))
-                        .shimmer()
-
-                case .success(let image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .cornerRadius(AppTheme.CornerRadius.lg)
-
-                case .failure:
-                    VStack(spacing: AppTheme.Spacing.md) {
-                        Image(systemName: file.isVideo ? "film" : "photo")
-                            .font(.system(size: 48))
-                            .foregroundStyle(.tertiary)
-
-                        Text("无法加载预览")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+            if !useThumbnail && file.isVideo {
+                // 原图模式 + 视频 → 视频播放器
+                ZStack {
+                    if let player = videoPlayer {
+                        AVPlayerView(player: player)
+                            .cornerRadius(AppTheme.CornerRadius.lg)
+                    } else {
+                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg)
+                            .fill(Color.white.opacity(0.1))
+                            .overlay {
+                                ProgressView()
+                                    .tint(.white)
+                            }
                     }
 
-                @unknown default:
-                    EmptyView()
+                    // 点击暂停/播放
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if videoPlayer?.rate == 0 {
+                                videoPlayer?.play()
+                            } else {
+                                videoPlayer?.pause()
+                            }
+                        }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.vertical, AppTheme.Spacing.md)
+                .onAppear { setupVideoPlayer(for: file) }
+                .onDisappear { cleanupVideoPlayer() }
+            } else {
+                // 缩略图模式 / 非视频原图
+                let previewURL: URL? = if useThumbnail || file.isVideo {
+                    apiService.preview.getThumbnailURL(
+                        for: file.path,
+                        size: 600,
+                        baseURL: apiService.baseURL,
+                        apiKey: apiService.apiKey
+                    )
+                } else {
+                    apiService.preview.getContentURL(
+                        for: file.path,
+                        baseURL: apiService.baseURL,
+                        apiKey: apiService.apiKey
+                    )
+                }
+
+                AsyncImage(url: previewURL) { phase in
+                    switch phase {
+                    case .empty:
+                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg)
+                            .fill(Color.white.opacity(0.1))
+                            .shimmer()
+
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .cornerRadius(AppTheme.CornerRadius.lg)
+
+                    case .failure:
+                        VStack(spacing: AppTheme.Spacing.md) {
+                            Image(systemName: file.isVideo ? "film" : "photo")
+                                .font(.system(size: 48))
+                                .foregroundStyle(.tertiary)
+
+                            Text("无法加载预览")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.vertical, AppTheme.Spacing.md)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.horizontal, AppTheme.Spacing.lg)
-            .padding(.vertical, AppTheme.Spacing.md)
         }
     }
 
@@ -202,6 +266,27 @@ struct ClassifierView: View {
 
     private var classifyProgressBar: some View {
         VStack(spacing: AppTheme.Spacing.xs) {
+            // 缩略图/原图切换
+            HStack {
+                Spacer()
+
+                Button {
+                    withAnimation { useThumbnail.toggle() }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: useThumbnail ? "photo" : "photo.fill")
+                            .font(.caption)
+                        Text(useThumbnail ? "缩略图" : "原图")
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                    }
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                }
+                .glassEffect(.regular.interactive(), in: .capsule)
+            }
+
             // 进度条
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
@@ -578,6 +663,36 @@ struct ClassifierView: View {
     private var loadingView: some View {
         GlassLoadingView("加载中...")
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Video Player
+
+    private func setupVideoPlayer(for file: FileInfo) {
+        cleanupVideoPlayer()
+        guard let url = apiService.preview.getContentURL(
+            for: file.path,
+            baseURL: apiService.baseURL,
+            apiKey: apiService.apiKey
+        ) else { return }
+
+        let player = AVPlayer(url: url)
+        videoPlayer = player
+        player.play()
+
+        // 播放结束后循环
+        NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: player.currentItem,
+            queue: .main
+        ) { _ in
+            player.seek(to: .zero)
+            player.play()
+        }
+    }
+
+    private func cleanupVideoPlayer() {
+        videoPlayer?.pause()
+        videoPlayer = nil
     }
 
     // MARK: - Methods

@@ -56,8 +56,9 @@ struct FilePreviewView: View {
 
     // MARK: - Computed
 
-    private var currentFile: FileInfo {
-        currentFiles[currentIndex]
+    private var currentFile: FileInfo? {
+        guard !currentFiles.isEmpty, currentIndex >= 0, currentIndex < currentFiles.count else { return nil }
+        return currentFiles[currentIndex]
     }
 
     // MARK: - Body
@@ -68,20 +69,20 @@ struct FilePreviewView: View {
             Color.black.ignoresSafeArea()
 
             // 直接显示当前文件（替代 TabView 避免索引跳跃）
-            if !currentFiles.isEmpty {
-                fileContentView(for: currentFile)
-                    .id(currentIndex) // 切换时重建视图
+            if let file = currentFile {
+                fileContentView(for: file)
+                    .id(file.id) // 用文件 id 确保移除后视图重建
                     .ignoresSafeArea()
-            }
 
-            // 控制层
-            if showControls {
-                VStack {
-                    topBar
-                    Spacer()
-                    bottomControls
+                // 控制层
+                if showControls {
+                    VStack {
+                        topBar
+                        Spacer()
+                        bottomControls
+                    }
+                    .transition(.opacity)
                 }
-                .transition(.opacity)
             }
         }
         .ignoresSafeArea(edges: .bottom)
@@ -159,7 +160,7 @@ struct FilePreviewView: View {
             // 文件名（自动滚动 + 手动拖动）
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
-                    Text(currentFile.name)
+                    Text(currentFile?.name ?? "")
                         .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(.white)
@@ -221,7 +222,7 @@ struct FilePreviewView: View {
             Spacer()
 
             // 视频播放/暂停按钮
-            if currentFile.isVideo {
+            if currentFile?.isVideo == true {
                 Button {
                     isVideoPlaying.toggle()
                 } label: {
@@ -256,44 +257,47 @@ struct FilePreviewView: View {
 
     // MARK: - 文件信息面板内容
 
+    @ViewBuilder
     private var fileInfoContent: some View {
-        VStack(spacing: AppTheme.Spacing.lg) {
-            infoRow("文件名", value: currentFile.name)
-            infoRow("位置", value: "\(currentIndex + 1) / \(currentFiles.count)")
-            infoRow("类型", value: currentFile.extension.uppercased())
-            infoRow("大小", value: currentFile.formattedSize)
-            infoRow("修改时间", value: currentFile.modified)
+        if let file = currentFile {
+            VStack(spacing: AppTheme.Spacing.lg) {
+                infoRow("文件名", value: file.name)
+                infoRow("位置", value: "\(currentIndex + 1) / \(currentFiles.count)")
+                infoRow("类型", value: file.extension.uppercased())
+                infoRow("大小", value: file.formattedSize)
+                infoRow("修改时间", value: file.modified)
 
-            if let width = currentFile.width, let height = currentFile.height {
-                infoRow("分辨率", value: "\(width) × \(height)")
-            }
-            if let duration = currentFile.formattedDuration {
-                infoRow("时长", value: duration)
-            }
-
-            // 操作按钮
-            HStack(spacing: AppTheme.Spacing.md) {
-                GlassButton("重命名", icon: "pencil", style: .secondary, size: .medium) {
-                    showInfoSheet = false
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        renameText = currentFile.baseName
-                        showRenameAlert = true
-                    }
+                if let width = file.width, let height = file.height {
+                    infoRow("分辨率", value: "\(width) × \(height)")
                 }
-                .frame(maxWidth: .infinity)
-
-                GlassButton("移动", icon: "folder", style: .secondary, size: .medium) {
-                    showInfoSheet = false
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        Task { await loadFolders() }
-                        showMoveSheet = true
-                    }
+                if let duration = file.formattedDuration {
+                    infoRow("时长", value: duration)
                 }
-                .frame(maxWidth: .infinity)
+
+                // 操作按钮
+                HStack(spacing: AppTheme.Spacing.md) {
+                    GlassButton("重命名", icon: "pencil", style: .secondary, size: .medium) {
+                        showInfoSheet = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            renameText = file.baseName
+                            showRenameAlert = true
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    GlassButton("移动", icon: "folder", style: .secondary, size: .medium) {
+                        showInfoSheet = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            Task { await self.loadFolders() }
+                            showMoveSheet = true
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(.top, AppTheme.Spacing.sm)
             }
-            .padding(.top, AppTheme.Spacing.sm)
+            .padding(.vertical, AppTheme.Spacing.md)
         }
-        .padding(.vertical, AppTheme.Spacing.md)
     }
 
     private func infoRow(_ label: String, value: String) -> some View {
@@ -317,20 +321,23 @@ struct FilePreviewView: View {
                     .padding(.vertical, AppTheme.Spacing.xl)
             } else {
                 ForEach(targetFolders) { folder in
+                    let isSource = folder.name == URL(fileURLWithPath: sourceFolder).lastPathComponent
                     Button {
                         Task { await performMove(to: folder) }
                     } label: {
                         HStack(spacing: AppTheme.Spacing.md) {
-                            Image(systemName: "folder.fill")
+                            Image(systemName: isSource ? "folder.fill.badge.gearshape" : "folder.fill")
                                 .font(.title3)
-                                .foregroundStyle(.yellow)
+                                .foregroundStyle(isSource ? .orange : .yellow)
                             Text(folder.name)
                                 .font(.body)
                                 .foregroundStyle(.primary)
                             Spacer()
-                            Text("\(folder.fileCount)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            if !isSource {
+                                Text("\(folder.fileCount)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                         .padding(AppTheme.Spacing.md)
                         .contentShape(Rectangle())
@@ -356,7 +363,7 @@ struct FilePreviewView: View {
     private func scheduleAutoHide() {
         hideControlsTask?.cancel()
         // 仅视频播放时自动隐藏（10秒），图片和其他文件始终显示控制栏
-        guard currentFile.isVideo else { return }
+        guard currentFile?.isVideo == true else { return }
         hideControlsTask = Task {
             try? await Task.sleep(for: .seconds(10))
             guard !Task.isCancelled else { return }
@@ -374,17 +381,21 @@ struct FilePreviewView: View {
         do {
             let configState = try await apiService.config.getConfigState()
             sourceFolder = configState.sourceFolder
-            targetFolders = try await apiService.folder.getSubfolders(in: sourceFolder)
+            var folders = try await apiService.folder.getSubfolders(in: sourceFolder)
                 .filter { !$0.hidden }
+            // 在开头插入源文件夹，方便将文件送回源目录
+            let sourceName = URL(fileURLWithPath: sourceFolder).lastPathComponent
+            let sourceEntry = FolderInfo(name: sourceName, hidden: false, fileCount: 0)
+            folders.insert(sourceEntry, at: 0)
+            targetFolders = folders
         } catch {
             GlassAlertManager.shared.showError("加载文件夹失败", message: error.localizedDescription)
         }
     }
 
     private func performRename() async {
-        let file = currentFile
+        guard let file = currentFile, !renameText.isEmpty else { return }
         let newName = renameText + file.extension
-        guard !renameText.isEmpty else { return }
 
         isOperating = true
         do {
@@ -398,10 +409,12 @@ struct FilePreviewView: View {
     }
 
     private func performMove(to folder: FolderInfo) async {
-        let file = currentFile
+        guard let file = currentFile else { return }
         isOperating = true
         do {
-            let targetPath = sourceFolder + "/" + folder.name
+            // 判断是否移动到源文件夹本身
+            let sourceName = URL(fileURLWithPath: sourceFolder).lastPathComponent
+            let targetPath = folder.name == sourceName ? sourceFolder : sourceFolder + "/" + folder.name
             _ = try await apiService.file.moveFile(at: file.path, to: targetPath)
             showMoveSheet = false
             GlassAlertManager.shared.showSuccess("已移动到 \(folder.name)")

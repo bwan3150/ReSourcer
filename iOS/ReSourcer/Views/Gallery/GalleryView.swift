@@ -467,20 +467,23 @@ struct GalleryView: View {
                     .padding(.vertical, AppTheme.Spacing.xl)
             } else {
                 ForEach(targetFolders) { folder in
+                    let isSource = folder.name == URL(fileURLWithPath: sourceFolder).lastPathComponent
                     Button {
                         Task { await performMove(to: folder) }
                     } label: {
                         HStack(spacing: AppTheme.Spacing.md) {
-                            Image(systemName: "folder.fill")
+                            Image(systemName: isSource ? "folder.fill.badge.gearshape" : "folder.fill")
                                 .font(.title3)
-                                .foregroundStyle(.yellow)
+                                .foregroundStyle(isSource ? .orange : .yellow)
                             Text(folder.name)
                                 .font(.body)
                                 .foregroundStyle(.primary)
                             Spacer()
-                            Text("\(folder.fileCount)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            if !isSource {
+                                Text("\(folder.fileCount)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                         .padding(AppTheme.Spacing.md)
                         .contentShape(Rectangle())
@@ -498,8 +501,13 @@ struct GalleryView: View {
 
     private func loadTargetFolders() async {
         do {
-            targetFolders = try await apiService.folder.getSubfolders(in: sourceFolder)
+            var folders = try await apiService.folder.getSubfolders(in: sourceFolder)
                 .filter { !$0.hidden }
+            // 在开头插入源文件夹，方便将文件送回源目录
+            let sourceName = URL(fileURLWithPath: sourceFolder).lastPathComponent
+            let sourceEntry = FolderInfo(name: sourceName, hidden: false, fileCount: 0)
+            folders.insert(sourceEntry, at: 0)
+            targetFolders = folders
         } catch {
             GlassAlertManager.shared.showError("加载文件夹失败", message: error.localizedDescription)
         }
@@ -520,7 +528,9 @@ struct GalleryView: View {
     private func performMove(to folder: FolderInfo) async {
         guard let file = selectedFile else { return }
         do {
-            let targetPath = sourceFolder + "/" + folder.name
+            // 判断是否移动到源文件夹本身
+            let sourceName = URL(fileURLWithPath: sourceFolder).lastPathComponent
+            let targetPath = folder.name == sourceName ? sourceFolder : sourceFolder + "/" + folder.name
             _ = try await apiService.file.moveFile(at: file.path, to: targetPath)
             showMoveSheet = false
             GlassAlertManager.shared.showSuccess("已移动到 \(folder.name)")
