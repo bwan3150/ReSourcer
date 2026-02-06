@@ -15,8 +15,8 @@ enum AppTheme {
     // MARK: - 颜色
 
     enum Colors {
-        /// 主色调
-        static let primary = Color.accentColor
+        /// 主色调（黑白灰风格，跟随系统明暗）
+        static let primary = Color.primary
 
         /// 成功色
         static let success = Color.green
@@ -28,7 +28,7 @@ enum AppTheme {
         static let error = Color.red
 
         /// 信息色
-        static let info = Color.blue
+        static let info = Color.gray
 
         /// 文本颜色
         enum Text {

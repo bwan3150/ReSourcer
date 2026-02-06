@@ -238,7 +238,7 @@ enum MainTab: String, GlassTabItem, CaseIterable {
             ZStack {
                 // 模拟内容背景
                 LinearGradient(
-                    colors: [.blue.opacity(0.3), .purple.opacity(0.3)],
+                    colors: [.gray.opacity(0.2), .gray.opacity(0.1)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -278,7 +278,7 @@ enum MainTab: String, GlassTabItem, CaseIterable {
             GlassTabView(selection: $selectedTab) { tab in
                 ZStack {
                     LinearGradient(
-                        colors: [.blue.opacity(0.2), .purple.opacity(0.2)],
+                        colors: [.gray.opacity(0.15), .gray.opacity(0.08)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )

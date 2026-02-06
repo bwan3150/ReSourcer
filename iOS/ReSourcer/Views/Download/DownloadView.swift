@@ -30,31 +30,37 @@ struct DownloadView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: AppTheme.Spacing.xl) {
-                    // 标题
-                    Text("下载器")
-                        .font(.system(size: 36, weight: .bold))
-                        .foregroundStyle(.primary)
-                        .padding(.top, 40)
+            // 整体垂直居中
+            VStack(spacing: AppTheme.Spacing.xl) {
+                Spacer()
 
-                    // 主输入区域
-                    mainInputArea
-                        .padding(.horizontal, AppTheme.Spacing.lg)
+                // 标题
+                Text("下载器")
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundStyle(.primary)
 
-                    // 下载列表入口
-                    Button {
-                        showTaskList = true
-                    } label: {
+                // 主输入区域
+                mainInputArea
+                    .padding(.horizontal, AppTheme.Spacing.lg)
+
+                // 下载列表入口
+                Button {
+                    showTaskList = true
+                } label: {
+                    HStack(spacing: AppTheme.Spacing.xs) {
+                        Image(systemName: "list.bullet")
+                            .font(.subheadline)
                         Text("下载列表")
                             .font(.subheadline)
                             .fontWeight(.medium)
-                            .foregroundStyle(.secondary)
                     }
-                    .padding(.vertical, AppTheme.Spacing.md)
-
-                    Spacer(minLength: 60)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(Color.gray, in: .capsule)
                 }
+
+                Spacer()
             }
             .navigationDestination(isPresented: $showTaskList) {
                 DownloadTaskListView(apiService: apiService)
@@ -99,10 +105,10 @@ struct DownloadView: View {
                 } label: {
                     Image(systemName: "doc.on.clipboard")
                         .font(.system(size: 20))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(.white)
                         .frame(width: 50, height: 50)
+                        .background(Color.black, in: .circle)
                 }
-                .glassEffect(.regular.interactive(), in: .circle)
             }
 
             // 文件夹选择器
@@ -142,11 +148,11 @@ struct DownloadView: View {
             Text(displayName)
                 .font(.subheadline)
                 .fontWeight(isSelected ? .bold : .semibold)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(isSelected ? .white : .secondary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
+                .background(isSelected ? AnyShapeStyle(Color.black) : AnyShapeStyle(.clear), in: .capsule)
         }
-        .glassEffect(isSelected ? .regular : .clear, in: .capsule)
     }
 
     private var addFolderChip: some View {
@@ -164,7 +170,6 @@ struct DownloadView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
         }
-        .glassEffect(.clear, in: .capsule)
     }
 
     // MARK: - Download Button
@@ -178,18 +183,23 @@ struct DownloadView: View {
             Group {
                 if isCreatingTask {
                     ProgressView()
-                        .tint(.primary)
+                        .tint(isEnabled ? .white : .black)
                 } else {
                     Image(systemName: "arrow.down")
                         .font(.title2)
                         .fontWeight(.medium)
                 }
             }
-            .foregroundStyle(isEnabled ? .primary : .tertiary)
+            .foregroundStyle(isEnabled ? .white : .black.opacity(0.3))
             .frame(maxWidth: .infinity)
             .frame(height: 50)
+            .background(isEnabled ? Color.black : Color.white, in: .capsule)
+            .overlay {
+                if !isEnabled {
+                    Capsule().stroke(Color.black.opacity(0.1), lineWidth: 1)
+                }
+            }
         }
-        .glassEffect(isEnabled ? .regular.interactive() : .clear, in: .capsule)
         .disabled(!isEnabled || isCreatingTask)
     }
 
@@ -485,7 +495,7 @@ struct DownloadTaskRow: View {
                                 .fill(Color.white.opacity(0.2))
 
                             Capsule()
-                                .fill(Color.blue)
+                                .fill(Color.primary)
                                 .frame(width: geometry.size.width * CGFloat(task.progress / 100))
                         }
                     }
@@ -517,7 +527,7 @@ struct DownloadTaskRow: View {
     private var statusColor: Color {
         switch task.status {
         case .pending: return .gray
-        case .downloading: return .blue
+        case .downloading: return .gray
         case .completed: return .green
         case .failed: return .red
         case .cancelled: return .orange

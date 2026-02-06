@@ -34,7 +34,7 @@ struct ServerConnectView: View {
         ZStack {
             // 背景
             LinearGradient(
-                colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)],
+                colors: [Color.gray.opacity(0.2), Color.gray.opacity(0.1)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )

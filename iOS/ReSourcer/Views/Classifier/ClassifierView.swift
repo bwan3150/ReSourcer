@@ -191,7 +191,7 @@ struct ClassifierView: View {
 
                     // 已完成进度
                     Capsule()
-                        .fill(Color.accentColor)
+                        .fill(Color.primary)
                         .frame(width: totalCount > 0
                             ? geo.size.width * CGFloat(classifiedCount) / CGFloat(totalCount)
                             : 0

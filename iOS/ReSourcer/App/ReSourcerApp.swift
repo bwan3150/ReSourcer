@@ -21,6 +21,9 @@ struct ReSourcerApp: App {
     /// 当前 API 服务
     @State private var apiService: APIService?
 
+    /// 主题偏好
+    @State private var themePreference: LocalStorageService.AppSettings.DarkModePreference = .system
+
     // MARK: - Body
 
     var body: some Scene {
@@ -40,13 +43,29 @@ struct ReSourcerApp: App {
                 }
             }
             .withGlassAlerts()
+            .preferredColorScheme(colorSchemeForPreference)
             .animation(AppTheme.Animation.standard, value: isLoggedIn)
             .onAppear {
+                themePreference = LocalStorageService.shared.getAppSettings().darkModePreference
                 checkExistingLogin()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .themeDidChange)) { _ in
+                themePreference = LocalStorageService.shared.getAppSettings().darkModePreference
             }
             .onReceive(NotificationCenter.default.publisher(for: .userDidLogout)) { _ in
                 handleLogout()
             }
+        }
+    }
+
+    // MARK: - Theme
+
+    /// 将用户偏好转换为 ColorScheme
+    private var colorSchemeForPreference: ColorScheme? {
+        switch themePreference {
+        case .light: return .light
+        case .dark: return .dark
+        case .system: return nil
         }
     }
 

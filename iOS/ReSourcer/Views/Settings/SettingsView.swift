@@ -25,6 +25,9 @@ struct SettingsView: View {
     @State private var showCredentialEditor = false
     @State private var selectedPlatform: AuthPlatform?
 
+    // 主题设置
+    @State private var themePreference: LocalStorageService.AppSettings.DarkModePreference = .system
+
     // 断开连接
     @State private var showDisconnectConfirm = false
 
@@ -46,6 +49,9 @@ struct SettingsView: View {
 
                     // 认证管理
                     authSection
+
+                    // 外观设置
+                    appearanceSection
 
                     // 关于
                     aboutSection
@@ -85,7 +91,7 @@ struct SettingsView: View {
             VStack(spacing: AppTheme.Spacing.sm) {
                 SettingsRow(
                     icon: "server.rack",
-                    iconColor: .blue,
+                    iconColor: .gray,
                     title: apiService.server.name,
                     subtitle: apiService.server.displayURL
                 )
@@ -149,7 +155,7 @@ struct SettingsView: View {
                 if let config = downloadConfig {
                     SettingsToggleRow(
                         icon: "globe",
-                        iconColor: .purple,
+                        iconColor: .gray,
                         title: "使用 Cookies",
                         subtitle: "某些网站需要登录才能下载",
                         isOn: .constant(config.useCookies)
@@ -177,7 +183,7 @@ struct SettingsView: View {
                     // X (Twitter)
                     SettingsRow(
                         icon: "xmark.circle.fill",
-                        iconColor: .blue,
+                        iconColor: .gray,
                         title: "X (Twitter)",
                         subtitle: config.authStatus.x ? "已配置" : "未配置",
                         trailing: {
@@ -191,7 +197,7 @@ struct SettingsView: View {
                     // Pixiv
                     SettingsRow(
                         icon: "paintbrush.fill",
-                        iconColor: .blue,
+                        iconColor: .gray,
                         title: "Pixiv",
                         subtitle: config.authStatus.pixiv ? "已配置" : "未配置",
                         trailing: {
@@ -212,6 +218,66 @@ struct SettingsView: View {
             .foregroundStyle(isConfigured ? .green : .gray)
     }
 
+    // MARK: - Appearance Section
+
+    private var appearanceSection: some View {
+        SettingsSection(title: "外观") {
+            VStack(spacing: AppTheme.Spacing.sm) {
+                themeOptionRow(
+                    title: "浅色模式",
+                    icon: "sun.max.fill",
+                    preference: .light
+                )
+                themeOptionRow(
+                    title: "深色模式",
+                    icon: "moon.fill",
+                    preference: .dark
+                )
+                themeOptionRow(
+                    title: "跟随系统",
+                    icon: "gear",
+                    preference: .system
+                )
+            }
+        }
+    }
+
+    private func themeOptionRow(
+        title: String,
+        icon: String,
+        preference: LocalStorageService.AppSettings.DarkModePreference
+    ) -> some View {
+        Button {
+            themePreference = preference
+            var settings = LocalStorageService.shared.getAppSettings()
+            settings.darkModePreference = preference
+            LocalStorageService.shared.saveAppSettings(settings)
+            NotificationCenter.default.post(name: .themeDidChange, object: nil)
+        } label: {
+            HStack(spacing: AppTheme.Spacing.md) {
+                Image(systemName: icon)
+                    .font(.system(size: 18))
+                    .foregroundStyle(.gray)
+                    .frame(width: 28)
+
+                Text(title)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+
+                Spacer()
+
+                if themePreference == preference {
+                    Image(systemName: "checkmark")
+                        .font(.body)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - About Section
 
     private var aboutSection: some View {
@@ -219,14 +285,14 @@ struct SettingsView: View {
             VStack(spacing: AppTheme.Spacing.sm) {
                 SettingsRow(
                     icon: "info.circle",
-                    iconColor: .blue,
+                    iconColor: .gray,
                     title: "版本",
                     subtitle: "1.0.0"
                 )
 
                 SettingsRow(
                     icon: "link",
-                    iconColor: .blue,
+                    iconColor: .gray,
                     title: "GitHub",
                     subtitle: "查看源代码"
                 ) {
@@ -236,7 +302,7 @@ struct SettingsView: View {
                 if let presets = configState?.presets, !presets.isEmpty {
                     SettingsRow(
                         icon: "square.stack.3d.up",
-                        iconColor: .purple,
+                        iconColor: .gray,
                         title: "预设",
                         subtitle: "\(presets.count) 个可用"
                     )
@@ -260,6 +326,9 @@ struct SettingsView: View {
 
     private func loadSettings() async {
         isLoading = true
+
+        // 加载主题偏好
+        themePreference = LocalStorageService.shared.getAppSettings().darkModePreference
 
         do {
             async let configTask = apiService.config.getConfigState()
@@ -408,7 +477,7 @@ struct SettingsToggleRow: View {
 
             Toggle("", isOn: $isOn)
                 .labelsHidden()
-                .tint(.green)
+                .tint(.gray)
         }
     }
 }
@@ -417,6 +486,7 @@ struct SettingsToggleRow: View {
 
 extension Notification.Name {
     static let userDidLogout = Notification.Name("userDidLogout")
+    static let themeDidChange = Notification.Name("themeDidChange")
 }
 
 // MARK: - Preview

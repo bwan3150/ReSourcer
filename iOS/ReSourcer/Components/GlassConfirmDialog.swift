@@ -354,7 +354,7 @@ struct GlassConfirmContainer: View {
         var body: some View {
             ZStack {
                 LinearGradient(
-                    colors: [.blue.opacity(0.3), .purple.opacity(0.3)],
+                    colors: [.gray.opacity(0.2), .gray.opacity(0.1)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )

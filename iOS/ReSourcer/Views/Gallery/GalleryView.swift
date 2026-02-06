@@ -364,7 +364,7 @@ struct GalleryGridItem: View {
                     .foregroundStyle(.primary)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .glassEffect(.regular.tint(.purple), in: .capsule)
+                    .glassEffect(.regular, in: .capsule)
                     .padding(6)
             }
         }
