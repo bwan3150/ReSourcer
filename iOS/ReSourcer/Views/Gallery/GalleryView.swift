@@ -370,67 +370,66 @@ struct GalleryGridItem: View {
     let apiService: APIService
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            // 缩略图
-            AsyncImage(
-                url: apiService.preview.getThumbnailURL(
-                    for: file.path,
-                    size: 300,
-                    baseURL: apiService.baseURL,
-                    apiKey: apiService.apiKey
-                )
-            ) { phase in
-                switch phase {
-                case .empty:
-                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md)
-                        .fill(Color.white.opacity(0.1))
-                        .shimmer()
+        // 用 Color.clear 占住正方形尺寸，图片用 overlay 填充后裁切
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay {
+                AsyncImage(
+                    url: apiService.preview.getThumbnailURL(
+                        for: file.path,
+                        size: 300,
+                        baseURL: apiService.baseURL,
+                        apiKey: apiService.apiKey
+                    )
+                ) { phase in
+                    switch phase {
+                    case .empty:
+                        Color.white.opacity(0.08)
+                            .overlay { ProgressView() }
 
-                case .success(let image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
 
-                case .failure:
-                    Image(systemName: file.isVideo ? "film" : "photo")
-                        .font(.title)
-                        .foregroundStyle(.tertiary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.white.opacity(0.1))
+                    case .failure:
+                        Color.white.opacity(0.05)
+                            .overlay {
+                                Image(systemName: file.isVideo ? "film" : "photo")
+                                    .font(.title2)
+                                    .foregroundStyle(.tertiary)
+                            }
 
-                @unknown default:
-                    EmptyView()
+                    @unknown default:
+                        EmptyView()
+                    }
                 }
             }
-            .frame(minHeight: 100)
-            .aspectRatio(1, contentMode: .fill)
-            .clipped()
-            .cornerRadius(AppTheme.CornerRadius.md)
-
-            // 视频时长标签
-            if file.isVideo, let duration = file.formattedDuration {
-                Text(duration)
-                    .font(.caption2)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .glassEffect(.regular, in: .capsule)
-                    .padding(6)
+            .overlay(alignment: .bottomTrailing) {
+                // 视频时长 / GIF 标签
+                if file.isVideo, let duration = file.formattedDuration {
+                    Text(duration)
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .glassEffect(.regular, in: .capsule)
+                        .padding(6)
+                } else if file.isGif {
+                    Text("GIF")
+                        .font(.caption2)
+                        .fontWeight(.bold)
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .glassEffect(.regular, in: .capsule)
+                        .padding(6)
+                }
             }
-
-            // GIF 标签
-            if file.isGif {
-                Text("GIF")
-                    .font(.caption2)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .glassEffect(.regular, in: .capsule)
-                    .padding(6)
-            }
-        }
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+            .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 3)
+            .shadow(color: .white.opacity(0.06), radius: 2, x: 0, y: -1)
     }
 }
 
