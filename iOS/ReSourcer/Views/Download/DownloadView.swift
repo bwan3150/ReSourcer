@@ -60,7 +60,7 @@ struct DownloadView: View {
                             .font(.subheadline)
                             .fontWeight(.medium)
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color(.systemBackground))
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
                     .background(Color.gray, in: .capsule)
@@ -160,9 +160,9 @@ struct DownloadView: View {
                 } label: {
                     Image(systemName: "doc.on.clipboard")
                         .font(.system(size: 20))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color(.systemBackground))
                         .frame(width: 50, height: 50)
-                        .background(Color.black, in: .circle)
+                        .background(Color.primary, in: .circle)
                 }
             }
 
@@ -206,10 +206,10 @@ struct DownloadView: View {
             Text(displayName)
                 .font(.subheadline)
                 .fontWeight(isSelected ? .bold : .semibold)
-                .foregroundStyle(isSelected ? .white : .secondary)
+                .foregroundStyle(isSelected ? Color(.systemBackground) : .secondary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(isSelected ? AnyShapeStyle(Color.black) : AnyShapeStyle(.clear), in: .capsule)
+                .background(isSelected ? AnyShapeStyle(Color.gray) : AnyShapeStyle(.clear), in: .capsule)
         }
     }
 
@@ -259,20 +259,20 @@ struct DownloadView: View {
             Group {
                 if isCreatingTask {
                     ProgressView()
-                        .tint(isEnabled ? .white : .black)
+                        .tint(isEnabled ? Color(.systemBackground) : .primary)
                 } else {
                     Image(systemName: "arrow.down")
                         .font(.title2)
                         .fontWeight(.medium)
                 }
             }
-            .foregroundStyle(isEnabled ? .white : .black.opacity(0.3))
+            .foregroundStyle(isEnabled ? Color(.systemBackground) : .primary.opacity(0.3))
             .frame(maxWidth: .infinity)
             .frame(height: 50)
-            .background(isEnabled ? Color.black : Color.white, in: .capsule)
+            .background(isEnabled ? Color.primary : Color(.systemBackground), in: .capsule)
             .overlay {
                 if !isEnabled {
-                    Capsule().stroke(Color.black.opacity(0.1), lineWidth: 1)
+                    Capsule().stroke(Color.primary.opacity(0.1), lineWidth: 1)
                 }
             }
         }
@@ -395,6 +395,7 @@ struct DownloadTaskListView: View {
     @State private var isLoading = false
     @State private var selectedSegment: DownloadSegment = .active
     @State private var refreshTimer: Timer?
+    @State private var showClearConfirm = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -421,12 +422,18 @@ struct DownloadTaskListView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    clearHistory()
+                    showClearConfirm = true
                 } label: {
                     Image(systemName: "trash")
                 }
                 .disabled(completedTasks.isEmpty && failedTasks.isEmpty)
             }
+        }
+        .alert("清除记录", isPresented: $showClearConfirm) {
+            Button("取消", role: .cancel) {}
+            Button("清除", role: .destructive) { clearHistory() }
+        } message: {
+            Text("确定要清除所有已完成和失败的记录吗？")
         }
         .task {
             await loadTasks()
@@ -553,84 +560,178 @@ struct DownloadTaskRow: View {
     let task: DownloadTask
     let onDelete: () -> Void
 
+    @State private var isExpanded = false
+    @State private var showDeleteConfirm = false
+
     var body: some View {
-        HStack(spacing: AppTheme.Spacing.md) {
-            // 平台图标
-            Image(systemName: task.platform.iconName)
-                .font(.title2)
-                .foregroundStyle(statusColor)
-                .frame(width: 44, height: 44)
-                .glassEffect(.regular.tint(statusColor.opacity(0.3)), in: .circle)
+        VStack(spacing: 0) {
+            // 主行 — 点击展开/折叠
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: AppTheme.Spacing.md) {
+                    // 状态圆点
+                    Circle()
+                        .fill(statusColor)
+                        .frame(width: 8, height: 8)
 
-            // 任务信息
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-                Text(task.fileName ?? "下载中...")
-                    .font(.body)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
+                    // 文件名
+                    Text(task.fileName ?? "下载中...")
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                HStack(spacing: AppTheme.Spacing.sm) {
+                    // 状态/进度
                     if task.status == .downloading {
-                        Text(task.progressText)
+                        Text("\(Int(task.progress))%")
                             .font(.caption)
+                            .monospacedDigit()
                             .foregroundStyle(.secondary)
-
-                        if let speed = task.speed {
-                            Text(speed)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
                     } else {
                         Text(statusText)
                             .font(.caption)
                             .foregroundStyle(statusColor)
                     }
 
-                    Text(task.formattedCreatedAt)
-                        .font(.caption)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
                         .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
 
-                if task.status == .downloading {
-                    GeometryReader { geometry in
-                        ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(Color.white.opacity(0.2))
-
-                            Capsule()
-                                .fill(Color.primary)
-                                .frame(width: geometry.size.width * CGFloat(task.progress / 100))
-                        }
+            // 进度条（下载中始终显示）
+            if task.status == .downloading {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.primary.opacity(0.15))
+                        Capsule().fill(Color.primary)
+                            .frame(width: geometry.size.width * CGFloat(task.progress / 100))
                     }
-                    .frame(height: 4)
                 }
+                .frame(height: 3)
+                .padding(.top, AppTheme.Spacing.sm)
             }
 
-            Spacer()
+            // 展开详情
+            if isExpanded {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                    Divider().padding(.vertical, AppTheme.Spacing.xs)
 
-            // 操作按钮
-            if task.status.isFinished {
-                Button(action: onDelete) {
-                    Image(systemName: "xmark")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+                    downloadDetailRow("平台", value: task.platform.displayName)
+                    downloadDetailRow("时间", value: task.formattedCreatedAt)
+
+                    if task.status == .downloading {
+                        downloadDetailRow("进度", value: task.progressText)
+                        if let speed = task.speed {
+                            downloadDetailRow("速度", value: speed)
+                        }
+                        if let eta = task.eta {
+                            downloadDetailRow("剩余", value: eta)
+                        }
+                    }
+
+                    // URL（可横向滚动查看）
+                    HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
+                        Text("链接")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 32, alignment: .leading)
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            Text(task.url)
+                                .font(.caption)
+                                .foregroundStyle(.primary)
+                        }
+
+                        Button {
+                            UIPasteboard.general.string = task.url
+                            GlassAlertManager.shared.showSuccess("已复制")
+                        } label: {
+                            Image(systemName: "doc.on.doc")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    // 失败原因（可复制）
+                    if task.status == .failed, let error = task.error {
+                        HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
+                            Text("原因")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 32, alignment: .leading)
+
+                            Text(error)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .lineLimit(3)
+
+                            Button {
+                                UIPasteboard.general.string = error
+                                GlassAlertManager.shared.showSuccess("已复制")
+                            } label: {
+                                Image(systemName: "doc.on.doc")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+
+                    // 操作按钮
+                    HStack {
+                        Spacer()
+                        if task.status.isFinished {
+                            Button { showDeleteConfirm = true } label: {
+                                Label("删除", systemImage: "trash")
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                            }
+                        } else if task.canCancel {
+                            Button { showDeleteConfirm = true } label: {
+                                Label("取消", systemImage: "stop.circle")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                    }
                 }
-            } else if task.canCancel {
-                Button(action: onDelete) {
-                    Image(systemName: "stop.circle")
-                        .font(.title3)
-                        .foregroundStyle(.orange)
-                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .padding(AppTheme.Spacing.md)
         .glassEffect(.clear, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+        .alert(task.canCancel ? "取消任务" : "删除记录", isPresented: $showDeleteConfirm) {
+            Button("取消", role: .cancel) {}
+            Button(task.canCancel ? "确认取消" : "删除", role: .destructive) { onDelete() }
+        } message: {
+            Text(task.canCancel ? "确定要取消这个下载任务吗？" : "确定要删除这条记录吗？")
+        }
+    }
+
+    private func downloadDetailRow(_ label: String, value: String) -> some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 32, alignment: .leading)
+            Text(value)
+                .font(.caption)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+        }
     }
 
     private var statusColor: Color {
         switch task.status {
         case .pending: return .gray
-        case .downloading: return .gray
+        case .downloading: return .blue
         case .completed: return .green
         case .failed: return .red
         case .cancelled: return .orange
@@ -642,7 +743,7 @@ struct DownloadTaskRow: View {
         case .pending: return "等待中"
         case .downloading: return "下载中"
         case .completed: return "已完成"
-        case .failed: return task.error ?? "失败"
+        case .failed: return "失败"
         case .cancelled: return "已取消"
         }
     }

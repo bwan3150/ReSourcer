@@ -74,41 +74,48 @@ struct PhotoUploadConfirmView: View {
 
     var body: some View {
         VStack(spacing: AppTheme.Spacing.lg) {
-            infoRow("已选择", value: "\(pickerResults.count) 个文件")
-            infoRow("上传到", value: targetFolderDisplayName)
+            // 上传描述
+            Text("将上传 \(pickerResults.count) 个文件至 \(targetFolderDisplayName)")
+                .font(.body)
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
+            // 上传进度
             if isUploading {
-                infoRow("上传进度", value: "\(currentProgress)/\(pickerResults.count)")
-                ProgressView(value: Double(currentProgress), total: Double(pickerResults.count))
-                    .tint(.blue)
+                VStack(spacing: AppTheme.Spacing.sm) {
+                    ProgressView(value: Double(currentProgress), total: Double(pickerResults.count))
+                        .tint(.primary)
+                    Text("\(currentProgress)/\(pickerResults.count)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
             }
 
-            HStack {
-                Image(systemName: "trash")
-                    .foregroundStyle(.orange)
-                Text("上传后删除本地照片")
-                    .font(.body)
-                    .foregroundStyle(.primary)
-                Spacer()
-                Toggle("", isOn: $deleteAfterUpload)
-                    .labelsHidden()
-                    .tint(.orange)
+            // 删除选项
+            Button {
+                deleteAfterUpload.toggle()
+            } label: {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Image(systemName: deleteAfterUpload ? "checkmark.square.fill" : "square")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.primary)
+                    Text("上传后删除本地照片")
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                }
             }
+            .buttonStyle(.plain)
 
-            if deleteAfterUpload {
-                Text("上传完成后，已选照片将移入「最近删除」")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
+            // 操作按钮
             HStack(spacing: AppTheme.Spacing.md) {
                 GlassButton("取消", style: .secondary, size: .medium) {
                     onCancel()
                 }
                 .frame(maxWidth: .infinity)
 
-                GlassButton("开始上传", icon: "arrow.up", style: .primary, size: .medium,
+                GlassButton("上传", icon: "arrow.up", style: .primary, size: .medium,
                             isLoading: isUploading) {
                     Task { await startUpload() }
                 }
@@ -118,21 +125,6 @@ struct PhotoUploadConfirmView: View {
             Spacer().frame(height: 60)
         }
         .padding(.vertical, AppTheme.Spacing.md)
-    }
-
-    // MARK: - 辅助视图
-
-    private func infoRow(_ label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(.body)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(value)
-                .font(.body)
-                .fontWeight(.medium)
-                .foregroundStyle(.primary)
-        }
     }
 
     // MARK: - 上传逻辑

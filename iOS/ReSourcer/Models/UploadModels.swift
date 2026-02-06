@@ -93,6 +93,17 @@ struct UploadTask: Identifiable, Codable, Equatable {
     var progressDescription: String {
         "\(formattedUploadedSize) / \(formattedFileSize)"
     }
+
+    /// 格式化的创建时间（转换为本地时区）
+    var formattedCreatedAt: String {
+        let formatter = ISO8601DateFormatter()
+        if let date = formatter.date(from: createdAt) {
+            let displayFormatter = DateFormatter()
+            displayFormatter.dateFormat = "MM-dd HH:mm"
+            return displayFormatter.string(from: date)
+        }
+        return createdAt
+    }
 }
 
 /// 上传任务列表响应

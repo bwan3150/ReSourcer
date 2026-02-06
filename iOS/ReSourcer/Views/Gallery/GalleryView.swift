@@ -92,6 +92,22 @@ struct GalleryView: View {
                     Spacer()
                 }
             }
+            // 右下角悬浮上传按钮
+            .overlay(alignment: .bottomTrailing) {
+                Button {
+                    requestPhotoAccessAndShowPicker()
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundStyle(Color(.systemBackground))
+                        .frame(width: 56, height: 56)
+                        .background(Color.primary)
+                        .clipShape(Circle())
+                        .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
+                }
+                .padding(.trailing, AppTheme.Spacing.lg)
+                .padding(.bottom, 16)
+            }
             .navigationBarHidden(true)
             .navigationDestination(for: Int.self) { index in
                 FilePreviewView(apiService: apiService, files: files, initialIndex: index)
@@ -142,7 +158,7 @@ struct GalleryView: View {
             }
         }
         // 上传确认面板
-        .glassBottomSheet(isPresented: $showUploadConfirm, title: "确认上传") {
+        .glassBottomSheet(isPresented: $showUploadConfirm) {
             PhotoUploadConfirmView(
                 apiService: apiService,
                 pickerResults: pickerResults,
@@ -195,11 +211,11 @@ struct GalleryView: View {
             }
             .glassEffect(isDropdownOpen ? .regular : .regular.interactive(), in: .capsule)
 
-            // 上传按钮
+            // 上传记录
             Button {
-                requestPhotoAccessAndShowPicker()
+                showUploadTaskList = true
             } label: {
-                Image(systemName: "arrow.up.circle")
+                Image(systemName: "clock.arrow.circlepath")
                     .font(.system(size: 18))
                     .foregroundStyle(.primary)
                     .frame(width: 44, height: 44)
@@ -213,17 +229,6 @@ struct GalleryView: View {
                 }
             } label: {
                 Image(systemName: viewMode == .grid ? "list.bullet" : "square.grid.2x2")
-                    .font(.system(size: 18))
-                    .foregroundStyle(.primary)
-                    .frame(width: 44, height: 44)
-            }
-            .glassEffect(.regular.interactive(), in: .circle)
-
-            // 刷新按钮
-            Button {
-                Task { await refreshFiles() }
-            } label: {
-                Image(systemName: "arrow.clockwise")
                     .font(.system(size: 18))
                     .foregroundStyle(.primary)
                     .frame(width: 44, height: 44)

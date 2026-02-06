@@ -16,6 +16,7 @@ struct UploadTaskListView: View {
     @State private var isLoading = false
     @State private var selectedSegment: UploadSegment = .active
     @State private var refreshTimer: Timer?
+    @State private var showClearConfirm = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -42,12 +43,18 @@ struct UploadTaskListView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    clearCompleted()
+                    showClearConfirm = true
                 } label: {
                     Image(systemName: "trash")
                 }
                 .disabled(completedTasks.isEmpty && failedTasks.isEmpty)
             }
+        }
+        .alert("清除记录", isPresented: $showClearConfirm) {
+            Button("取消", role: .cancel) {}
+            Button("清除", role: .destructive) { clearCompleted() }
+        } message: {
+            Text("确定要清除所有已完成和失败的记录吗？")
         }
         .task {
             await loadTasks()
@@ -180,26 +187,35 @@ struct UploadTaskRow: View {
     let task: UploadTask
     let onDelete: () -> Void
 
+    @State private var isExpanded = false
+    @State private var showDeleteConfirm = false
+
     var body: some View {
-        HStack(spacing: AppTheme.Spacing.md) {
-            // 图标
-            Image(systemName: "arrow.up.circle.fill")
-                .font(.title2)
-                .foregroundStyle(statusColor)
-                .frame(width: 44, height: 44)
-                .glassEffect(.regular.tint(statusColor.opacity(0.3)), in: .circle)
+        VStack(spacing: 0) {
+            // 主行 — 点击展开/折叠
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: AppTheme.Spacing.md) {
+                    // 状态圆点
+                    Circle()
+                        .fill(statusColor)
+                        .frame(width: 8, height: 8)
 
-            // 任务信息
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-                Text(task.fileName)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
+                    // 文件名
+                    Text(task.fileName)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                HStack(spacing: AppTheme.Spacing.sm) {
+                    // 状态/进度
                     if task.status == .uploading {
-                        Text(task.progressDescription)
+                        Text("\(Int(task.progress))%")
                             .font(.caption)
+                            .monospacedDigit()
                             .foregroundStyle(.secondary)
                     } else {
                         Text(statusText)
@@ -207,46 +223,109 @@ struct UploadTaskRow: View {
                             .foregroundStyle(statusColor)
                     }
 
-                    Text(task.formattedFileSize)
-                        .font(.caption)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
                         .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
 
-                // 进度条
-                if task.status == .uploading {
-                    GeometryReader { geometry in
-                        ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(Color.white.opacity(0.2))
-
-                            Capsule()
-                                .fill(Color.primary)
-                                .frame(width: geometry.size.width * CGFloat(task.progress / 100))
-                        }
+            // 进度条（上传中始终显示）
+            if task.status == .uploading {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.primary.opacity(0.15))
+                        Capsule().fill(Color.primary)
+                            .frame(width: geometry.size.width * CGFloat(task.progress / 100))
                     }
-                    .frame(height: 4)
                 }
+                .frame(height: 3)
+                .padding(.top, AppTheme.Spacing.sm)
             }
 
-            Spacer()
+            // 展开详情
+            if isExpanded {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                    Divider().padding(.vertical, AppTheme.Spacing.xs)
 
-            // 操作按钮
-            if task.status.isFinished {
-                Button(action: onDelete) {
-                    Image(systemName: "xmark")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+                    uploadDetailRow("大小", value: task.formattedFileSize)
+                    uploadDetailRow("时间", value: task.formattedCreatedAt)
+
+                    if task.status == .uploading {
+                        uploadDetailRow("进度", value: task.progressDescription)
+                    }
+
+                    uploadDetailRow("目标", value: task.targetFolder.components(separatedBy: "/").last ?? task.targetFolder)
+
+                    // 失败原因（可复制）
+                    if task.status == .failed, let error = task.error {
+                        HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
+                            Text("原因")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 32, alignment: .leading)
+
+                            Text(error)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .lineLimit(3)
+
+                            Button {
+                                UIPasteboard.general.string = error
+                                GlassAlertManager.shared.showSuccess("已复制")
+                            } label: {
+                                Image(systemName: "doc.on.doc")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+
+                    // 操作按钮
+                    HStack {
+                        Spacer()
+                        if task.status.isFinished {
+                            Button { showDeleteConfirm = true } label: {
+                                Label("删除", systemImage: "trash")
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                            }
+                        } else if task.canCancel {
+                            Button { showDeleteConfirm = true } label: {
+                                Label("取消", systemImage: "stop.circle")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                    }
                 }
-            } else if task.canCancel {
-                Button(action: onDelete) {
-                    Image(systemName: "stop.circle")
-                        .font(.title3)
-                        .foregroundStyle(.orange)
-                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .padding(AppTheme.Spacing.md)
         .glassEffect(.clear, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+        .alert(task.canCancel ? "取消任务" : "删除记录", isPresented: $showDeleteConfirm) {
+            Button("取消", role: .cancel) {}
+            Button(task.canCancel ? "确认取消" : "删除", role: .destructive) { onDelete() }
+        } message: {
+            Text(task.canCancel ? "确定要取消这个上传任务吗？" : "确定要删除这条记录吗？")
+        }
+    }
+
+    private func uploadDetailRow(_ label: String, value: String) -> some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 32, alignment: .leading)
+            Text(value)
+                .font(.caption)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+        }
     }
 
     private var statusColor: Color {
@@ -263,7 +342,7 @@ struct UploadTaskRow: View {
         case .pending: return "等待中"
         case .uploading: return "上传中"
         case .completed: return "已完成"
-        case .failed: return task.error ?? "失败"
+        case .failed: return "失败"
         }
     }
 }
