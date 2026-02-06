@@ -26,12 +26,7 @@ enum GlassAlertType {
     }
 
     var tintColor: Color {
-        switch self {
-        case .success: return .green
-        case .error: return .red
-        case .warning: return .orange
-        case .info: return .gray
-        }
+        .primary
     }
 }
 
@@ -103,9 +98,9 @@ struct GlassToast: View {
         }
         .padding(.horizontal, AppTheme.Spacing.lg)
         .padding(.vertical, AppTheme.Spacing.md)
-        .glassEffect(.regular.tint(data.type.tintColor.opacity(0.3)), in: .capsule)
+        .glassEffect(.regular, in: .capsule)
         .opacity(isVisible ? 1 : 0)
-        .offset(y: isVisible ? 0 : -20)
+        .offset(y: isVisible ? 0 : 20)
         .onAppear {
             withAnimation(AppTheme.Animation.spring) {
                 isVisible = true
@@ -304,23 +299,23 @@ struct GlassToastContainer: View {
 
     var body: some View {
         VStack {
-            // 顶部 Toast 列表
+            Spacer()
+
+            // 底部 Toast 列表
             VStack(spacing: AppTheme.Spacing.sm) {
                 ForEach(alertManager.toasts) { toast in
                     GlassToast(data: toast) {
                         alertManager.removeToast(toast.id)
                     }
                     .transition(.asymmetric(
-                        insertion: .move(edge: .top).combined(with: .opacity),
+                        insertion: .move(edge: .bottom).combined(with: .opacity),
                         removal: .opacity
                     ))
                 }
             }
             .padding(.horizontal, AppTheme.Spacing.lg)
-            .padding(.top, AppTheme.Spacing.lg)
+            .padding(.bottom, 72)
             .animation(AppTheme.Animation.spring, value: alertManager.toasts.count)
-
-            Spacer()
         }
     }
 }
@@ -352,7 +347,7 @@ extension View {
     /// 添加全局 Toast 和 Alert 支持
     func withGlassAlerts() -> some View {
         self
-            .overlay(alignment: .top) {
+            .overlay(alignment: .bottom) {
                 GlassToastContainer()
             }
             .overlay {
