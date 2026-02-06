@@ -31,6 +31,13 @@ struct ClassifierView: View {
     // 操作历史（用于撤销）
     @State private var operationHistory: [ClassifyOperation] = []
 
+    // 新增文件夹
+    @State private var showAddFolder = false
+    @State private var newFolderName = ""
+
+    // 排序
+    @State private var showReorder = false
+
     // 分类选择器高度状态
     @State private var selectorHeight: CGFloat = 150  // 默认收起高度
     private let minHeight: CGFloat = 150  // 最小高度（水平模式）
@@ -93,6 +100,19 @@ struct ClassifierView: View {
         }
         .sheet(isPresented: $showFileDetail) {
             fileDetailSheet
+        }
+        .sheet(isPresented: $showReorder) {
+            reorderSheet
+        }
+        .alert("新建分类文件夹", isPresented: $showAddFolder) {
+            TextField("文件夹名称", text: $newFolderName)
+            Button("取消", role: .cancel) {
+                newFolderName = ""
+            }
+            Button("创建") {
+                createFolder()
+            }
+            .disabled(newFolderName.trimmingCharacters(in: .whitespaces).isEmpty)
         }
         .task {
             await loadData()
@@ -243,7 +263,6 @@ struct ClassifierView: View {
 
     private var dragHandle: some View {
         VStack(spacing: 0) {
-            // 把手指示条
             RoundedRectangle(cornerRadius: 2)
                 .fill(Color.secondary.opacity(0.4))
                 .frame(width: 40, height: 4)
@@ -254,7 +273,6 @@ struct ClassifierView: View {
         .gesture(
             DragGesture()
                 .onChanged { value in
-                    // 向上拖动增加高度，向下拖动减少高度
                     let newHeight = selectorHeight - value.translation.height
                     selectorHeight = min(max(newHeight, minHeight), maxHeight)
                 }
@@ -272,6 +290,9 @@ struct ClassifierView: View {
 
                 // 添加按钮
                 compactAddButton
+
+                // 排序按钮
+                compactSortButton
             }
             .padding(.horizontal, AppTheme.Spacing.lg)
             .padding(.bottom, AppTheme.Spacing.md)
@@ -287,8 +308,11 @@ struct ClassifierView: View {
                     fullCategoryButton(for: category)
                 }
 
-                // 添加按钮
-                fullAddButton
+                // 操作按钮行
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    fullAddButton
+                    fullSortButton
+                }
             }
             .padding(.horizontal, AppTheme.Spacing.lg)
             .padding(.bottom, AppTheme.Spacing.lg)
@@ -358,7 +382,8 @@ struct ClassifierView: View {
 
     private var compactAddButton: some View {
         Button {
-            // TODO: 显示添加分类对话框
+            newFolderName = ""
+            showAddFolder = true
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: "plus.circle")
@@ -376,7 +401,8 @@ struct ClassifierView: View {
 
     private var fullAddButton: some View {
         Button {
-            // TODO: 显示添加分类对话框
+            newFolderName = ""
+            showAddFolder = true
         } label: {
             HStack(spacing: AppTheme.Spacing.sm) {
                 Image(systemName: "plus.circle")
@@ -393,6 +419,90 @@ struct ClassifierView: View {
             .padding(.vertical, AppTheme.Spacing.sm)
         }
         .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+    }
+
+    // MARK: - Sort Buttons
+
+    private var compactSortButton: some View {
+        Button {
+            showReorder = true
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "arrow.up.arrow.down")
+                    .font(.subheadline)
+                Text("排序")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+            }
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+        }
+        .glassEffect(.regular.interactive(), in: .capsule)
+    }
+
+    private var fullSortButton: some View {
+        Button {
+            showReorder = true
+        } label: {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                Image(systemName: "arrow.up.arrow.down")
+                    .font(.title3)
+
+                Text("排序")
+                    .font(.body)
+                    .fontWeight(.semibold)
+
+                Spacer()
+            }
+            .foregroundStyle(.primary)
+            .padding(.horizontal, AppTheme.Spacing.md)
+            .padding(.vertical, AppTheme.Spacing.sm)
+        }
+        .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+    }
+
+    // MARK: - Reorder Sheet
+
+    private var reorderSheet: some View {
+        NavigationStack {
+            List {
+                ForEach(categories) { category in
+                    HStack(spacing: AppTheme.Spacing.md) {
+                        Image(systemName: "folder.fill")
+                            .foregroundStyle(.yellow)
+                        Text(category.name)
+                            .font(.body)
+                        Spacer()
+                        Text("\(category.fileCount)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .onMove { from, to in
+                    categories.move(fromOffsets: from, toOffset: to)
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("调整排序")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") {
+                        saveCategoryOrder()
+                        showReorder = false
+                    }
+                }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") {
+                        showReorder = false
+                        // 取消时重新加载恢复原顺序
+                        Task { await loadData() }
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 
     // MARK: - File Detail Sheet
@@ -560,6 +670,34 @@ struct ClassifierView: View {
                 showFileDetail = false
             } catch {
                 GlassAlertManager.shared.showError("重命名失败", message: error.localizedDescription)
+            }
+        }
+    }
+
+    private func createFolder() {
+        let name = newFolderName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+
+        Task {
+            do {
+                _ = try await apiService.folder.createFolder(name: name)
+                newFolderName = ""
+                // 刷新分类列表
+                categories = try await apiService.folder.getSubfolders(in: sourceFolder)
+                    .filter { !$0.hidden }
+            } catch {
+                GlassAlertManager.shared.showError("创建失败", message: error.localizedDescription)
+            }
+        }
+    }
+
+    private func saveCategoryOrder() {
+        let order = categories.map(\.name)
+        Task {
+            do {
+                try await apiService.folder.saveCategoryOrder(sourceFolder: sourceFolder, categoryOrder: order)
+            } catch {
+                GlassAlertManager.shared.showError("保存排序失败", message: error.localizedDescription)
             }
         }
     }

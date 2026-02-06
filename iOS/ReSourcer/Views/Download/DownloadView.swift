@@ -23,6 +23,12 @@ struct DownloadView: View {
     @State private var folders: [FolderInfo] = []
     @State private var selectedFolder = ""  // 空字符串表示源文件夹
 
+    // 新增文件夹 / 排序
+    @State private var showAddFolder = false
+    @State private var newFolderName = ""
+    @State private var showReorder = false
+    @State private var sourceFolder = ""
+
     // 导航
     @State private var showTaskList = false
 
@@ -65,6 +71,55 @@ struct DownloadView: View {
             .navigationDestination(isPresented: $showTaskList) {
                 DownloadTaskListView(apiService: apiService)
             }
+        }
+        .sheet(isPresented: $showReorder) {
+            NavigationStack {
+                List {
+                    ForEach(folders) { folder in
+                        HStack(spacing: AppTheme.Spacing.md) {
+                            Image(systemName: "folder.fill")
+                                .foregroundStyle(.yellow)
+                            Text(folder.name)
+                                .font(.body)
+                            Spacer()
+                            Text("\(folder.fileCount)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .onMove { from, to in
+                        folders.move(fromOffsets: from, toOffset: to)
+                    }
+                }
+                .environment(\.editMode, .constant(.active))
+                .navigationTitle("调整排序")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("完成") {
+                            saveFolderOrder()
+                            showReorder = false
+                        }
+                    }
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("取消") {
+                            showReorder = false
+                            Task { await loadFolders() }
+                        }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+        }
+        .alert("新建文件夹", isPresented: $showAddFolder) {
+            TextField("文件夹名称", text: $newFolderName)
+            Button("取消", role: .cancel) {
+                newFolderName = ""
+            }
+            Button("创建") {
+                createFolder()
+            }
+            .disabled(newFolderName.trimmingCharacters(in: .whitespaces).isEmpty)
         }
         .task {
             await loadFolders()
@@ -134,6 +189,9 @@ struct DownloadView: View {
 
                 // 添加按钮
                 addFolderChip
+
+                // 排序按钮
+                sortFolderChip
             }
             .padding(.vertical, 4)
         }
@@ -157,12 +215,30 @@ struct DownloadView: View {
 
     private var addFolderChip: some View {
         Button {
-            // TODO: 显示添加文件夹对话框
+            newFolderName = ""
+            showAddFolder = true
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: "plus")
                     .font(.caption)
                 Text("添加")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+            }
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+        }
+    }
+
+    private var sortFolderChip: some View {
+        Button {
+            showReorder = true
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "arrow.up.arrow.down")
+                    .font(.caption)
+                Text("排序")
                     .font(.subheadline)
                     .fontWeight(.semibold)
             }
@@ -208,10 +284,22 @@ struct DownloadView: View {
     private func loadFolders() async {
         do {
             let configState = try await apiService.config.getConfigState()
-            folders = try await apiService.folder.getSubfolders(in: configState.sourceFolder)
+            sourceFolder = configState.sourceFolder
+            folders = try await apiService.folder.getSubfolders(in: sourceFolder)
                 .filter { !$0.hidden }
         } catch {
             print("加载文件夹失败: \(error)")
+        }
+    }
+
+    private func saveFolderOrder() {
+        let order = folders.map(\.name)
+        Task {
+            do {
+                try await apiService.folder.saveCategoryOrder(sourceFolder: sourceFolder, categoryOrder: order)
+            } catch {
+                GlassAlertManager.shared.showError("保存排序失败", message: error.localizedDescription)
+            }
         }
     }
 
@@ -240,6 +328,21 @@ struct DownloadView: View {
                 await MainActor.run {
                     isDetecting = false
                 }
+            }
+        }
+    }
+
+    private func createFolder() {
+        let name = newFolderName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+
+        Task {
+            do {
+                _ = try await apiService.folder.createFolder(name: name)
+                newFolderName = ""
+                await loadFolders()
+            } catch {
+                GlassAlertManager.shared.showError("创建失败", message: error.localizedDescription)
             }
         }
     }

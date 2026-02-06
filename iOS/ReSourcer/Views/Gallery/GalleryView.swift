@@ -13,10 +13,13 @@ struct GalleryView: View {
 
     let apiService: APIService
 
-    @State private var folders: [GalleryFolderInfo] = []
-    @State private var selectedFolder: GalleryFolderInfo?
+    @State private var folders: [FolderInfo] = []
+    @State private var selectedFolder: FolderInfo?  // nil 表示选中源文件夹
+    @State private var sourceFolder = ""
+    @State private var sourceFolderFileCount = 0
     @State private var files: [FileInfo] = []
     @State private var isLoading = false
+    @State private var isSourceSelected = true  // 是否选中源文件夹
 
     // 下拉菜单状态
     @State private var isDropdownOpen = false
@@ -64,7 +67,7 @@ struct GalleryView: View {
                         folderDropdown
                             .padding(.horizontal, AppTheme.Spacing.lg)
                             .padding(.top, AppTheme.Spacing.sm)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                            .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .top)))
                     }
 
                     Spacer()
@@ -88,11 +91,11 @@ struct GalleryView: View {
                 }
             } label: {
                 HStack(spacing: AppTheme.Spacing.sm) {
-                    Image(systemName: selectedFolder?.isSource == true ? "folder.fill.badge.gearshape" : "folder.fill")
+                    Image(systemName: isSourceSelected ? "folder.fill.badge.gearshape" : "folder.fill")
                         .font(.system(size: 18))
-                        .foregroundStyle(selectedFolder?.isSource == true ? .orange : .yellow)
+                        .foregroundStyle(isSourceSelected ? .orange : .yellow)
 
-                    Text(selectedFolder?.displayName ?? "画廊")
+                    Text(isSourceSelected ? sourceFolderDisplayName : (selectedFolder?.name ?? "画廊"))
                         .font(.body)
                         .fontWeight(.semibold)
                         .foregroundStyle(.primary)
@@ -138,28 +141,62 @@ struct GalleryView: View {
     // MARK: - Folder Dropdown
 
     private var folderDropdown: some View {
-        VStack(spacing: AppTheme.Spacing.sm) {
+        VStack(spacing: 0) {
+            // 源文件夹选项
+            Button {
+                selectSourceFolder()
+            } label: {
+                HStack(spacing: AppTheme.Spacing.md) {
+                    Image(systemName: "folder.fill.badge.gearshape")
+                        .font(.title3)
+                        .foregroundStyle(.orange)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(sourceFolderDisplayName)
+                            .font(.body)
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+
+                        Text("\(sourceFolderFileCount) 个文件")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    if isSourceSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    }
+                }
+                .padding(.horizontal, AppTheme.Spacing.md)
+                .padding(.vertical, AppTheme.Spacing.sm)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            // 分类文件夹列表
             if folders.isEmpty {
                 HStack {
                     Spacer()
-                    Text("暂无文件夹")
+                    Text("暂无分类文件夹")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     Spacer()
                 }
-                .padding(.vertical, AppTheme.Spacing.lg)
+                .padding(.vertical, AppTheme.Spacing.sm)
             } else {
                 ForEach(folders) { folder in
                     Button {
                         selectFolder(folder)
                     } label: {
                         HStack(spacing: AppTheme.Spacing.md) {
-                            Image(systemName: folder.isSource ? "folder.fill.badge.gearshape" : "folder.fill")
+                            Image(systemName: "folder.fill")
                                 .font(.title3)
-                                .foregroundStyle(folder.isSource ? .orange : .yellow)
+                                .foregroundStyle(.yellow)
 
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(folder.displayName)
+                                Text(folder.name)
                                     .font(.body)
                                     .foregroundStyle(.primary)
                                     .lineLimit(1)
@@ -171,13 +208,14 @@ struct GalleryView: View {
 
                             Spacer()
 
-                            if selectedFolder?.id == folder.id {
+                            if !isSourceSelected && selectedFolder?.id == folder.id {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundStyle(.green)
                             }
                         }
                         .padding(.horizontal, AppTheme.Spacing.md)
                         .padding(.vertical, AppTheme.Spacing.sm)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
@@ -231,15 +269,10 @@ struct GalleryView: View {
 
     private var emptyView: some View {
         GlassEmptyView(
-            icon: "photo.on.rectangle.angled",
+            icon: "folder",
             title: "暂无文件",
-            message: selectedFolder == nil ? "请选择一个文件夹" : "该文件夹中没有媒体文件",
-            actionTitle: "选择文件夹"
-        ) {
-            withAnimation {
-                isDropdownOpen = true
-            }
-        }
+            message: "该文件夹中没有文件"
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -252,34 +285,62 @@ struct GalleryView: View {
 
     // MARK: - Methods
 
+    /// 源文件夹显示名称
+    private var sourceFolderDisplayName: String {
+        sourceFolder.components(separatedBy: "/").last ?? "源文件夹"
+    }
+
     private func loadFolders() async {
         do {
-            folders = try await apiService.folder.getGalleryFolders()
+            // 获取源文件夹路径
+            let configState = try await apiService.config.getConfigState()
+            sourceFolder = configState.sourceFolder
 
-            // 如果有文件夹，自动选择第一个
-            if selectedFolder == nil, let first = folders.first {
-                selectFolder(first)
+            // 获取分类子文件夹（已按排序返回）
+            folders = try await apiService.folder.getSubfolders(in: sourceFolder)
+                .filter { !$0.hidden }
+
+            // 默认加载源文件夹
+            if isSourceSelected {
+                await loadFiles(path: sourceFolder)
+                sourceFolderFileCount = files.count
             }
         } catch {
             GlassAlertManager.shared.showError("加载失败", message: error.localizedDescription)
         }
     }
 
-    private func selectFolder(_ folder: GalleryFolderInfo) {
-        selectedFolder = folder
+    private func selectSourceFolder() {
+        isSourceSelected = true
+        selectedFolder = nil
+        files = []
         withAnimation(.easeOut(duration: 0.2)) {
             isDropdownOpen = false
         }
 
         Task {
-            await loadFiles(in: folder)
+            await loadFiles(path: sourceFolder)
+            sourceFolderFileCount = files.count
         }
     }
 
-    private func loadFiles(in folder: GalleryFolderInfo) async {
+    private func selectFolder(_ folder: FolderInfo) {
+        isSourceSelected = false
+        selectedFolder = folder
+        files = []
+        withAnimation(.easeOut(duration: 0.2)) {
+            isDropdownOpen = false
+        }
+
+        Task {
+            await loadFiles(path: sourceFolder + "/" + folder.name)
+        }
+    }
+
+    private func loadFiles(path: String) async {
         isLoading = true
         do {
-            files = try await apiService.preview.getFiles(in: folder.path)
+            files = try await apiService.preview.getFiles(in: path)
         } catch {
             GlassAlertManager.shared.showError("加载失败", message: error.localizedDescription)
         }
@@ -287,8 +348,10 @@ struct GalleryView: View {
     }
 
     private func refreshFiles() async {
-        if let folder = selectedFolder {
-            await loadFiles(in: folder)
+        if isSourceSelected {
+            await loadFiles(path: sourceFolder)
+        } else if let folder = selectedFolder {
+            await loadFiles(path: sourceFolder + "/" + folder.name)
         }
     }
 }
