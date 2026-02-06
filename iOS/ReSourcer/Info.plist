@@ -4,6 +4,8 @@
 <dict>
 	<key>NSCameraUsageDescription</key>
 	<string>需要访问相机以扫描服务器二维码</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>需要访问相册以选择照片和视频上传到服务器</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

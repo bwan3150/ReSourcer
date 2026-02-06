@@ -126,7 +126,7 @@ actor NetworkManager {
         // 添加文件
         for file in files {
             body.append("--\(boundary)\r\n")
-            body.append("Content-Disposition: form-data; name=\"files[]\"; filename=\"\(file.fileName)\"\r\n")
+            body.append("Content-Disposition: form-data; name=\"files\"; filename=\"\(file.fileName)\"\r\n")
             body.append("Content-Type: \(file.mimeType)\r\n\r\n")
             body.append(file.data)
             body.append("\r\n")
@@ -134,6 +134,8 @@ actor NetworkManager {
 
         body.append("--\(boundary)--\r\n")
         request.httpBody = body
+        // 上传大文件需要更长的超时时间（5 分钟）
+        request.timeoutInterval = 300
 
         let (data, response) = try await performRequest(request)
         return try decodeResponse(data, response: response)

@@ -50,6 +50,9 @@
 		A1000077233F0001 /* ThumbnailCacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000077233F0000 /* ThumbnailCacheService.swift */; };
 		A1000078233F0001 /* CachedThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000078233F0000 /* CachedThumbnailView.swift */; };
 		A1000079233F0001 /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000079233F0000 /* QRScannerView.swift */; };
+		A100008A233F0001 /* PhotoUploadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100008A233F0000 /* PhotoUploadView.swift */; };
+		A100008B233F0001 /* UploadTaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100008B233F0000 /* UploadTaskListView.swift */; };
+		A100008D233F0001 /* PhotoExporter.m in Sources */ = {isa = PBXBuildFile; fileRef = A100008D233F0000 /* PhotoExporter.m */; };
 		A1000080233F0001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000080233F0000 /* Assets.xcassets */; };
 		A1000081233F0001 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000081233F0000 /* Preview Assets.xcassets */; };
 /* End PBXBuildFile section */
@@ -99,6 +102,11 @@
 		A1000077233F0000 /* ThumbnailCacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCacheService.swift; sourceTree = "<group>"; };
 		A1000078233F0000 /* CachedThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedThumbnailView.swift; sourceTree = "<group>"; };
 		A1000079233F0000 /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
+		A100008A233F0000 /* PhotoUploadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoUploadView.swift; sourceTree = "<group>"; };
+		A100008B233F0000 /* UploadTaskListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadTaskListView.swift; sourceTree = "<group>"; };
+		A100008C233F0000 /* PhotoExporter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PhotoExporter.h; sourceTree = "<group>"; };
+		A100008D233F0000 /* PhotoExporter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PhotoExporter.m; sourceTree = "<group>"; };
+		A100008E233F0000 /* ReSourcer-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ReSourcer-Bridging-Header.h"; sourceTree = "<group>"; };
 		A1000080233F0000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1000081233F0000 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -135,6 +143,7 @@
 				A10000B7233F0000 /* Views */,
 				A1000080233F0000 /* Assets.xcassets */,
 				A10000B8233F0000 /* Preview Content */,
+				A100008E233F0000 /* ReSourcer-Bridging-Header.h */,
 			);
 			path = ReSourcer;
 			sourceTree = "<group>";
@@ -220,6 +229,8 @@
 				A1000059233F0000 /* PreviewService.swift */,
 				A100005A233F0000 /* UploadService.swift */,
 				A1000077233F0000 /* ThumbnailCacheService.swift */,
+				A100008C233F0000 /* PhotoExporter.h */,
+				A100008D233F0000 /* PhotoExporter.m */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -272,6 +283,8 @@
 			children = (
 				A1000072233F0000 /* GalleryView.swift */,
 				A1000074233F0000 /* FilePreviewView.swift */,
+				A100008A233F0000 /* PhotoUploadView.swift */,
+				A100008B233F0000 /* UploadTaskListView.swift */,
 			);
 			path = Gallery;
 			sourceTree = "<group>";
@@ -400,6 +413,9 @@
 				A1000077233F0001 /* ThumbnailCacheService.swift in Sources */,
 				A1000078233F0001 /* CachedThumbnailView.swift in Sources */,
 				A1000079233F0001 /* QRScannerView.swift in Sources */,
+				A100008A233F0001 /* PhotoUploadView.swift in Sources */,
+				A100008B233F0001 /* UploadTaskListView.swift in Sources */,
+				A100008D233F0001 /* PhotoExporter.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -562,6 +578,7 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "ReSourcer/ReSourcer-Bridging-Header.h";
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -599,6 +616,7 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "ReSourcer/ReSourcer-Bridging-Header.h";
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

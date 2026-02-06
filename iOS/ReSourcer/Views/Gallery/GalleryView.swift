@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import PhotosUI
+import Photos
 
 struct GalleryView: View {
 
@@ -38,6 +40,12 @@ struct GalleryView: View {
     @State private var renameText = ""
     @State private var showMoveSheet = false
     @State private var targetFolders: [FolderInfo] = []
+
+    // 上传相关
+    @State private var showPhotoPicker = false
+    @State private var showUploadConfirm = false
+    @State private var pickerResults: [PHPickerResult] = []
+    @State private var showUploadTaskList = false
 
     // MARK: - Body
 
@@ -88,6 +96,9 @@ struct GalleryView: View {
             .navigationDestination(for: Int.self) { index in
                 FilePreviewView(apiService: apiService, files: files, initialIndex: index)
             }
+            .navigationDestination(isPresented: $showUploadTaskList) {
+                UploadTaskListView(apiService: apiService)
+            }
         }
         .task {
             await loadFolders()
@@ -109,6 +120,46 @@ struct GalleryView: View {
         // 移动面板
         .glassBottomSheet(isPresented: $showMoveSheet, title: "移动到") {
             galleryMoveSheetContent
+        }
+        // 照片选择器
+        .sheet(isPresented: $showPhotoPicker) {
+            PHPickerWrapper(
+                isPresented: $showPhotoPicker,
+                maxSelection: 100
+            ) { results in
+                pickerResults = results
+            }
+            .ignoresSafeArea()
+        }
+        // picker 关闭后延迟显示确认面板，避免时序问题
+        // 注意：Swift 6 中 DispatchQueue.main.asyncAfter 不等同于 MainActor，修改 @State 会崩溃
+        .onChange(of: showPhotoPicker) { _, isShowing in
+            if !isShowing && !pickerResults.isEmpty {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(500))
+                    showUploadConfirm = true
+                }
+            }
+        }
+        // 上传确认面板
+        .glassBottomSheet(isPresented: $showUploadConfirm, title: "确认上传") {
+            PhotoUploadConfirmView(
+                apiService: apiService,
+                pickerResults: pickerResults,
+                targetFolder: currentFolderPath,
+                onUploadStarted: {
+                    showUploadConfirm = false
+                    pickerResults = []
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        showUploadTaskList = true
+                    }
+                },
+                onCancel: {
+                    showUploadConfirm = false
+                    pickerResults = []
+                }
+            )
         }
     }
 
@@ -143,6 +194,17 @@ struct GalleryView: View {
                 .padding(.vertical, 12)
             }
             .glassEffect(isDropdownOpen ? .regular : .regular.interactive(), in: .capsule)
+
+            // 上传按钮
+            Button {
+                requestPhotoAccessAndShowPicker()
+            } label: {
+                Image(systemName: "arrow.up.circle")
+                    .font(.system(size: 18))
+                    .foregroundStyle(.primary)
+                    .frame(width: 44, height: 44)
+            }
+            .glassEffect(.regular.interactive(), in: .circle)
 
             // 视图切换按钮
             Button {
@@ -395,6 +457,41 @@ struct GalleryView: View {
             await loadFiles(path: sourceFolder)
         } else if let folder = selectedFolder {
             await loadFiles(path: sourceFolder + "/" + folder.name)
+        }
+    }
+
+    /// 当前选中的文件夹完整路径
+    private var currentFolderPath: String {
+        if isSourceSelected {
+            return sourceFolder
+        } else if let folder = selectedFolder {
+            return sourceFolder + "/" + folder.name
+        }
+        return sourceFolder
+    }
+
+    /// 检查并请求相册权限，然后显示选择器
+    private func requestPhotoAccessAndShowPicker() {
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+
+        switch status {
+        case .authorized, .limited:
+            showPhotoPicker = true
+        case .notDetermined:
+            Task {
+                let newStatus = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+                await MainActor.run {
+                    if newStatus == .authorized || newStatus == .limited {
+                        showPhotoPicker = true
+                    } else {
+                        GlassAlertManager.shared.showWarning("需要相册权限", message: "请在设置中允许访问相册")
+                    }
+                }
+            }
+        case .denied, .restricted:
+            GlassAlertManager.shared.showWarning("需要相册权限", message: "请在设置中允许访问相册")
+        @unknown default:
+            break
         }
     }
 
