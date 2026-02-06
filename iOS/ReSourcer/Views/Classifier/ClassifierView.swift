@@ -20,6 +20,14 @@ struct ClassifierView: View {
     @State private var isLoading = false
     @State private var showSettings = false
 
+    // 文件详情弹窗
+    @State private var showFileDetail = false
+    @State private var renameText = ""
+
+    // 已分类计数
+    @State private var classifiedCount = 0
+    @State private var totalCount = 0
+
     // 操作历史（用于撤销）
     @State private var operationHistory: [ClassifyOperation] = []
 
@@ -63,6 +71,17 @@ struct ClassifierView: View {
                     }
                     .disabled(currentFile == nil)
 
+                    // 文件详情按钮（查看信息 / 重命名）
+                    Button {
+                        if let file = currentFile {
+                            renameText = file.baseName
+                            showFileDetail = true
+                        }
+                    } label: {
+                        Image(systemName: "info.circle")
+                    }
+                    .disabled(currentFile == nil)
+
                     // 刷新
                     Button {
                         Task { await loadData() }
@@ -71,6 +90,9 @@ struct ClassifierView: View {
                     }
                 }
             }
+        }
+        .sheet(isPresented: $showFileDetail) {
+            fileDetailSheet
         }
         .task {
             await loadData()
@@ -97,8 +119,15 @@ struct ClassifierView: View {
             filePreviewSection
                 .frame(maxHeight: .infinity)
 
-            // 可拖动的分类选择器
+            // 分类进度条
+            classifyProgressBar
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.bottom, AppTheme.Spacing.sm)
+
+            // 可拖动的分类选择器（浮动卡片风格，与 tab bar 视觉统一）
             draggableCategorySelector
+                .padding(.horizontal, AppTheme.Spacing.md)
+                .padding(.bottom, AppTheme.Spacing.sm)
         }
     }
 
@@ -107,67 +136,89 @@ struct ClassifierView: View {
     @ViewBuilder
     private var filePreviewSection: some View {
         if let file = currentFile {
-            VStack(spacing: AppTheme.Spacing.md) {
-                // 文件预览
-                AsyncImage(
-                    url: apiService.preview.getThumbnailURL(
-                        for: file.path,
-                        size: 600,
-                        baseURL: apiService.baseURL,
-                        apiKey: apiService.apiKey
-                    )
-                ) { phase in
-                    switch phase {
-                    case .empty:
-                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg)
-                            .fill(Color.white.opacity(0.1))
-                            .shimmer()
+            // 文件预览（不含文件信息，信息移至右上角按钮）
+            AsyncImage(
+                url: apiService.preview.getThumbnailURL(
+                    for: file.path,
+                    size: 600,
+                    baseURL: apiService.baseURL,
+                    apiKey: apiService.apiKey
+                )
+            ) { phase in
+                switch phase {
+                case .empty:
+                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg)
+                        .fill(Color.white.opacity(0.1))
+                        .shimmer()
 
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .cornerRadius(AppTheme.CornerRadius.lg)
+                case .success(let image):
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .cornerRadius(AppTheme.CornerRadius.lg)
 
-                    case .failure:
-                        VStack(spacing: AppTheme.Spacing.md) {
-                            Image(systemName: file.isVideo ? "film" : "photo")
-                                .font(.system(size: 48))
-                                .foregroundStyle(.tertiary)
+                case .failure:
+                    VStack(spacing: AppTheme.Spacing.md) {
+                        Image(systemName: file.isVideo ? "film" : "photo")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.tertiary)
 
-                            Text("无法加载预览")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                    @unknown default:
-                        EmptyView()
+                        Text("无法加载预览")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.horizontal, AppTheme.Spacing.lg)
 
-                // 文件信息
-                VStack(spacing: AppTheme.Spacing.xxs) {
-                    Text(file.name)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-
-                    HStack(spacing: AppTheme.Spacing.md) {
-                        Label(file.fileType.rawValue, systemImage: file.isVideo ? "film" : "photo")
-                        Label(file.formattedSize, systemImage: "doc")
-                        if let duration = file.formattedDuration {
-                            Label(duration, systemImage: "clock")
-                        }
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                @unknown default:
+                    EmptyView()
                 }
-                .padding(.horizontal, AppTheme.Spacing.lg)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, AppTheme.Spacing.lg)
             .padding(.vertical, AppTheme.Spacing.md)
+        }
+    }
+
+    // MARK: - Classify Progress Bar
+
+    private var classifyProgressBar: some View {
+        VStack(spacing: AppTheme.Spacing.xs) {
+            // 进度条
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    // 背景轨道
+                    Capsule()
+                        .fill(Color.secondary.opacity(0.2))
+
+                    // 已完成进度
+                    Capsule()
+                        .fill(Color.accentColor)
+                        .frame(width: totalCount > 0
+                            ? geo.size.width * CGFloat(classifiedCount) / CGFloat(totalCount)
+                            : 0
+                        )
+                        .animation(AppTheme.Animation.spring, value: classifiedCount)
+                }
+            }
+            .frame(height: 6)
+
+            // 进度文字
+            HStack {
+                Text("\(classifiedCount) / \(totalCount)")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+
+                Spacer()
+
+                if totalCount > 0 {
+                    Text("\(Int(Double(classifiedCount) / Double(totalCount) * 100))%")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
         }
     }
 
@@ -185,10 +236,7 @@ struct ClassifierView: View {
                 verticalCategoryList
             }
         }
-        .glassEffect(.regular, in: UnevenRoundedRectangle(
-            topLeadingRadius: AppTheme.CornerRadius.xl,
-            topTrailingRadius: AppTheme.CornerRadius.xl
-        ))
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
     }
 
     // MARK: - Drag Handle
@@ -347,6 +395,60 @@ struct ClassifierView: View {
         .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
     }
 
+    // MARK: - File Detail Sheet
+
+    @ViewBuilder
+    private var fileDetailSheet: some View {
+        if let file = currentFile {
+            NavigationStack {
+                List {
+                    // 重命名
+                    Section("重命名") {
+                        HStack {
+                            TextField("文件名", text: $renameText)
+                                .textFieldStyle(.plain)
+
+                            Text(file.extension)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    // 文件信息
+                    Section("文件信息") {
+                        LabeledContent("类型", value: file.fileType.rawValue)
+                        LabeledContent("大小", value: file.formattedSize)
+                        LabeledContent("路径", value: file.path)
+
+                        if let w = file.width, let h = file.height {
+                            LabeledContent("尺寸", value: "\(w) × \(h)")
+                        }
+                        if let duration = file.formattedDuration {
+                            LabeledContent("时长", value: duration)
+                        }
+
+                        LabeledContent("修改时间", value: file.modified)
+                    }
+                }
+                .navigationTitle(file.name)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("取消") {
+                            showFileDetail = false
+                        }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("保存") {
+                            renameCurrentFile()
+                        }
+                        .disabled(renameText.isEmpty || renameText == file.baseName)
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
+    }
+
     // MARK: - Empty View
 
     private var emptyView: some View {
@@ -386,6 +488,8 @@ struct ClassifierView: View {
                 .filter { !$0.hidden }
 
             currentIndex = 0
+            classifiedCount = 0
+            totalCount = files.count
             operationHistory = []
 
         } catch {
@@ -412,13 +516,11 @@ struct ClassifierView: View {
                 )
                 operationHistory.append(operation)
 
-                // 移动到下一个文件
+                // 直接移动到下一个文件，不弹窗
                 withAnimation(AppTheme.Animation.bouncy) {
+                    classifiedCount += 1
                     currentIndex += 1
                 }
-
-                // 提示成功
-                GlassAlertManager.shared.showSuccess("已分类到 \(category.name)")
 
             } catch {
                 GlassAlertManager.shared.showError("分类失败", message: error.localizedDescription)
@@ -434,6 +536,34 @@ struct ClassifierView: View {
         }
     }
 
+    private func renameCurrentFile() {
+        guard let file = currentFile, !renameText.isEmpty, renameText != file.baseName else { return }
+
+        let newName = renameText + file.extension
+        Task {
+            do {
+                let newPath = try await apiService.file.renameFile(at: file.path, to: newName)
+                // 更新本地文件列表中的路径
+                if let idx = files.firstIndex(where: { $0.path == file.path }) {
+                    files[idx] = FileInfo(
+                        name: newName,
+                        path: newPath,
+                        fileType: file.fileType,
+                        extension: file.extension,
+                        size: file.size,
+                        modified: file.modified,
+                        width: file.width,
+                        height: file.height,
+                        duration: file.duration
+                    )
+                }
+                showFileDetail = false
+            } catch {
+                GlassAlertManager.shared.showError("重命名失败", message: error.localizedDescription)
+            }
+        }
+    }
+
     private func undoLastOperation() {
         guard let lastOp = operationHistory.popLast() else { return }
 
@@ -442,12 +572,11 @@ struct ClassifierView: View {
                 // 移回原位置
                 _ = try await apiService.file.moveFile(at: lastOp.newPath, to: sourceFolder)
 
-                // 恢复索引
+                // 恢复索引，不弹窗
                 withAnimation(AppTheme.Animation.bouncy) {
+                    classifiedCount = max(0, classifiedCount - 1)
                     currentIndex = lastOp.fromIndex
                 }
-
-                GlassAlertManager.shared.showInfo("已撤销")
 
             } catch {
                 GlassAlertManager.shared.showError("撤销失败", message: error.localizedDescription)
