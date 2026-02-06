@@ -477,7 +477,7 @@ struct ClassifierView: View {
                 Image(systemName: "plus.circle")
                     .font(.title3)
 
-                Text("添加新分类")
+                Text("添加")
                     .font(.body)
                     .fontWeight(.semibold)
 
