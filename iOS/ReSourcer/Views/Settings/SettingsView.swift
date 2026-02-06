@@ -13,20 +13,22 @@ struct SettingsView: View {
 
     let apiService: APIService
 
-    @State private var configState: ConfigStateResponse?
-    @State private var downloadConfig: DownloadConfigResponse?
-    @State private var isLoading = false
+    // 服务器健康状态
+    @State private var healthStatus: ServerStatus = .checking
+    @State private var appConfig: AppConfigResponse?
 
-    // 源文件夹管理
-    @State private var showSourceFolderPicker = false
+    // 源文件夹
     @State private var sourceFolders: SourceFoldersResponse?
+    @State private var showSourceFolderList = false
 
-    // 认证管理
-    @State private var showCredentialEditor = false
-    @State private var selectedPlatform: AuthPlatform?
+    // 语言设置
+    @State private var language: LocalStorageService.AppSettings.Language = .zh
 
     // 主题设置
     @State private var themePreference: LocalStorageService.AppSettings.DarkModePreference = .system
+
+    // 缓存大小
+    @State private var totalCacheSize: String = ""
 
     // 断开连接
     @State private var showDisconnectConfirm = false
@@ -35,321 +37,445 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            // 设置列表
             ScrollView {
                 VStack(spacing: AppTheme.Spacing.lg) {
-                    // 服务器信息
-                    serverInfoSection
+                    // 1. 服务器状态
+                    serverSection
 
-                    // 源文件夹管理
+                    // 2. 源文件夹
                     sourceFolderSection
 
-                    // 下载器设置
-                    downloaderSection
+                    // 3. 语言切换
+                    languageSection
 
-                    // 认证管理
+                    // 4. 主题切换
+                    themeSection
+
+                    // 5. 认证
                     authSection
 
-                    // 外观设置
-                    appearanceSection
+                    // 6. 缓存管理
+                    cacheSection
 
-                    // 关于
-                    aboutSection
+                    // 7. GitHub
+                    githubSection
 
-                    // 断开连接
+                    // 7. 断开连接
                     disconnectSection
+
+                    // 8. 版本信息
+                    versionFooter
                 }
                 .padding(AppTheme.Spacing.lg)
             }
             .navigationTitle("设置")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task { await loadSettings() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                }
-            }
         }
         .task {
             await loadSettings()
         }
-        .glassDeleteConfirm(
+        .glassExitConfirm(
             isPresented: $showDisconnectConfirm,
             title: "断开连接？",
-            message: "将退出当前服务器"
+            message: "将退出当前服务器，可以重新连接"
         ) {
             disconnect()
         }
     }
 
-    // MARK: - Server Info Section
+    // MARK: - 1. 服务器状态
 
-    private var serverInfoSection: some View {
+    private var serverSection: some View {
         SettingsSection(title: "服务器") {
-            VStack(spacing: AppTheme.Spacing.sm) {
-                SettingsRow(
-                    icon: "server.rack",
-                    iconColor: .gray,
-                    title: apiService.server.name,
-                    subtitle: apiService.server.displayURL
-                )
+            HStack(spacing: AppTheme.Spacing.md) {
+                Image(systemName: "server.rack")
+                    .font(.system(size: 18))
+                    .foregroundStyle(.gray)
+                    .frame(width: 28)
 
-                if let config = downloadConfig {
-                    SettingsRow(
-                        icon: "arrow.down.app",
-                        iconColor: .green,
-                        title: "yt-dlp",
-                        subtitle: config.ytdlpVersion
-                    )
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(apiService.server.name)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+
+                    Text(apiService.server.displayURL)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                // 健康状态指示
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(healthStatusColor)
+                        .frame(width: 8, height: 8)
+
+                    Text(healthStatusText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
     }
 
-    // MARK: - Source Folder Section
+    private var healthStatusColor: Color {
+        switch healthStatus {
+        case .online: return .green
+        case .authError: return .red
+        case .offline: return .red
+        case .checking: return .orange
+        }
+    }
+
+    private var healthStatusText: String {
+        switch healthStatus {
+        case .online: return "在线"
+        case .authError: return "认证错误"
+        case .offline: return "离线"
+        case .checking: return "检查中"
+        }
+    }
+
+    // MARK: - 2. 源文件夹
 
     private var sourceFolderSection: some View {
         SettingsSection(title: "源文件夹") {
-            VStack(spacing: AppTheme.Spacing.sm) {
-                if let config = configState {
-                    SettingsRow(
-                        icon: "folder.fill",
-                        iconColor: .yellow,
-                        title: "当前文件夹",
-                        subtitle: config.sourceFolder.components(separatedBy: "/").last ?? config.sourceFolder,
-                        action: {
-                            showSourceFolderPicker = true
-                        }
-                    )
+            VStack(spacing: 0) {
+                // 当前源文件夹
+                Button {
+                    withAnimation { showSourceFolderList.toggle() }
+                } label: {
+                    HStack(spacing: AppTheme.Spacing.md) {
+                        Image(systemName: "folder.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(.yellow)
+                            .frame(width: 28)
 
-                    if !config.backupSourceFolders.isEmpty {
-                        SettingsRow(
-                            icon: "folder.badge.plus",
-                            iconColor: .orange,
-                            title: "备用文件夹",
-                            subtitle: "\(config.backupSourceFolders.count) 个",
-                            action: {
-                                showSourceFolderPicker = true
-                            }
-                        )
+                        Text(currentSourceFolderName)
+                            .font(.body)
+                            .foregroundStyle(.primary)
+
+                        Spacer()
+
+                        Image(systemName: showSourceFolderList ? "chevron.up" : "chevron.down")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
                     }
-                } else {
-                    SettingsRow(
-                        icon: "folder",
-                        iconColor: .gray,
-                        title: "加载中...",
-                        subtitle: nil
-                    )
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                // 展开的源文件夹列表
+                if showSourceFolderList {
+                    Divider()
+                        .padding(.vertical, AppTheme.Spacing.sm)
+
+                    sourceFolderListContent
                 }
             }
         }
     }
 
-    // MARK: - Downloader Section
-
-    private var downloaderSection: some View {
-        SettingsSection(title: "下载器") {
-            VStack(spacing: AppTheme.Spacing.sm) {
-                if let config = downloadConfig {
-                    SettingsToggleRow(
-                        icon: "globe",
-                        iconColor: .gray,
-                        title: "使用 Cookies",
-                        subtitle: "某些网站需要登录才能下载",
-                        isOn: .constant(config.useCookies)
-                    )
-                }
-
-                if let hiddenCount = configState?.hiddenFolders.count, hiddenCount > 0 {
-                    SettingsRow(
-                        icon: "eye.slash",
-                        iconColor: .gray,
-                        title: "隐藏文件夹",
-                        subtitle: "\(hiddenCount) 个"
-                    )
-                }
-            }
+    private var currentSourceFolderName: String {
+        if let folders = sourceFolders {
+            return URL(fileURLWithPath: folders.current).lastPathComponent
         }
+        return "加载中..."
     }
 
-    // MARK: - Auth Section
+    /// 源文件夹列表内容
+    private var sourceFolderListContent: some View {
+        VStack(spacing: AppTheme.Spacing.sm) {
+            if let folders = sourceFolders {
+                // 当前源文件夹
+                sourceFolderRow(path: folders.current, isCurrent: true)
 
-    private var authSection: some View {
-        SettingsSection(title: "平台认证") {
-            VStack(spacing: AppTheme.Spacing.sm) {
-                if let config = downloadConfig {
-                    // X (Twitter)
-                    SettingsRow(
-                        icon: "xmark.circle.fill",
-                        iconColor: .gray,
-                        title: "X (Twitter)",
-                        subtitle: config.authStatus.x ? "已配置" : "未配置",
-                        trailing: {
-                            statusBadge(isConfigured: config.authStatus.x)
-                        }
-                    ) {
-                        selectedPlatform = .x
-                        showCredentialEditor = true
-                    }
-
-                    // Pixiv
-                    SettingsRow(
-                        icon: "paintbrush.fill",
-                        iconColor: .gray,
-                        title: "Pixiv",
-                        subtitle: config.authStatus.pixiv ? "已配置" : "未配置",
-                        trailing: {
-                            statusBadge(isConfigured: config.authStatus.pixiv)
-                        }
-                    ) {
-                        selectedPlatform = .pixiv
-                        showCredentialEditor = true
-                    }
+                // 备用源文件夹
+                ForEach(folders.backups, id: \.self) { backup in
+                    sourceFolderRow(path: backup, isCurrent: false)
                 }
             }
         }
     }
 
     @ViewBuilder
-    private func statusBadge(isConfigured: Bool) -> some View {
-        Image(systemName: isConfigured ? "checkmark.circle.fill" : "xmark.circle")
-            .foregroundStyle(isConfigured ? .green : .gray)
-    }
+    private func sourceFolderRow(path: String, isCurrent: Bool) -> some View {
+        let name = URL(fileURLWithPath: path).lastPathComponent
 
-    // MARK: - Appearance Section
-
-    private var appearanceSection: some View {
-        SettingsSection(title: "外观") {
-            VStack(spacing: AppTheme.Spacing.sm) {
-                themeOptionRow(
-                    title: "浅色模式",
-                    icon: "sun.max.fill",
-                    preference: .light
-                )
-                themeOptionRow(
-                    title: "深色模式",
-                    icon: "moon.fill",
-                    preference: .dark
-                )
-                themeOptionRow(
-                    title: "跟随系统",
-                    icon: "gear",
-                    preference: .system
-                )
-            }
-        }
-    }
-
-    private func themeOptionRow(
-        title: String,
-        icon: String,
-        preference: LocalStorageService.AppSettings.DarkModePreference
-    ) -> some View {
         Button {
-            themePreference = preference
-            var settings = LocalStorageService.shared.getAppSettings()
-            settings.darkModePreference = preference
-            LocalStorageService.shared.saveAppSettings(settings)
-            NotificationCenter.default.post(name: .themeDidChange, object: nil)
+            if !isCurrent {
+                switchSourceFolder(to: path)
+            }
         } label: {
             HStack(spacing: AppTheme.Spacing.md) {
-                Image(systemName: icon)
-                    .font(.system(size: 18))
-                    .foregroundStyle(.gray)
-                    .frame(width: 28)
+                Image(systemName: isCurrent ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 16))
+                    .foregroundStyle(isCurrent ? .green : Color.gray)
+                    .frame(width: 24)
 
-                Text(title)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-
-                Spacer()
-
-                if themePreference == preference {
-                    Image(systemName: "checkmark")
-                        .font(.body)
-                        .fontWeight(.semibold)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(name)
+                        .font(.subheadline)
                         .foregroundStyle(.primary)
                 }
+
+                Spacer()
             }
             .contentShape(Rectangle())
+            .padding(.vertical, AppTheme.Spacing.xxs)
         }
         .buttonStyle(.plain)
+        .disabled(isCurrent)
     }
 
-    // MARK: - About Section
+    // MARK: - 3. 语言切换
 
-    private var aboutSection: some View {
-        SettingsSection(title: "关于") {
-            VStack(spacing: AppTheme.Spacing.sm) {
-                SettingsRow(
-                    icon: "info.circle",
-                    iconColor: .gray,
-                    title: "版本",
-                    subtitle: "1.0.0"
-                )
-
-                SettingsRow(
-                    icon: "link",
-                    iconColor: .gray,
-                    title: "GitHub",
-                    subtitle: "查看源代码"
-                ) {
-                    // TODO: 打开 GitHub 链接
-                }
-
-                if let presets = configState?.presets, !presets.isEmpty {
-                    SettingsRow(
-                        icon: "square.stack.3d.up",
-                        iconColor: .gray,
-                        title: "预设",
-                        subtitle: "\(presets.count) 个可用"
-                    )
-                }
+    private var languageSection: some View {
+        SettingsSection(title: "语言") {
+            Picker("语言", selection: $language) {
+                Text("中文").tag(LocalStorageService.AppSettings.Language.zh)
+                Text("English").tag(LocalStorageService.AppSettings.Language.en)
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: language) { _, newValue in
+                var settings = LocalStorageService.shared.getAppSettings()
+                settings.language = newValue
+                LocalStorageService.shared.saveAppSettings(settings)
             }
         }
     }
 
-    // MARK: - Disconnect Section
+    // MARK: - 4. 主题切换
+
+    private var themeSection: some View {
+        SettingsSection(title: "主题") {
+            Picker("主题", selection: $themePreference) {
+                Image(systemName: "sun.max.fill").tag(LocalStorageService.AppSettings.DarkModePreference.light)
+                Image(systemName: "moon.fill").tag(LocalStorageService.AppSettings.DarkModePreference.dark)
+                Image(systemName: "circle.lefthalf.filled").tag(LocalStorageService.AppSettings.DarkModePreference.system)
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: themePreference) { _, newValue in
+                var settings = LocalStorageService.shared.getAppSettings()
+                settings.darkModePreference = newValue
+                LocalStorageService.shared.saveAppSettings(settings)
+                NotificationCenter.default.post(name: .themeDidChange, object: nil)
+            }
+        }
+    }
+
+    // MARK: - 5. 认证
+
+    private var authSection: some View {
+        SettingsSection(title: "认证") {
+            NavigationLink {
+                AuthSettingsView(apiService: apiService)
+            } label: {
+                HStack(spacing: AppTheme.Spacing.md) {
+                    Image(systemName: "shield.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.blue)
+                        .frame(width: 28)
+
+                    Text("平台认证")
+                        .font(.body)
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - 6. 缓存管理
+
+    private var cacheSection: some View {
+        SettingsSection(title: "缓存") {
+            NavigationLink {
+                CacheSettingsView()
+            } label: {
+                HStack(spacing: AppTheme.Spacing.md) {
+                    Image(systemName: "internaldrive")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.orange)
+                        .frame(width: 28)
+
+                    Text("缓存管理")
+                        .font(.body)
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    if !totalCacheSize.isEmpty {
+                        Text(totalCacheSize)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - 7. GitHub
+
+    private var githubSection: some View {
+        SettingsSection(title: "") {
+            Button {
+                openGitHub()
+            } label: {
+                HStack(spacing: AppTheme.Spacing.md) {
+                    Image("GithubIcon")
+                        .renderingMode(.template)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 20, height: 20)
+                        .foregroundStyle(.primary)
+                        .frame(width: 28)
+
+                    Text("在 GitHub 上查看")
+                        .font(.body)
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Image(systemName: "arrow.up.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - 8. 断开连接
 
     private var disconnectSection: some View {
-        VStack {
-            GlassButton.destructive("断开连接", icon: "rectangle.portrait.and.arrow.right") {
+        SettingsSection(title: "") {
+            Button {
                 showDisconnectConfirm = true
+            } label: {
+                HStack(spacing: AppTheme.Spacing.md) {
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28)
+
+                    Text("断开连接")
+                        .font(.body)
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+                }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
         }
-        .padding(.top, AppTheme.Spacing.lg)
+    }
+
+    // MARK: - 8. 版本信息
+
+    private var versionFooter: some View {
+        VStack(spacing: 4) {
+            let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+            let serverVersion = appConfig?.version ?? "..."
+
+            Text("App \(appVersion) · Server \(serverVersion)")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, AppTheme.Spacing.md)
+        .padding(.bottom, AppTheme.Spacing.xxl)
     }
 
     // MARK: - Methods
 
     private func loadSettings() async {
-        isLoading = true
+        // 加载本地设置
+        let settings = LocalStorageService.shared.getAppSettings()
+        themePreference = settings.darkModePreference
+        language = settings.language
 
-        // 加载主题偏好
-        themePreference = LocalStorageService.shared.getAppSettings().darkModePreference
+        // 并发加载远程数据
+        async let healthTask: () = loadHealth()
+        async let configTask: () = loadAppConfig()
+        async let sourcesTask: () = loadSourceFolders()
+        async let cacheTask: () = loadCacheSize()
 
+        _ = await (healthTask, configTask, sourcesTask, cacheTask)
+    }
+
+    private func loadHealth() async {
         do {
-            async let configTask = apiService.config.getConfigState()
-            async let downloadTask = apiService.config.getDownloadConfig()
-            async let sourcesTask = apiService.config.getSourceFolders()
-
-            configState = try await configTask
-            downloadConfig = try await downloadTask
-            sourceFolders = try await sourcesTask
-
+            let health = try await apiService.auth.checkHealth()
+            healthStatus = health.status == "ok" ? .online : .offline
         } catch {
-            GlassAlertManager.shared.showError("加载失败", message: error.localizedDescription)
+            healthStatus = .offline
         }
+    }
 
-        isLoading = false
+    private func loadAppConfig() async {
+        do {
+            appConfig = try await apiService.auth.getAppConfig()
+        } catch {
+            // 静默失败
+        }
+    }
+
+    private func loadSourceFolders() async {
+        do {
+            sourceFolders = try await apiService.config.getSourceFolders()
+        } catch {
+            // 静默失败
+        }
+    }
+
+    private func loadCacheSize() async {
+        let size = await Task.detached(priority: .utility) {
+            let thumb = ThumbnailCacheService.shared.diskCacheSize()
+            let video = ThumbnailCacheService.videoCacheSize()
+            let network = ThumbnailCacheService.networkCacheSize()
+            let temp = ThumbnailCacheService.appTempSize()
+            return thumb + video + network + temp
+        }.value
+        totalCacheSize = ThumbnailCacheService.formatSize(size)
+    }
+
+    private func switchSourceFolder(to path: String) {
+        Task {
+            do {
+                try await apiService.config.switchSourceFolder(to: path)
+                sourceFolders = try await apiService.config.getSourceFolders()
+                showSourceFolderList = false
+                GlassAlertManager.shared.showSuccess("已切换源文件夹")
+            } catch {
+                GlassAlertManager.shared.showError("切换失败", message: error.localizedDescription)
+            }
+        }
+    }
+
+    private func openGitHub() {
+        let urlString = appConfig?.githubUrl ?? "https://github.com"
+        if let url = URL(string: urlString) {
+            UIApplication.shared.open(url)
+        }
     }
 
     private func disconnect() {
         LocalStorageService.shared.logout()
-        // App 会自动检测登录状态变化并切换到登录页面
-        // 这里需要通知 App 层刷新状态
         NotificationCenter.default.post(name: .userDidLogout, object: nil)
     }
 }
@@ -367,11 +493,13 @@ struct SettingsSection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            Text(title)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
-                .padding(.leading, AppTheme.Spacing.sm)
+            if !title.isEmpty {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, AppTheme.Spacing.sm)
+            }
 
             content()
                 .padding(AppTheme.Spacing.md)
@@ -487,6 +615,7 @@ struct SettingsToggleRow: View {
 extension Notification.Name {
     static let userDidLogout = Notification.Name("userDidLogout")
     static let themeDidChange = Notification.Name("themeDidChange")
+    static let serverDidSwitch = Notification.Name("serverDidSwitch")
 }
 
 // MARK: - Preview

@@ -559,35 +559,24 @@ struct GalleryGridItem: View {
         Color.clear
             .aspectRatio(1, contentMode: .fit)
             .overlay {
-                AsyncImage(
+                CachedThumbnailView(
                     url: apiService.preview.getThumbnailURL(
                         for: file.path,
                         size: 300,
                         baseURL: apiService.baseURL,
                         apiKey: apiService.apiKey
                     )
-                ) { phase in
-                    switch phase {
-                    case .empty:
-                        Color.white.opacity(0.08)
-                            .overlay { ProgressView() }
-
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-
-                    case .failure:
-                        Color.white.opacity(0.05)
-                            .overlay {
-                                Image(systemName: file.isVideo ? "film" : "photo")
-                                    .font(.title2)
-                                    .foregroundStyle(.tertiary)
-                            }
-
-                    @unknown default:
-                        EmptyView()
-                    }
+                ) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Color.white.opacity(0.08)
+                        .overlay {
+                            Image(systemName: file.isVideo ? "film" : "photo")
+                                .font(.title2)
+                                .foregroundStyle(.tertiary)
+                        }
                 }
             }
             .overlay(alignment: .bottomTrailing) {
@@ -634,32 +623,20 @@ struct GalleryListItem: View {
             } label: {
                 HStack(spacing: AppTheme.Spacing.md) {
                     // 缩略图
-                    AsyncImage(
+                    CachedThumbnailView(
                         url: apiService.preview.getThumbnailURL(
                             for: file.path,
                             size: 150,
                             baseURL: apiService.baseURL,
                             apiKey: apiService.apiKey
                         )
-                    ) { phase in
-                        switch phase {
-                        case .empty:
-                            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.sm)
-                                .fill(Color.white.opacity(0.1))
-                                .shimmer()
-
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-
-                        case .failure:
-                            Image(systemName: file.isVideo ? "film" : "photo")
-                                .foregroundStyle(.tertiary)
-
-                        @unknown default:
-                            EmptyView()
-                        }
+                    ) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Image(systemName: file.isVideo ? "film" : "photo")
+                            .foregroundStyle(.tertiary)
                     }
                     .frame(width: 60, height: 60)
                     .clipped()

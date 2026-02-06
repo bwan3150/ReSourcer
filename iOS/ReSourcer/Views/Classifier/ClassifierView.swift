@@ -227,32 +227,16 @@ struct ClassifierView: View {
                     )
                 }
 
-                AsyncImage(url: previewURL) { phase in
-                    switch phase {
-                    case .empty:
-                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg)
-                            .fill(Color.white.opacity(0.1))
-                            .shimmer()
-
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .cornerRadius(AppTheme.CornerRadius.lg)
-
-                    case .failure:
-                        VStack(spacing: AppTheme.Spacing.md) {
-                            Image(systemName: file.isVideo ? "film" : "photo")
-                                .font(.system(size: 48))
-                                .foregroundStyle(.tertiary)
-
-                            Text("无法加载预览")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                    @unknown default:
-                        EmptyView()
+                CachedThumbnailView(url: previewURL) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .cornerRadius(AppTheme.CornerRadius.lg)
+                } placeholder: {
+                    VStack(spacing: AppTheme.Spacing.md) {
+                        Image(systemName: file.isVideo ? "film" : "photo")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.tertiary)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

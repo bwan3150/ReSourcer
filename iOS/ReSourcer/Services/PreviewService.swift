@@ -77,7 +77,7 @@ actor PreviewService {
     ///   - baseURL: 服务器基础 URL
     ///   - apiKey: API Key
     /// - Returns: 完整的缩略图 URL
-    func getThumbnailURL(for path: String, size: Int = 300, baseURL: URL, apiKey: String) -> URL? {
+    nonisolated func getThumbnailURL(for path: String, size: Int = 300, baseURL: URL, apiKey: String) -> URL? {
         let encodedPath = path.urlEncoded
         let urlString = "\(baseURL.absoluteString)/api/preview/thumbnail?path=\(encodedPath)&size=\(size)&key=\(apiKey)"
         return URL(string: urlString)
@@ -89,7 +89,7 @@ actor PreviewService {
     ///   - baseURL: 服务器基础 URL
     ///   - apiKey: API Key
     /// - Returns: 完整的内容 URL
-    func getContentURL(for path: String, baseURL: URL, apiKey: String) -> URL? {
+    nonisolated func getContentURL(for path: String, baseURL: URL, apiKey: String) -> URL? {
         let encodedPath = path.urlEncoded
         let urlString = "\(baseURL.absoluteString)/api/preview/content/\(encodedPath)?key=\(apiKey)"
         return URL(string: urlString)

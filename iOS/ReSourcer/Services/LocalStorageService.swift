@@ -184,9 +184,14 @@ final class LocalStorageService: @unchecked Sendable {
         var autoRefreshInterval: TimeInterval = 30
         var enableNotifications: Bool = true
         var darkModePreference: DarkModePreference = .system
+        var language: Language = .zh
 
         enum DarkModePreference: String, Codable {
             case light, dark, system
+        }
+
+        enum Language: String, Codable {
+            case zh, en
         }
     }
 

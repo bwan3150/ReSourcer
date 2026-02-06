@@ -55,6 +55,9 @@ struct ReSourcerApp: App {
             .onReceive(NotificationCenter.default.publisher(for: .userDidLogout)) { _ in
                 handleLogout()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .serverDidSwitch)) { notification in
+                handleServerSwitch(notification)
+            }
         }
     }
 
@@ -100,6 +103,30 @@ struct ReSourcerApp: App {
             isLoggedIn = false
             apiService = nil
             selectedTab = .gallery
+        }
+    }
+
+    /// 处理服务器切换
+    private func handleServerSwitch(_ notification: Notification) {
+        guard let server = notification.object as? Server,
+              let newService = APIService.create(for: server) else {
+            return
+        }
+
+        withAnimation(AppTheme.Animation.standard) {
+            apiService = newService
+            selectedTab = .gallery
+        }
+
+        // 异步验证新服务器连接
+        Task {
+            let status = await newService.checkConnection()
+            if status != .online {
+                await MainActor.run {
+                    handleLogout()
+                    GlassAlertManager.shared.showError("连接失败", message: "无法连接到所选服务器")
+                }
+            }
         }
     }
 }

@@ -94,11 +94,12 @@ struct ServerConnectView: View {
     private var headerSection: some View {
         VStack(spacing: AppTheme.Spacing.md) {
             // App 图标
-            Image(systemName: "photo.stack.fill")
-                .font(.system(size: 60, weight: .light))
-                .foregroundStyle(.primary)
-                .padding(AppTheme.Spacing.lg)
-                .glassEffect(.regular, in: .circle)
+            Image("AppLogo")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 100, height: 100)
+                .clipShape(RoundedRectangle(cornerRadius: 22))
+                .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
 
             Text("ReSourcer")
                 .font(.largeTitle)

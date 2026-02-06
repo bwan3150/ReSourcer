@@ -461,23 +461,22 @@ struct ImagePreviewContent: View {
             AsyncImage(url: contentURL) { phase in
                 switch phase {
                 case .empty:
-                    // 加载中
+                    // 加载中 — 先显示缩略图占位
                     ZStack {
-                        // 先显示缩略图占位
-                        AsyncImage(
+                        CachedThumbnailView(
                             url: apiService.preview.getThumbnailURL(
                                 for: file.path,
                                 size: 300,
                                 baseURL: apiService.baseURL,
                                 apiKey: apiService.apiKey
                             )
-                        ) { thumbPhase in
-                            if case .success(let thumb) = thumbPhase {
-                                thumb
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .blur(radius: 8)
-                            }
+                        ) { thumb in
+                            thumb
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .blur(radius: 8)
+                        } placeholder: {
+                            Color.clear
                         }
 
                         ProgressView()
@@ -658,12 +657,14 @@ struct VideoPreviewContent: View {
 
         // 监听时间
         let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
-        timeObserver = avPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { time in
-            currentTime = time.seconds
-            if let item = avPlayer.currentItem {
-                let dur = item.duration.seconds
-                if dur.isFinite && dur > 0 {
-                    duration = dur
+        timeObserver = avPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak avPlayer] time in
+            Task { @MainActor in
+                currentTime = time.seconds
+                if let item = avPlayer?.currentItem {
+                    let dur = item.duration.seconds
+                    if dur.isFinite && dur > 0 {
+                        duration = dur
+                    }
                 }
             }
         }
@@ -674,8 +675,10 @@ struct VideoPreviewContent: View {
             object: avPlayer.currentItem,
             queue: .main
         ) { _ in
-            isPlaying = false
-            avPlayer.seek(to: .zero)
+            Task { @MainActor in
+                isPlaying = false
+                avPlayer.seek(to: .zero)
+            }
         }
 
         avPlayer.play()
