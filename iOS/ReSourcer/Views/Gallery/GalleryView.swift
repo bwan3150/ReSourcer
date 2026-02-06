@@ -74,6 +74,9 @@ struct GalleryView: View {
                 }
             }
             .navigationBarHidden(true)
+            .navigationDestination(for: Int.self) { index in
+                FilePreviewView(apiService: apiService, files: files, initialIndex: index)
+            }
         }
         .task {
             await loadFolders()
@@ -247,8 +250,11 @@ struct GalleryView: View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: AppTheme.Spacing.sm), count: gridColumns)
 
         return LazyVGrid(columns: columns, spacing: AppTheme.Spacing.sm) {
-            ForEach(files) { file in
-                GalleryGridItem(file: file, apiService: apiService)
+            ForEach(Array(files.enumerated()), id: \.element.id) { index, file in
+                NavigationLink(value: index) {
+                    GalleryGridItem(file: file, apiService: apiService)
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(AppTheme.Spacing.md)
@@ -258,8 +264,11 @@ struct GalleryView: View {
 
     private var listView: some View {
         LazyVStack(spacing: AppTheme.Spacing.sm) {
-            ForEach(files) { file in
-                GalleryListItem(file: file, apiService: apiService)
+            ForEach(Array(files.enumerated()), id: \.element.id) { index, file in
+                NavigationLink(value: index) {
+                    GalleryListItem(file: file, apiService: apiService)
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(AppTheme.Spacing.md)

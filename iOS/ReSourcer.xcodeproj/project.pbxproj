@@ -43,6 +43,7 @@
 		A1000070233F0001 /* ClassifierView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000070233F0000 /* ClassifierView.swift */; };
 		A1000071233F0001 /* DownloadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000071233F0000 /* DownloadView.swift */; };
 		A1000072233F0001 /* GalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000072233F0000 /* GalleryView.swift */; };
+		A1000074233F0001 /* FilePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000074233F0000 /* FilePreviewView.swift */; };
 		A1000073233F0001 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000073233F0000 /* SettingsView.swift */; };
 		A1000080233F0001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000080233F0000 /* Assets.xcassets */; };
 		A1000081233F0001 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000081233F0000 /* Preview Assets.xcassets */; };
@@ -86,6 +87,7 @@
 		A1000070233F0000 /* ClassifierView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassifierView.swift; sourceTree = "<group>"; };
 		A1000071233F0000 /* DownloadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadView.swift; sourceTree = "<group>"; };
 		A1000072233F0000 /* GalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryView.swift; sourceTree = "<group>"; };
+		A1000074233F0000 /* FilePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewView.swift; sourceTree = "<group>"; };
 		A1000073233F0000 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A1000080233F0000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1000081233F0000 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -256,6 +258,7 @@
 			isa = PBXGroup;
 			children = (
 				A1000072233F0000 /* GalleryView.swift */,
+				A1000074233F0000 /* FilePreviewView.swift */,
 			);
 			path = Gallery;
 			sourceTree = "<group>";
@@ -375,6 +378,7 @@
 				A1000070233F0001 /* ClassifierView.swift in Sources */,
 				A1000071233F0001 /* DownloadView.swift in Sources */,
 				A1000072233F0001 /* GalleryView.swift in Sources */,
+				A1000074233F0001 /* FilePreviewView.swift in Sources */,
 				A1000073233F0001 /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
