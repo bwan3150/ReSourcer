@@ -1,6 +1,6 @@
 [package]
 name = "re-sourcer-tray"
-version = "0.2.4"
+version = "0.2.8"
 description = "ReSourcer 系统托盘应用"
 authors = ["you"]
 edition = "2021"
