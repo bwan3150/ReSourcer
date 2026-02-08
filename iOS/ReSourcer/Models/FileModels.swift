@@ -100,6 +100,13 @@ struct FileInfo: Identifiable, Codable, Equatable {
         return Double(w) / Double(h)
     }
 
+    /// 文件扩展名标签（大写，无点号），如 "PNG"、"MP4"、"GIF"
+    var extensionLabel: String {
+        let ext = `extension`.trimmingCharacters(in: CharacterSet(charactersIn: "."))
+        if ext.isEmpty { return name.uppercased() }
+        return ext.uppercased()
+    }
+
     /// 格式化后的视频时长
     var formattedDuration: String? {
         guard let duration = duration else { return nil }

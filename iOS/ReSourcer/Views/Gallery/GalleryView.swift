@@ -694,26 +694,28 @@ struct GalleryGridItem: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) {
-                // 视频时长 / GIF 标签
-                if file.isVideo, let duration = file.formattedDuration {
-                    Text(duration)
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.primary)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .glassEffect(.regular, in: .capsule)
-                        .padding(6)
-                } else if file.isGif {
-                    Text("GIF")
+                HStack(spacing: 4) {
+                    // 视频时长
+                    if file.isVideo, let duration = file.formattedDuration {
+                        Text(duration)
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .glassEffect(.regular, in: .capsule)
+                    }
+
+                    // 扩展名标签（所有文件）
+                    Text(file.extensionLabel)
                         .font(.caption2)
                         .fontWeight(.bold)
                         .foregroundStyle(.primary)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .glassEffect(.regular, in: .capsule)
-                        .padding(6)
                 }
+                .padding(6)
             }
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
             .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 3)
@@ -764,7 +766,7 @@ struct GalleryListItem: View {
                             .lineLimit(1)
 
                         HStack(spacing: AppTheme.Spacing.sm) {
-                            Text(file.fileType.rawValue)
+                            Text(file.extensionLabel)
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
 
