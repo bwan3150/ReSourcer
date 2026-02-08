@@ -133,6 +133,7 @@ struct GlassBottomSheet<Content: View>: View {
             .scrollBounceBehavior(.basedOnSize)
         }
         .frame(maxHeight: sheetHeight)
+        .animation(AppTheme.Animation.spring, value: contentHeight)
         .glassEffect(.regular, in: UnevenRoundedRectangle(
             topLeadingRadius: AppTheme.CornerRadius.sheet,
             topTrailingRadius: AppTheme.CornerRadius.sheet
@@ -195,6 +196,10 @@ struct GlassBottomSheet<Content: View>: View {
     private func calculateHeight(in geometry: GeometryProxy) -> CGFloat {
         switch height {
         case .fit:
+            if contentHeight <= 0 {
+                // 内容尚未测量完成时使用屏幕 45% 作为占位高度，避免首次弹出时高度为 0
+                return geometry.size.height * 0.45
+            }
             let calculatedHeight = contentHeight + AppTheme.BottomSheet.headerHeight + 40
             let maxHeight = geometry.size.height * AppTheme.BottomSheet.maxHeightRatio
             return min(calculatedHeight, maxHeight)

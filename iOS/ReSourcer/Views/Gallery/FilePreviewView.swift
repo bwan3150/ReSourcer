@@ -9,6 +9,45 @@ import SwiftUI
 import AVKit
 import AVFoundation
 
+// MARK: - PlaybackMode
+
+/// 播放模式
+enum PlaybackMode {
+    /// 循环当前 — 视频循环播放，图片/其他文件停留不动
+    case repeatCurrent
+    /// 顺序播放 — 按文件列表顺序自动播放下一个
+    case sequential
+    /// 随机播放 — 随机跳到文件列表中的另一个文件
+    case shuffle
+
+    /// SF Symbol 图标名
+    var iconName: String {
+        switch self {
+        case .repeatCurrent: return "repeat.1"
+        case .sequential:    return "repeat"
+        case .shuffle:       return "shuffle"
+        }
+    }
+
+    /// 描述文字
+    var label: String {
+        switch self {
+        case .repeatCurrent: return "循环当前"
+        case .sequential:    return "顺序播放"
+        case .shuffle:       return "随机播放"
+        }
+    }
+
+    /// 切换到下一个模式
+    var next: PlaybackMode {
+        switch self {
+        case .repeatCurrent: return .sequential
+        case .sequential:    return .shuffle
+        case .shuffle:       return .repeatCurrent
+        }
+    }
+}
+
 // MARK: - FilePreviewView
 
 /// 全屏文件预览视图
@@ -42,6 +81,10 @@ struct FilePreviewView: View {
 
     // 视频播放状态
     @State private var isVideoPlaying = false
+
+    // 播放模式
+    @State private var playbackMode: PlaybackMode = .repeatCurrent
+    @State private var autoAdvanceTask: Task<Void, Never>?
 
     // 操作状态
     @State private var isOperating = false
@@ -92,9 +135,16 @@ struct FilePreviewView: View {
         .animation(AppTheme.Animation.standard, value: showControls)
         .onChange(of: currentIndex) { _, _ in
             scheduleAutoHide()
+            startAutoAdvanceTimer()
         }
-        .onAppear { scheduleAutoHide() }
-        .onDisappear { hideControlsTask?.cancel() }
+        .onAppear {
+            scheduleAutoHide()
+            startAutoAdvanceTimer()
+        }
+        .onDisappear {
+            hideControlsTask?.cancel()
+            cancelAutoAdvanceTimer()
+        }
         // 文件信息面板
         .glassBottomSheet(isPresented: $showInfoSheet, title: "文件信息") {
             fileInfoContent
@@ -131,7 +181,9 @@ struct FilePreviewView: View {
                 file: file,
                 apiService: apiService,
                 isPlaying: $isVideoPlaying,
-                showControls: $showControls
+                showControls: $showControls,
+                playbackMode: playbackMode,
+                onVideoEnd: { advanceToNext() }
             )
         case .other:
             OtherFilePreviewContent(
@@ -157,39 +209,46 @@ struct FilePreviewView: View {
                     .clipShape(Circle())
             }
 
-            // 文件名（自动滚动 + 手动拖动）
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    Text(currentFile?.name ?? "")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.white)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .id("fileName")
-                }
-                .frame(maxWidth: .infinity)
-                .task(id: currentIndex) {
-                    // 等待后开始自动来回滚动
-                    try? await Task.sleep(for: .seconds(2))
-                    while !Task.isCancelled {
-                        withAnimation(.linear(duration: 3)) {
-                            proxy.scrollTo("fileName", anchor: .trailing)
-                        }
-                        try? await Task.sleep(for: .seconds(5))
-                        guard !Task.isCancelled else { break }
-                        withAnimation(.easeInOut(duration: 0.5)) {
-                            proxy.scrollTo("fileName", anchor: .leading)
-                        }
-                        try? await Task.sleep(for: .seconds(2.5))
-                    }
-                }
-            }
-
-            // 信息按钮
+            // 文件名（点击显示文件信息）
             Button {
                 showInfoSheet = true
             } label: {
-                Image(systemName: "info.circle")
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        Text(currentFile?.name ?? "")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.white)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .id("fileName")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .task(id: currentIndex) {
+                        try? await Task.sleep(for: .seconds(2))
+                        while !Task.isCancelled {
+                            withAnimation(.linear(duration: 3)) {
+                                proxy.scrollTo("fileName", anchor: .trailing)
+                            }
+                            try? await Task.sleep(for: .seconds(5))
+                            guard !Task.isCancelled else { break }
+                            withAnimation(.easeInOut(duration: 0.5)) {
+                                proxy.scrollTo("fileName", anchor: .leading)
+                            }
+                            try? await Task.sleep(for: .seconds(2.5))
+                        }
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+
+            // 播放模式切换按钮
+            Button {
+                withAnimation(AppTheme.Animation.standard) {
+                    playbackMode = playbackMode.next
+                }
+                startAutoAdvanceTimer()
+            } label: {
+                Image(systemName: playbackMode.iconName)
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(.black)
                     .frame(width: 40, height: 40)
@@ -373,6 +432,52 @@ struct FilePreviewView: View {
                 }
             }
         }
+    }
+
+    // MARK: - 播放模式逻辑
+
+    /// 根据当前播放模式跳转到下一个文件
+    private func advanceToNext() {
+        switch playbackMode {
+        case .repeatCurrent:
+            break
+        case .sequential:
+            withAnimation {
+                if currentIndex < currentFiles.count - 1 {
+                    currentIndex += 1
+                } else {
+                    currentIndex = 0
+                }
+            }
+        case .shuffle:
+            guard currentFiles.count > 1 else { return }
+            var nextIndex: Int
+            repeat {
+                nextIndex = Int.random(in: 0..<currentFiles.count)
+            } while nextIndex == currentIndex
+            withAnimation {
+                currentIndex = nextIndex
+            }
+        }
+    }
+
+    /// 启动图片/其他文件的自动跳转定时器（8秒）
+    private func startAutoAdvanceTimer() {
+        cancelAutoAdvanceTimer()
+        guard playbackMode != .repeatCurrent else { return }
+        guard currentFile?.isVideo != true else { return }
+
+        autoAdvanceTask = Task {
+            try? await Task.sleep(for: .seconds(8))
+            guard !Task.isCancelled else { return }
+            advanceToNext()
+        }
+    }
+
+    /// 取消自动跳转定时器
+    private func cancelAutoAdvanceTimer() {
+        autoAdvanceTask?.cancel()
+        autoAdvanceTask = nil
     }
 
     // MARK: - 文件操作
@@ -572,6 +677,8 @@ struct VideoPreviewContent: View {
     let apiService: APIService
     @Binding var isPlaying: Bool
     @Binding var showControls: Bool
+    let playbackMode: PlaybackMode
+    let onVideoEnd: () -> Void
 
     @State private var player: AVPlayer?
     @State private var currentTime: Double = 0
@@ -676,8 +783,15 @@ struct VideoPreviewContent: View {
             queue: .main
         ) { _ in
             Task { @MainActor in
-                isPlaying = false
-                avPlayer.seek(to: .zero)
+                switch playbackMode {
+                case .repeatCurrent:
+                    avPlayer.seek(to: .zero)
+                    avPlayer.play()
+                case .sequential, .shuffle:
+                    isPlaying = false
+                    avPlayer.seek(to: .zero)
+                    onVideoEnd()
+                }
             }
         }
 
@@ -692,6 +806,9 @@ struct VideoPreviewContent: View {
         player?.pause()
         player = nil
         timeObserver = nil
+        // 注意：不在这里设 isPlaying = false
+        // 因为新旧 VideoPreviewContent 共享同一个 @Binding，
+        // onDisappear 可能晚于新视图的 onAppear，会覆盖新视频的播放状态
     }
 
     private func formatTime(_ seconds: Double) -> String {
