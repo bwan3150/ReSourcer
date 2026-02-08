@@ -274,7 +274,7 @@ struct GalleryView: View {
             }
             .buttonStyle(.plain)
 
-            // 分类文件夹列表
+            // 分类文件夹列表（可滚动）
             if folders.isEmpty {
                 HStack {
                     Spacer()
@@ -285,39 +285,44 @@ struct GalleryView: View {
                 }
                 .padding(.vertical, AppTheme.Spacing.sm)
             } else {
-                ForEach(folders) { folder in
-                    Button {
-                        selectFolder(folder)
-                    } label: {
-                        HStack(spacing: AppTheme.Spacing.md) {
-                            Image(systemName: "folder.fill")
-                                .font(.title3)
-                                .foregroundStyle(.yellow)
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(folders) { folder in
+                            Button {
+                                selectFolder(folder)
+                            } label: {
+                                HStack(spacing: AppTheme.Spacing.md) {
+                                    Image(systemName: "folder.fill")
+                                        .font(.title3)
+                                        .foregroundStyle(.yellow)
 
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(folder.name)
-                                    .font(.body)
-                                    .foregroundStyle(.primary)
-                                    .lineLimit(1)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(folder.name)
+                                            .font(.body)
+                                            .foregroundStyle(.primary)
+                                            .lineLimit(1)
 
-                                Text("\(folder.fileCount) 个文件")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                        Text("\(folder.fileCount) 个文件")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+
+                                    Spacer()
+
+                                    if !isSourceSelected && selectedFolder?.id == folder.id {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(.green)
+                                    }
+                                }
+                                .padding(.horizontal, AppTheme.Spacing.md)
+                                .padding(.vertical, AppTheme.Spacing.sm)
+                                .contentShape(Rectangle())
                             }
-
-                            Spacer()
-
-                            if !isSourceSelected && selectedFolder?.id == folder.id {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.green)
-                            }
+                            .buttonStyle(.plain)
                         }
-                        .padding(.horizontal, AppTheme.Spacing.md)
-                        .padding(.vertical, AppTheme.Spacing.sm)
-                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
                 }
+                .frame(maxHeight: 400)
             }
         }
         .padding(AppTheme.Spacing.sm)
