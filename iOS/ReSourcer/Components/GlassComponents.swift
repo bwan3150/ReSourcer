@@ -259,32 +259,6 @@ struct GlassLoadingView: View {
     }
 }
 
-// MARK: - GlassLoadingOverlay
-
-/// 全屏加载遮罩
-struct GlassLoadingOverlay: View {
-
-    let isLoading: Bool
-    let message: String?
-
-    init(isLoading: Bool, message: String? = "加载中...") {
-        self.isLoading = isLoading
-        self.message = message
-    }
-
-    var body: some View {
-        if isLoading {
-            ZStack {
-                Color.black.opacity(0.4)
-                    .ignoresSafeArea()
-
-                GlassLoadingView(message)
-            }
-            .transition(.opacity)
-        }
-    }
-}
-
 // MARK: - GlassEmptyView
 
 /// 液态玻璃风格空状态视图
@@ -443,19 +417,6 @@ struct GlassChip: View {
     }
 }
 
-// MARK: - View Modifier for Loading
-
-extension View {
-
-    /// 添加加载遮罩
-    func glassLoading(isLoading: Bool, message: String? = "加载中...") -> some View {
-        self.overlay {
-            GlassLoadingOverlay(isLoading: isLoading, message: message)
-                .animation(AppTheme.Animation.quick, value: isLoading)
-        }
-    }
-}
-
 // MARK: - Preview
 
 #Preview("Glass Components") {
@@ -464,8 +425,6 @@ extension View {
         @State private var username = ""
         @State private var password = ""
         @State private var selectedSegment = 0
-        @State private var isLoading = false
-
         var body: some View {
             ZStack {
                 LinearGradient(
@@ -535,18 +494,10 @@ extension View {
                             actionTitle: "添加"
                         ) {}
 
-                        // 加载按钮
-                        GlassButton("触发加载", style: .primary) {
-                            isLoading = true
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                isLoading = false
-                            }
-                        }
                     }
                     .padding()
                 }
             }
-            .glassLoading(isLoading: isLoading)
         }
     }
 

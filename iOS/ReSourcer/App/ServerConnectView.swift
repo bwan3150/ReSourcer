@@ -16,7 +16,6 @@ struct ServerConnectView: View {
     @State private var serverURL = ""
     @State private var apiKey = ""
     @State private var serverName = ""
-    @State private var isConnecting = false
     @State private var errorMessage: String?
 
     /// 已保存的服务器列表
@@ -114,7 +113,6 @@ struct ServerConnectView: View {
         .onAppear {
             loadSavedServers()
         }
-        .glassLoading(isLoading: isConnecting, message: "正在连接...")
         // 添加/编辑服务器弹窗（有已保存服务器时使用）
         .glassBottomSheet(
             isPresented: $showForm,
@@ -364,14 +362,14 @@ struct ServerConnectView: View {
             return
         }
 
-        isConnecting = true
         errorMessage = nil
+        GlassAlertManager.shared.showQuickLoading()
 
         Task {
             let status = await connectWithTimeout(apiService: apiService, timeout: 5)
 
             await MainActor.run {
-                isConnecting = false
+                GlassAlertManager.shared.hideQuickLoading()
 
                 switch status {
                 case .online:
@@ -408,14 +406,14 @@ struct ServerConnectView: View {
             return
         }
 
-        isConnecting = true
         errorMessage = nil
+        GlassAlertManager.shared.showQuickLoading()
 
         Task {
             let status = await connectWithTimeout(apiService: apiService, timeout: 5)
 
             await MainActor.run {
-                isConnecting = false
+                GlassAlertManager.shared.hideQuickLoading()
 
                 switch status {
                 case .online:

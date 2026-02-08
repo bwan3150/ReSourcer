@@ -59,6 +59,17 @@ enum APIError: LocalizedError {
     }
 }
 
+// MARK: - 取消判断
+
+extension Error {
+    /// 是否为请求取消错误（SwiftUI 生命周期中的正常行为，无需弹窗提示）
+    var isCancelledRequest: Bool {
+        if let apiError = self as? APIError, case .cancelled = apiError { return true }
+        if self is CancellationError { return true }
+        return false
+    }
+}
+
 /// 通用 API 响应结构
 struct APIResponse<T: Decodable>: Decodable {
     let status: String?

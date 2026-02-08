@@ -236,6 +236,12 @@ final class GlassAlertManager {
     private(set) var toasts: [GlassAlertData] = []
     private(set) var currentAlert: (data: GlassAlertData, primary: GlassAlertDialog.AlertButton?, secondary: GlassAlertDialog.AlertButton?)?
 
+    /// Quick Loading 状态
+    private(set) var isQuickLoading = false
+    private var quickLoadingStart: ContinuousClock.Instant?
+    /// 最小显示时长
+    private let quickLoadingMinDuration: Duration = .milliseconds(600)
+
     private init() {}
 
     // MARK: - Toast Methods
@@ -287,6 +293,40 @@ final class GlassAlertManager {
     /// 关闭弹窗
     func dismissAlert() {
         currentAlert = nil
+    }
+
+    // MARK: - Quick Loading
+
+    /// 显示快速加载指示器
+    func showQuickLoading() {
+        quickLoadingStart = .now
+        withAnimation(AppTheme.Animation.quick) {
+            isQuickLoading = true
+        }
+    }
+
+    /// 隐藏快速加载指示器（保证最小显示时长）
+    func hideQuickLoading() {
+        Task { @MainActor in
+            // 确保至少显示 minDuration
+            if let start = quickLoadingStart {
+                let elapsed = ContinuousClock.now - start
+                if elapsed < quickLoadingMinDuration {
+                    try? await Task.sleep(for: quickLoadingMinDuration - elapsed)
+                }
+            }
+            withAnimation(AppTheme.Animation.quick) {
+                isQuickLoading = false
+            }
+            quickLoadingStart = nil
+        }
+    }
+
+    /// 便捷方法：在异步操作期间自动显示/隐藏加载指示器
+    func withQuickLoading<T>(_ operation: @escaping () async throws -> T) async rethrows -> T {
+        showQuickLoading()
+        defer { hideQuickLoading() }
+        return try await operation()
     }
 }
 
@@ -341,10 +381,54 @@ struct GlassAlertContainer: View {
     }
 }
 
+// MARK: - Quick Loading View
+
+/// 快速加载指示器 — 居中浮动的液态玻璃小弹窗，仅动画无文字
+struct GlassQuickLoadingView: View {
+
+    @State private var animating = false
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<3, id: \.self) { index in
+                Circle()
+                    .fill(Color.primary)
+                    .frame(width: 8, height: 8)
+                    .scaleEffect(animating ? 1.0 : 0.3)
+                    .opacity(animating ? 1.0 : 0.3)
+                    .animation(
+                        .easeInOut(duration: 0.45)
+                            .repeatForever(autoreverses: true)
+                            .delay(Double(index) * 0.12),
+                        value: animating
+                    )
+            }
+        }
+        .padding(AppTheme.Spacing.lg)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+        .onAppear { animating = true }
+    }
+}
+
+// MARK: - Quick Loading Container
+
+/// Quick Loading 容器视图
+struct GlassQuickLoadingContainer: View {
+
+    @State private var alertManager = GlassAlertManager.shared
+
+    var body: some View {
+        if alertManager.isQuickLoading {
+            GlassQuickLoadingView()
+                .transition(.scale(scale: 0.8).combined(with: .opacity))
+        }
+    }
+}
+
 // MARK: - View Extension
 
 extension View {
-    /// 添加全局 Toast 和 Alert 支持
+    /// 添加全局 Toast、Alert 和 Quick Loading 支持
     func withGlassAlerts() -> some View {
         self
             .overlay(alignment: .bottom) {
@@ -352,6 +436,9 @@ extension View {
             }
             .overlay {
                 GlassAlertContainer()
+            }
+            .overlay {
+                GlassQuickLoadingContainer()
             }
     }
 }

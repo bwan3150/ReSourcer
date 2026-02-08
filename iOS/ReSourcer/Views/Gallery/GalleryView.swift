@@ -54,12 +54,10 @@ struct GalleryView: View {
             ZStack(alignment: .top) {
                 // 主内容区域
                 Group {
-                    if isLoading && files.isEmpty {
-                        loadingView
-                    } else if files.isEmpty {
-                        emptyView
-                    } else {
+                    if !files.isEmpty {
                         contentView
+                    } else if !isLoading {
+                        emptyView
                     }
                 }
                 .padding(.top, 70) // 给顶部浮动栏留空间
@@ -347,7 +345,9 @@ struct GalleryView: View {
             }
         }
         .refreshable {
-            await refreshFiles()
+            await GlassAlertManager.shared.withQuickLoading {
+                await refreshFiles()
+            }
         }
     }
 
@@ -397,13 +397,6 @@ struct GalleryView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // MARK: - Loading View
-
-    private var loadingView: some View {
-        GlassLoadingView("加载中...")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
     // MARK: - Methods
 
     /// 源文件夹显示名称
@@ -427,7 +420,9 @@ struct GalleryView: View {
                 sourceFolderFileCount = files.count
             }
         } catch {
-            GlassAlertManager.shared.showError("加载失败", message: error.localizedDescription)
+            if !error.isCancelledRequest {
+                GlassAlertManager.shared.showError("加载失败", message: error.localizedDescription)
+            }
         }
     }
 
@@ -460,19 +455,43 @@ struct GalleryView: View {
 
     private func loadFiles(path: String) async {
         isLoading = true
+        GlassAlertManager.shared.showQuickLoading()
         do {
             files = try await apiService.preview.getFiles(in: path)
         } catch {
-            GlassAlertManager.shared.showError("加载失败", message: error.localizedDescription)
+            if !error.isCancelledRequest {
+                GlassAlertManager.shared.showError("加载失败", message: error.localizedDescription)
+            }
         }
+        GlassAlertManager.shared.hideQuickLoading()
         isLoading = false
     }
 
+    /// 下拉刷新 — 不设置 isLoading，避免触发视图重建导致 .refreshable 任务被取消
     private func refreshFiles() async {
+        let path: String
         if isSourceSelected {
-            await loadFiles(path: sourceFolder)
+            path = sourceFolder
         } else if let folder = selectedFolder {
-            await loadFiles(path: sourceFolder + "/" + folder.name)
+            path = sourceFolder + "/" + folder.name
+        } else {
+            return
+        }
+
+        do {
+            // 同时刷新文件夹列表和当前文件列表
+            async let newFolders = apiService.folder.getSubfolders(in: sourceFolder)
+            async let newFiles = apiService.preview.getFiles(in: path)
+
+            folders = try await newFolders.filter { !$0.hidden }
+            files = try await newFiles
+            if isSourceSelected {
+                sourceFolderFileCount = files.count
+            }
+        } catch {
+            if !error.isCancelledRequest {
+                GlassAlertManager.shared.showError("刷新失败", message: error.localizedDescription)
+            }
         }
     }
 
