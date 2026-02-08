@@ -733,7 +733,7 @@ struct GalleryListItem: View {
                     CachedThumbnailView(
                         url: apiService.preview.getThumbnailURL(
                             for: file.path,
-                            size: 150,
+                            size: 300,
                             baseURL: apiService.baseURL,
                             apiKey: apiService.apiKey
                         )
