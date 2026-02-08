@@ -34,8 +34,8 @@ struct GalleryView: View {
     @State private var navPath = NavigationPath()
 
     // 文件信息弹窗
-    @State private var selectedFile: FileInfo?
-    @State private var showFileInfoSheet = false
+    @State private var selectedFile: FileInfo?       // 用于重命名/移动操作
+    @State private var fileInfoToShow: FileInfo?     // 驱动弹窗显示 + 数据（单一状态源）
     @State private var showRenameAlert = false
     @State private var renameText = ""
     @State private var showMoveSheet = false
@@ -120,7 +120,13 @@ struct GalleryView: View {
             await loadFolders()
         }
         // 文件信息面板
-        .glassBottomSheet(isPresented: $showFileInfoSheet, title: "文件信息") {
+        .glassBottomSheet(
+            isPresented: Binding(
+                get: { fileInfoToShow != nil },
+                set: { if !$0 { fileInfoToShow = nil } }
+            ),
+            title: "文件信息"
+        ) {
             galleryFileInfoContent
         }
         // 重命名弹窗
@@ -372,7 +378,7 @@ struct GalleryView: View {
                     onTap: { navPath.append(index) },
                     onInfoTap: {
                         selectedFile = file
-                        showFileInfoSheet = true
+                        fileInfoToShow = file
                     }
                 )
             }
@@ -509,47 +515,48 @@ struct GalleryView: View {
 
     @ViewBuilder
     private var galleryFileInfoContent: some View {
-        if let file = selectedFile {
-            VStack(spacing: AppTheme.Spacing.lg) {
-                galleryInfoRow("文件名", value: file.name)
-                galleryInfoRow("类型", value: file.extension.uppercased())
-                galleryInfoRow("大小", value: file.formattedSize)
-                galleryInfoRow("修改时间", value: file.modified)
+        let file = fileInfoToShow
+        VStack(spacing: AppTheme.Spacing.lg) {
+            galleryInfoRow("文件名", value: file?.name ?? "")
+            galleryInfoRow("类型", value: file?.extension.uppercased() ?? "")
+            galleryInfoRow("大小", value: file?.formattedSize ?? "")
+            galleryInfoRow("修改时间", value: file?.modified ?? "")
 
-                if let width = file.width, let height = file.height {
-                    galleryInfoRow("分辨率", value: "\(width) × \(height)")
-                }
-                if let duration = file.formattedDuration {
-                    galleryInfoRow("时长", value: duration)
-                }
-
-                // 操作按钮
-                HStack(spacing: AppTheme.Spacing.md) {
-                    GlassButton("重命名", icon: "pencil", style: .secondary, size: .medium) {
-                        showFileInfoSheet = false
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            renameText = file.baseName
-                            showRenameAlert = true
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    GlassButton("移动", icon: "folder", style: .secondary, size: .medium) {
-                        showFileInfoSheet = false
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            Task { await loadTargetFolders() }
-                            showMoveSheet = true
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .padding(.top, AppTheme.Spacing.sm)
-
-                // 给底部 navbar 留空间
-                Spacer().frame(height: 60)
+            if let width = file?.width, let height = file?.height {
+                galleryInfoRow("分辨率", value: "\(width) × \(height)")
             }
-            .padding(.vertical, AppTheme.Spacing.md)
+            if let duration = file?.formattedDuration {
+                galleryInfoRow("时长", value: duration)
+            }
+
+            // 操作按钮
+            HStack(spacing: AppTheme.Spacing.md) {
+                GlassButton("重命名", icon: "pencil", style: .secondary, size: .medium) {
+                    fileInfoToShow = nil
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        renameText = selectedFile?.baseName ?? ""
+                        showRenameAlert = true
+                    }
+                }
+                .frame(maxWidth: .infinity)
+
+                GlassButton("移动", icon: "folder", style: .secondary, size: .medium) {
+                    fileInfoToShow = nil
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        await self.loadTargetFolders()
+                        showMoveSheet = true
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .padding(.top, AppTheme.Spacing.sm)
+
+            // 给底部 navbar 留空间
+            Spacer().frame(height: 60)
         }
+        .padding(.vertical, AppTheme.Spacing.md)
     }
 
     private func galleryInfoRow(_ label: String, value: String) -> some View {
