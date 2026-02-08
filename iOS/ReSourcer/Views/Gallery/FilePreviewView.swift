@@ -8,6 +8,7 @@
 import SwiftUI
 import AVKit
 import AVFoundation
+import ImageIO
 
 // MARK: - PlaybackMode
 
@@ -554,6 +555,7 @@ struct ImagePreviewContent: View {
     @State private var lastScale: CGFloat = 1.0
     @State private var offset: CGSize = .zero
     @State private var lastOffset: CGSize = .zero
+    @State private var gifLoaded = false
 
     var body: some View {
         let contentURL = apiService.preview.getContentURL(
@@ -563,62 +565,117 @@ struct ImagePreviewContent: View {
         )
 
         GeometryReader { geometry in
-            AsyncImage(url: contentURL) { phase in
-                switch phase {
-                case .empty:
-                    // 加载中 — 先显示缩略图占位
-                    ZStack {
-                        CachedThumbnailView(
-                            url: apiService.preview.getThumbnailURL(
-                                for: file.path,
-                                size: 300,
-                                baseURL: apiService.baseURL,
-                                apiKey: apiService.apiKey
-                            )
-                        ) { thumb in
-                            thumb
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .blur(radius: 8)
-                        } placeholder: {
-                            Color.clear
-                        }
+            if file.isGif {
+                // GIF: 使用 UIKit 的 UIImageView 播放动画
+                gifPreview(url: contentURL, in: geometry)
+            } else {
+                // 普通图片: 使用 AsyncImage
+                staticImagePreview(url: contentURL, in: geometry)
+            }
+        }
+    }
 
-                        ProgressView()
-                            .tint(.white)
-                            .scaleEffect(1.2)
-                    }
+    // MARK: - GIF 预览
 
-                case .success(let image):
-                    image
+    @ViewBuilder
+    private func gifPreview(url: URL?, in geometry: GeometryProxy) -> some View {
+        ZStack {
+            // 加载占位
+            if !gifLoaded {
+                CachedThumbnailView(
+                    url: apiService.preview.getThumbnailURL(
+                        for: file.path,
+                        size: 300,
+                        baseURL: apiService.baseURL,
+                        apiKey: apiService.apiKey
+                    )
+                ) { thumb in
+                    thumb
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .scaleEffect(scale)
-                        .offset(offset)
-                        .gesture(pinchGesture)
-                        .gesture(scale > 1.0 ? dragGesture : nil)
-                        .onTapGesture(count: 2) { resetZoom() }
-                        .onTapGesture(count: 1, perform: onTap)
-
-                case .failure:
-                    VStack(spacing: AppTheme.Spacing.lg) {
-                        Image(systemName: "photo.badge.exclamationmark")
-                            .font(.system(size: 48))
-                            .foregroundStyle(.white.opacity(0.5))
-                        Text("图片加载失败")
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.7))
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .contentShape(Rectangle())
-                    .onTapGesture(perform: onTap)
-
-                @unknown default:
-                    EmptyView()
+                        .blur(radius: 8)
+                } placeholder: {
+                    Color.clear
                 }
+
+                ProgressView()
+                    .tint(.white)
+                    .scaleEffect(1.2)
             }
-            .frame(width: geometry.size.width, height: geometry.size.height)
+
+            // 动画 GIF
+            AnimatedGIFView(url: url) {
+                gifLoaded = true
+            }
+            .opacity(gifLoaded ? 1 : 0)
         }
+        .scaleEffect(scale)
+        .offset(offset)
+        .gesture(pinchGesture)
+        .gesture(scale > 1.0 ? dragGesture : nil)
+        .onTapGesture(count: 2) { resetZoom() }
+        .onTapGesture(count: 1, perform: onTap)
+        .frame(width: geometry.size.width, height: geometry.size.height)
+    }
+
+    // MARK: - 静态图片预览
+
+    @ViewBuilder
+    private func staticImagePreview(url: URL?, in geometry: GeometryProxy) -> some View {
+        AsyncImage(url: url) { phase in
+            switch phase {
+            case .empty:
+                ZStack {
+                    CachedThumbnailView(
+                        url: apiService.preview.getThumbnailURL(
+                            for: file.path,
+                            size: 300,
+                            baseURL: apiService.baseURL,
+                            apiKey: apiService.apiKey
+                        )
+                    ) { thumb in
+                        thumb
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .blur(radius: 8)
+                    } placeholder: {
+                        Color.clear
+                    }
+
+                    ProgressView()
+                        .tint(.white)
+                        .scaleEffect(1.2)
+                }
+
+            case .success(let image):
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .scaleEffect(scale)
+                    .offset(offset)
+                    .gesture(pinchGesture)
+                    .gesture(scale > 1.0 ? dragGesture : nil)
+                    .onTapGesture(count: 2) { resetZoom() }
+                    .onTapGesture(count: 1, perform: onTap)
+
+            case .failure:
+                VStack(spacing: AppTheme.Spacing.lg) {
+                    Image(systemName: "photo.badge.exclamationmark")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.white.opacity(0.5))
+                    Text("图片加载失败")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onTap)
+
+            @unknown default:
+                EmptyView()
+            }
+        }
+        .frame(width: geometry.size.width, height: geometry.size.height)
     }
 
     // MARK: - 缩放手势
@@ -631,7 +688,6 @@ struct ImagePreviewContent: View {
             }
             .onEnded { _ in
                 lastScale = scale
-                // 如果缩放过小，弹回 1.0
                 if scale < 1.0 {
                     withAnimation(AppTheme.Animation.spring) {
                         scale = 1.0
@@ -665,6 +721,118 @@ struct ImagePreviewContent: View {
             offset = .zero
             lastOffset = .zero
         }
+    }
+}
+
+// MARK: - AnimatedGIFView
+
+/// 使用 UIKit UIImageView 播放 GIF 动画
+struct AnimatedGIFView: UIViewRepresentable {
+
+    let url: URL?
+    var onLoaded: (() -> Void)?
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeUIView(context: Context) -> UIImageView {
+        let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFit
+        imageView.clipsToBounds = true
+        imageView.backgroundColor = .clear
+        return imageView
+    }
+
+    func updateUIView(_ imageView: UIImageView, context: Context) {
+        let coordinator = context.coordinator
+
+        // URL 未变化则不重复加载
+        guard url != coordinator.loadedURL else { return }
+        coordinator.loadedURL = url
+
+        guard let url = url else {
+            imageView.image = nil
+            return
+        }
+
+        // 取消上一次加载
+        coordinator.loadTask?.cancel()
+
+        // 将引用存入 Coordinator（@unchecked Sendable），避免 Task.detached 捕获非 Sendable 值
+        coordinator.imageView = imageView
+        coordinator.onLoaded = onLoaded
+
+        coordinator.loadTask = Task.detached { [coordinator] in
+            do {
+                let (data, _) = try await URLSession.shared.data(from: url)
+                guard !Task.isCancelled else { return }
+                let animatedImage = Self.decodeGIF(from: data)
+                await MainActor.run {
+                    coordinator.imageView?.image = animatedImage
+                    coordinator.onLoaded?()
+                }
+            } catch {
+                // 加载失败，静默处理
+            }
+        }
+    }
+
+    // MARK: - Coordinator
+
+    final class Coordinator: @unchecked Sendable {
+        var loadedURL: URL?
+        var loadTask: Task<Void, Never>?
+        weak var imageView: UIImageView?
+        var onLoaded: (() -> Void)?
+    }
+
+    // MARK: - GIF 解码
+
+    /// 通过 ImageIO 解码 GIF 全部帧，生成可动画的 UIImage
+    nonisolated static func decodeGIF(from data: Data) -> UIImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
+            return UIImage(data: data)
+        }
+
+        let frameCount = CGImageSourceGetCount(source)
+
+        // 非动画图片直接返回
+        if frameCount <= 1 {
+            return UIImage(data: data)
+        }
+
+        var frames: [UIImage] = []
+        var totalDuration: TimeInterval = 0
+
+        for i in 0..<frameCount {
+            guard let cgImage = CGImageSourceCreateImageAtIndex(source, i, nil) else { continue }
+            let duration = Self.frameDuration(from: source, at: i)
+            totalDuration += duration
+            frames.append(UIImage(cgImage: cgImage))
+        }
+
+        guard !frames.isEmpty else { return UIImage(data: data) }
+
+        return UIImage.animatedImage(with: frames, duration: totalDuration)
+    }
+
+    /// 读取单帧持续时间
+    nonisolated private static func frameDuration(from source: CGImageSource, at index: Int) -> TimeInterval {
+        guard let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any],
+              let gifDict = properties[kCGImagePropertyGIFDictionary] as? [CFString: Any] else {
+            return 0.1
+        }
+
+        // 优先使用 unclamped delay
+        if let delay = gifDict[kCGImagePropertyGIFUnclampedDelayTime] as? TimeInterval, delay > 0 {
+            return delay
+        }
+        if let delay = gifDict[kCGImagePropertyGIFDelayTime] as? TimeInterval, delay > 0 {
+            return delay
+        }
+
+        return 0.1
     }
 }
 
