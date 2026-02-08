@@ -148,16 +148,28 @@ struct DownloadTask: Identifiable, Codable, Equatable {
         String(format: "%.1f%%", progress)
     }
 
-    /// 格式化的创建时间
+    /// 格式化的创建时间（本地时区）
     var formattedCreatedAt: String {
-        // ISO 8601 时间格式解析
-        let formatter = ISO8601DateFormatter()
-        if let date = formatter.date(from: createdAt) {
-            let displayFormatter = DateFormatter()
-            displayFormatter.dateFormat = "MM-dd HH:mm"
-            return displayFormatter.string(from: date)
-        }
-        return createdAt
+        createdAt.toLocalDateTime
+    }
+
+    /// 构造用于预览的 FileInfo（仅已完成且有文件路径时有效）
+    var previewFileInfo: FileInfo? {
+        guard let filePath, let fileName else { return nil }
+        let ext = fileName.contains(".")
+            ? "." + (fileName.components(separatedBy: ".").last ?? "")
+            : ""
+        return FileInfo(
+            name: fileName,
+            path: filePath,
+            fileType: FileType.from(extension: ext),
+            extension: ext,
+            size: 0,
+            modified: createdAt,
+            width: nil,
+            height: nil,
+            duration: nil
+        )
     }
 }
 
@@ -207,4 +219,33 @@ struct CreateDownloadTaskResponse: Codable {
 struct DownloadTaskStatusResponse: Codable {
     let status: String
     let task: DownloadTask
+}
+
+// MARK: - ISO 8601 时间格式化
+
+extension String {
+    /// 将 ISO 8601 时间字符串转换为本地时区显示
+    /// 例: "2026-02-08T09:51:50.776088830+00:00" → "2026.02.08 20:51:50 Australia/Sydney"
+    var toLocalDateTime: String {
+        // 去除纳秒精度的小数部分，确保 ISO8601DateFormatter 能解析
+        let cleaned = self.replacingOccurrences(
+            of: #"\.\d+"#,
+            with: "",
+            options: .regularExpression
+        )
+
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime]
+
+        guard let date = isoFormatter.date(from: cleaned) else { return self }
+
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateFormat = "yyyy.MM.dd HH:mm:ss"
+        displayFormatter.timeZone = .current
+
+        let timeString = displayFormatter.string(from: date)
+        let tzName = TimeZone.current.identifier
+
+        return "\(timeString) \(tzName)"
+    }
 }

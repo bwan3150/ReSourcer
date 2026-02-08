@@ -85,7 +85,7 @@ struct UploadTaskListView: View {
         ScrollView {
             LazyVStack(spacing: AppTheme.Spacing.sm) {
                 ForEach(filteredTasks) { task in
-                    UploadTaskRow(task: task) {
+                    UploadTaskRow(task: task, apiService: apiService) {
                         deleteTask(task)
                     }
                 }
@@ -185,10 +185,12 @@ enum UploadSegment: Hashable {
 
 struct UploadTaskRow: View {
     let task: UploadTask
+    let apiService: APIService
     let onDelete: () -> Void
 
     @State private var isExpanded = false
     @State private var showDeleteConfirm = false
+    @State private var showFilePreview = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -265,7 +267,9 @@ struct UploadTaskRow: View {
                             Text("原因")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                                .frame(width: 32, alignment: .leading)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .frame(minWidth: 32, alignment: .leading)
 
                             Text(error)
                                 .font(.caption)
@@ -287,6 +291,13 @@ struct UploadTaskRow: View {
                     // 操作按钮
                     HStack {
                         Spacer()
+                        if task.status == .completed, task.previewFileInfo != nil {
+                            Button { showFilePreview = true } label: {
+                                Label("查看", systemImage: "eye")
+                                    .font(.caption)
+                                    .foregroundStyle(.primary)
+                            }
+                        }
                         if task.status.isFinished {
                             Button { showDeleteConfirm = true } label: {
                                 Label("删除", systemImage: "trash")
@@ -307,6 +318,11 @@ struct UploadTaskRow: View {
         }
         .padding(AppTheme.Spacing.md)
         .glassEffect(.clear, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+        .navigationDestination(isPresented: $showFilePreview) {
+            if let fileInfo = task.previewFileInfo {
+                FilePreviewView(apiService: apiService, files: [fileInfo], initialIndex: 0)
+            }
+        }
         .alert(task.canCancel ? "取消任务" : "删除记录", isPresented: $showDeleteConfirm) {
             Button("取消", role: .cancel) {}
             Button(task.canCancel ? "确认取消" : "删除", role: .destructive) { onDelete() }
@@ -320,7 +336,9 @@ struct UploadTaskRow: View {
             Text(label)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .frame(width: 32, alignment: .leading)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .frame(minWidth: 32, alignment: .leading)
             Text(value)
                 .font(.caption)
                 .foregroundStyle(.primary)

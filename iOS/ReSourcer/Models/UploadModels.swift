@@ -94,15 +94,28 @@ struct UploadTask: Identifiable, Codable, Equatable {
         "\(formattedUploadedSize) / \(formattedFileSize)"
     }
 
-    /// 格式化的创建时间（转换为本地时区）
+    /// 格式化的创建时间（本地时区）
     var formattedCreatedAt: String {
-        let formatter = ISO8601DateFormatter()
-        if let date = formatter.date(from: createdAt) {
-            let displayFormatter = DateFormatter()
-            displayFormatter.dateFormat = "MM-dd HH:mm"
-            return displayFormatter.string(from: date)
-        }
-        return createdAt
+        createdAt.toLocalDateTime
+    }
+
+    /// 构造用于预览的 FileInfo（仅已完成任务有效）
+    var previewFileInfo: FileInfo? {
+        guard status == .completed else { return nil }
+        let ext = fileName.contains(".")
+            ? "." + (fileName.components(separatedBy: ".").last ?? "")
+            : ""
+        return FileInfo(
+            name: fileName,
+            path: targetFolder + "/" + fileName,
+            fileType: FileType.from(extension: ext),
+            extension: ext,
+            size: fileSize,
+            modified: createdAt,
+            width: nil,
+            height: nil,
+            duration: nil
+        )
     }
 }
 
