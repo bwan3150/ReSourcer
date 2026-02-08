@@ -28,7 +28,8 @@ struct GalleryView: View {
 
     // 显示模式
     @State private var viewMode: GalleryViewMode = .grid
-    @State private var gridColumns = 3
+    /// 每个网格单元格的最小宽度，SwiftUI 根据屏幕宽度自动计算列数
+    private let gridItemMinWidth: CGFloat = 120
 
     // 导航
     @State private var navPath = NavigationPath()
@@ -95,7 +96,7 @@ struct GalleryView: View {
                 Button {
                     requestPhotoAccessAndShowPicker()
                 } label: {
-                    Image(systemName: "square.and.arrow.up")
+                    Image(systemName: "icloud.and.arrow.up")
                         .font(.system(size: 22, weight: .medium))
                         .foregroundStyle(Color(.systemBackground))
                         .frame(width: 56, height: 56)
@@ -354,7 +355,7 @@ struct GalleryView: View {
     // MARK: - Grid View
 
     private var gridView: some View {
-        let columns = Array(repeating: GridItem(.flexible(), spacing: AppTheme.Spacing.sm), count: gridColumns)
+        let columns = [GridItem(.adaptive(minimum: gridItemMinWidth), spacing: AppTheme.Spacing.sm)]
 
         return LazyVGrid(columns: columns, spacing: AppTheme.Spacing.sm) {
             ForEach(Array(files.enumerated()), id: \.element.id) { index, file in
