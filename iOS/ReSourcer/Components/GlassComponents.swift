@@ -70,7 +70,10 @@ struct GlassTextField: View {
     let placeholder: String
     let icon: String?
     let isSecure: Bool
+    let showSecureToggle: Bool
     let errorMessage: String?
+
+    @State private var isSecureVisible = false
 
     init(
         _ title: String = "",
@@ -78,6 +81,7 @@ struct GlassTextField: View {
         placeholder: String = "",
         icon: String? = nil,
         isSecure: Bool = false,
+        showSecureToggle: Bool = false,
         errorMessage: String? = nil
     ) {
         self.title = title
@@ -85,6 +89,7 @@ struct GlassTextField: View {
         self.placeholder = placeholder
         self.icon = icon
         self.isSecure = isSecure
+        self.showSecureToggle = showSecureToggle
         self.errorMessage = errorMessage
     }
 
@@ -106,7 +111,7 @@ struct GlassTextField: View {
                 }
 
                 Group {
-                    if isSecure {
+                    if isSecure && !isSecureVisible {
                         SecureField(placeholder, text: $text)
                     } else {
                         TextField(placeholder, text: $text)
@@ -115,6 +120,17 @@ struct GlassTextField: View {
                 .textFieldStyle(.plain)
                 .foregroundStyle(.primary)
                 .tint(.white)
+
+                if isSecure && showSecureToggle {
+                    Button {
+                        isSecureVisible.toggle()
+                    } label: {
+                        Image(systemName: isSecureVisible ? "eye.slash" : "eye")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             .padding(.horizontal, AppTheme.Spacing.md)
             .padding(.vertical, AppTheme.Spacing.md)

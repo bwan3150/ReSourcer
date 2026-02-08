@@ -43,18 +43,18 @@
 		A1000070233F0001 /* ClassifierView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000070233F0000 /* ClassifierView.swift */; };
 		A1000071233F0001 /* DownloadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000071233F0000 /* DownloadView.swift */; };
 		A1000072233F0001 /* GalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000072233F0000 /* GalleryView.swift */; };
-		A1000074233F0001 /* FilePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000074233F0000 /* FilePreviewView.swift */; };
 		A1000073233F0001 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000073233F0000 /* SettingsView.swift */; };
+		A1000074233F0001 /* FilePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000074233F0000 /* FilePreviewView.swift */; };
 		A1000075233F0001 /* AuthSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000075233F0000 /* AuthSettingsView.swift */; };
 		A1000076233F0001 /* CacheSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000076233F0000 /* CacheSettingsView.swift */; };
 		A1000077233F0001 /* ThumbnailCacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000077233F0000 /* ThumbnailCacheService.swift */; };
 		A1000078233F0001 /* CachedThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000078233F0000 /* CachedThumbnailView.swift */; };
 		A1000079233F0001 /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000079233F0000 /* QRScannerView.swift */; };
+		A1000080233F0001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000080233F0000 /* Assets.xcassets */; };
+		A1000081233F0001 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000081233F0000 /* Preview Assets.xcassets */; };
 		A100008A233F0001 /* PhotoUploadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100008A233F0000 /* PhotoUploadView.swift */; };
 		A100008B233F0001 /* UploadTaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100008B233F0000 /* UploadTaskListView.swift */; };
 		A100008D233F0001 /* PhotoExporter.m in Sources */ = {isa = PBXBuildFile; fileRef = A100008D233F0000 /* PhotoExporter.m */; };
-		A1000080233F0001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000080233F0000 /* Assets.xcassets */; };
-		A1000081233F0001 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000081233F0000 /* Preview Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -95,20 +95,20 @@
 		A1000070233F0000 /* ClassifierView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassifierView.swift; sourceTree = "<group>"; };
 		A1000071233F0000 /* DownloadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadView.swift; sourceTree = "<group>"; };
 		A1000072233F0000 /* GalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryView.swift; sourceTree = "<group>"; };
-		A1000074233F0000 /* FilePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewView.swift; sourceTree = "<group>"; };
 		A1000073233F0000 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A1000074233F0000 /* FilePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewView.swift; sourceTree = "<group>"; };
 		A1000075233F0000 /* AuthSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSettingsView.swift; sourceTree = "<group>"; };
 		A1000076233F0000 /* CacheSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheSettingsView.swift; sourceTree = "<group>"; };
 		A1000077233F0000 /* ThumbnailCacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCacheService.swift; sourceTree = "<group>"; };
 		A1000078233F0000 /* CachedThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedThumbnailView.swift; sourceTree = "<group>"; };
 		A1000079233F0000 /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
+		A1000080233F0000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A1000081233F0000 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		A100008A233F0000 /* PhotoUploadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoUploadView.swift; sourceTree = "<group>"; };
 		A100008B233F0000 /* UploadTaskListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadTaskListView.swift; sourceTree = "<group>"; };
 		A100008C233F0000 /* PhotoExporter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PhotoExporter.h; sourceTree = "<group>"; };
 		A100008D233F0000 /* PhotoExporter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PhotoExporter.m; sourceTree = "<group>"; };
 		A100008E233F0000 /* ReSourcer-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ReSourcer-Bridging-Header.h"; sourceTree = "<group>"; };
-		A1000080233F0000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		A1000081233F0000 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -572,7 +572,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.1;
+				MARKETING_VERSION = 0.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.resourcer.apple;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -610,7 +610,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.1;
+				MARKETING_VERSION = 0.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.resourcer.apple;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

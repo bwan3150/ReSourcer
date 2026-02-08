@@ -201,7 +201,7 @@ struct ServerConnectView: View {
         VStack(spacing: AppTheme.Spacing.lg) {
             // 服务器名称
             GlassTextField(
-                "服务器名称（可选）",
+                "服务器名称",
                 text: $serverName,
                 placeholder: "我的服务器",
                 icon: "tag"
@@ -224,9 +224,26 @@ struct ServerConnectView: View {
                 text: $apiKey,
                 placeholder: "输入 API Key",
                 icon: "key",
-                isSecure: true
+                isSecure: true,
+                showSecureToggle: true
             )
             .textInputAutocapitalization(.never)
+
+            // 扫码快捷填充（小按钮，明确可选）
+            HStack {
+                Spacer()
+                Button {
+                    showScanner = true
+                } label: {
+                    HStack(spacing: AppTheme.Spacing.xs) {
+                        Image(systemName: "qrcode.viewfinder")
+                            .font(.system(size: 14))
+                        Text("扫码填充")
+                            .font(.caption)
+                    }
+                    .foregroundStyle(.secondary)
+                }
+            }
 
             // 错误提示
             if let error = errorMessage {
@@ -237,21 +254,6 @@ struct ServerConnectView: View {
                 .font(.caption)
                 .foregroundStyle(.red)
             }
-
-            // 扫码按钮
-            Button {
-                showScanner = true
-            } label: {
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    Image(systemName: "qrcode.viewfinder")
-                    Text("扫码输入")
-                }
-                .font(.body)
-                .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, AppTheme.Spacing.md)
-            }
-            .glassEffect(.regular.interactive(), in: .capsule)
 
             // 按钮
             HStack(spacing: AppTheme.Spacing.md) {
