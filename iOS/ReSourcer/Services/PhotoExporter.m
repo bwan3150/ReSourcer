@@ -149,4 +149,36 @@
     }];
 }
 
++ (void)saveFileToPhotos:(NSData *)data
+                fileName:(NSString *)fileName
+              completion:(void (^)(BOOL, NSError *_Nullable))completion {
+
+    // 写入临时文件
+    NSString *tempPath = [NSTemporaryDirectory() stringByAppendingPathComponent:
+                          [NSString stringWithFormat:@"%@_%@", [[NSUUID UUID] UUIDString], fileName]];
+    NSURL *tempURL = [NSURL fileURLWithPath:tempPath];
+
+    NSError *writeError = nil;
+    [data writeToURL:tempURL options:NSDataWritingAtomic error:&writeError];
+    if (writeError) {
+        completion(NO, writeError);
+        return;
+    }
+
+    // 根据扩展名判断资源类型
+    NSString *ext = fileName.pathExtension.lowercaseString;
+    NSArray *videoExts = @[@"mp4", @"mov", @"avi", @"mkv", @"m4v", @"webm", @"flv", @"wmv"];
+    BOOL isVideo = [videoExts containsObject:ext];
+
+    [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
+        PHAssetCreationRequest *request = [PHAssetCreationRequest creationRequestForAsset];
+        PHAssetResourceType resourceType = isVideo ? PHAssetResourceTypeVideo : PHAssetResourceTypePhoto;
+        [request addResourceWithType:resourceType fileURL:tempURL options:nil];
+    } completionHandler:^(BOOL success, NSError *_Nullable error) {
+        // 清理临时文件
+        [[NSFileManager defaultManager] removeItemAtURL:tempURL error:nil];
+        completion(success, error);
+    }];
+}
+
 @end

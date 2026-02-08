@@ -9,6 +9,7 @@ import SwiftUI
 import AVKit
 import AVFoundation
 import ImageIO
+import Photos
 
 // MARK: - PlaybackMode
 
@@ -353,6 +354,12 @@ struct FilePreviewView: View {
                         }
                     }
                     .frame(maxWidth: .infinity)
+
+                    GlassButton("下载", icon: "arrow.down.circle", style: .secondary, size: .medium) {
+                        showInfoSheet = false
+                        saveFileToDevice(file)
+                    }
+                    .frame(maxWidth: .infinity)
                 }
                 .padding(.top, AppTheme.Spacing.sm)
             }
@@ -482,6 +489,88 @@ struct FilePreviewView: View {
     }
 
     // MARK: - 文件操作
+
+    private func saveFileToDevice(_ file: FileInfo) {
+        guard let contentURL = apiService.preview.getContentURL(
+            for: file.path,
+            baseURL: apiService.baseURL,
+            apiKey: apiService.apiKey
+        ) else {
+            GlassAlertManager.shared.showError("无法获取文件地址")
+            return
+        }
+
+        GlassAlertManager.shared.showQuickLoading()
+
+        Task.detached {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: contentURL)
+
+                if file.fileType.isMedia {
+                    // 检查相册权限
+                    var status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
+                    if status == .notDetermined {
+                        status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+                    }
+                    guard status == .authorized else {
+                        await MainActor.run {
+                            GlassAlertManager.shared.hideQuickLoading()
+                            GlassAlertManager.shared.showError("无法访问相册", message: "请在设置中允许访问相册")
+                        }
+                        return
+                    }
+
+                    // 通过 ObjC 包装器保存到相册
+                    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                        PhotoExporter.saveFile(toPhotos: data, fileName: file.name) { success, error in
+                            if success {
+                                continuation.resume()
+                            } else {
+                                continuation.resume(throwing: error ?? APIError.unknown("保存失败"))
+                            }
+                        }
+                    }
+
+                    await MainActor.run {
+                        GlassAlertManager.shared.hideQuickLoading()
+                        GlassAlertManager.shared.showSuccess("已保存到相册")
+                    }
+                } else {
+                    // 非媒体文件：写入临时文件后弹出分享面板
+                    let tempURL = FileManager.default.temporaryDirectory
+                        .appendingPathComponent(file.name)
+                    try data.write(to: tempURL)
+
+                    await MainActor.run {
+                        GlassAlertManager.shared.hideQuickLoading()
+
+                        let activityVC = UIActivityViewController(
+                            activityItems: [tempURL],
+                            applicationActivities: nil
+                        )
+                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                           let rootVC = windowScene.windows.first?.rootViewController {
+                            activityVC.popoverPresentationController?.sourceView = rootVC.view
+                            activityVC.popoverPresentationController?.sourceRect = CGRect(
+                                x: rootVC.view.bounds.midX,
+                                y: rootVC.view.bounds.midY,
+                                width: 0, height: 0
+                            )
+                            activityVC.popoverPresentationController?.permittedArrowDirections = []
+                            rootVC.present(activityVC, animated: true)
+                        }
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    GlassAlertManager.shared.hideQuickLoading()
+                    if !error.isCancelledRequest {
+                        GlassAlertManager.shared.showError("下载失败", message: error.localizedDescription)
+                    }
+                }
+            }
+        }
+    }
 
     private func loadFolders() async {
         do {

@@ -36,6 +36,14 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)deleteAssetsWithIdentifiers:(NSArray<NSString *> *)identifiers
                          completion:(void (^)(BOOL success, NSError *_Nullable error))completion;
 
+/// 将文件数据保存到系统相册
+/// @param data 文件数据
+/// @param fileName 文件名（用于判断资源类型和临时文件命名）
+/// @param completion 完成回调
++ (void)saveFileToPhotos:(NSData *)data
+                fileName:(NSString *)fileName
+              completion:(void (^)(BOOL success, NSError *_Nullable error))completion;
+
 @end
 
 NS_ASSUME_NONNULL_END
