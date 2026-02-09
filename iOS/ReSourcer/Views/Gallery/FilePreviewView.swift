@@ -136,12 +136,12 @@ struct FilePreviewView: View {
         .toolbarVisibility(showControls ? .visible : .hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .fontWeight(.semibold)
-                }
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.black)
+                    .frame(width: 34, height: 34)
+                    .background(.white.opacity(0.85), in: Circle())
+                    .onTapGesture { dismiss() }
             }
 
             ToolbarItem(placement: .principal) {
@@ -160,15 +160,22 @@ struct FilePreviewView: View {
             }
 
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    withAnimation(AppTheme.Animation.standard) {
-                        playbackMode = playbackMode.next
+                Image(systemName: playbackMode.iconName)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(playbackMode == .repeatCurrent ? .black : .white)
+                    .frame(width: 34, height: 34)
+                    .background(
+                        playbackMode == .repeatCurrent
+                            ? Color.white.opacity(0.85)
+                            : Color.blue.opacity(0.85),
+                        in: Circle()
+                    )
+                    .onTapGesture {
+                        withAnimation(AppTheme.Animation.standard) {
+                            playbackMode = playbackMode.next
+                        }
+                        startAutoAdvanceTimer()
                     }
-                    startAutoAdvanceTimer()
-                } label: {
-                    Image(systemName: playbackMode.iconName)
-                        .fontWeight(.semibold)
-                }
             }
         }
         .toolbar(.hidden, for: .tabBar)
