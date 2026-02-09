@@ -338,26 +338,34 @@ struct GalleryView: View {
 
     @ViewBuilder
     private var contentView: some View {
-        ScrollView {
-            if viewMode == .grid {
-                gridView
-            } else {
-                listView
+        GeometryReader { geometry in
+            ScrollView {
+                if viewMode == .grid {
+                    gridView(containerWidth: geometry.size.width)
+                } else {
+                    listView
+                }
             }
-        }
-        .refreshable {
-            await GlassAlertManager.shared.withQuickLoading {
-                await refreshFiles()
+            .refreshable {
+                await GlassAlertManager.shared.withQuickLoading {
+                    await refreshFiles()
+                }
             }
         }
     }
 
     // MARK: - Grid View
 
-    private var gridView: some View {
-        let columns = [GridItem(.adaptive(minimum: gridItemMinWidth), spacing: AppTheme.Spacing.sm)]
+    /// 网格列数：根据容器宽度动态计算，限制 3~5 列
+    private func gridView(containerWidth: CGFloat) -> some View {
+        let padding = AppTheme.Spacing.md * 2
+        let spacing = AppTheme.Spacing.sm
+        let availableWidth = containerWidth - padding
+        let rawCount = Int(availableWidth / gridItemMinWidth)
+        let columnCount = min(max(rawCount, 3), 5)
+        let columns = Array(repeating: GridItem(.flexible(), spacing: spacing), count: columnCount)
 
-        return LazyVGrid(columns: columns, spacing: AppTheme.Spacing.sm) {
+        return LazyVGrid(columns: columns, spacing: spacing) {
             ForEach(Array(files.enumerated()), id: \.element.id) { index, file in
                 NavigationLink(value: index) {
                     GalleryGridItem(file: file, apiService: apiService)
