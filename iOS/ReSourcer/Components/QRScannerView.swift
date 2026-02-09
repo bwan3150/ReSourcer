@@ -66,7 +66,7 @@ struct QRScannerView: View {
                             .foregroundStyle(.white)
                             .frame(width: 36, height: 36)
                     }
-                    .glassEffect(.regular.interactive(), in: .circle)
+                    .interactiveGlassBackground(in: Circle())
                     .padding(AppTheme.Spacing.lg)
                 }
                 Spacer()

@@ -268,7 +268,7 @@ struct ClassifierView: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                 }
-                .glassEffect(.regular.interactive(), in: .capsule)
+                .interactiveGlassBackground(in: Capsule())
             }
 
             // 进度条
@@ -325,7 +325,7 @@ struct ClassifierView: View {
                 verticalCategoryList
             }
         }
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
+        .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
     }
 
     // MARK: - Drag Handle
@@ -412,7 +412,7 @@ struct ClassifierView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
         }
-        .glassEffect(.regular.interactive(), in: .capsule)
+        .interactiveGlassBackground(in: Capsule())
     }
 
     // MARK: - Full Category Button（垂直列表用）
@@ -444,7 +444,7 @@ struct ClassifierView: View {
             .padding(.horizontal, AppTheme.Spacing.md)
             .padding(.vertical, AppTheme.Spacing.sm)
         }
-        .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+        .interactiveGlassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
     }
 
     // MARK: - Add Buttons
@@ -465,7 +465,7 @@ struct ClassifierView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
         }
-        .glassEffect(.regular.interactive(), in: .capsule)
+        .interactiveGlassBackground(in: Capsule())
     }
 
     private var fullAddButton: some View {
@@ -487,7 +487,7 @@ struct ClassifierView: View {
             .padding(.horizontal, AppTheme.Spacing.md)
             .padding(.vertical, AppTheme.Spacing.sm)
         }
-        .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+        .interactiveGlassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
     }
 
     // MARK: - Sort Buttons
@@ -507,7 +507,7 @@ struct ClassifierView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
         }
-        .glassEffect(.regular.interactive(), in: .capsule)
+        .interactiveGlassBackground(in: Capsule())
     }
 
     private var fullSortButton: some View {
@@ -528,7 +528,7 @@ struct ClassifierView: View {
             .padding(.horizontal, AppTheme.Spacing.md)
             .padding(.vertical, AppTheme.Spacing.sm)
         }
-        .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+        .interactiveGlassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
     }
 
     // MARK: - Reorder Sheet

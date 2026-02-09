@@ -1107,7 +1107,7 @@ struct OtherFilePreviewContent: View {
                 .foregroundStyle(.white.opacity(0.6))
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.vertical, AppTheme.Spacing.xs)
-                .glassEffect(.regular, in: .capsule)
+                .glassBackground(in: Capsule())
 
             // 文件大小
             Text(file.formattedSize)

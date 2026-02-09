@@ -56,7 +56,7 @@ struct GlassSearchBar: View {
         }
         .padding(.horizontal, AppTheme.Spacing.md)
         .padding(.vertical, AppTheme.Spacing.md)
-        .glassEffect(.clear, in: .capsule)
+        .clearGlassBackground(in: Capsule())
     }
 }
 
@@ -134,9 +134,9 @@ struct GlassTextField: View {
             }
             .padding(.horizontal, AppTheme.Spacing.md)
             .padding(.vertical, AppTheme.Spacing.md)
-            .glassEffect(
-                errorMessage != nil ? .regular.tint(.red.opacity(0.3)) : .clear,
-                in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md)
+            .if(errorMessage != nil,
+                then: { $0.tintedGlassBackground(.red.opacity(0.3), in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md)) },
+                else: { $0.clearGlassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md)) }
             )
 
             // 错误消息
@@ -163,7 +163,7 @@ struct GlassCard<Content: View>: View {
     var body: some View {
         content()
             .padding(AppTheme.Spacing.lg)
-            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
+            .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
     }
 }
 
@@ -220,7 +220,7 @@ struct GlassListRow<Leading: View, Trailing: View>: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .glassEffect(.clear, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+        .clearGlassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
     }
 }
 
@@ -255,7 +255,7 @@ struct GlassLoadingView: View {
         }
         .onAppear { animating = true }
         .padding(AppTheme.Spacing.xxl)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
+        .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
     }
 }
 
@@ -322,15 +322,24 @@ struct GlassSegmentedControl<T: Hashable>: View {
     @Namespace private var namespace
 
     var body: some View {
-        GlassEffectContainer(spacing: 4) {
-            HStack(spacing: 0) {
-                ForEach(items, id: \.value) { item in
-                    segmentButton(for: item)
-                }
+        if #available(iOS 26, *) {
+            GlassEffectContainer(spacing: 4) {
+                segmentedContent
+                    .glassEffect(.clear, in: .capsule)
             }
-            .padding(AppTheme.Spacing.xs)
-            .glassEffect(.clear, in: .capsule)
+        } else {
+            segmentedContent
+                .background(.ultraThinMaterial, in: Capsule())
         }
+    }
+
+    private var segmentedContent: some View {
+        HStack(spacing: 0) {
+            ForEach(items, id: \.value) { item in
+                segmentButton(for: item)
+            }
+        }
+        .padding(AppTheme.Spacing.xs)
     }
 
     @ViewBuilder
@@ -348,8 +357,11 @@ struct GlassSegmentedControl<T: Hashable>: View {
                 .foregroundStyle(.primary)
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.vertical, AppTheme.Spacing.sm)
-                .glassEffect(isSelected ? .regular : .identity, in: .capsule)
-                .glassEffectID(item.value.hashValue, in: namespace)
+                .if(isSelected,
+                    then: { $0.glassBackground(in: Capsule()) },
+                    else: { $0.background(.clear, in: Capsule()) }
+                )
+                .matchedGeometryEffect(id: item.value.hashValue, in: namespace)
         }
         .buttonStyle(.plain)
     }
@@ -376,7 +388,7 @@ struct GlassBadge: View {
                 .foregroundStyle(.primary)
                 .padding(.horizontal, AppTheme.Spacing.sm)
                 .padding(.vertical, AppTheme.Spacing.xxs)
-                .glassEffect(.regular.tint(.red), in: .capsule)
+                .tintedGlassBackground(.red, in: Capsule())
         }
     }
 }
@@ -411,7 +423,10 @@ struct GlassChip: View {
             .foregroundStyle(.primary)
             .padding(.horizontal, AppTheme.Spacing.md)
             .padding(.vertical, AppTheme.Spacing.sm)
-            .glassEffect(isSelected ? .regular : .clear, in: .capsule)
+            .if(isSelected,
+                then: { $0.glassBackground(in: Capsule()) },
+                else: { $0.clearGlassBackground(in: Capsule()) }
+            )
         }
         .buttonStyle(.plain)
     }

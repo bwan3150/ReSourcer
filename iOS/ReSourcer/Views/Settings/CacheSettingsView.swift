@@ -130,12 +130,12 @@ struct CacheSettingsView: View {
                         .padding(.horizontal, AppTheme.Spacing.sm)
                         .padding(.vertical, AppTheme.Spacing.xxs)
                 }
-                .glassEffect(.regular.interactive(), in: .capsule)
+                .interactiveGlassBackground(in: Capsule())
                 .disabled(size == 0)
             }
         }
         .padding(AppTheme.Spacing.md)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
+        .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
     }
 
     // MARK: - Total

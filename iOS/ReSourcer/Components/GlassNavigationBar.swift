@@ -48,7 +48,7 @@ struct GlassNavigationBar<Leading: View, Trailing: View>: View {
         }
         .padding(.horizontal, AppTheme.Spacing.lg)
         .padding(.bottom, AppTheme.Spacing.sm)
-        .glassEffect(.regular, in: UnevenRoundedRectangle(
+        .glassBackground(in: UnevenRoundedRectangle(
             bottomLeadingRadius: AppTheme.CornerRadius.xl,
             bottomTrailingRadius: AppTheme.CornerRadius.xl
         ))

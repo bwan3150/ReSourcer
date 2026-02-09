@@ -503,7 +503,7 @@ struct SettingsSection<Content: View>: View {
 
             content()
                 .padding(AppTheme.Spacing.md)
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
+                .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
         }
     }
 }

@@ -125,91 +125,74 @@ struct GlassButton: View {
         }) {
             buttonContent
         }
-        .buttonStyle(.plain)
         .disabled(!isEnabled || isLoading)
+        .modifier(NativeButtonStyleModifier(style: style, size: size))
     }
 
     // MARK: - Content
 
     @ViewBuilder
     private var buttonContent: some View {
-        Group {
-            if isLoading {
-                ProgressView()
-                    .progressViewStyle(.circular)
-                    .tint(foregroundColor)
-            } else {
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    if let icon = icon {
-                        Image(systemName: icon)
-                            .font(.system(size: size.iconSize, weight: .medium))
-                    }
-                    if let title = title {
-                        Text(title)
-                            .font(size.font.weight(.medium))
-                    }
+        if isLoading {
+            ProgressView()
+                .progressViewStyle(.circular)
+        } else {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                if let icon = icon {
+                    Image(systemName: icon)
+                }
+                if let title = title {
+                    Text(title)
                 }
             }
-        }
-        .foregroundStyle(foregroundColor)
-        .frame(height: size.height)
-        .frame(minWidth: style == .icon ? size.height : nil)
-        .padding(.horizontal, style == .icon ? 0 : size.horizontalPadding)
-        .modifier(GlassButtonStyleModifier(style: style, isEnabled: isEnabled))
-    }
-
-    // MARK: - Computed Properties
-
-    private var foregroundColor: Color {
-        guard isEnabled else {
-            return .secondary
-        }
-        switch style {
-        case .primary, .icon:
-            return .white
-        case .secondary:
-            return .primary
-        case .destructive:
-            return .white
-        case .text:
-            return AppTheme.Colors.primary
         }
     }
 }
 
-// MARK: - Glass Button Style Modifier
+// MARK: - Native Button Style Modifier
 
-/// 应用玻璃效果的 ViewModifier
-struct GlassButtonStyleModifier: ViewModifier {
+/// 应用原生按钮样式 — iOS 26 自动液态玻璃，旧版标准系统样式
+struct NativeButtonStyleModifier: ViewModifier {
     let style: GlassButtonStyle
-    let isEnabled: Bool
+    let size: GlassButtonSize
 
+    @ViewBuilder
     func body(content: Content) -> some View {
         switch style {
         case .primary:
             content
-                .glassEffect(.regular.interactive(), in: .capsule)
-                .opacity(isEnabled ? 1.0 : 0.5)
+                .buttonStyle(.borderedProminent)
+                .controlSize(controlSize)
 
         case .secondary:
             content
-                .glassEffect(.clear.interactive(), in: .capsule)
-                .opacity(isEnabled ? 1.0 : 0.5)
+                .buttonStyle(.bordered)
+                .controlSize(controlSize)
 
         case .destructive:
             content
-                .glassEffect(.regular.tint(.red).interactive(), in: .capsule)
-                .opacity(isEnabled ? 1.0 : 0.5)
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
+                .controlSize(controlSize)
 
         case .icon:
             content
-                .glassEffect(.regular.interactive(), in: .circle)
-                .opacity(isEnabled ? 1.0 : 0.5)
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.circle)
+                .controlSize(controlSize)
 
         case .text:
             content
-                .contentShape(Capsule())
-                .opacity(isEnabled ? 1.0 : 0.5)
+                .buttonStyle(.borderless)
+                .controlSize(controlSize)
+        }
+    }
+
+    private var controlSize: ControlSize {
+        switch size {
+        case .small: .small
+        case .medium: .regular
+        case .large: .large
         }
     }
 }

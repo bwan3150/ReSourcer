@@ -99,7 +99,7 @@ struct ServerConnectView: View {
                                 .foregroundStyle(.primary)
                                 .frame(width: 44, height: 44)
                         }
-                        .glassEffect(.regular.interactive(), in: .circle)
+                        .interactiveGlassBackground(in: Circle())
                         Spacer()
                     }
                     .listRowBackground(Color.clear)
@@ -167,7 +167,7 @@ struct ServerConnectView: View {
                     .font(.title2)
                     .foregroundStyle(.primary)
                     .frame(width: 44, height: 44)
-                    .glassEffect(.regular, in: .circle)
+                    .glassBackground(in: Circle())
 
                 // 服务器信息
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
@@ -190,7 +190,7 @@ struct ServerConnectView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .glassEffect(.clear, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
+        .clearGlassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
     }
 
     // MARK: - Server Form Section
@@ -270,7 +270,7 @@ struct ServerConnectView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, AppTheme.Spacing.md)
                     }
-                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .interactiveGlassBackground(in: Capsule())
                     .disabled(serverURL.isEmpty || apiKey.isEmpty)
                 }
 
@@ -292,13 +292,13 @@ struct ServerConnectView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, AppTheme.Spacing.md)
                 }
-                .glassEffect(.regular.interactive(), in: .capsule)
+                .interactiveGlassBackground(in: Capsule())
                 .disabled(serverURL.isEmpty || apiKey.isEmpty)
             }
         }
         .padding(savedServers.isEmpty ? AppTheme.Spacing.lg : 0)
         .if(savedServers.isEmpty) { view in
-            view.glassEffect(.regular, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
+            view.glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
         }
     }
 

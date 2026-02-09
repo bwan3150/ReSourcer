@@ -317,7 +317,7 @@ struct UploadTaskRow: View {
             }
         }
         .padding(AppTheme.Spacing.md)
-        .glassEffect(.clear, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+        .clearGlassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
         .navigationDestination(isPresented: $showFilePreview) {
             if let fileInfo = task.previewFileInfo {
                 FilePreviewView(apiService: apiService, files: [fileInfo], initialIndex: 0)

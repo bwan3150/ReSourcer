@@ -149,7 +149,7 @@ struct GlassConfirmDialog: View {
             }
             .padding(AppTheme.Spacing.xxl)
             .frame(maxWidth: 300)
-            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
+            .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
             .scaleEffect(isVisible ? 1 : 0.85)
             .opacity(isVisible ? 1 : 0)
         }

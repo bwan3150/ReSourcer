@@ -105,7 +105,7 @@ struct AuthSettingsView: View {
             }
         }
         .padding(AppTheme.Spacing.md)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
+        .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
     }
 
     // MARK: - Expanded Content
@@ -127,7 +127,7 @@ struct AuthSettingsView: View {
                     .frame(minHeight: 100, maxHeight: 200)
                     .scrollContentBackground(.hidden)
                     .padding(AppTheme.Spacing.sm)
-                    .glassEffect(.clear, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+                    .clearGlassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
                     .overlay(alignment: .topLeading) {
                         if credentialText.isEmpty {
                             Text("粘贴 \(platform.authTypeDescription) 内容...")
@@ -170,7 +170,7 @@ struct AuthSettingsView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, AppTheme.Spacing.sm)
                 }
-                .glassEffect(.regular.interactive(), in: .capsule)
+                .interactiveGlassBackground(in: Capsule())
                 .disabled(credentialText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
 
                 // 删除按钮（仅在已配置时显示）
@@ -193,7 +193,7 @@ struct AuthSettingsView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, AppTheme.Spacing.sm)
                     }
-                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .interactiveGlassBackground(in: Capsule())
                     .disabled(isDeleting)
                 }
             }

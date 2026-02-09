@@ -133,7 +133,7 @@ struct GlassBottomSheet<Content: View>: View {
             .scrollBounceBehavior(.basedOnSize)
         }
         .frame(maxHeight: sheetHeight)
-        .glassEffect(.regular, in: UnevenRoundedRectangle(
+        .glassBackground(in: UnevenRoundedRectangle(
             topLeadingRadius: AppTheme.CornerRadius.sheet,
             topTrailingRadius: AppTheme.CornerRadius.sheet
         ))

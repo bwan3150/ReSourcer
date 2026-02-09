@@ -214,7 +214,7 @@ struct GalleryView: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
             }
-            .glassEffect(isDropdownOpen ? .regular : .regular.interactive(), in: .capsule)
+            .glassBackground(in: Capsule())
 
             // 上传记录
             Button {
@@ -225,7 +225,7 @@ struct GalleryView: View {
                     .foregroundStyle(.primary)
                     .frame(width: 44, height: 44)
             }
-            .glassEffect(.regular.interactive(), in: .circle)
+            .interactiveGlassBackground(in: Circle())
 
             // 视图切换按钮
             Button {
@@ -238,7 +238,7 @@ struct GalleryView: View {
                     .foregroundStyle(.primary)
                     .frame(width: 44, height: 44)
             }
-            .glassEffect(.regular.interactive(), in: .circle)
+            .interactiveGlassBackground(in: Circle())
         }
     }
 
@@ -331,7 +331,7 @@ struct GalleryView: View {
             }
         }
         .padding(AppTheme.Spacing.sm)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
+        .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
     }
 
     // MARK: - Content View
@@ -813,7 +813,7 @@ struct GalleryGridItem: View {
                             .foregroundStyle(.primary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .glassEffect(.regular, in: .capsule)
+                            .glassBackground(in: Capsule())
                     }
 
                     // 扩展名标签（所有文件）
@@ -823,7 +823,7 @@ struct GalleryGridItem: View {
                         .foregroundStyle(.primary)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .glassEffect(.regular, in: .capsule)
+                        .glassBackground(in: Capsule())
                 }
                 .padding(6)
             }
@@ -910,7 +910,7 @@ struct GalleryListItem: View {
             .buttonStyle(.plain)
         }
         .padding(AppTheme.Spacing.md)
-        .glassEffect(.clear, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+        .clearGlassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
     }
 }
 

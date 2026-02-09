@@ -98,7 +98,7 @@ struct GlassToast: View {
         }
         .padding(.horizontal, AppTheme.Spacing.lg)
         .padding(.vertical, AppTheme.Spacing.md)
-        .glassEffect(.regular, in: .capsule)
+        .glassBackground(in: Capsule())
         .opacity(isVisible ? 1 : 0)
         .offset(y: isVisible ? 0 : 20)
         .onAppear {
@@ -203,7 +203,7 @@ struct GlassAlertDialog: View {
             }
             .padding(AppTheme.Spacing.xxl)
             .frame(maxWidth: 320)
-            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
+            .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
             .scaleEffect(isVisible ? 1 : 0.9)
             .opacity(isVisible ? 1 : 0)
         }
@@ -405,7 +405,7 @@ struct GlassQuickLoadingView: View {
             }
         }
         .padding(AppTheme.Spacing.lg)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+        .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
         .onAppear { animating = true }
     }
 }

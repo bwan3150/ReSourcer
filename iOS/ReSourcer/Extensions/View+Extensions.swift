@@ -228,6 +228,52 @@ extension View {
     }
 }
 
+// MARK: - Glass Background Helpers
+
+extension View {
+
+    /// 常规玻璃背景 — iOS 26 用 .glassEffect(.regular), 旧版用 .regularMaterial
+    @ViewBuilder
+    func glassBackground<S: InsettableShape>(in shape: S) -> some View {
+        if #available(iOS 26, *) {
+            self.glassEffect(.regular, in: shape)
+        } else {
+            self.background(.regularMaterial, in: shape)
+        }
+    }
+
+    /// 透明玻璃背景 — iOS 26 用 .glassEffect(.clear), 旧版用 .ultraThinMaterial
+    @ViewBuilder
+    func clearGlassBackground<S: InsettableShape>(in shape: S) -> some View {
+        if #available(iOS 26, *) {
+            self.glassEffect(.clear, in: shape)
+        } else {
+            self.background(.ultraThinMaterial, in: shape)
+        }
+    }
+
+    /// 带色调的玻璃背景 — iOS 26 用 .tint(), 旧版用半透明颜色+材质
+    @ViewBuilder
+    func tintedGlassBackground<S: InsettableShape>(_ color: Color, in shape: S) -> some View {
+        if #available(iOS 26, *) {
+            self.glassEffect(.regular.tint(color), in: shape)
+        } else {
+            self.background(color.opacity(0.3), in: shape)
+                .background(.regularMaterial, in: shape)
+        }
+    }
+
+    /// 交互式玻璃背景 — iOS 26 用 .interactive(), 旧版用 regularMaterial
+    @ViewBuilder
+    func interactiveGlassBackground<S: InsettableShape>(in shape: S) -> some View {
+        if #available(iOS 26, *) {
+            self.glassEffect(.regular.interactive(), in: shape)
+        } else {
+            self.background(.regularMaterial, in: shape)
+        }
+    }
+}
+
 // MARK: - Preview Helper
 
 extension View {

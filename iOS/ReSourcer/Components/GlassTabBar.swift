@@ -46,18 +46,29 @@ struct GlassTabBar<Tab: GlassTabItem>: View {
     // MARK: - Body
 
     var body: some View {
-        GlassEffectContainer(spacing: 20) {
-            HStack(spacing: 0) {
-                ForEach(tabs, id: \.self) { tab in
-                    tabButton(for: tab)
+        Group {
+            if #available(iOS 26, *) {
+                GlassEffectContainer(spacing: 20) {
+                    tabBarContent
+                        .glassEffect(.regular, in: .capsule)
                 }
+            } else {
+                tabBarContent
+                    .background(.regularMaterial, in: Capsule())
             }
-            .padding(.horizontal, AppTheme.Spacing.md)
-            .padding(.vertical, AppTheme.Spacing.sm)
-            .glassEffect(.regular, in: .capsule)
         }
         .padding(.horizontal, AppTheme.Spacing.lg)
         .padding(.bottom, AppTheme.Spacing.sm)
+    }
+
+    private var tabBarContent: some View {
+        HStack(spacing: 0) {
+            ForEach(tabs, id: \.self) { tab in
+                tabButton(for: tab)
+            }
+        }
+        .padding(.horizontal, AppTheme.Spacing.md)
+        .padding(.vertical, AppTheme.Spacing.sm)
     }
 
     // MARK: - Tab Button
@@ -148,15 +159,26 @@ struct GlassFloatingTabBar<Tab: GlassTabItem>: View {
     }
 
     var body: some View {
-        GlassEffectContainer(spacing: 12) {
-            HStack(spacing: AppTheme.Spacing.xs) {
-                ForEach(tabs, id: \.self) { tab in
-                    floatingTabButton(for: tab)
+        Group {
+            if #available(iOS 26, *) {
+                GlassEffectContainer(spacing: 12) {
+                    floatingTabBarContent
+                        .glassEffect(.regular, in: .capsule)
                 }
+            } else {
+                floatingTabBarContent
+                    .background(.regularMaterial, in: Capsule())
             }
-            .padding(AppTheme.Spacing.xs)
-            .glassEffect(.regular, in: .capsule)
         }
+    }
+
+    private var floatingTabBarContent: some View {
+        HStack(spacing: AppTheme.Spacing.xs) {
+            ForEach(tabs, id: \.self) { tab in
+                floatingTabButton(for: tab)
+            }
+        }
+        .padding(AppTheme.Spacing.xs)
     }
 
     @ViewBuilder
@@ -181,11 +203,11 @@ struct GlassFloatingTabBar<Tab: GlassTabItem>: View {
             .foregroundStyle(.primary)
             .padding(.horizontal, isSelected ? AppTheme.Spacing.lg : AppTheme.Spacing.md)
             .padding(.vertical, AppTheme.Spacing.md)
-            .glassEffect(
-                isSelected ? .regular.interactive() : .clear,
-                in: .capsule
+            .if(isSelected,
+                then: { $0.interactiveGlassBackground(in: Capsule()) },
+                else: { $0.clearGlassBackground(in: Capsule()) }
             )
-            .glassEffectID(tab.hashValue, in: namespace)
+            .matchedGeometryEffect(id: tab.hashValue, in: namespace)
         }
         .buttonStyle(.plain)
     }
