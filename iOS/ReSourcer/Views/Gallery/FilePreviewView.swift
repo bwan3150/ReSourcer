@@ -119,10 +119,9 @@ struct FilePreviewView: View {
                     .id(file.id) // 用文件 id 确保移除后视图重建
                     .ignoresSafeArea()
 
-                // 控制层
+                // 底部控制层
                 if showControls {
                     VStack {
-                        topBar
                         Spacer()
                         bottomControls
                     }
@@ -131,7 +130,47 @@ struct FilePreviewView: View {
             }
         }
         .ignoresSafeArea(edges: .bottom)
-        .navigationBarHidden(true)
+        .navigationBarBackButtonHidden(true)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarVisibility(showControls ? .visible : .hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .fontWeight(.semibold)
+                }
+            }
+
+            ToolbarItem(placement: .principal) {
+                Button {
+                    showInfoSheet = true
+                } label: {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        Text(currentFile?.name ?? "")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.white)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    withAnimation(AppTheme.Animation.standard) {
+                        playbackMode = playbackMode.next
+                    }
+                    startAutoAdvanceTimer()
+                } label: {
+                    Image(systemName: playbackMode.iconName)
+                        .fontWeight(.semibold)
+                }
+            }
+        }
         .toolbar(.hidden, for: .tabBar)
         .statusBarHidden(!showControls)
         .animation(AppTheme.Animation.standard, value: showControls)
@@ -193,73 +232,6 @@ struct FilePreviewView: View {
                 onTap: { toggleControls() }
             )
         }
-    }
-
-    // MARK: - 顶部浮动栏
-
-    private var topBar: some View {
-        HStack(spacing: AppTheme.Spacing.md) {
-            // 返回按钮
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(.black)
-                    .frame(width: 40, height: 40)
-                    .background(.white.opacity(0.85))
-                    .clipShape(Circle())
-            }
-
-            // 文件名（点击显示文件信息）
-            Button {
-                showInfoSheet = true
-            } label: {
-                ScrollViewReader { proxy in
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        Text(currentFile?.name ?? "")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.white)
-                            .fixedSize(horizontal: true, vertical: false)
-                            .id("fileName")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .task(id: currentIndex) {
-                        try? await Task.sleep(for: .seconds(2))
-                        while !Task.isCancelled {
-                            withAnimation(.linear(duration: 3)) {
-                                proxy.scrollTo("fileName", anchor: .trailing)
-                            }
-                            try? await Task.sleep(for: .seconds(5))
-                            guard !Task.isCancelled else { break }
-                            withAnimation(.easeInOut(duration: 0.5)) {
-                                proxy.scrollTo("fileName", anchor: .leading)
-                            }
-                            try? await Task.sleep(for: .seconds(2.5))
-                        }
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-
-            // 播放模式切换按钮
-            Button {
-                withAnimation(AppTheme.Animation.standard) {
-                    playbackMode = playbackMode.next
-                }
-                startAutoAdvanceTimer()
-            } label: {
-                Image(systemName: playbackMode.iconName)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(.black)
-                    .frame(width: 40, height: 40)
-                    .background(.white.opacity(0.85))
-                    .clipShape(Circle())
-            }
-        }
-        .padding(.horizontal, AppTheme.Spacing.lg)
-        .padding(.top, AppTheme.Spacing.sm)
     }
 
     // MARK: - 底部导航按钮
