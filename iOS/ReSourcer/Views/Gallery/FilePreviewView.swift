@@ -920,6 +920,19 @@ struct VideoPreviewContent: View {
     @State private var duration: Double = 1
     @State private var timeObserver: Any?
 
+    // 缩放与拖动
+    @State private var scale: CGFloat = 1.0
+    @State private var lastScale: CGFloat = 1.0
+    @State private var lastOffset: CGSize = .zero
+    @GestureState private var dragTranslation: CGSize = .zero
+
+    private var currentOffset: CGSize {
+        CGSize(
+            width: lastOffset.width + dragTranslation.width,
+            height: lastOffset.height + dragTranslation.height
+        )
+    }
+
     var body: some View {
         ZStack {
             // 纯视频画面（无内置控制栏）
@@ -931,15 +944,18 @@ struct VideoPreviewContent: View {
                     .tint(.white)
                     .scaleEffect(1.5)
             }
-
-            // 点击区域 — 切换控制栏显隐
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    withAnimation(AppTheme.Animation.standard) {
-                        showControls.toggle()
-                    }
-                }
+        }
+        .scaleEffect(scale)
+        .offset(currentOffset)
+        .gesture(pinchGesture)
+        .simultaneousGesture(scale > 1.0 ? dragGesture : nil)
+        .onTapGesture(count: 2) { resetZoom() }
+        .onTapGesture(count: 1) {
+            withAnimation(AppTheme.Animation.standard) {
+                showControls.toggle()
+            }
+        }
+        .overlay {
 
             // 进度条控制层（跟随控制栏显隐）
             if showControls {
@@ -1051,6 +1067,47 @@ struct VideoPreviewContent: View {
         let mins = Int(seconds) / 60
         let secs = Int(seconds) % 60
         return String(format: "%d:%02d", mins, secs)
+    }
+
+    // MARK: - 缩放与拖动手势
+
+    private var pinchGesture: some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                let newScale = lastScale * value.magnification
+                scale = min(max(newScale, 0.5), 4.0)
+            }
+            .onEnded { _ in
+                lastScale = scale
+                if scale < 1.0 {
+                    withAnimation(AppTheme.Animation.spring) {
+                        scale = 1.0
+                        lastScale = 1.0
+                        lastOffset = .zero
+                    }
+                }
+            }
+    }
+
+    private var dragGesture: some Gesture {
+        DragGesture()
+            .updating($dragTranslation) { value, state, _ in
+                state = value.translation
+            }
+            .onEnded { value in
+                lastOffset = CGSize(
+                    width: lastOffset.width + value.translation.width,
+                    height: lastOffset.height + value.translation.height
+                )
+            }
+    }
+
+    private func resetZoom() {
+        withAnimation(AppTheme.Animation.spring) {
+            scale = scale > 1.0 ? 1.0 : 2.0
+            lastScale = scale
+            lastOffset = .zero
+        }
     }
 }
 
