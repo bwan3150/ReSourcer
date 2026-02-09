@@ -614,8 +614,8 @@ struct ImagePreviewContent: View {
 
     @State private var scale: CGFloat = 1.0
     @State private var lastScale: CGFloat = 1.0
-    @State private var offset: CGSize = .zero
     @State private var lastOffset: CGSize = .zero
+    @GestureState private var dragTranslation: CGSize = .zero
     @State private var gifLoaded = false
 
     var body: some View {
@@ -671,9 +671,9 @@ struct ImagePreviewContent: View {
             .opacity(gifLoaded ? 1 : 0)
         }
         .scaleEffect(scale)
-        .offset(offset)
+        .offset(currentOffset)
         .gesture(pinchGesture)
-        .gesture(scale > 1.0 ? dragGesture : nil)
+        .simultaneousGesture(scale > 1.0 ? dragGesture : nil)
         .onTapGesture(count: 2) { resetZoom() }
         .onTapGesture(count: 1, perform: onTap)
         .frame(width: geometry.size.width, height: geometry.size.height)
@@ -713,9 +713,9 @@ struct ImagePreviewContent: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .scaleEffect(scale)
-                    .offset(offset)
+                    .offset(currentOffset)
                     .gesture(pinchGesture)
-                    .gesture(scale > 1.0 ? dragGesture : nil)
+                    .simultaneousGesture(scale > 1.0 ? dragGesture : nil)
                     .onTapGesture(count: 2) { resetZoom() }
                     .onTapGesture(count: 1, perform: onTap)
 
@@ -753,7 +753,6 @@ struct ImagePreviewContent: View {
                     withAnimation(AppTheme.Animation.spring) {
                         scale = 1.0
                         lastScale = 1.0
-                        offset = .zero
                         lastOffset = .zero
                     }
                 }
@@ -762,16 +761,24 @@ struct ImagePreviewContent: View {
 
     // MARK: - 拖动手势（仅放大时）
 
+    /// 实时偏移 = 上次结束位置 + 当前拖拽距离
+    private var currentOffset: CGSize {
+        CGSize(
+            width: lastOffset.width + dragTranslation.width,
+            height: lastOffset.height + dragTranslation.height
+        )
+    }
+
     private var dragGesture: some Gesture {
         DragGesture()
-            .onChanged { value in
-                offset = CGSize(
+            .updating($dragTranslation) { value, state, _ in
+                state = value.translation
+            }
+            .onEnded { value in
+                lastOffset = CGSize(
                     width: lastOffset.width + value.translation.width,
                     height: lastOffset.height + value.translation.height
                 )
-            }
-            .onEnded { _ in
-                lastOffset = offset
             }
     }
 
@@ -779,7 +786,6 @@ struct ImagePreviewContent: View {
         withAnimation(AppTheme.Animation.spring) {
             scale = scale > 1.0 ? 1.0 : 2.0
             lastScale = scale
-            offset = .zero
             lastOffset = .zero
         }
     }
