@@ -176,7 +176,6 @@ pub fn set_category_order(source_folder: &str, order: Vec<String>) -> io::Result
 // ==================== 源文件夹操作 ====================
 
 /// 列出所有源文件夹
-#[allow(dead_code)]
 pub fn list_source_folders() -> io::Result<Vec<(String, bool)>> {
     let conn = database::get_connection()
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
@@ -198,7 +197,6 @@ pub fn list_source_folders() -> io::Result<Vec<(String, bool)>> {
 }
 
 /// 获取当前选中的源文件夹
-#[allow(dead_code)]
 pub fn get_selected_source_folder() -> io::Result<Option<String>> {
     let conn = database::get_connection()
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
@@ -217,7 +215,6 @@ pub fn get_selected_source_folder() -> io::Result<Option<String>> {
 }
 
 /// 添加源文件夹
-#[allow(dead_code)]
 pub fn add_source_folder(folder_path: &str) -> io::Result<()> {
     let conn = database::get_connection()
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
@@ -253,7 +250,6 @@ pub fn add_source_folder(folder_path: &str) -> io::Result<()> {
 }
 
 /// 删除源文件夹
-#[allow(dead_code)]
 pub fn remove_source_folder(folder_path: &str) -> io::Result<()> {
     let conn = database::get_connection()
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
@@ -282,7 +278,6 @@ pub fn remove_source_folder(folder_path: &str) -> io::Result<()> {
 }
 
 /// 切换选中的源文件夹
-#[allow(dead_code)]
 pub fn select_source_folder(folder_path: &str) -> io::Result<()> {
     let conn = database::get_connection()
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
