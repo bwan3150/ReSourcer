@@ -244,10 +244,18 @@ struct FilePreviewView: View {
     // MARK: - 底部导航按钮
 
     private var bottomControls: some View {
-        HStack {
-            // 上一个
+        let isShuffle = playbackMode == .shuffle
+        let canGoPrev = isShuffle ? currentFiles.count > 1 : currentIndex > 0
+        let canGoNext = isShuffle ? currentFiles.count > 1 : currentIndex < currentFiles.count - 1
+
+        return HStack {
+            // 上一个（随机模式下跳到随机文件）
             Button {
-                withAnimation { currentIndex = max(0, currentIndex - 1) }
+                if isShuffle {
+                    navigateToRandom()
+                } else {
+                    withAnimation { currentIndex = max(0, currentIndex - 1) }
+                }
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 20, weight: .bold))
@@ -256,8 +264,8 @@ struct FilePreviewView: View {
                     .background(.white.opacity(0.85))
                     .clipShape(Circle())
             }
-            .opacity(currentIndex > 0 ? 1.0 : 0.3)
-            .disabled(currentIndex <= 0)
+            .opacity(canGoPrev ? 1.0 : 0.3)
+            .disabled(!canGoPrev)
 
             Spacer()
 
@@ -277,9 +285,13 @@ struct FilePreviewView: View {
 
             Spacer()
 
-            // 下一个
+            // 下一个（随机模式下跳到随机文件）
             Button {
-                withAnimation { currentIndex = min(currentFiles.count - 1, currentIndex + 1) }
+                if isShuffle {
+                    navigateToRandom()
+                } else {
+                    withAnimation { currentIndex = min(currentFiles.count - 1, currentIndex + 1) }
+                }
             } label: {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 20, weight: .bold))
@@ -288,8 +300,8 @@ struct FilePreviewView: View {
                     .background(.white.opacity(0.85))
                     .clipShape(Circle())
             }
-            .opacity(currentIndex < currentFiles.count - 1 ? 1.0 : 0.3)
-            .disabled(currentIndex >= currentFiles.count - 1)
+            .opacity(canGoNext ? 1.0 : 0.3)
+            .disabled(!canGoNext)
         }
         .padding(.horizontal, AppTheme.Spacing.xxl)
         .padding(.bottom, AppTheme.Spacing.xxl)
@@ -437,14 +449,19 @@ struct FilePreviewView: View {
                 }
             }
         case .shuffle:
-            guard currentFiles.count > 1 else { return }
-            var nextIndex: Int
-            repeat {
-                nextIndex = Int.random(in: 0..<currentFiles.count)
-            } while nextIndex == currentIndex
-            withAnimation {
-                currentIndex = nextIndex
-            }
+            navigateToRandom()
+        }
+    }
+
+    /// 跳转到随机文件（确保不重复当前文件）
+    private func navigateToRandom() {
+        guard currentFiles.count > 1 else { return }
+        var nextIndex: Int
+        repeat {
+            nextIndex = Int.random(in: 0..<currentFiles.count)
+        } while nextIndex == currentIndex
+        withAnimation {
+            currentIndex = nextIndex
         }
     }
 
