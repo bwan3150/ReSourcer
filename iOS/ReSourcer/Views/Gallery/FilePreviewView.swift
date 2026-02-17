@@ -83,6 +83,8 @@ struct FilePreviewView: View {
 
     // 视频播放状态
     @State private var isVideoPlaying = false
+    @State private var isVideoMuted = false
+    @State private var videoCurrentTime: Double = 0
 
     // 播放模式
     @State private var playbackMode: PlaybackMode = .repeatCurrent
@@ -229,6 +231,8 @@ struct FilePreviewView: View {
                 file: file,
                 apiService: apiService,
                 isPlaying: $isVideoPlaying,
+                isMuted: $isVideoMuted,
+                currentTime: $videoCurrentTime,
                 showControls: $showControls,
                 playbackMode: playbackMode,
                 onVideoEnd: { advanceToNext() }
@@ -269,17 +273,44 @@ struct FilePreviewView: View {
 
             Spacer()
 
-            // 视频播放/暂停按钮
+            // 视频控制按钮组
             if currentFile?.isVideo == true {
-                Button {
-                    isVideoPlaying.toggle()
-                } label: {
-                    Image(systemName: isVideoPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(.black)
-                        .frame(width: 56, height: 56)
-                        .background(.white.opacity(0.85))
-                        .clipShape(Circle())
+                HStack(spacing: AppTheme.Spacing.md) {
+                    // 静音/解除静音
+                    Button {
+                        isVideoMuted.toggle()
+                    } label: {
+                        Image(systemName: isVideoMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(.black)
+                            .frame(width: 44, height: 44)
+                            .background(.white.opacity(0.85))
+                            .clipShape(Circle())
+                    }
+
+                    // 播放/暂停
+                    Button {
+                        isVideoPlaying.toggle()
+                    } label: {
+                        Image(systemName: isVideoPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundStyle(.black)
+                            .frame(width: 56, height: 56)
+                            .background(.white.opacity(0.85))
+                            .clipShape(Circle())
+                    }
+
+                    // 截图
+                    Button {
+                        captureVideoScreenshot()
+                    } label: {
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(.black)
+                            .frame(width: 44, height: 44)
+                            .background(.white.opacity(0.85))
+                            .clipShape(Circle())
+                    }
                 }
             }
 
@@ -482,6 +513,84 @@ struct FilePreviewView: View {
     private func cancelAutoAdvanceTimer() {
         autoAdvanceTask?.cancel()
         autoAdvanceTask = nil
+    }
+
+    // MARK: - 视频截图
+
+    private func captureVideoScreenshot() {
+        guard let file = currentFile else { return }
+        guard let url = apiService.preview.getContentURL(
+            for: file.path,
+            baseURL: apiService.baseURL,
+            apiKey: apiService.apiKey
+        ) else {
+            GlassAlertManager.shared.showError("无法获取文件地址")
+            return
+        }
+
+        GlassAlertManager.shared.showQuickLoading()
+
+        // 在进入 Task.detached 前捕获所需值，避免 Swift 6 Sendable 问题
+        let captureTime = videoCurrentTime
+        let screenshotName = "\(file.baseName)_\(Int(captureTime))s.jpg"
+
+        Task.detached {
+            do {
+                let asset = AVAsset(url: url)
+                let generator = AVAssetImageGenerator(asset: asset)
+                generator.appliesPreferredTrackTransform = true
+                generator.requestedTimeToleranceBefore = .zero
+                generator.requestedTimeToleranceAfter = .zero
+
+                let time = CMTime(seconds: captureTime, preferredTimescale: 600)
+                let (cgImage, _) = try await generator.image(at: time)
+                let uiImage = UIImage(cgImage: cgImage)
+
+                guard let imageData = uiImage.jpegData(compressionQuality: 0.95) else {
+                    await MainActor.run {
+                        GlassAlertManager.shared.hideQuickLoading()
+                        GlassAlertManager.shared.showError("截图失败")
+                    }
+                    return
+                }
+
+                // 检查相册权限
+                var status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
+                if status == .notDetermined {
+                    status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+                }
+                guard status == .authorized else {
+                    await MainActor.run {
+                        GlassAlertManager.shared.hideQuickLoading()
+                        GlassAlertManager.shared.showError("无法访问相册", message: "请在设置中允许访问相册")
+                    }
+                    return
+                }
+
+                // 通过 ObjC 包装器保存到相册
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    PhotoExporter.saveFile(toPhotos: imageData, fileName: screenshotName) { success, error in
+                        if success {
+                            continuation.resume()
+                        } else {
+                            continuation.resume(throwing: error ?? APIError.unknown("保存失败"))
+                        }
+                    }
+                }
+
+                await MainActor.run {
+                    GlassAlertManager.shared.hideQuickLoading()
+                    GlassAlertManager.shared.showSuccess("截图已保存到相册")
+                }
+            } catch {
+                await MainActor.run {
+                    GlassAlertManager.shared.hideQuickLoading()
+                    if !error.isCancelledRequest {
+                        GlassAlertManager.shared.showError("截图失败", message: error.localizedDescription)
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - 文件操作
@@ -935,12 +1044,13 @@ struct VideoPreviewContent: View {
     let file: FileInfo
     let apiService: APIService
     @Binding var isPlaying: Bool
+    @Binding var isMuted: Bool
+    @Binding var currentTime: Double
     @Binding var showControls: Bool
     let playbackMode: PlaybackMode
     let onVideoEnd: () -> Void
 
     @State private var player: AVPlayer?
-    @State private var currentTime: Double = 0
     @State private var duration: Double = 1
     @State private var timeObserver: Any?
 
@@ -1023,6 +1133,9 @@ struct VideoPreviewContent: View {
                 player.pause()
             }
         }
+        .onChange(of: isMuted) { _, newValue in
+            player?.isMuted = newValue
+        }
     }
 
     // MARK: - 播放器管理
@@ -1035,6 +1148,7 @@ struct VideoPreviewContent: View {
         ) else { return }
 
         let avPlayer = AVPlayer(url: url)
+        avPlayer.isMuted = isMuted
         player = avPlayer
 
         // 监听时间

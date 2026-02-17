@@ -291,7 +291,12 @@ struct ClassifierView: View {
                 Spacer()
 
                 Button {
+                    GlassAlertManager.shared.showQuickLoading()
                     withAnimation { useThumbnail.toggle() }
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(500))
+                        GlassAlertManager.shared.hideQuickLoading()
+                    }
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: useThumbnail ? "photo" : "photo.fill")
@@ -806,10 +811,13 @@ struct ClassifierView: View {
     private func classifyToCategory(_ category: FolderInfo) {
         guard let file = currentFile else { return }
 
+        GlassAlertManager.shared.showQuickLoading()
         Task {
             do {
                 let targetPath = "\(sourceFolder)/\(category.name)"
                 let newPath = try await apiService.file.moveFile(at: file.path, to: targetPath)
+
+                GlassAlertManager.shared.hideQuickLoading()
 
                 // 记录操作历史
                 let operation = ClassifyOperation(
@@ -827,6 +835,7 @@ struct ClassifierView: View {
                 }
 
             } catch {
+                GlassAlertManager.shared.hideQuickLoading()
                 GlassAlertManager.shared.showError("分类失败", message: error.localizedDescription)
             }
         }
@@ -835,8 +844,13 @@ struct ClassifierView: View {
     private func skipCurrentFile() {
         guard currentFile != nil else { return }
 
+        GlassAlertManager.shared.showQuickLoading()
         withAnimation(AppTheme.Animation.bouncy) {
             currentIndex += 1
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(500))
+            GlassAlertManager.shared.hideQuickLoading()
         }
     }
 
