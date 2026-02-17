@@ -19,6 +19,9 @@ struct DownloadView: View {
     @State private var isDetecting = false
     @State private var isCreatingTask = false
 
+    // 下载器选择
+    @State private var selectedDownloader: DownloaderType = .ytDlp
+
     // 文件夹选择
     @State private var folders: [FolderInfo] = []
     @State private var selectedFolder = ""  // 空字符串表示源文件夹
@@ -166,11 +169,31 @@ struct DownloadView: View {
                 }
             }
 
+            // 下载器选择
+            downloaderSelector
+
             // 文件夹选择器
             folderSelector
 
             // 下载按钮
             downloadButton
+        }
+    }
+
+    // MARK: - Downloader Selector
+
+    private var downloaderSelector: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            Text("下载器")
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+
+            Picker("下载器", selection: $selectedDownloader) {
+                Text(DownloaderType.ytDlp.displayName).tag(DownloaderType.ytDlp)
+                Text(DownloaderType.pixivToolkit.displayName).tag(DownloaderType.pixivToolkit)
+            }
+            .pickerStyle(.segmented)
         }
     }
 
@@ -322,6 +345,10 @@ struct DownloadView: View {
                 let result = try await apiService.download.detectUrl(trimmed)
                 await MainActor.run {
                     detectResult = result
+                    // 自动选中服务器推荐的下载器
+                    if result.downloader != .unknown {
+                        selectedDownloader = result.downloader
+                    }
                     isDetecting = false
                 }
             } catch {
@@ -367,7 +394,7 @@ struct DownloadView: View {
                 let config = try await apiService.config.getConfigState()
                 let saveFolder = selectedFolder.isEmpty ? config.sourceFolder : "\(config.sourceFolder)/\(selectedFolder)"
 
-                _ = try await apiService.download.createTask(url: url, saveFolder: saveFolder)
+                _ = try await apiService.download.createTask(url: url, saveFolder: saveFolder, downloader: selectedDownloader)
 
                 await MainActor.run {
                     isCreatingTask = false
