@@ -388,6 +388,7 @@ struct DownloadView: View {
         guard !url.isEmpty else { return }
 
         isCreatingTask = true
+        GlassAlertManager.shared.showQuickLoading()
 
         Task {
             do {
@@ -398,6 +399,7 @@ struct DownloadView: View {
 
                 await MainActor.run {
                     isCreatingTask = false
+                    GlassAlertManager.shared.hideQuickLoading()
                     urlText = ""
                     detectResult = nil
                     // 不跳转到下载列表，保留在当前页面
@@ -406,6 +408,7 @@ struct DownloadView: View {
             } catch {
                 await MainActor.run {
                     isCreatingTask = false
+                    GlassAlertManager.shared.hideQuickLoading()
                     GlassAlertManager.shared.showError("创建失败", message: error.localizedDescription)
                 }
             }
