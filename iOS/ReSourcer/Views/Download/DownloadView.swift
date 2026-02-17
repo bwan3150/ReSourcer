@@ -427,6 +427,10 @@ struct DownloadTaskListView: View {
     @State private var refreshTimer: Timer?
     @State private var showClearConfirm = false
 
+    // 文件预览（从 Row 提升到此处，避免 LazyVStack 内的 navigationDestination 警告）
+    @State private var showFilePreview = false
+    @State private var previewFileInfo: FileInfo?
+
     var body: some View {
         VStack(spacing: 0) {
             // 分段控制器
@@ -490,7 +494,10 @@ struct DownloadTaskListView: View {
         ScrollView {
             LazyVStack(spacing: AppTheme.Spacing.sm) {
                 ForEach(filteredTasks) { task in
-                    DownloadTaskRow(task: task, apiService: apiService) {
+                    DownloadTaskRow(task: task, apiService: apiService, onPreview: { fileInfo in
+                        previewFileInfo = fileInfo
+                        showFilePreview = true
+                    }) {
                         deleteTask(task)
                     }
                 }
@@ -499,6 +506,11 @@ struct DownloadTaskListView: View {
         }
         .refreshable {
             await loadTasks()
+        }
+        .navigationDestination(isPresented: $showFilePreview) {
+            if let fileInfo = previewFileInfo {
+                FilePreviewView(apiService: apiService, files: [fileInfo], initialIndex: 0)
+            }
         }
     }
 
@@ -589,11 +601,11 @@ enum DownloadSegment: Hashable {
 struct DownloadTaskRow: View {
     let task: DownloadTask
     let apiService: APIService
+    let onPreview: (FileInfo) -> Void
     let onDelete: () -> Void
 
     @State private var isExpanded = false
     @State private var showDeleteConfirm = false
-    @State private var showFilePreview = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -723,8 +735,8 @@ struct DownloadTaskRow: View {
                     // 操作按钮
                     HStack {
                         Spacer()
-                        if task.status == .completed, task.previewFileInfo != nil {
-                            Button { showFilePreview = true } label: {
+                        if task.status == .completed, let fileInfo = task.previewFileInfo {
+                            Button { onPreview(fileInfo) } label: {
                                 Label("查看", systemImage: "eye")
                                     .font(.caption)
                                     .foregroundStyle(.primary)
@@ -750,11 +762,6 @@ struct DownloadTaskRow: View {
         }
         .padding(AppTheme.Spacing.md)
         .clearGlassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
-        .navigationDestination(isPresented: $showFilePreview) {
-            if let fileInfo = task.previewFileInfo {
-                FilePreviewView(apiService: apiService, files: [fileInfo], initialIndex: 0)
-            }
-        }
         .alert(task.canCancel ? "取消任务" : "删除记录", isPresented: $showDeleteConfirm) {
             Button("取消", role: .cancel) {}
             Button(task.canCancel ? "确认取消" : "删除", role: .destructive) { onDelete() }
