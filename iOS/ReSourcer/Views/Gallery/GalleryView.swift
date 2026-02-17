@@ -118,6 +118,18 @@ struct GalleryView: View {
         .task {
             await loadFolders()
         }
+        // 监听源文件夹切换：清空当前状态，重新加载新源文件夹
+        .onReceive(NotificationCenter.default.publisher(for: .sourceFolderDidChange)) { _ in
+            files = []
+            folders = []
+            isSourceSelected = true
+            selectedFolder = nil
+            Task {
+                await GlassAlertManager.shared.withQuickLoading {
+                    await loadFolders()
+                }
+            }
+        }
         // 文件信息面板
         .glassBottomSheet(
             isPresented: Binding(

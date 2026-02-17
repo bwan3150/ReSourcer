@@ -457,11 +457,15 @@ struct SettingsView: View {
     private func switchSourceFolder(to path: String) {
         Task {
             do {
+                GlassAlertManager.shared.showQuickLoading()
                 try await apiService.config.switchSourceFolder(to: path)
                 sourceFolders = try await apiService.config.getSourceFolders()
+                GlassAlertManager.shared.hideQuickLoading()
                 showSourceFolderList = false
                 GlassAlertManager.shared.showSuccess("已切换源文件夹")
+                NotificationCenter.default.post(name: .sourceFolderDidChange, object: nil)
             } catch {
+                GlassAlertManager.shared.hideQuickLoading()
                 GlassAlertManager.shared.showError("切换失败", message: error.localizedDescription)
             }
         }
@@ -616,6 +620,7 @@ extension Notification.Name {
     static let userDidLogout = Notification.Name("userDidLogout")
     static let themeDidChange = Notification.Name("themeDidChange")
     static let serverDidSwitch = Notification.Name("serverDidSwitch")
+    static let sourceFolderDidChange = Notification.Name("sourceFolderDidChange")
 }
 
 // MARK: - Preview
