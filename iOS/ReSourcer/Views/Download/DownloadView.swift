@@ -373,7 +373,7 @@ struct DownloadView: View {
                     isCreatingTask = false
                     urlText = ""
                     detectResult = nil
-                    showTaskList = true
+                    // 不跳转到下载列表，保留在当前页面
                     GlassAlertManager.shared.showSuccess("已添加到下载队列")
                 }
             } catch {

@@ -171,9 +171,10 @@ struct GalleryView: View {
                 onUploadStarted: {
                     showUploadConfirm = false
                     pickerResults = []
+                    // 留在当前页面，延迟后刷新文件列表
                     Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(300))
-                        showUploadTaskList = true
+                        try? await Task.sleep(for: .milliseconds(500))
+                        await refreshFiles()
                     }
                 },
                 onCancel: {
