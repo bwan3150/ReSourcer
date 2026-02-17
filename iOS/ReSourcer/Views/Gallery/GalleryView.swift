@@ -368,7 +368,9 @@ struct GalleryView: View {
 
         return LazyVGrid(columns: columns, spacing: spacing) {
             ForEach(Array(files.enumerated()), id: \.element.id) { index, file in
-                NavigationLink(value: index) {
+                Button {
+                    openFilePreview(at: index)
+                } label: {
                     GalleryGridItem(file: file, apiService: apiService)
                 }
                 .buttonStyle(.plain)
@@ -385,7 +387,7 @@ struct GalleryView: View {
                 GalleryListItem(
                     file: file,
                     apiService: apiService,
-                    onTap: { navPath.append(index) },
+                    onTap: { openFilePreview(at: index) },
                     onInfoTap: {
                         selectedFile = file
                         fileInfoToShow = file
@@ -513,6 +515,16 @@ struct GalleryView: View {
             return sourceFolder + "/" + folder.name
         }
         return sourceFolder
+    }
+
+    /// 点击文件打开预览，带 quick loading 反馈
+    private func openFilePreview(at index: Int) {
+        GlassAlertManager.shared.showQuickLoading()
+        navPath.append(index)
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(500))
+            GlassAlertManager.shared.hideQuickLoading()
+        }
     }
 
     /// 检查并请求相册权限，然后显示选择器
