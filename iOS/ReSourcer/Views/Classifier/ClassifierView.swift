@@ -42,6 +42,15 @@ struct ClassifierView: View {
     // 预览模式（缩略图 / 原图）
     @State private var useThumbnail = true
 
+    // 预览缩放
+    @State private var scale: CGFloat = 1.0
+    @State private var lastScale: CGFloat = 1.0
+    @State private var lastOffset: CGSize = .zero
+    @GestureState private var dragTranslation: CGSize = .zero
+
+    // 长按显示文件名
+    @State private var showFileName = false
+
     // 视频播放器（原图模式）
     @State private var videoPlayer: AVPlayer?
 
@@ -86,16 +95,18 @@ struct ClassifierView: View {
                     }
                     .disabled(currentFile == nil)
 
-                    // 文件详情按钮（查看信息 / 重命名）
-                    Button {
-                        if let file = currentFile {
-                            renameText = file.baseName
-                            showFileDetail = true
+                    // 文件详情按钮（点击查看信息 / 长按快速显示文件名）
+                    Image(systemName: "info.circle")
+                        .foregroundStyle(currentFile != nil ? .primary : .tertiary)
+                        .onTapGesture {
+                            if let file = currentFile {
+                                renameText = file.baseName
+                                showFileDetail = true
+                            }
                         }
-                    } label: {
-                        Image(systemName: "info.circle")
-                    }
-                    .disabled(currentFile == nil)
+                        .onLongPressGesture(minimumDuration: .infinity, pressing: { isPressing in
+                            showFileName = isPressing && currentFile != nil
+                        }, perform: {})
 
                     // 刷新
                     Button {
@@ -143,9 +154,32 @@ struct ClassifierView: View {
 
     private var classifierContent: some View {
         VStack(spacing: 0) {
-            // 文件预览区域
+            // 文件预览区域（支持双指缩放）
             filePreviewSection
+                .scaleEffect(scale)
+                .offset(currentOffset)
+                .gesture(pinchGesture)
+                .simultaneousGesture(scale > 1.0 ? zoomDragGesture : nil)
+                .onTapGesture(count: 2) { toggleZoom() }
                 .frame(maxHeight: .infinity)
+                .clipped()
+                // 长按 info 按钮时浮动显示文件名
+                .overlay(alignment: .top) {
+                    if showFileName, let name = currentFile?.name {
+                        Text(name)
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.primary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .glassBackground(in: Capsule())
+                            .padding(.top, AppTheme.Spacing.md)
+                            .transition(.opacity)
+                    }
+                }
+                .animation(AppTheme.Animation.standard, value: showFileName)
 
             // 分类进度条
             classifyProgressBar
@@ -157,8 +191,9 @@ struct ClassifierView: View {
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.bottom, AppTheme.Spacing.sm)
         }
-        // 切换文件或切换模式时管理视频播放器
+        // 切换文件或切换模式时管理视频播放器 + 重置缩放
         .onChange(of: currentIndex) { _, _ in
+            resetZoom()
             if !useThumbnail, let file = currentFile, file.isVideo {
                 setupVideoPlayer(for: file)
             } else {
@@ -166,6 +201,7 @@ struct ClassifierView: View {
             }
         }
         .onChange(of: useThumbnail) { _, newValue in
+            resetZoom()
             if !newValue, let file = currentFile, file.isVideo {
                 setupVideoPlayer(for: file)
             } else {
@@ -647,6 +683,65 @@ struct ClassifierView: View {
     private var loadingView: some View {
         GlassLoadingView("加载中...")
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Preview Zoom
+
+    private var currentOffset: CGSize {
+        CGSize(
+            width: lastOffset.width + dragTranslation.width,
+            height: lastOffset.height + dragTranslation.height
+        )
+    }
+
+    private var pinchGesture: some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                let newScale = lastScale * value.magnification
+                scale = min(max(newScale, 0.5), 4.0)
+            }
+            .onEnded { _ in
+                lastScale = scale
+                if scale < 1.0 {
+                    withAnimation(AppTheme.Animation.spring) {
+                        scale = 1.0
+                        lastScale = 1.0
+                        lastOffset = .zero
+                    }
+                }
+            }
+    }
+
+    private var zoomDragGesture: some Gesture {
+        DragGesture()
+            .updating($dragTranslation) { value, state, _ in
+                state = value.translation
+            }
+            .onEnded { value in
+                lastOffset = CGSize(
+                    width: lastOffset.width + value.translation.width,
+                    height: lastOffset.height + value.translation.height
+                )
+            }
+    }
+
+    private func toggleZoom() {
+        withAnimation(AppTheme.Animation.spring) {
+            if scale > 1.0 {
+                scale = 1.0
+                lastScale = 1.0
+                lastOffset = .zero
+            } else {
+                scale = 2.0
+                lastScale = 2.0
+            }
+        }
+    }
+
+    private func resetZoom() {
+        scale = 1.0
+        lastScale = 1.0
+        lastOffset = .zero
     }
 
     // MARK: - Video Player
