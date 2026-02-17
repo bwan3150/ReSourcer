@@ -836,6 +836,16 @@ struct GalleryGridItem: View {
                         }
                 }
             }
+            .overlay {
+                // 视频播放图标（居中，液态玻璃风格）
+                if file.isVideo {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 24))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .frame(width: 44, height: 44)
+                        .glassBackground(in: Circle())
+                }
+            }
             .overlay(alignment: .bottomTrailing) {
                 HStack(spacing: 4) {
                     // 视频时长
