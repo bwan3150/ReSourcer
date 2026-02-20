@@ -16,23 +16,48 @@ struct CacheSettingsView: View {
     @State private var networkSize: Int64 = 0
     @State private var tempSize: Int64 = 0
 
-    @State private var isClearing = false
-
     // MARK: - Body
 
     var body: some View {
         ScrollView {
             VStack(spacing: AppTheme.Spacing.lg) {
-                // 缩略图缓存
-                cacheRow(
-                    icon: "photo.stack",
-                    iconColor: .blue,
-                    title: "缩略图缓存",
-                    description: "画廊和分类页的缩略图",
-                    size: thumbnailSize
-                ) {
-                    clearThumbnailCache()
+                // 缩略图缓存（NavigationLink 进入详情页）
+                NavigationLink {
+                    ThumbnailCacheDetailView()
+                } label: {
+                    HStack(spacing: AppTheme.Spacing.md) {
+                        Image(systemName: "photo.stack")
+                            .font(.system(size: 18))
+                            .foregroundStyle(.blue)
+                            .frame(width: 28)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("缩略图缓存")
+                                .font(.body)
+                                .foregroundStyle(.primary)
+
+                            Text("画廊和分类页的缩略图")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        Text(ThumbnailCacheService.formatSize(thumbnailSize))
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .padding(AppTheme.Spacing.md)
+                .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
 
                 // 视频播放缓存
                 cacheRow(
@@ -166,12 +191,6 @@ struct CacheSettingsView: View {
         videoSize = sizes.1
         networkSize = sizes.2
         tempSize = sizes.3
-    }
-
-    private func clearThumbnailCache() {
-        ThumbnailCacheService.shared.clearAll()
-        thumbnailSize = 0
-        GlassAlertManager.shared.showSuccess("缩略图缓存已清除")
     }
 
     private func clearVideoCache() {
