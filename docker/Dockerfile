@@ -7,6 +7,7 @@ RUN apt-get update && \
     curl \
     vim \
     python3 \
+    libfontconfig1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
