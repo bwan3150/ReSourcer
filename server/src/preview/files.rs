@@ -39,6 +39,13 @@ pub async fn get_files(query: web::Query<std::collections::HashMap<String, Strin
                         FileType::Image
                     } else if VIDEO_EXTENSIONS.contains(&extension.as_str()) {
                         FileType::Video
+                    } else if AUDIO_EXTENSIONS.contains(&extension.as_str()) {
+                        FileType::Audio
+                    } else if extension == PDF_EXTENSION {
+                        FileType::Pdf
+                    } else if extension == CLIP_EXTENSION {
+                        // CLIP 文件内嵌 SQLite 预览图，归为图片类型
+                        FileType::Image
                     } else {
                         FileType::Other
                     };

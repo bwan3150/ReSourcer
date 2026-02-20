@@ -107,3 +107,122 @@ pub fn extract_video_first_frame(video_path: &Path) -> Result<image::DynamicImag
 
     Ok(img)
 }
+
+/// 使用 ffmpeg 将图片（HEIC/AVIF 等 image 库不支持的格式）转为 JPEG 后读取
+pub fn extract_image_frame_ffmpeg(image_path: &Path) -> Result<image::DynamicImage> {
+    let ffmpeg_path = get_ffmpeg_path();
+
+    let temp_output = std::env::temp_dir().join(format!("img_{}.jpg", uuid::Uuid::new_v4()));
+
+    let output = Command::new(&ffmpeg_path)
+        .args(&[
+            "-i", image_path.to_str().unwrap(),
+            "-vframes", "1",
+            "-q:v", "2",
+            "-y",
+            temp_output.to_str().unwrap(),
+        ])
+        .output()
+        .map_err(|e| {
+            actix_web::error::ErrorInternalServerError(format!("FFmpeg 执行失败: {}", e))
+        })?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let _ = fs::remove_file(&temp_output);
+        return Err(actix_web::error::ErrorInternalServerError(
+            format!("FFmpeg 图片转换失败: {}", stderr)
+        ));
+    }
+
+    let img = image::open(&temp_output)
+        .map_err(|e| {
+            let _ = fs::remove_file(&temp_output);
+            actix_web::error::ErrorInternalServerError(format!("无法读取转换后的图片: {}", e))
+        })?;
+
+    let _ = fs::remove_file(&temp_output);
+    Ok(img)
+}
+
+/// 从 CLIP (Clip Studio Paint) 文件的内嵌 SQLite 数据库中提取缩略图
+///
+/// .clip 文件结构：文件头部分 + 嵌入的 SQLite 数据库
+/// SQLite 数据库中 CanvasPreview 表存储了 PNG 格式的缩略图
+pub fn extract_clip_thumbnail(clip_path: &Path) -> Result<image::DynamicImage> {
+    // 读取整个文件
+    let data = fs::read(clip_path)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法读取 CLIP 文件: {}", e)))?;
+
+    // 搜索 SQLite 魔数 "SQLite format 3\000"
+    let sqlite_magic = b"SQLite format 3\x00";
+    let offset = data.windows(sqlite_magic.len())
+        .position(|window| window == sqlite_magic)
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("CLIP 文件中未找到 SQLite 数据库"))?;
+
+    // 将 SQLite 部分写入临时文件（rusqlite 需要文件路径）
+    let temp_db = std::env::temp_dir().join(format!("clip_{}.db", uuid::Uuid::new_v4()));
+    fs::write(&temp_db, &data[offset..])
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法写入临时数据库: {}", e)))?;
+
+    // 打开 SQLite 数据库并查询缩略图
+    let conn = rusqlite::Connection::open(&temp_db)
+        .map_err(|e| {
+            let _ = fs::remove_file(&temp_db);
+            actix_web::error::ErrorInternalServerError(format!("无法打开 CLIP 数据库: {}", e))
+        })?;
+
+    let image_data: Vec<u8> = conn.query_row(
+        "SELECT ImageData FROM CanvasPreview LIMIT 1",
+        [],
+        |row| row.get(0),
+    ).map_err(|e| {
+        let _ = fs::remove_file(&temp_db);
+        actix_web::error::ErrorInternalServerError(format!("无法从 CLIP 提取预览图: {}", e))
+    })?;
+
+    let _ = fs::remove_file(&temp_db);
+
+    // 解码 PNG 数据为 DynamicImage
+    let img = image::load_from_memory_with_format(&image_data, image::ImageFormat::Png)
+        .or_else(|_| image::load_from_memory(&image_data))
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法解码 CLIP 预览图: {}", e)))?;
+
+    Ok(img)
+}
+
+/// 使用 MuPDF 渲染 PDF 第一页为缩略图
+pub fn extract_pdf_thumbnail(pdf_path: &Path) -> Result<image::DynamicImage> {
+    let path_str = pdf_path.to_str()
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("无效的文件路径"))?;
+
+    let doc = mupdf::Document::open(path_str)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法打开 PDF: {}", e)))?;
+
+    let page = doc.load_page(0)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法加载 PDF 页面: {}", e)))?;
+
+    let bounds = page.bounds()
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法获取页面尺寸: {}", e)))?;
+
+    // 缩放到约 600px 宽
+    let scale = if bounds.x1 - bounds.x0 > 0.0 {
+        600.0 / (bounds.x1 - bounds.x0)
+    } else {
+        2.0
+    };
+    let matrix = mupdf::Matrix::new_scale(scale, scale);
+
+    let pixmap = page.to_pixmap(&matrix, &mupdf::Colorspace::device_rgb(), false, true)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法渲染 PDF 页面: {}", e)))?;
+
+    let width = pixmap.width() as u32;
+    let height = pixmap.height() as u32;
+    let samples = pixmap.samples();
+
+    // MuPDF 输出 RGB 数据，转为 image::DynamicImage
+    let img = image::RgbImage::from_raw(width, height, samples.to_vec())
+        .ok_or_else(|| actix_web::error::ErrorInternalServerError("无法从像素数据创建图片"))?;
+
+    Ok(image::DynamicImage::ImageRgb8(img))
+}

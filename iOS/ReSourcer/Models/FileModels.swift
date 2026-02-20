@@ -13,26 +13,44 @@ enum FileType: String, Codable, CaseIterable {
     case image = "image"
     case video = "video"
     case gif = "gif"
+    case audio = "audio"
+    case pdf = "pdf"
     case other = "other"
+
+    /// 安全解码：未知类型 fallback 到 .other
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+        self = FileType(rawValue: rawValue) ?? .other
+    }
 
     /// 从扩展名推断文件类型
     static func from(extension ext: String) -> FileType {
         let lowercased = ext.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "."))
         switch lowercased {
-        case "jpg", "jpeg", "png", "webp", "bmp", "tiff", "svg", "heic", "heif":
+        case "jpg", "jpeg", "png", "webp", "bmp", "tiff", "svg", "heic", "heif", "avif":
             return .image
         case "mp4", "mov", "avi", "mkv", "flv", "wmv", "m4v", "webm":
             return .video
         case "gif":
             return .gif
+        case "mp3", "wav", "aac", "flac", "m4a", "ogg", "wma":
+            return .audio
+        case "pdf":
+            return .pdf
         default:
             return .other
         }
     }
 
-    /// 是否为媒体文件
+    /// 是否为媒体文件（图片、视频、GIF、音频）
     var isMedia: Bool {
-        self != .other
+        switch self {
+        case .image, .video, .gif, .audio:
+            return true
+        case .pdf, .other:
+            return false
+        }
     }
 }
 
@@ -83,6 +101,12 @@ struct FileInfo: Identifiable, Codable, Equatable {
 
     /// 是否为 GIF
     var isGif: Bool { fileType == .gif }
+
+    /// 是否为音频
+    var isAudio: Bool { fileType == .audio }
+
+    /// 是否为 PDF
+    var isPdf: Bool { fileType == .pdf }
 
     /// 格式化后的文件大小
     var formattedSize: String {

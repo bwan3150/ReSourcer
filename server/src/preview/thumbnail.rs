@@ -4,7 +4,7 @@ use std::path::Path;
 use std::io::Cursor;
 use image::ImageFormat;
 use super::models::*;
-use super::utils::extract_video_first_frame;
+use super::utils::{extract_video_first_frame, extract_clip_thumbnail, extract_image_frame_ffmpeg, extract_pdf_thumbnail};
 
 /// GET /api/preview/thumbnail?path=<file_path>&size=<size>
 /// 生成并返回图片/视频缩略图
@@ -31,17 +31,28 @@ pub async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, S
     // 判断文件类型
     let is_video = VIDEO_EXTENSIONS.contains(&extension.as_str());
     let is_image = extension == GIF_EXTENSION || IMAGE_EXTENSIONS.contains(&extension.as_str());
+    let is_clip = extension == CLIP_EXTENSION;
+    let is_pdf = extension == PDF_EXTENSION;
 
-    if !is_video && !is_image {
+    if !is_video && !is_image && !is_clip && !is_pdf {
         return Err(actix_web::error::ErrorBadRequest("不支持的媒体格式"));
     }
 
     // 根据文件类型读取图片或提取视频首帧
     let img = if is_video {
         extract_video_first_frame(path)?
+    } else if is_clip {
+        // CLIP 文件：从内嵌 SQLite 提取缩略图
+        extract_clip_thumbnail(path)?
+    } else if is_pdf {
+        // PDF 文件：用 MuPDF 渲染第一页
+        extract_pdf_thumbnail(path)?
     } else {
-        image::open(path)
-            .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法读取图片: {}", e)))?
+        // 先尝试 image 库直接打开，失败则 fallback 到 ffmpeg（用于 HEIC/AVIF 等格式）
+        match image::open(path) {
+            Ok(img) => img,
+            Err(_) => extract_image_frame_ffmpeg(path)?,
+        }
     };
 
     // 生成缩略图 (保持宽高比)

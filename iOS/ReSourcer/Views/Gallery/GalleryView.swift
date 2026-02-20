@@ -805,26 +805,26 @@ struct GalleryGridItem: View {
         Color.clear
             .aspectRatio(1, contentMode: .fit)
             .overlay {
-                CachedThumbnailView(
-                    url: apiService.preview.getThumbnailURL(
-                        for: file.path,
-                        size: 300,
-                        baseURL: apiService.baseURL,
-                        apiKey: apiService.apiKey
-                    )
-                ) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Color.white.opacity(0.08)
-                        .overlay {
-                            Image(systemName: file.isVideo ? "film" : "photo")
-                                .font(.title2)
-                                .foregroundStyle(.tertiary)
-                        }
+                    CachedThumbnailView(
+                        url: apiService.preview.getThumbnailURL(
+                            for: file.path,
+                            size: 300,
+                            baseURL: apiService.baseURL,
+                            apiKey: apiService.apiKey
+                        )
+                    ) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Color.white.opacity(0.08)
+                            .overlay {
+                                Image(systemName: gridPlaceholderIcon(for: file))
+                                    .font(.title2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                    }
                 }
-            }
             .overlay {
                 // 视频播放图标（居中，液态玻璃风格）
                 if file.isVideo {
@@ -833,6 +833,14 @@ struct GalleryGridItem: View {
                         .foregroundStyle(.white.opacity(0.9))
                         .frame(width: 44, height: 44)
                         .glassBackground(in: Circle())
+                }
+                // 音频音符图标（居中，与视频播放按钮同尺寸）
+                if file.isAudio {
+                    Image(systemName: "music.note")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .frame(width: 44, height: 44)
+                        .background(.black.opacity(0.4), in: Circle())
                 }
             }
             .overlay(alignment: .bottomTrailing) {
@@ -862,6 +870,14 @@ struct GalleryGridItem: View {
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
             .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 3)
             .shadow(color: .white.opacity(0.06), radius: 2, x: 0, y: -1)
+    }
+
+    /// 网格占位图标
+    private func gridPlaceholderIcon(for file: FileInfo) -> String {
+        if file.isVideo { return "film" }
+        if file.isAudio { return "music.note" }
+        if file.isPdf { return "doc.fill" }
+        return "photo"
     }
 }
 
@@ -893,7 +909,7 @@ struct GalleryListItem: View {
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                     } placeholder: {
-                        Image(systemName: file.isVideo ? "film" : "photo")
+                        Image(systemName: listPlaceholderIcon(for: file))
                             .foregroundStyle(.tertiary)
                     }
                     .frame(width: 60, height: 60)
@@ -943,6 +959,14 @@ struct GalleryListItem: View {
         }
         .padding(AppTheme.Spacing.md)
         .clearGlassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+    }
+
+    /// 列表占位图标
+    private func listPlaceholderIcon(for file: FileInfo) -> String {
+        if file.isVideo { return "film" }
+        if file.isAudio { return "music.note" }
+        if file.isPdf { return "doc.fill" }
+        return "photo"
     }
 }
 

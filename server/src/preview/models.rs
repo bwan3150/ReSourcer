@@ -8,6 +8,8 @@ pub enum FileType {
     Image,   // 图片
     Video,   // 视频
     Gif,     // GIF 动图
+    Audio,   // 音频
+    Pdf,     // PDF 文档
     Other,   // 其他文件
 }
 
@@ -48,10 +50,19 @@ pub struct FoldersResponse {
 }
 
 /// 支持的图片格式
-pub const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp", "bmp", "tiff", "svg"];
+pub const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp", "bmp", "tiff", "svg", "heic", "heif", "avif"];
 
 /// 支持的视频格式
 pub const VIDEO_EXTENSIONS: &[&str] = &["mp4", "mov", "avi", "mkv", "flv", "wmv", "m4v", "webm"];
 
 /// GIF 格式
 pub const GIF_EXTENSION: &str = "gif";
+
+/// 支持的音频格式
+pub const AUDIO_EXTENSIONS: &[&str] = &["mp3", "wav", "aac", "flac", "m4a", "ogg", "wma"];
+
+/// PDF 格式
+pub const PDF_EXTENSION: &str = "pdf";
+
+/// CLIP (Clip Studio Paint) 格式
+pub const CLIP_EXTENSION: &str = "clip";

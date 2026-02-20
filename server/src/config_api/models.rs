@@ -106,9 +106,13 @@ pub struct PresetLoadResponse {
 
 /// 支持的文件扩展名列表
 pub const SUPPORTED_EXTENSIONS: &[&str] = &[
-    "png", "jpg", "jpeg", "webp", "gif", "bmp",
-    "PNG", "JPG", "JPEG", "WEBP", "GIF", "BMP",
+    "png", "jpg", "jpeg", "webp", "gif", "bmp", "avif",
+    "PNG", "JPG", "JPEG", "WEBP", "GIF", "BMP", "AVIF",
     "mp4", "mov", "avi", "mkv", "webm",
     "MP4", "MOV", "AVI", "MKV", "WEBM",
-    "heic", "HEIC", "heif", "HEIF"
+    "heic", "HEIC", "heif", "HEIF",
+    "clip", "CLIP",
+    "pdf", "PDF",
+    "mp3", "MP3", "wav", "WAV", "aac", "AAC", "flac", "FLAC",
+    "m4a", "M4A", "ogg", "OGG", "wma", "WMA",
 ];

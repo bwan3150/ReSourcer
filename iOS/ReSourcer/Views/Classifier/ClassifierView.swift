@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AVFoundation
+import PDFKit
 
 struct ClassifierView: View {
 
@@ -242,10 +243,10 @@ struct ClassifierView: View {
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.bottom, AppTheme.Spacing.sm)
         }
-        // 切换文件或切换模式时管理视频播放器 + 重置缩放
+        // 切换文件或切换模式时管理视频/音频播放器 + 重置缩放
         .onChange(of: currentIndex) { _, _ in
             resetZoom()
-            if !useThumbnail, let file = currentFile, file.isVideo {
+            if !useThumbnail, let file = currentFile, (file.isVideo || file.isAudio) {
                 setupVideoPlayer(for: file)
             } else {
                 cleanupVideoPlayer()
@@ -253,7 +254,7 @@ struct ClassifierView: View {
         }
         .onChange(of: useThumbnail) { _, newValue in
             resetZoom()
-            if !newValue, let file = currentFile, file.isVideo {
+            if !newValue, let file = currentFile, (file.isVideo || file.isAudio) {
                 setupVideoPlayer(for: file)
             } else {
                 cleanupVideoPlayer()
@@ -297,8 +298,84 @@ struct ClassifierView: View {
                 .padding(.vertical, AppTheme.Spacing.md)
                 .onAppear { setupVideoPlayer(for: file) }
                 .onDisappear { cleanupVideoPlayer() }
+            } else if !useThumbnail && file.isAudio {
+                // 原图模式 + 音频 → 音频播放器
+                ZStack {
+                    if let player = videoPlayer {
+                        // 音频可视化占位
+                        VStack(spacing: AppTheme.Spacing.lg) {
+                            Image(systemName: "music.note")
+                                .font(.system(size: 64, weight: .ultraLight))
+                                .foregroundStyle(.secondary)
+                            Text(file.name)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                        // 点击暂停/播放
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if player.rate == 0 {
+                                    player.play()
+                                } else {
+                                    player.pause()
+                                }
+                            }
+                    } else {
+                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg)
+                            .fill(Color.white.opacity(0.1))
+                            .overlay {
+                                ProgressView()
+                                    .tint(.white)
+                            }
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.vertical, AppTheme.Spacing.md)
+                .onAppear { setupVideoPlayer(for: file) }
+                .onDisappear { cleanupVideoPlayer() }
+            } else if !useThumbnail && file.isPdf {
+                // 原图模式 + PDF → PDFKit 预览
+                ClassifierPDFPreview(file: file, apiService: apiService)
+                    .cornerRadius(AppTheme.CornerRadius.lg)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, AppTheme.Spacing.lg)
+                    .padding(.vertical, AppTheme.Spacing.md)
+            } else if file.isAudio {
+                // 缩略图模式 + 音频 → 音乐图标占位
+                VStack(spacing: AppTheme.Spacing.md) {
+                    Image(systemName: "music.note")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.tertiary)
+                    Text(file.name)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.vertical, AppTheme.Spacing.md)
+            } else if file.isPdf {
+                // 缩略图模式 + PDF → 文档图标占位
+                VStack(spacing: AppTheme.Spacing.md) {
+                    Image(systemName: "doc.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.tertiary)
+                    Text(file.name)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.vertical, AppTheme.Spacing.md)
             } else {
-                // 缩略图模式 / 非视频原图
+                // 缩略图模式 / 非视频原图（图片/GIF/其他有缩略图的文件）
                 let previewURL: URL? = if useThumbnail || file.isVideo {
                     apiService.preview.getThumbnailURL(
                         for: file.path,
@@ -937,6 +1014,52 @@ struct ClassifierView: View {
                 // 恢复操作历史
                 operationHistory.append(lastOp)
             }
+        }
+    }
+}
+
+// MARK: - ClassifierPDFPreview
+
+/// 分类器中的 PDF 预览（简化版）
+struct ClassifierPDFPreview: View {
+    let file: FileInfo
+    let apiService: APIService
+
+    @State private var pdfDocument: PDFDocument?
+    @State private var isLoading = true
+
+    var body: some View {
+        ZStack {
+            if isLoading {
+                ProgressView()
+                    .tint(.white)
+            } else if let document = pdfDocument {
+                PDFKitView(document: document)
+            } else {
+                VStack(spacing: AppTheme.Spacing.md) {
+                    Image(systemName: "doc.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.tertiary)
+                    Text("PDF 加载失败")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        }
+        .task {
+            guard let url = apiService.preview.getContentURL(
+                for: file.path,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            ) else {
+                isLoading = false
+                return
+            }
+            do {
+                let (data, _) = try await URLSession.shared.data(from: url)
+                pdfDocument = PDFDocument(data: data)
+            } catch {}
+            isLoading = false
         }
     }
 }

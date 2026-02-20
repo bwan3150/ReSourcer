@@ -10,6 +10,7 @@ import AVKit
 import AVFoundation
 import ImageIO
 import Photos
+import PDFKit
 
 // MARK: - PlaybackMode
 
@@ -259,6 +260,23 @@ struct FilePreviewView: View {
                 playbackMode: playbackMode,
                 onVideoEnd: { advanceToNext() }
             )
+        case .audio:
+            AudioPreviewContent(
+                file: file,
+                apiService: apiService,
+                isPlaying: $isVideoPlaying,
+                isMuted: $isVideoMuted,
+                currentTime: $videoCurrentTime,
+                showControls: $showControls,
+                playbackMode: playbackMode,
+                onAudioEnd: { advanceToNext() }
+            )
+        case .pdf:
+            PDFPreviewContent(
+                file: file,
+                apiService: apiService,
+                onTap: { toggleControls() }
+            )
         case .other:
             OtherFilePreviewContent(
                 file: file,
@@ -295,8 +313,8 @@ struct FilePreviewView: View {
 
             Spacer()
 
-            // 视频控制按钮组
-            if currentFile?.isVideo == true {
+            // 视频/音频控制按钮组
+            if currentFile?.isVideo == true || currentFile?.isAudio == true {
                 HStack(spacing: AppTheme.Spacing.md) {
                     // 静音/解除静音
                     Button {
@@ -322,16 +340,18 @@ struct FilePreviewView: View {
                             .clipShape(Circle())
                     }
 
-                    // 截图
-                    Button {
-                        captureVideoScreenshot()
-                    } label: {
-                        Image(systemName: "camera.fill")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(.black)
-                            .frame(width: 44, height: 44)
-                            .background(.white.opacity(0.85))
-                            .clipShape(Circle())
+                    // 截图（仅视频）
+                    if currentFile?.isVideo == true {
+                        Button {
+                            captureVideoScreenshot()
+                        } label: {
+                            Image(systemName: "camera.fill")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(.black)
+                                .frame(width: 44, height: 44)
+                                .background(.white.opacity(0.85))
+                                .clipShape(Circle())
+                        }
                     }
                 }
             }
@@ -442,8 +462,8 @@ struct FilePreviewView: View {
 
     private func scheduleAutoHide() {
         hideControlsTask?.cancel()
-        // 仅视频播放时自动隐藏（10秒），图片和其他文件始终显示控制栏
-        guard currentFile?.isVideo == true else { return }
+        // 视频和音频播放时自动隐藏（10秒），图片和其他文件始终显示控制栏
+        guard currentFile?.isVideo == true || currentFile?.isAudio == true else { return }
         hideControlsTask = Task {
             try? await Task.sleep(for: .seconds(10))
             guard !Task.isCancelled else { return }
@@ -488,10 +508,11 @@ struct FilePreviewView: View {
     }
 
     /// 启动图片/其他文件的自动跳转定时器（8秒）
+    /// 视频和音频由播放结束事件触发跳转，不使用定时器
     private func startAutoAdvanceTimer() {
         cancelAutoAdvanceTimer()
         guard playbackMode != .repeatCurrent else { return }
-        guard currentFile?.isVideo != true else { return }
+        guard currentFile?.isVideo != true && currentFile?.isAudio != true else { return }
 
         autoAdvanceTask = Task {
             try? await Task.sleep(for: .seconds(8))
@@ -527,7 +548,7 @@ struct FilePreviewView: View {
 
         Task.detached {
             do {
-                let asset = AVAsset(url: url)
+                let asset = AVURLAsset(url: url)
                 let generator = AVAssetImageGenerator(asset: asset)
                 generator.appliesPreferredTrackTransform = true
                 generator.requestedTimeToleranceBefore = .zero
@@ -1047,6 +1068,8 @@ struct VideoPreviewContent: View {
     @State private var player: AVPlayer?
     @State private var duration: Double = 1
     @State private var timeObserver: Any?
+    @State private var isBuffering = true  // 缓冲/转码加载中
+    @State private var statusObserver: NSKeyValueObservation?
 
     // 缩放与拖动
     @State private var scale: CGFloat = 1.0
@@ -1068,10 +1091,21 @@ struct VideoPreviewContent: View {
                 if let player = player {
                     AVPlayerView(player: player)
                         .ignoresSafeArea()
-                } else {
-                    ProgressView()
-                        .tint(.white)
-                        .scaleEffect(1.5)
+                }
+
+                // 加载指示器：player 未创建或缓冲中时显示
+                if player == nil || isBuffering {
+                    ZStack {
+                        Color.black
+                        VStack(spacing: AppTheme.Spacing.md) {
+                            ProgressView()
+                                .tint(.white)
+                                .scaleEffect(1.5)
+                            Text("加载中...")
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.6))
+                        }
+                    }
                 }
             }
             .scaleEffect(scale)
@@ -1089,7 +1123,7 @@ struct VideoPreviewContent: View {
         .overlay {
 
             // 进度条控制层（跟随控制栏显隐）
-            if showControls {
+            if showControls && !isBuffering {
                 VStack {
                     Spacer()
 
@@ -1144,9 +1178,24 @@ struct VideoPreviewContent: View {
             apiKey: apiService.apiKey
         ) else { return }
 
+        isBuffering = true
         let avPlayer = AVPlayer(url: url)
         avPlayer.isMuted = isMuted
         player = avPlayer
+
+        // KVO 监听 currentItem.status，等待 readyToPlay
+        statusObserver = avPlayer.currentItem?.observe(\.status, options: [.new]) { item, _ in
+            Task { @MainActor in
+                switch item.status {
+                case .readyToPlay:
+                    isBuffering = false
+                case .failed:
+                    isBuffering = false
+                default:
+                    break
+                }
+            }
+        }
 
         // 监听时间
         let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
@@ -1186,6 +1235,8 @@ struct VideoPreviewContent: View {
     }
 
     private func cleanupPlayer() {
+        statusObserver?.invalidate()
+        statusObserver = nil
         if let observer = timeObserver, let player = player {
             player.removeTimeObserver(observer)
         }
@@ -1244,6 +1295,259 @@ struct VideoPreviewContent: View {
             lastOffset = .zero
         }
     }
+}
+
+// MARK: - AudioPreviewContent
+
+/// 音频播放预览
+struct AudioPreviewContent: View {
+
+    let file: FileInfo
+    let apiService: APIService
+    @Binding var isPlaying: Bool
+    @Binding var isMuted: Bool
+    @Binding var currentTime: Double
+    @Binding var showControls: Bool
+    let playbackMode: PlaybackMode
+    let onAudioEnd: () -> Void
+
+    @State private var player: AVPlayer?
+    @State private var duration: Double = 1
+    @State private var timeObserver: Any?
+
+    var body: some View {
+        ZStack {
+            // 音频可视化区域
+            VStack(spacing: AppTheme.Spacing.xl) {
+                Spacer()
+
+                // 音乐图标
+                Image(systemName: "music.note")
+                    .font(.system(size: 80, weight: .ultraLight))
+                    .foregroundStyle(.white.opacity(0.6))
+
+                // 文件名
+                Text(file.name)
+                    .font(.title3)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .padding(.horizontal, AppTheme.Spacing.xxl)
+
+                // 扩展名标签
+                Text(file.extension.uppercased())
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.white.opacity(0.6))
+                    .padding(.horizontal, AppTheme.Spacing.md)
+                    .padding(.vertical, AppTheme.Spacing.xs)
+                    .glassBackground(in: Capsule())
+
+                Spacer()
+
+                // 进度条 + 时间（始终显示，不跟随控制栏显隐）
+                VStack(spacing: AppTheme.Spacing.sm) {
+                    Slider(value: $currentTime, in: 0...max(duration, 0.1)) { editing in
+                        if !editing {
+                            player?.seek(to: CMTime(seconds: currentTime, preferredTimescale: 600))
+                        }
+                    }
+                    .tint(.white)
+
+                    HStack {
+                        Text(formatTime(currentTime))
+                            .font(.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(.white.opacity(0.8))
+                        Spacer()
+                        Text(formatTime(duration))
+                            .font(.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(.white.opacity(0.8))
+                    }
+                }
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.bottom, 100) // 给底部控制栏留空间
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(AppTheme.Animation.standard) {
+                showControls.toggle()
+            }
+        }
+        .onAppear { setupPlayer() }
+        .onDisappear { cleanupPlayer() }
+        .onChange(of: isPlaying) { _, newValue in
+            guard let player = player else { return }
+            if newValue {
+                player.play()
+            } else {
+                player.pause()
+            }
+        }
+        .onChange(of: isMuted) { _, newValue in
+            player?.isMuted = newValue
+        }
+    }
+
+    // MARK: - 播放器管理
+
+    private func setupPlayer() {
+        guard let url = apiService.preview.getContentURL(
+            for: file.path,
+            baseURL: apiService.baseURL,
+            apiKey: apiService.apiKey
+        ) else { return }
+
+        let avPlayer = AVPlayer(url: url)
+        avPlayer.isMuted = isMuted
+        player = avPlayer
+
+        // 监听时间
+        let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
+        timeObserver = avPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak avPlayer] time in
+            Task { @MainActor in
+                currentTime = time.seconds
+                if let item = avPlayer?.currentItem {
+                    let dur = item.duration.seconds
+                    if dur.isFinite && dur > 0 {
+                        duration = dur
+                    }
+                }
+            }
+        }
+
+        // 监听播放结束
+        NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: avPlayer.currentItem,
+            queue: .main
+        ) { _ in
+            Task { @MainActor in
+                switch playbackMode {
+                case .repeatCurrent:
+                    avPlayer.seek(to: .zero)
+                    avPlayer.play()
+                case .sequential, .shuffle:
+                    isPlaying = false
+                    avPlayer.seek(to: .zero)
+                    onAudioEnd()
+                }
+            }
+        }
+
+        avPlayer.play()
+        isPlaying = true
+    }
+
+    private func cleanupPlayer() {
+        if let observer = timeObserver, let player = player {
+            player.removeTimeObserver(observer)
+        }
+        player?.pause()
+        player = nil
+        timeObserver = nil
+    }
+
+    private func formatTime(_ seconds: Double) -> String {
+        guard seconds.isFinite else { return "0:00" }
+        let mins = Int(seconds) / 60
+        let secs = Int(seconds) % 60
+        return String(format: "%d:%02d", mins, secs)
+    }
+}
+
+// MARK: - PDFPreviewContent
+
+/// PDF 文档预览（使用 PDFKit）
+struct PDFPreviewContent: View {
+
+    let file: FileInfo
+    let apiService: APIService
+    let onTap: () -> Void
+
+    @State private var pdfDocument: PDFDocument?
+    @State private var isLoading = true
+    @State private var loadError: String?
+
+    var body: some View {
+        ZStack {
+            if isLoading {
+                VStack(spacing: AppTheme.Spacing.lg) {
+                    ProgressView()
+                        .tint(.white)
+                        .scaleEffect(1.5)
+                    Text("加载 PDF...")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+            } else if let error = loadError {
+                VStack(spacing: AppTheme.Spacing.lg) {
+                    Image(systemName: "doc.badge.exclamationmark")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.white.opacity(0.5))
+                    Text(error)
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+            } else if let document = pdfDocument {
+                PDFKitView(document: document)
+                    .ignoresSafeArea()
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onTap)
+        .task {
+            await loadPDF()
+        }
+    }
+
+    private func loadPDF() async {
+        guard let url = apiService.preview.getContentURL(
+            for: file.path,
+            baseURL: apiService.baseURL,
+            apiKey: apiService.apiKey
+        ) else {
+            loadError = "无法获取文件地址"
+            isLoading = false
+            return
+        }
+
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            if let document = PDFDocument(data: data) {
+                pdfDocument = document
+            } else {
+                loadError = "PDF 文件无法解析"
+            }
+        } catch {
+            loadError = "加载失败: \(error.localizedDescription)"
+        }
+        isLoading = false
+    }
+}
+
+// MARK: - PDFKitView
+
+/// PDFKit 的 UIViewRepresentable 包装
+struct PDFKitView: UIViewRepresentable {
+
+    let document: PDFDocument
+
+    func makeUIView(context: Context) -> PDFView {
+        let pdfView = PDFView()
+        pdfView.document = document
+        pdfView.autoScales = true
+        pdfView.displayMode = .singlePageContinuous
+        pdfView.displayDirection = .vertical
+        pdfView.backgroundColor = .black
+        return pdfView
+    }
+
+    func updateUIView(_ pdfView: PDFView, context: Context) {}
 }
 
 // MARK: - OtherFilePreviewContent
