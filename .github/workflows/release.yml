@@ -92,6 +92,10 @@ jobs:
           fi
           echo "✅ Found ffprobe binary: ${{ matrix.platform.ffprobe }}"
 
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev
+
       - name: Build release binary
         working-directory: server
         run: cargo build --release --target ${{ matrix.platform.target }}
