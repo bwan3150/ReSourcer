@@ -348,6 +348,7 @@ struct FilePreviewView: View {
                 infoRow("位置", value: "\(currentIndex + 1) / \(currentFiles.count)")
                 infoRow("类型", value: file.extension.uppercased())
                 infoRow("大小", value: file.formattedSize)
+                infoRow("创建时间", value: file.created)
                 infoRow("修改时间", value: file.modified)
 
                 if let width = file.width, let height = file.height {

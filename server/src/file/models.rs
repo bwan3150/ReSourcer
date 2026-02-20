@@ -19,6 +19,7 @@ pub struct FileInfo {
     pub file_type: FileType,
     pub extension: String,
     pub size: u64,
+    pub created: String,
     pub modified: String,
     pub width: Option<u32>,
     pub height: Option<u32>,

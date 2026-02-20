@@ -573,6 +573,7 @@ struct GalleryView: View {
             galleryInfoRow("文件名", value: file?.name ?? "")
             galleryInfoRow("类型", value: file?.extension.uppercased() ?? "")
             galleryInfoRow("大小", value: file?.formattedSize ?? "")
+            galleryInfoRow("创建时间", value: file?.created ?? "")
             galleryInfoRow("修改时间", value: file?.modified ?? "")
 
             if let width = file?.width, let height = file?.height {

@@ -111,6 +111,7 @@ struct UploadTask: Identifiable, Codable, Equatable {
             fileType: FileType.from(extension: ext),
             extension: ext,
             size: fileSize,
+            created: createdAt,
             modified: createdAt,
             width: nil,
             height: nil,

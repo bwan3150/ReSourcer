@@ -19,6 +19,7 @@ pub struct FileInfo {
     pub file_type: FileType,       // 文件类型
     pub extension: String,         // 文件扩展名（如 ".jpg"）
     pub size: u64,                 // 文件大小（字节）
+    pub created: String,           // 创建时间
     pub modified: String,          // 修改时间
     pub width: Option<u32>,        // 图片/视频宽度
     pub height: Option<u32>,       // 图片/视频高度

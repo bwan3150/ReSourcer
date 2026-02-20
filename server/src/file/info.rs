@@ -46,6 +46,16 @@ pub async fn get_file_info(query: web::Query<std::collections::HashMap<String, S
                     // 获取文件大小
                     let size = metadata.len();
 
+                    // 获取创建时间
+                    let created = metadata.created()
+                        .ok()
+                        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                        .map(|d| {
+                            let datetime = chrono::DateTime::<chrono::Utc>::from_timestamp(d.as_secs() as i64, 0);
+                            datetime.map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string()).unwrap_or_default()
+                        })
+                        .unwrap_or_default();
+
                     // 获取修改时间
                     let modified = metadata.modified()
                         .ok()
@@ -65,6 +75,7 @@ pub async fn get_file_info(query: web::Query<std::collections::HashMap<String, S
                         file_type,
                         extension: format!(".{}", extension),
                         size,
+                        created,
                         modified,
                         width: None,
                         height: None,

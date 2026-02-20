@@ -54,6 +54,9 @@ struct FileInfo: Identifiable, Codable, Equatable {
     /// 文件大小（字节）
     let size: UInt64
 
+    /// 创建时间
+    let created: String
+
     /// 修改时间
     let modified: String
 

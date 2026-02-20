@@ -646,6 +646,7 @@ struct ClassifierView: View {
                             LabeledContent("时长", value: duration)
                         }
 
+                        LabeledContent("创建时间", value: file.created)
                         LabeledContent("修改时间", value: file.modified)
                     }
                 }
@@ -874,6 +875,7 @@ struct ClassifierView: View {
                         fileType: file.fileType,
                         extension: file.extension,
                         size: file.size,
+                        created: file.created,
                         modified: file.modified,
                         width: file.width,
                         height: file.height,
