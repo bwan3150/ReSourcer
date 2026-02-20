@@ -140,15 +140,39 @@ struct GalleryView: View {
         ) {
             galleryFileInfoContent
         }
-        // 重命名弹窗
-        .alert("重命名", isPresented: $showRenameAlert) {
-            TextField("新文件名", text: $renameText)
-            Button("取消", role: .cancel) {}
-            Button("确认") {
-                Task { await performRename() }
+        // 重命名面板
+        .glassBottomSheet(isPresented: $showRenameAlert, title: "重命名") {
+            VStack(spacing: AppTheme.Spacing.lg) {
+                HStack {
+                    TextField("文件名", text: $renameText)
+                        .textFieldStyle(.plain)
+                    Text(selectedFile?.extension ?? "")
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(AppTheme.Spacing.md)
+                .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+
+                HStack(spacing: AppTheme.Spacing.md) {
+                    GlassButton(icon: "trash", style: .secondary, size: .medium) {
+                        renameText = ""
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    GlassButton(icon: "checkmark", style: .primary, size: .medium) {
+                        Task { await performRename() }
+                    }
+                    .disabled(renameText.isEmpty || renameText == selectedFile?.baseName)
+                    .frame(maxWidth: .infinity)
+
+                    GlassButton(icon: "xmark", style: .secondary, size: .medium) {
+                        showRenameAlert = false
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+
+                Spacer().frame(height: 60)
             }
-        } message: {
-            Text("输入新的文件名（不含扩展名）")
+            .padding(.vertical, AppTheme.Spacing.md)
         }
         // 移动面板
         .glassBottomSheet(isPresented: $showMoveSheet, title: "移动到") {
@@ -568,69 +592,33 @@ struct GalleryView: View {
 
     @ViewBuilder
     private var galleryFileInfoContent: some View {
-        let file = fileInfoToShow
-        VStack(spacing: AppTheme.Spacing.lg) {
-            galleryInfoRow("文件名", value: file?.name ?? "")
-            galleryInfoRow("类型", value: file?.extension.uppercased() ?? "")
-            galleryInfoRow("大小", value: file?.formattedSize ?? "")
-            galleryInfoRow("创建时间", value: file?.created ?? "")
-            galleryInfoRow("修改时间", value: file?.modified ?? "")
-
-            if let width = file?.width, let height = file?.height {
-                galleryInfoRow("分辨率", value: "\(width) × \(height)")
-            }
-            if let duration = file?.formattedDuration {
-                galleryInfoRow("时长", value: duration)
-            }
-
-            // 操作按钮
-            HStack(spacing: AppTheme.Spacing.md) {
-                GlassButton("重命名", icon: "pencil", style: .secondary, size: .medium) {
+        if let file = fileInfoToShow {
+            FileInfoSheetContent(
+                file: file,
+                bottomSpacing: 60,
+                onRename: {
                     fileInfoToShow = nil
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(300))
                         renameText = selectedFile?.baseName ?? ""
                         showRenameAlert = true
                     }
-                }
-                .frame(maxWidth: .infinity)
-
-                GlassButton("移动", icon: "folder", style: .secondary, size: .medium) {
+                },
+                onMove: {
                     fileInfoToShow = nil
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(300))
                         await self.loadTargetFolders()
                         showMoveSheet = true
                     }
+                },
+                onDownload: {
+                    let fileCopy = file
+                    fileInfoToShow = nil
+                    saveFileToDevice(fileCopy)
                 }
-                .frame(maxWidth: .infinity)
-
-                GlassButton("下载", icon: "arrow.down.circle", style: .secondary, size: .medium) {
-                    if let file = fileInfoToShow {
-                        fileInfoToShow = nil
-                        saveFileToDevice(file)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .padding(.top, AppTheme.Spacing.sm)
-
-            // 给底部 navbar 留空间
-            Spacer().frame(height: 60)
+            )
         }
-        .padding(.vertical, AppTheme.Spacing.md)
-    }
-
-    private func galleryInfoRow(_ label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.body)
-                .foregroundStyle(.primary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - 移动面板内容

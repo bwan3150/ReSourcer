@@ -199,15 +199,37 @@ struct FilePreviewView: View {
         .glassBottomSheet(isPresented: $showInfoSheet, title: "文件信息") {
             fileInfoContent
         }
-        // 重命名弹窗
-        .alert("重命名", isPresented: $showRenameAlert) {
-            TextField("新文件名", text: $renameText)
-            Button("取消", role: .cancel) {}
-            Button("确认") {
-                Task { await performRename() }
+        // 重命名面板
+        .glassBottomSheet(isPresented: $showRenameAlert, title: "重命名") {
+            VStack(spacing: AppTheme.Spacing.lg) {
+                HStack {
+                    TextField("文件名", text: $renameText)
+                        .textFieldStyle(.plain)
+                    Text(currentFile?.extension ?? "")
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(AppTheme.Spacing.md)
+                .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+
+                HStack(spacing: AppTheme.Spacing.md) {
+                    GlassButton(icon: "trash", style: .secondary, size: .medium) {
+                        renameText = ""
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    GlassButton(icon: "checkmark", style: .primary, size: .medium) {
+                        Task { await performRename() }
+                    }
+                    .disabled(renameText.isEmpty || renameText == currentFile?.baseName)
+                    .frame(maxWidth: .infinity)
+
+                    GlassButton(icon: "xmark", style: .secondary, size: .medium) {
+                        showRenameAlert = false
+                    }
+                    .frame(maxWidth: .infinity)
+                }
             }
-        } message: {
-            Text("输入新的文件名（不含扩展名）")
+            .padding(.vertical, AppTheme.Spacing.md)
         }
         // 移动面板
         .glassBottomSheet(isPresented: $showMoveSheet, title: "移动到") {
@@ -343,63 +365,31 @@ struct FilePreviewView: View {
     @ViewBuilder
     private var fileInfoContent: some View {
         if let file = currentFile {
-            VStack(spacing: AppTheme.Spacing.lg) {
-                infoRow("文件名", value: file.name)
-                infoRow("位置", value: "\(currentIndex + 1) / \(currentFiles.count)")
-                infoRow("类型", value: file.extension.uppercased())
-                infoRow("大小", value: file.formattedSize)
-                infoRow("创建时间", value: file.created)
-                infoRow("修改时间", value: file.modified)
-
-                if let width = file.width, let height = file.height {
-                    infoRow("分辨率", value: "\(width) × \(height)")
-                }
-                if let duration = file.formattedDuration {
-                    infoRow("时长", value: duration)
-                }
-
-                // 操作按钮
-                HStack(spacing: AppTheme.Spacing.md) {
-                    GlassButton("重命名", icon: "pencil", style: .secondary, size: .medium) {
-                        showInfoSheet = false
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            renameText = file.baseName
-                            showRenameAlert = true
-                        }
+            FileInfoSheetContent(
+                file: file,
+                position: "\(currentIndex + 1) / \(currentFiles.count)",
+                onRename: {
+                    showInfoSheet = false
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        renameText = file.baseName
+                        showRenameAlert = true
                     }
-                    .frame(maxWidth: .infinity)
-
-                    GlassButton("移动", icon: "folder", style: .secondary, size: .medium) {
-                        showInfoSheet = false
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            Task { await self.loadFolders() }
-                            showMoveSheet = true
-                        }
+                },
+                onMove: {
+                    showInfoSheet = false
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        await self.loadFolders()
+                        showMoveSheet = true
                     }
-                    .frame(maxWidth: .infinity)
-
-                    GlassButton("下载", icon: "arrow.down.circle", style: .secondary, size: .medium) {
-                        showInfoSheet = false
-                        saveFileToDevice(file)
-                    }
-                    .frame(maxWidth: .infinity)
+                },
+                onDownload: {
+                    showInfoSheet = false
+                    saveFileToDevice(file)
                 }
-                .padding(.top, AppTheme.Spacing.sm)
-            }
-            .padding(.vertical, AppTheme.Spacing.md)
+            )
         }
-    }
-
-    private func infoRow(_ label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.body)
-                .foregroundStyle(.primary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - 移动面板内容

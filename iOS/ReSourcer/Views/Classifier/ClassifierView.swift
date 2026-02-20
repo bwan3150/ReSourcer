@@ -21,8 +21,9 @@ struct ClassifierView: View {
     @State private var isLoading = false
     @State private var showSettings = false
 
-    // 文件详情弹窗
-    @State private var showFileDetail = false
+    // 文件信息面板
+    @State private var showInfoSheet = false
+    @State private var showRenameAlert = false
     @State private var renameText = ""
 
     // 已分类计数
@@ -99,9 +100,8 @@ struct ClassifierView: View {
                     Image(systemName: "info.circle")
                         .foregroundStyle(currentFile != nil ? .primary : .tertiary)
                         .onTapGesture {
-                            if let file = currentFile {
-                                renameText = file.baseName
-                                showFileDetail = true
+                            if currentFile != nil {
+                                showInfoSheet = true
                             }
                         }
                         .onLongPressGesture(minimumDuration: .infinity, pressing: { isPressing in
@@ -117,8 +117,56 @@ struct ClassifierView: View {
                 }
             }
         }
-        .sheet(isPresented: $showFileDetail) {
-            fileDetailSheet
+        // 文件信息面板
+        .glassBottomSheet(isPresented: $showInfoSheet, title: "文件信息") {
+            if let file = currentFile {
+                FileInfoSheetContent(
+                    file: file,
+                    bottomSpacing: 60,
+                    onRename: {
+                        showInfoSheet = false
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(300))
+                            renameText = file.baseName
+                            showRenameAlert = true
+                        }
+                    }
+                )
+            }
+        }
+        // 重命名面板
+        .glassBottomSheet(isPresented: $showRenameAlert, title: "重命名") {
+            VStack(spacing: AppTheme.Spacing.lg) {
+                HStack {
+                    TextField("文件名", text: $renameText)
+                        .textFieldStyle(.plain)
+                    Text(currentFile?.extension ?? "")
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(AppTheme.Spacing.md)
+                .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+
+                HStack(spacing: AppTheme.Spacing.md) {
+                    GlassButton(icon: "trash", style: .secondary, size: .medium) {
+                        renameText = ""
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    GlassButton(icon: "checkmark", style: .primary, size: .medium) {
+                        renameCurrentFile()
+                    }
+                    .disabled(renameText.isEmpty || renameText == currentFile?.baseName)
+                    .frame(maxWidth: .infinity)
+
+                    GlassButton(icon: "xmark", style: .secondary, size: .medium) {
+                        showRenameAlert = false
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+
+                Spacer().frame(height: 60)
+            }
+            .padding(.vertical, AppTheme.Spacing.md)
         }
         .sheet(isPresented: $showReorder) {
             reorderSheet
@@ -615,61 +663,6 @@ struct ClassifierView: View {
         .presentationDetents([.medium, .large])
     }
 
-    // MARK: - File Detail Sheet
-
-    @ViewBuilder
-    private var fileDetailSheet: some View {
-        if let file = currentFile {
-            NavigationStack {
-                List {
-                    // 重命名
-                    Section("重命名") {
-                        HStack {
-                            TextField("文件名", text: $renameText)
-                                .textFieldStyle(.plain)
-
-                            Text(file.extension)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    // 文件信息
-                    Section("文件信息") {
-                        LabeledContent("类型", value: file.fileType.rawValue)
-                        LabeledContent("大小", value: file.formattedSize)
-                        LabeledContent("路径", value: file.path)
-
-                        if let w = file.width, let h = file.height {
-                            LabeledContent("尺寸", value: "\(w) × \(h)")
-                        }
-                        if let duration = file.formattedDuration {
-                            LabeledContent("时长", value: duration)
-                        }
-
-                        LabeledContent("创建时间", value: file.created)
-                        LabeledContent("修改时间", value: file.modified)
-                    }
-                }
-                .navigationTitle(file.name)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("取消") {
-                            showFileDetail = false
-                        }
-                    }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("保存") {
-                            renameCurrentFile()
-                        }
-                        .disabled(renameText.isEmpty || renameText == file.baseName)
-                    }
-                }
-            }
-            .presentationDetents([.medium])
-        }
-    }
-
     // MARK: - Empty View
 
     private var emptyView: some View {
@@ -882,7 +875,7 @@ struct ClassifierView: View {
                         duration: file.duration
                     )
                 }
-                showFileDetail = false
+                showRenameAlert = false
             } catch {
                 GlassAlertManager.shared.showError("重命名失败", message: error.localizedDescription)
             }
