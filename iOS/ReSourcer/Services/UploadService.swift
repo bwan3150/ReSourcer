@@ -68,6 +68,16 @@ actor UploadService {
         return try await networkManager.request(.uploadTaskStatus(id: taskId))
     }
 
+    /// 分页获取上传历史记录
+    /// - Parameters:
+    ///   - offset: 偏移量
+    ///   - limit: 每页数量
+    ///   - status: 状态过滤（"completed" / "failed"）
+    /// - Returns: 分页历史响应
+    func getHistory(offset: Int, limit: Int, status: String?) async throws -> UploadHistoryResponse {
+        return try await networkManager.request(.uploadHistory(offset: offset, limit: limit, status: status))
+    }
+
     /// 删除上传任务
     /// - Parameter taskId: 任务 ID
     func deleteTask(id taskId: String) async throws {

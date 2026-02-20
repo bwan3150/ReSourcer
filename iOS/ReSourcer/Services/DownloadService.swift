@@ -72,6 +72,16 @@ actor DownloadService {
         _ = try await networkManager.requestStatus(.downloadTaskDelete(id: taskId))
     }
 
+    /// 分页获取下载历史记录
+    /// - Parameters:
+    ///   - offset: 偏移量
+    ///   - limit: 每页数量
+    ///   - status: 状态过滤（"completed" / "failed"）
+    /// - Returns: 分页历史响应
+    func getHistory(offset: Int, limit: Int, status: String?) async throws -> DownloadHistoryResponse {
+        return try await networkManager.request(.downloadHistory(offset: offset, limit: limit, status: status))
+    }
+
     /// 清空下载历史记录
     func clearHistory() async throws {
         _ = try await networkManager.requestStatus(.downloadHistoryClear)

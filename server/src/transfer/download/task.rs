@@ -90,55 +90,80 @@ pub async fn create_task(
 }
 
 /// GET /api/transfer/download/tasks
-/// 获取所有任务列表（进行中的任务 + 历史记录）
+/// 获取活跃任务列表（仅进行中的任务，用于轮询）
 pub async fn get_tasks(task_manager: TaskManagerState) -> Result<HttpResponse> {
-    let mut tasks = task_manager.get_all_tasks().await;
-
-    // 加载历史记录并转换为任务格式
-    if let Ok(history) = storage::load_history() {
-        for item in history {
-            // 将字符串转换为 Platform 枚举
-            let platform = match item.platform.as_str() {
-                "YouTube" => Platform::YouTube,
-                "Bilibili" => Platform::Bilibili,
-                "X" => Platform::X,
-                "TikTok" => Platform::TikTok,
-                "Pixiv" => Platform::Pixiv,
-                "Xiaohongshu" => Platform::Xiaohongshu,
-                _ => Platform::Unknown,
-            };
-
-            // 将字符串转换为 TaskStatus 枚举
-            let status = match item.status.as_str() {
-                "completed" => TaskStatus::Completed,
-                "failed" => TaskStatus::Failed,
-                "cancelled" => TaskStatus::Cancelled,
-                _ => TaskStatus::Failed,
-            };
-
-            let progress = if status == TaskStatus::Completed { 100.0 } else { 0.0 };
-
-            tasks.push(DownloadTask {
-                id: item.id,
-                url: item.url,
-                platform,
-                downloader: DownloaderType::YtDlp,
-                status,
-                progress,
-                speed: None,
-                eta: None,
-                save_folder: String::new(),
-                file_name: item.file_name,
-                file_path: item.file_path,
-                error: item.error,
-                created_at: item.created_at,
-            });
-        }
-    }
+    let tasks = task_manager.get_all_tasks().await;
 
     Ok(HttpResponse::Ok().json(TaskListResponse {
         status: "success".to_string(),
         tasks,
+    }))
+}
+
+/// 历史记录查询参数
+#[derive(Debug, serde::Deserialize)]
+pub struct HistoryQuery {
+    pub offset: Option<i64>,
+    pub limit: Option<i64>,
+    pub status: Option<String>,
+}
+
+/// GET /api/transfer/download/history
+/// 分页获取历史记录
+pub async fn get_history(query: web::Query<HistoryQuery>) -> Result<HttpResponse> {
+    let offset = query.offset.unwrap_or(0);
+    let limit = query.limit.unwrap_or(50).min(200);
+    let status_str = query.status.as_deref();
+
+    let total = storage::count_history(status_str)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+
+    let history = storage::load_history_page(offset, limit, status_str)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+
+    // 将 HistoryItem 转换为 DownloadTask
+    let items: Vec<DownloadTask> = history.into_iter().map(|item| {
+        let platform = match item.platform.as_str() {
+            "YouTube" => Platform::YouTube,
+            "Bilibili" => Platform::Bilibili,
+            "X" => Platform::X,
+            "TikTok" => Platform::TikTok,
+            "Pixiv" => Platform::Pixiv,
+            "Xiaohongshu" => Platform::Xiaohongshu,
+            _ => Platform::Unknown,
+        };
+        let status = match item.status.as_str() {
+            "completed" => TaskStatus::Completed,
+            "failed" => TaskStatus::Failed,
+            "cancelled" => TaskStatus::Cancelled,
+            _ => TaskStatus::Failed,
+        };
+        let progress = if status == TaskStatus::Completed { 100.0 } else { 0.0 };
+        DownloadTask {
+            id: item.id,
+            url: item.url,
+            platform,
+            downloader: DownloaderType::YtDlp,
+            status,
+            progress,
+            speed: None,
+            eta: None,
+            save_folder: String::new(),
+            file_name: item.file_name,
+            file_path: item.file_path,
+            error: item.error,
+            created_at: item.created_at,
+        }
+    }).collect();
+
+    let has_more = (offset + limit) < total;
+
+    Ok(HttpResponse::Ok().json(HistoryResponse {
+        items,
+        total,
+        offset,
+        limit,
+        has_more,
     }))
 }
 

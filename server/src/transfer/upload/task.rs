@@ -75,36 +75,64 @@ pub async fn upload_file(
 }
 
 /// GET /api/transfer/upload/tasks
-/// 获取所有上传任务（进行中的任务 + 历史记录）
+/// 获取活跃任务列表（仅进行中的任务，用于轮询）
 pub async fn get_tasks(task_manager: web::Data<TaskManager>) -> Result<HttpResponse> {
-    let mut tasks = task_manager.get_all_tasks().await;
-
-    // 加载历史记录并转换为任务格式
-    if let Ok(history) = storage::load_history() {
-        for item in history {
-            let status = match item.status.as_str() {
-                "completed" => UploadStatus::Completed,
-                "failed" => UploadStatus::Failed,
-                _ => UploadStatus::Failed,
-            };
-
-            let progress = if status == UploadStatus::Completed { 100.0 } else { 0.0 };
-
-            tasks.push(UploadTask {
-                id: item.id,
-                file_name: item.file_name,
-                file_size: item.file_size,
-                target_folder: item.target_folder,
-                status,
-                progress,
-                uploaded_size: item.file_size,
-                error: item.error,
-                created_at: item.created_at,
-            });
-        }
-    }
+    let tasks = task_manager.get_all_tasks().await;
 
     Ok(HttpResponse::Ok().json(TaskListResponse { tasks }))
+}
+
+/// 历史记录查询参数
+#[derive(Debug, serde::Deserialize)]
+pub struct HistoryQuery {
+    pub offset: Option<i64>,
+    pub limit: Option<i64>,
+    pub status: Option<String>,
+}
+
+/// GET /api/transfer/upload/history
+/// 分页获取上传历史记录
+pub async fn get_history(query: web::Query<HistoryQuery>) -> Result<HttpResponse> {
+    let offset = query.offset.unwrap_or(0);
+    let limit = query.limit.unwrap_or(50).min(200);
+    let status_str = query.status.as_deref();
+
+    let total = storage::count_history(status_str)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+
+    let history = storage::load_history_page(offset, limit, status_str)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+
+    // 将 HistoryItem 转换为 UploadTask
+    let items: Vec<UploadTask> = history.into_iter().map(|item| {
+        let status = match item.status.as_str() {
+            "completed" => UploadStatus::Completed,
+            "failed" => UploadStatus::Failed,
+            _ => UploadStatus::Failed,
+        };
+        let progress = if status == UploadStatus::Completed { 100.0 } else { 0.0 };
+        UploadTask {
+            id: item.id,
+            file_name: item.file_name,
+            file_size: item.file_size,
+            target_folder: item.target_folder,
+            status,
+            progress,
+            uploaded_size: item.file_size,
+            error: item.error,
+            created_at: item.created_at,
+        }
+    }).collect();
+
+    let has_more = (offset + limit) < total;
+
+    Ok(HttpResponse::Ok().json(HistoryResponse {
+        items,
+        total,
+        offset,
+        limit,
+        has_more,
+    }))
 }
 
 /// GET /api/transfer/upload/task/{task_id}

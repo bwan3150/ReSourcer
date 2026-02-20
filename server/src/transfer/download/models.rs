@@ -124,3 +124,13 @@ pub struct CreateTaskResponse {
     pub task_id: String,
     pub message: String,
 }
+
+// 历史记录分页响应
+#[derive(Debug, Serialize)]
+pub struct HistoryResponse {
+    pub items: Vec<DownloadTask>,
+    pub total: i64,
+    pub offset: i64,
+    pub limit: i64,
+    pub has_more: bool,
+}

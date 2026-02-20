@@ -44,6 +44,7 @@ enum APIEndpoint {
     case downloadTasks                       // GET  /api/transfer/download/tasks
     case downloadTaskStatus(id: String)      // GET  /api/transfer/download/task/{id}
     case downloadTaskDelete(id: String)      // DELETE /api/transfer/download/task/{id}
+    case downloadHistory(offset: Int, limit: Int, status: String?)  // GET /api/transfer/download/history
     case downloadHistoryClear                // DELETE /api/transfer/download/history
 
     // MARK: - Transfer/Upload 上传相关
@@ -51,6 +52,7 @@ enum APIEndpoint {
     case uploadTasks                         // GET  /api/transfer/upload/tasks
     case uploadTaskStatus(id: String)        // GET  /api/transfer/upload/task/{id}
     case uploadTaskDelete(id: String)        // DELETE /api/transfer/upload/task/{id}
+    case uploadHistory(offset: Int, limit: Int, status: String?)    // GET /api/transfer/upload/history
     case uploadTasksClear                    // POST /api/transfer/upload/tasks/clear
 
     // MARK: - Preview 预览相关
@@ -125,6 +127,10 @@ enum APIEndpoint {
             return "/api/transfer/download/task/\(id)"
         case .downloadTaskDelete(let id):
             return "/api/transfer/download/task/\(id)"
+        case .downloadHistory(let offset, let limit, let status):
+            var path = "/api/transfer/download/history?offset=\(offset)&limit=\(limit)"
+            if let status { path += "&status=\(status)" }
+            return path
         case .downloadHistoryClear:
             return "/api/transfer/download/history"
 
@@ -137,6 +143,10 @@ enum APIEndpoint {
             return "/api/transfer/upload/task/\(id)"
         case .uploadTaskDelete(let id):
             return "/api/transfer/upload/task/\(id)"
+        case .uploadHistory(let offset, let limit, let status):
+            var path = "/api/transfer/upload/history?offset=\(offset)&limit=\(limit)"
+            if let status { path += "&status=\(status)" }
+            return path
         case .uploadTasksClear:
             return "/api/transfer/upload/tasks/clear"
 
@@ -188,8 +198,8 @@ enum APIEndpoint {
         // GET 请求
         case .authCheck, .health, .config, .appConfig,
              .fileInfo, .folderList,
-             .downloadTasks, .downloadTaskStatus,
-             .uploadTasks, .uploadTaskStatus,
+             .downloadTasks, .downloadTaskStatus, .downloadHistory,
+             .uploadTasks, .uploadTaskStatus, .uploadHistory,
              .previewFiles, .previewThumbnail, .previewContent,
              .configState, .configDownload, .configSources:
             return .GET

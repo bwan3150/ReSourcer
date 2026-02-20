@@ -26,5 +26,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
                 .route(web::delete().to(task::cancel_task))
         )
         // 历史记录
-        .service(web::resource("/history").route(web::delete().to(task::clear_history)));
+        .service(web::resource("/history")
+            .route(web::get().to(task::get_history))
+            .route(web::delete().to(task::clear_history)));
 }

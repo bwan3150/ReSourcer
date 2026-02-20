@@ -421,7 +421,15 @@ struct DownloadView: View {
 struct DownloadTaskListView: View {
     let apiService: APIService
 
-    @State private var tasks: [DownloadTask] = []
+    // 活跃任务（轮询获取）
+    @State private var activeTasks: [DownloadTask] = []
+    // 历史记录（分页累积）
+    @State private var historyTasks: [DownloadTask] = []
+    @State private var historyOffset = 0
+    @State private var hasMoreHistory = true
+    @State private var isLoadingMore = false
+    @State private var historyTotal = 0
+
     @State private var isLoading = false
     @State private var selectedSegment: DownloadSegment = .active
     @State private var refreshTimer: Timer?
@@ -441,9 +449,14 @@ struct DownloadTaskListView: View {
             ])
             .padding(.horizontal, AppTheme.Spacing.lg)
             .padding(.vertical, AppTheme.Spacing.md)
+            .onChange(of: selectedSegment) { _, newValue in
+                if newValue != .active {
+                    Task { await loadHistory(reset: true) }
+                }
+            }
 
             // 任务列表
-            if isLoading && tasks.isEmpty {
+            if isLoading && filteredTasks.isEmpty {
                 GlassLoadingView("加载中...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if filteredTasks.isEmpty {
@@ -460,7 +473,7 @@ struct DownloadTaskListView: View {
                 } label: {
                     Image(systemName: "trash")
                 }
-                .disabled(completedTasks.isEmpty && failedTasks.isEmpty)
+                .disabled(historyTotal == 0 && selectedSegment == .active)
             }
         }
         .alert("清除记录", isPresented: $showClearConfirm) {
@@ -470,7 +483,10 @@ struct DownloadTaskListView: View {
             Text("确定要清除所有已完成和失败的记录吗？")
         }
         .task {
-            await loadTasks()
+            await loadActiveTasks()
+            if selectedSegment != .active {
+                await loadHistory(reset: true)
+            }
             startAutoRefresh()
         }
         .onDisappear {
@@ -481,14 +497,10 @@ struct DownloadTaskListView: View {
     private var filteredTasks: [DownloadTask] {
         switch selectedSegment {
         case .active: return activeTasks
-        case .completed: return completedTasks
-        case .failed: return failedTasks
+        case .completed: return historyTasks
+        case .failed: return historyTasks
         }
     }
-
-    private var activeTasks: [DownloadTask] { tasks.filter { $0.status.isActive } }
-    private var completedTasks: [DownloadTask] { tasks.filter { $0.status == .completed } }
-    private var failedTasks: [DownloadTask] { tasks.filter { $0.status == .failed || $0.status == .cancelled } }
 
     private var taskList: some View {
         ScrollView {
@@ -501,11 +513,23 @@ struct DownloadTaskListView: View {
                         deleteTask(task)
                     }
                 }
+
+                // 底部加载触发器（仅历史 tab）
+                if selectedSegment != .active && hasMoreHistory {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .onAppear { loadMoreHistory() }
+                }
             }
             .padding(AppTheme.Spacing.lg)
         }
         .refreshable {
-            await loadTasks()
+            if selectedSegment == .active {
+                await loadActiveTasks()
+            } else {
+                await loadHistory(reset: true)
+            }
         }
         .navigationDestination(isPresented: $showFilePreview) {
             if let fileInfo = previewFileInfo {
@@ -543,21 +567,68 @@ struct DownloadTaskListView: View {
         selectedSegment == .active ? "返回上一页添加新下载" : nil
     }
 
-    private func loadTasks() async {
+    // MARK: - 数据加载
+
+    /// 加载活跃任务（用于 3 秒轮询）
+    private func loadActiveTasks() async {
         isLoading = true
         do {
-            tasks = try await apiService.download.getTasks()
+            activeTasks = try await apiService.download.getTasks()
         } catch {
             GlassAlertManager.shared.showError("加载失败", message: error.localizedDescription)
         }
         isLoading = false
     }
 
+    /// 加载历史记录
+    /// - Parameter reset: true 时清空重新加载（切换 tab / 下拉刷新），false 时追加
+    private func loadHistory(reset: Bool) async {
+        if reset {
+            historyOffset = 0
+            historyTasks = []
+            hasMoreHistory = true
+        }
+
+        let status = selectedSegment == .completed ? "completed" : "failed"
+
+        isLoading = true
+        do {
+            let response = try await apiService.download.getHistory(
+                offset: historyOffset, limit: 50, status: status
+            )
+            if reset {
+                historyTasks = response.items
+            } else {
+                historyTasks.append(contentsOf: response.items)
+            }
+            historyOffset += response.items.count
+            hasMoreHistory = response.hasMore
+            historyTotal = response.total
+        } catch {
+            GlassAlertManager.shared.showError("加载失败", message: error.localizedDescription)
+        }
+        isLoading = false
+    }
+
+    /// 无限滚动加载更多
+    private func loadMoreHistory() {
+        guard !isLoadingMore && hasMoreHistory else { return }
+        isLoadingMore = true
+        Task {
+            await loadHistory(reset: false)
+            isLoadingMore = false
+        }
+    }
+
     private func deleteTask(_ task: DownloadTask) {
         Task {
             do {
                 try await apiService.download.deleteTask(id: task.id)
-                await loadTasks()
+                if selectedSegment == .active {
+                    await loadActiveTasks()
+                } else {
+                    await loadHistory(reset: true)
+                }
             } catch {
                 GlassAlertManager.shared.showError("删除失败", message: error.localizedDescription)
             }
@@ -568,7 +639,10 @@ struct DownloadTaskListView: View {
         Task {
             do {
                 try await apiService.download.clearHistory()
-                await loadTasks()
+                historyTasks = []
+                historyTotal = 0
+                historyOffset = 0
+                hasMoreHistory = true
                 GlassAlertManager.shared.showSuccess("历史已清空")
             } catch {
                 GlassAlertManager.shared.showError("清空失败", message: error.localizedDescription)
@@ -578,7 +652,7 @@ struct DownloadTaskListView: View {
 
     private func startAutoRefresh() {
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in
-            Task { await loadTasks() }
+            Task { await loadActiveTasks() }
         }
     }
 

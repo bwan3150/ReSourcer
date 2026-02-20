@@ -18,5 +18,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
             web::resource("/task/{task_id}")
                 .route(web::get().to(task::get_task))
                 .route(web::delete().to(task::delete_task))
-        );
+        )
+        // 历史记录分页
+        .service(web::resource("/history").route(web::get().to(task::get_history)));
 }

@@ -180,6 +180,15 @@ struct DownloadTasksResponse: Codable {
     let tasks: [DownloadTask]
 }
 
+/// 下载历史记录分页响应
+struct DownloadHistoryResponse: Codable {
+    let items: [DownloadTask]
+    let total: Int
+    let offset: Int
+    let limit: Int
+    let hasMore: Bool
+}
+
 /// URL 检测请求
 struct UrlDetectRequest: Codable {
     let url: String

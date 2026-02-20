@@ -30,3 +30,13 @@ pub struct UploadTask {
 pub struct TaskListResponse {
     pub tasks: Vec<UploadTask>,
 }
+
+/// 历史记录分页响应
+#[derive(Debug, Serialize)]
+pub struct HistoryResponse {
+    pub items: Vec<UploadTask>,
+    pub total: i64,
+    pub offset: i64,
+    pub limit: i64,
+    pub has_more: bool,
+}

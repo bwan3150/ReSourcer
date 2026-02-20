@@ -125,6 +125,15 @@ struct UploadTasksResponse: Codable {
     let tasks: [UploadTask]
 }
 
+/// 上传历史记录分页响应
+struct UploadHistoryResponse: Codable {
+    let items: [UploadTask]
+    let total: Int
+    let offset: Int
+    let limit: Int
+    let hasMore: Bool
+}
+
 /// 上传任务创建响应
 struct CreateUploadTaskResponse: Codable {
     let taskIds: [String]
