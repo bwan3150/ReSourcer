@@ -828,6 +828,11 @@ struct ClassifierView: View {
                 )
                 operationHistory.append(operation)
 
+                // 更新目标文件夹计数 +1
+                if let idx = categories.firstIndex(where: { $0.name == category.name }) {
+                    categories[idx] = categories[idx].with(fileCount: categories[idx].fileCount + 1)
+                }
+
                 // 直接移动到下一个文件，不弹窗
                 withAnimation(AppTheme.Animation.bouncy) {
                     classifiedCount += 1
@@ -917,6 +922,11 @@ struct ClassifierView: View {
             do {
                 // 移回原位置
                 _ = try await apiService.file.moveFile(at: lastOp.newPath, to: sourceFolder)
+
+                // 恢复目标文件夹计数 -1
+                if let idx = categories.firstIndex(where: { $0.name == lastOp.toCategory }) {
+                    categories[idx] = categories[idx].with(fileCount: max(0, categories[idx].fileCount - 1))
+                }
 
                 // 恢复索引，不弹窗
                 withAnimation(AppTheme.Animation.bouncy) {

@@ -26,11 +26,11 @@ struct FolderInfo: Identifiable, Codable, Equatable {
     // MARK: - Methods
 
     /// 复制并修改属性
-    func with(hidden: Bool? = nil) -> FolderInfo {
+    func with(hidden: Bool? = nil, fileCount: Int? = nil) -> FolderInfo {
         FolderInfo(
             name: self.name,
             hidden: hidden ?? self.hidden,
-            fileCount: self.fileCount
+            fileCount: fileCount ?? self.fileCount
         )
     }
 }
