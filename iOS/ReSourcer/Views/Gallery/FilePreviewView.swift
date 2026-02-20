@@ -765,52 +765,9 @@ struct ImagePreviewContent: View {
     @ViewBuilder
     private func gifPreview(url: URL?, in geometry: GeometryProxy) -> some View {
         ZStack {
-            // 加载占位
-            if !gifLoaded {
-                CachedThumbnailView(
-                    url: apiService.preview.getThumbnailURL(
-                        for: file.path,
-                        size: 300,
-                        baseURL: apiService.baseURL,
-                        apiKey: apiService.apiKey
-                    )
-                ) { thumb in
-                    thumb
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .blur(radius: 8)
-                } placeholder: {
-                    Color.clear
-                }
-
-                ProgressView()
-                    .tint(.white)
-                    .scaleEffect(1.2)
-            }
-
-            // 动画 GIF
-            AnimatedGIFView(url: url) {
-                gifLoaded = true
-            }
-            .opacity(gifLoaded ? 1 : 0)
-        }
-        .scaleEffect(scale)
-        .offset(currentOffset)
-        .gesture(pinchGesture)
-        .simultaneousGesture(scale > 1.0 ? dragGesture : nil)
-        .onTapGesture(count: 2) { resetZoom() }
-        .onTapGesture(count: 1, perform: onTap)
-        .frame(width: geometry.size.width, height: geometry.size.height)
-    }
-
-    // MARK: - 静态图片预览
-
-    @ViewBuilder
-    private func staticImagePreview(url: URL?, in geometry: GeometryProxy) -> some View {
-        AsyncImage(url: url) { phase in
-            switch phase {
-            case .empty:
-                ZStack {
+            ZStack {
+                // 加载占位
+                if !gifLoaded {
                     CachedThumbnailView(
                         url: apiService.preview.getThumbnailURL(
                             for: file.path,
@@ -832,35 +789,81 @@ struct ImagePreviewContent: View {
                         .scaleEffect(1.2)
                 }
 
-            case .success(let image):
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .scaleEffect(scale)
-                    .offset(currentOffset)
-                    .gesture(pinchGesture)
-                    .simultaneousGesture(scale > 1.0 ? dragGesture : nil)
-                    .onTapGesture(count: 2) { resetZoom() }
-                    .onTapGesture(count: 1, perform: onTap)
-
-            case .failure:
-                VStack(spacing: AppTheme.Spacing.lg) {
-                    Image(systemName: "photo.badge.exclamationmark")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.white.opacity(0.5))
-                    Text("图片加载失败")
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.7))
+                // 动画 GIF
+                AnimatedGIFView(url: url) {
+                    gifLoaded = true
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .contentShape(Rectangle())
-                .onTapGesture(perform: onTap)
-
-            @unknown default:
-                EmptyView()
+                .opacity(gifLoaded ? 1 : 0)
             }
+            .scaleEffect(scale)
+            .offset(currentOffset)
         }
         .frame(width: geometry.size.width, height: geometry.size.height)
+        .contentShape(Rectangle())
+        .gesture(pinchGesture)
+        .simultaneousGesture(scale > 1.0 ? dragGesture : nil)
+        .onTapGesture(count: 2) { resetZoom() }
+        .onTapGesture(count: 1, perform: onTap)
+    }
+
+    // MARK: - 静态图片预览
+
+    @ViewBuilder
+    private func staticImagePreview(url: URL?, in geometry: GeometryProxy) -> some View {
+        ZStack {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .empty:
+                    ZStack {
+                        CachedThumbnailView(
+                            url: apiService.preview.getThumbnailURL(
+                                for: file.path,
+                                size: 300,
+                                baseURL: apiService.baseURL,
+                                apiKey: apiService.apiKey
+                            )
+                        ) { thumb in
+                            thumb
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .blur(radius: 8)
+                        } placeholder: {
+                            Color.clear
+                        }
+
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(1.2)
+                    }
+
+                case .success(let image):
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+
+                case .failure:
+                    VStack(spacing: AppTheme.Spacing.lg) {
+                        Image(systemName: "photo.badge.exclamationmark")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.white.opacity(0.5))
+                        Text("图片加载失败")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+
+                @unknown default:
+                    EmptyView()
+                }
+            }
+            .scaleEffect(scale)
+            .offset(currentOffset)
+        }
+        .frame(width: geometry.size.width, height: geometry.size.height)
+        .contentShape(Rectangle())
+        .gesture(pinchGesture)
+        .simultaneousGesture(scale > 1.0 ? dragGesture : nil)
+        .onTapGesture(count: 2) { resetZoom() }
+        .onTapGesture(count: 1, perform: onTap)
     }
 
     // MARK: - 缩放手势
@@ -1060,18 +1063,21 @@ struct VideoPreviewContent: View {
 
     var body: some View {
         ZStack {
-            // 纯视频画面（无内置控制栏）
-            if let player = player {
-                AVPlayerView(player: player)
-                    .ignoresSafeArea()
-            } else {
-                ProgressView()
-                    .tint(.white)
-                    .scaleEffect(1.5)
+            ZStack {
+                // 纯视频画面（无内置控制栏）
+                if let player = player {
+                    AVPlayerView(player: player)
+                        .ignoresSafeArea()
+                } else {
+                    ProgressView()
+                        .tint(.white)
+                        .scaleEffect(1.5)
+                }
             }
+            .scaleEffect(scale)
+            .offset(currentOffset)
         }
-        .scaleEffect(scale)
-        .offset(currentOffset)
+        .contentShape(Rectangle())
         .gesture(pinchGesture)
         .simultaneousGesture(scale > 1.0 ? dragGesture : nil)
         .onTapGesture(count: 2) { resetZoom() }

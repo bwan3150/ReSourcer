@@ -203,14 +203,17 @@ struct ClassifierView: View {
     private var classifierContent: some View {
         VStack(spacing: 0) {
             // 文件预览区域（支持双指缩放）
-            filePreviewSection
-                .scaleEffect(scale)
-                .offset(currentOffset)
-                .gesture(pinchGesture)
-                .simultaneousGesture(scale > 1.0 ? zoomDragGesture : nil)
-                .onTapGesture(count: 2) { toggleZoom() }
-                .frame(maxHeight: .infinity)
-                .clipped()
+            ZStack {
+                filePreviewSection
+                    .scaleEffect(scale)
+                    .offset(currentOffset)
+            }
+            .frame(maxHeight: .infinity)
+            .clipped()
+            .contentShape(Rectangle())
+            .gesture(pinchGesture)
+            .simultaneousGesture(scale > 1.0 ? zoomDragGesture : nil)
+            .onTapGesture(count: 2) { toggleZoom() }
                 // 长按 info 按钮时浮动显示文件名
                 .overlay(alignment: .top) {
                     if showFileName, let name = currentFile?.name {
