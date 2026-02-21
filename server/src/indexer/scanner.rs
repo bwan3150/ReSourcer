@@ -2,7 +2,9 @@
 use std::path::Path;
 use std::fs;
 use chrono::{DateTime, Utc};
+use crate::database::get_connection;
 use crate::preview::models::*;
+use rusqlite::params;
 use super::models::{IndexedFile, IndexedFolder};
 use super::fingerprint::compute_fingerprint;
 use super::storage;
@@ -55,22 +57,37 @@ pub fn needs_rescan(folder_path: &str) -> bool {
 }
 
 /// 单文件夹扫描（惰性索引核心）
-pub fn scan_folder(folder_path: &str, source_folder: &str) -> Result<Vec<IndexedFile>, Box<dyn std::error::Error + Send + Sync>> {
+/// skip_mark_missing: 后台增量扫描时为 true，跳过标记缺失文件，避免竞态导致文件"消失"
+pub fn scan_folder(folder_path: &str, source_folder: &str, skip_mark_missing: bool) -> Result<Vec<IndexedFile>, Box<dyn std::error::Error + Send + Sync>> {
     let dir_path = Path::new(folder_path);
     if !dir_path.is_dir() {
         return Err(format!("路径不是目录: {}", folder_path).into());
     }
 
     let now = Utc::now().to_rfc3339();
-    let mut indexed_files = Vec::new();
-    let mut existing_paths = Vec::new();
 
-    // 读取目录中的所有文件
+    // 第一阶段：一次性查出该文件夹所有已索引文件（避免逐个 get_file_by_path 开连接）
+    let indexed_map = storage::get_indexed_files_for_folder(folder_path)
+        .unwrap_or_default();
+
+    struct FileEntry {
+        path_str: String,
+        ext: String,
+        file_type: String,
+        file_name: String,
+        file_size: i64,
+        created_at: String,
+        modified_at: String,
+        fingerprint: Option<String>,
+        existing_file: Option<IndexedFile>,
+    }
+
+    let mut file_entries: Vec<FileEntry> = Vec::new();
+    let mut existing_paths: Vec<String> = Vec::new();
+
     let entries = fs::read_dir(dir_path)?;
     for entry in entries.flatten() {
         let entry_path = entry.path();
-
-        // 跳过目录
         if entry_path.is_dir() {
             continue;
         }
@@ -81,7 +98,6 @@ pub fn scan_folder(folder_path: &str, source_folder: &str) -> Result<Vec<Indexed
             .to_lowercase();
 
         let file_type = classify_extension(&ext);
-
         let path_str = entry_path.to_string_lossy().to_string();
         existing_paths.push(path_str.clone());
 
@@ -98,10 +114,25 @@ pub fn scan_folder(folder_path: &str, source_folder: &str) -> Result<Vec<Indexed
             .map(|t| DateTime::<Utc>::from(t).to_rfc3339())
             .unwrap_or_else(|_| now.clone());
 
-        // 检查是否已索引且 mtime 未变
-        if let Ok(Some(existing)) = storage::get_file_by_path(&path_str) {
+        let file_name = entry_path.file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+
+        // 用内存中的 HashMap 检查 mtime，而非逐个查数据库
+        if let Some(existing) = indexed_map.get(&path_str) {
             if existing.modified_at == modified_at {
-                indexed_files.push(existing);
+                file_entries.push(FileEntry {
+                    path_str,
+                    ext,
+                    file_type,
+                    file_name,
+                    file_size: metadata.len() as i64,
+                    created_at,
+                    modified_at,
+                    fingerprint: None,
+                    existing_file: Some(existing.clone()),
+                });
                 continue;
             }
         }
@@ -112,14 +143,35 @@ pub fn scan_folder(folder_path: &str, source_folder: &str) -> Result<Vec<Indexed
             Err(_) => continue,
         };
 
-        let file_name = entry_path.file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_string();
+        file_entries.push(FileEntry {
+            path_str,
+            ext,
+            file_type,
+            file_name,
+            file_size: metadata.len() as i64,
+            created_at,
+            modified_at,
+            fingerprint: Some(fingerprint),
+            existing_file: None,
+        });
+    }
 
-        // 检查是否是移动过来的文件（指纹匹配的孤儿）
-        let file_uuid = if let Ok(Some(orphan)) = storage::find_orphan_by_fingerprint(&fingerprint) {
-            // 文件被移动了，复用旧 UUID
+    // 第二阶段：在单个事务中批量写入数据库
+    let conn = get_connection()?;
+    let tx = conn.unchecked_transaction()?;
+
+    let mut indexed_files = Vec::new();
+
+    for entry in &file_entries {
+        if let Some(ref existing) = entry.existing_file {
+            indexed_files.push(existing.clone());
+            continue;
+        }
+
+        let fingerprint = entry.fingerprint.as_ref().unwrap();
+
+        // 孤儿检测在事务内，避免竞态
+        let file_uuid = if let Ok(Some(orphan)) = storage::find_orphan_by_fingerprint_with_conn(&tx, fingerprint) {
             orphan.uuid
         } else {
             uuid::Uuid::new_v4().to_string()
@@ -127,33 +179,35 @@ pub fn scan_folder(folder_path: &str, source_folder: &str) -> Result<Vec<Indexed
 
         let indexed_file = IndexedFile {
             uuid: file_uuid,
-            fingerprint,
-            current_path: Some(path_str),
+            fingerprint: fingerprint.clone(),
+            current_path: Some(entry.path_str.clone()),
             folder_path: folder_path.to_string(),
-            file_name,
-            file_type,
-            extension: ext,
-            file_size: metadata.len() as i64,
-            created_at,
-            modified_at,
+            file_name: entry.file_name.clone(),
+            file_type: entry.file_type.clone(),
+            extension: entry.ext.clone(),
+            file_size: entry.file_size,
+            created_at: entry.created_at.clone(),
+            modified_at: entry.modified_at.clone(),
             indexed_at: now.clone(),
             source_url: None,
         };
 
-        if let Err(e) = storage::upsert_file(&indexed_file) {
-            eprintln!("索引文件失败: {} - {}", indexed_file.current_path.as_deref().unwrap_or(""), e);
+        if let Err(e) = storage::upsert_file_with_conn(&tx, &indexed_file) {
+            eprintln!("索引文件失败: {} - {}", entry.path_str, e);
             continue;
         }
 
         indexed_files.push(indexed_file);
     }
 
-    // 标记已不存在的文件
-    if let Err(e) = storage::mark_missing(folder_path, &existing_paths) {
-        eprintln!("标记缺失文件失败: {}", e);
+    // 只有前台同步扫描才标记缺失文件，后台增量扫描跳过
+    if !skip_mark_missing {
+        if let Err(e) = storage::mark_missing_with_conn(&tx, folder_path, &existing_paths) {
+            eprintln!("标记缺失文件失败: {}", e);
+        }
     }
 
-    // 计算文件夹深度
+    // 更新文件夹索引
     let depth = if folder_path == source_folder {
         0
     } else {
@@ -176,7 +230,6 @@ pub fn scan_folder(folder_path: &str, source_folder: &str) -> Result<Vec<Indexed
             .map(|p| p.to_string_lossy().to_string())
     };
 
-    // 更新文件夹索引
     let folder = IndexedFolder {
         path: folder_path.to_string(),
         parent_path,
@@ -186,14 +239,18 @@ pub fn scan_folder(folder_path: &str, source_folder: &str) -> Result<Vec<Indexed
         file_count: existing_paths.len() as i64,
         indexed_at: now,
     };
-    if let Err(e) = storage::upsert_folder(&folder) {
+    if let Err(e) = storage::upsert_folder_with_conn(&tx, &folder) {
         eprintln!("更新文件夹索引失败: {}", e);
     }
+
+    // 提交事务：所有 upsert + mark_missing 原子生效
+    tx.commit()?;
 
     Ok(indexed_files)
 }
 
 /// 全量递归扫描源文件夹
+/// 使用单连接 + 事务分批提交，避免几十万次 get_connection() 调用
 pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std::error::Error + Send + Sync>> {
     use walkdir::WalkDir;
 
@@ -205,6 +262,13 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
     let now = Utc::now().to_rfc3339();
     let mut scanned_files: u64 = 0;
     let mut scanned_folders: u64 = 0;
+
+    // 单连接复用，避免每个文件都 get_connection()
+    let conn = get_connection()?;
+    let mut batch_count: u64 = 0;
+
+    // 开启第一个事务
+    conn.execute_batch("BEGIN")?;
 
     // 递归遍历
     for entry in WalkDir::new(source_folder).into_iter().filter_map(|e| e.ok()) {
@@ -244,7 +308,7 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
                 file_count: 0, // 后面批量更新
                 indexed_at: now.clone(),
             };
-            let _ = storage::upsert_folder(&folder);
+            let _ = storage::upsert_folder_with_conn(&conn, &folder);
             scanned_folders += 1;
         } else {
             // 文件
@@ -269,12 +333,14 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
                 .map(|t| DateTime::<Utc>::from(t).to_rfc3339())
                 .unwrap_or_else(|_| now.clone());
 
-            // 检查是否已索引且 mtime 未变
-            if let Ok(Some(existing)) = storage::get_file_by_path(&path_str) {
-                if existing.modified_at == modified_at {
-                    scanned_files += 1;
-                    continue;
-                }
+            // 使用同一连接检查 mtime
+            let mut stmt = conn.prepare_cached(
+                "SELECT modified_at FROM file_index WHERE current_path = ?1"
+            )?;
+            let existing_mtime: Option<String> = stmt.query_row(params![path_str], |row| row.get(0)).ok();
+            if existing_mtime.as_deref() == Some(&modified_at) {
+                scanned_files += 1;
+                continue;
             }
 
             let created_at = metadata.created()
@@ -291,8 +357,8 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
                 .to_string_lossy()
                 .to_string();
 
-            // 移动检测
-            let file_uuid = if let Ok(Some(orphan)) = storage::find_orphan_by_fingerprint(&fingerprint) {
+            // 移动检测（复用同一连接）
+            let file_uuid = if let Ok(Some(orphan)) = storage::find_orphan_by_fingerprint_with_conn(&conn, &fingerprint) {
                 orphan.uuid
             } else {
                 uuid::Uuid::new_v4().to_string()
@@ -313,10 +379,20 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
                 source_url: None,
             };
 
-            let _ = storage::upsert_file(&indexed_file);
+            let _ = storage::upsert_file_with_conn(&conn, &indexed_file);
             scanned_files += 1;
         }
+
+        // 每 500 条提交一次事务，释放写锁让其他操作有机会执行
+        batch_count += 1;
+        if batch_count >= 500 {
+            conn.execute_batch("COMMIT; BEGIN")?;
+            batch_count = 0;
+        }
     }
+
+    // 提交最后一批
+    conn.execute_batch("COMMIT")?;
 
     // 批量更新文件计数
     let _ = storage::update_folder_file_counts(source_folder);

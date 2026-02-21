@@ -88,7 +88,7 @@ pub async fn files(
 ) -> Result<HttpResponse> {
     let folder_path = query.folder_path.clone();
     let offset = query.offset.unwrap_or(0);
-    let limit = query.limit.unwrap_or(50);
+    let limit = query.limit.unwrap_or(50).min(200); // 限制最大 200 条，防止内存暴涨
     let file_type = query.file_type.clone();
     let sort = query.sort.clone();
 
@@ -100,11 +100,11 @@ pub async fn files(
         };
 
         if !indexed {
-            // 首次访问：同步扫描建索引
+            // 首次访问：同步扫描建索引（前台，执行 mark_missing）
             let source_folder = find_source_folder(&folder_path)
                 .unwrap_or_else(|| folder_path.clone());
 
-            if let Err(e) = scanner::scan_folder(&folder_path, &source_folder) {
+            if let Err(e) = scanner::scan_folder(&folder_path, &source_folder, false) {
                 eprintln!("首次扫描失败: {}", e);
                 return FilesResult::Ok(PaginatedFilesResponse {
                     files: vec![],
@@ -116,11 +116,12 @@ pub async fn files(
             }
         } else if scanner::needs_rescan(&folder_path) {
             // 有索引但需要更新 → 返回旧数据 + 后台增量更新
+            // skip_mark_missing=true：后台扫描只新增/更新，不标记缺失，避免竞态导致文件"消失"
             let folder_clone = folder_path.clone();
             let source = find_source_folder(&folder_path)
                 .unwrap_or_else(|| folder_path.clone());
             std::thread::spawn(move || {
-                let _ = scanner::scan_folder(&folder_clone, &source);
+                let _ = scanner::scan_folder(&folder_clone, &source, true);
             });
         }
 
@@ -290,18 +291,15 @@ fn scan_subfolders(parent_path: &str, source_folder: &str) -> Result<(), String>
             .to_string_lossy()
             .to_string();
 
-        // 计算文件数量（只计算目录中的直接文件）
-        let file_count = std::fs::read_dir(&entry_path)
-            .map(|entries| entries.filter_map(|e| e.ok()).filter(|e| e.path().is_file()).count())
-            .unwrap_or(0) as i64;
-
+        // file_count 由 scan_folder / scan_source_folder 更新，
+        // 此处不再遍历目录计数（几百个子文件夹 × 几千文件 = 不必要的 IO）
         let folder = IndexedFolder {
             path: dir_str,
             parent_path: Some(parent_path.to_string()),
             source_folder: source_folder.to_string(),
             name: folder_name,
             depth,
-            file_count,
+            file_count: 0,
             indexed_at: now.clone(),
         };
         let _ = storage::upsert_folder(&folder);

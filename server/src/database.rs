@@ -26,10 +26,19 @@ pub fn ensure_config_dir() -> std::io::Result<()> {
     Ok(())
 }
 
-/// 获取数据库连接
+/// 获取数据库连接（已配置 WAL 模式 + busy_timeout）
 pub fn get_connection() -> SqliteResult<Connection> {
     let db_path = get_db_path();
-    Connection::open(&db_path)
+    let conn = Connection::open(&db_path)?;
+    // WAL 模式：允许读写并发，大幅减少 SQLITE_BUSY 错误
+    // busy_timeout：写冲突时等待 5 秒而非立即失败
+    // synchronous=NORMAL：WAL 模式下的推荐设置，兼顾性能和安全
+    conn.execute_batch(
+        "PRAGMA journal_mode=WAL;
+         PRAGMA busy_timeout=5000;
+         PRAGMA synchronous=NORMAL;"
+    )?;
+    Ok(conn)
 }
 
 /// 初始化数据库（创建表结构，执行迁移）
