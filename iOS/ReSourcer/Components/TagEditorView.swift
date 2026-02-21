@@ -2,7 +2,7 @@
 //  TagEditorView.swift
 //  ReSourcer
 //
-//  标签编辑器 — 选择/创建/编辑/删除标签
+//  标签编辑器 — 胶囊标签云 + 底部添加/编辑按钮
 //
 
 import SwiftUI
@@ -20,6 +20,9 @@ struct TagEditorView: View {
     /// 加载中
     @State private var isLoading = true
 
+    /// 编辑模式
+    @State private var isEditMode = false
+
     /// 新建标签
     @State private var showCreateTag = false
     @State private var newTagName = ""
@@ -30,52 +33,74 @@ struct TagEditorView: View {
     @State private var editTagName = ""
     @State private var editTagColor = ""
 
+    /// 删除确认
+    @State private var tagToDelete: Tag? = nil
+
     /// 关闭时回调（返回最新的文件标签）
     var onDismiss: (([Tag]) -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
 
-    /// 预设颜色
+    /// 预设颜色（6 列 × 7 行 = 42 色）
     private let presetColors = [
-        "#007AFF", "#FF3B30", "#FF9500", "#FFCC00",
-        "#34C759", "#5AC8FA", "#AF52DE", "#FF2D55",
-        "#8E8E93", "#5856D6", "#00C7BE", "#A2845E"
+        "#FF3B30", "#FF6961", "#E74C3C", "#C0392B", "#FF2D55", "#D32F2F",
+        "#FF9500", "#FF7043", "#F39C12", "#E67E22", "#FFCC00", "#FFD426",
+        "#34C759", "#4CD964", "#2ECC71", "#27AE60", "#1ABC9C", "#16A085",
+        "#00C7BE", "#20B2AA", "#3CB371", "#009688", "#00BCD4", "#5AC8FA",
+        "#007AFF", "#2196F3", "#6495ED", "#1976D2", "#5856D6", "#3F51B5",
+        "#AF52DE", "#9370DB", "#9C27B0", "#8E24AA", "#DA70D6", "#E91E63",
+        "#A2845E", "#D2691E", "#F4A460", "#8E8E93", "#6D6D6D", "#4A4A4A"
     ]
 
     var body: some View {
         NavigationStack {
-            List {
-                // 已有标签列表
-                Section {
-                    if isLoading {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    } else if allTags.isEmpty {
-                        Text("暂无标签，点击下方按钮创建")
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        ForEach(allTags) { tag in
-                            tagRow(tag)
+            VStack(spacing: 20) {
+                // 标签云区域
+                if isLoading {
+                    Spacer()
+                    ProgressView()
+                    Spacer()
+                } else if allTags.isEmpty {
+                    Spacer()
+                    Text("暂无标签")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                } else {
+                    ScrollView {
+                        FlowLayout(spacing: 8) {
+                            ForEach(allTags) { tag in
+                                tagCapsule(tag)
+                            }
                         }
+                        .padding(.top, AppTheme.Spacing.sm)
                     }
-                } header: {
-                    Text("选择标签")
                 }
 
-                // 新建标签
-                Section {
-                    if showCreateTag {
-                        createTagForm
-                    } else {
-                        Button {
-                            showCreateTag = true
-                        } label: {
-                            Label("新建标签", systemImage: "plus.circle")
-                        }
+                Divider()
+
+                // 底部按钮区
+                HStack {
+                    Button {
+                        newTagName = ""
+                        newTagColor = "#007AFF"
+                        showCreateTag = true
+                    } label: {
+                        Label("添加", systemImage: "plus.circle")
+                            .font(.body)
                     }
+
+                    Spacer()
+
+                    Button {
+                        withAnimation { isEditMode.toggle() }
+                    } label: {
+                        Text(isEditMode ? "完成编辑" : "编辑")
+                            .font(.body)
+                    }
+                    .disabled(allTags.isEmpty)
                 }
             }
+            .padding()
             .navigationTitle("编辑标签")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -88,89 +113,104 @@ struct TagEditorView: View {
             .task {
                 await loadData()
             }
+            .sheet(isPresented: $showCreateTag) {
+                createTagSheet
+            }
             .sheet(item: $editingTag) { tag in
                 editTagSheet(tag)
             }
-        }
-    }
-
-    // MARK: - 标签行
-
-    private func tagRow(_ tag: Tag) -> some View {
-        Button {
-            toggleTag(tag)
-        } label: {
-            HStack {
-                Circle()
-                    .fill(Color(hex: tag.color))
-                    .frame(width: 12, height: 12)
-                Text(tag.name)
-                    .foregroundStyle(.primary)
-                Spacer()
-                if selectedTagIds.contains(tag.id) {
-                    Image(systemName: "checkmark")
-                        .foregroundStyle(.blue)
-                        .fontWeight(.semibold)
+            .alert("删除标签", isPresented: Binding(
+                get: { tagToDelete != nil },
+                set: { if !$0 { tagToDelete = nil } }
+            )) {
+                Button("取消", role: .cancel) { tagToDelete = nil }
+                Button("删除", role: .destructive) {
+                    if let tag = tagToDelete {
+                        deleteTag(tag)
+                        tagToDelete = nil
+                    }
+                }
+            } message: {
+                if let tag = tagToDelete {
+                    Text("确定删除标签「\(tag.name)」？此操作不可撤销。")
                 }
             }
         }
-        .swipeActions(edge: .trailing) {
-            Button(role: .destructive) {
-                deleteTag(tag)
-            } label: {
-                Label("删除", systemImage: "trash")
-            }
-            Button {
+    }
+
+    // MARK: - 标签胶囊
+
+    private func tagCapsule(_ tag: Tag) -> some View {
+        let isSelected = selectedTagIds.contains(tag.id)
+        return Button {
+            if isEditMode {
                 editingTag = tag
                 editTagName = tag.name
                 editTagColor = tag.color
-            } label: {
-                Label("编辑", systemImage: "pencil")
+            } else {
+                toggleTag(tag)
             }
-            .tint(.orange)
+        } label: {
+            HStack(spacing: 4) {
+                Text(tag.name)
+                    .font(.body)
+                if isEditMode {
+                    Image(systemName: "pencil")
+                        .font(.caption)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(
+                isSelected
+                    ? Color(hex: tag.color).opacity(0.85)
+                    : Color.gray.opacity(0.2)
+            )
+            .foregroundStyle(
+                isSelected ? .white : .secondary
+            )
+            .clipShape(Capsule())
         }
+        .buttonStyle(.plain)
     }
 
-    // MARK: - 新建标签表单
+    // MARK: - 新建标签弹窗
 
-    private var createTagForm: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            TextField("标签名称", text: $newTagName)
-                .textFieldStyle(.roundedBorder)
-
-            // 颜色选择
-            Text("选择颜色")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6), spacing: 10) {
-                ForEach(presetColors, id: \.self) { color in
-                    Circle()
-                        .fill(Color(hex: color))
-                        .frame(width: 30, height: 30)
-                        .overlay(
+    private var createTagSheet: some View {
+        NavigationStack {
+            Form {
+                Section("标签名称") {
+                    TextField("名称", text: $newTagName)
+                }
+                Section("颜色") {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6), spacing: 10) {
+                        ForEach(presetColors, id: \.self) { color in
                             Circle()
-                                .stroke(Color.primary, lineWidth: newTagColor == color ? 2 : 0)
-                                .padding(-2)
-                        )
-                        .onTapGesture { newTagColor = color }
+                                .fill(Color(hex: color))
+                                .frame(width: 30, height: 30)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.primary, lineWidth: newTagColor == color ? 2 : 0)
+                                        .padding(-2)
+                                )
+                                .onTapGesture { newTagColor = color }
+                        }
+                    }
+                    .padding(.vertical, 4)
                 }
             }
-
-            HStack {
-                Button("取消") {
-                    showCreateTag = false
-                    newTagName = ""
-                    newTagColor = "#007AFF"
+            .navigationTitle("新建标签")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { showCreateTag = false }
                 }
-                .buttonStyle(.bordered)
-
-                Spacer()
-
-                Button("创建") {
-                    createNewTag()
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("创建") {
+                        createNewTag()
+                    }
+                    .disabled(newTagName.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(newTagName.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
     }
@@ -198,6 +238,15 @@ struct TagEditorView: View {
                         }
                     }
                     .padding(.vertical, 4)
+                }
+                Section {
+                    Button("删除标签", role: .destructive) {
+                        editingTag = nil
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(300))
+                            tagToDelete = tag
+                        }
+                    }
                 }
             }
             .navigationTitle("编辑标签")
@@ -259,7 +308,6 @@ struct TagEditorView: View {
 
         Task {
             try? await apiService.tag.updateTag(id: tag.id, name: name, color: editTagColor)
-            // 刷新列表
             if let index = allTags.firstIndex(where: { $0.id == tag.id }) {
                 allTags[index] = Tag(id: tag.id, sourceFolder: tag.sourceFolder, name: name, color: editTagColor, createdAt: tag.createdAt)
             }

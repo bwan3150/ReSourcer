@@ -810,7 +810,7 @@ struct GalleryView: View {
                 file: file,
                 bottomSpacing: 60,
                 tags: fileInfoTags,
-                onEditTags: file.uuid != nil ? {
+                onAddTag: file.uuid != nil ? {
                     fileInfoToShow = nil
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(300))

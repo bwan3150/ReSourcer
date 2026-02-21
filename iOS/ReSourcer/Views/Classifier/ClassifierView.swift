@@ -27,6 +27,10 @@ struct ClassifierView: View {
     @State private var showRenameAlert = false
     @State private var renameText = ""
 
+    // 标签
+    @State private var fileInfoTags: [Tag] = []
+    @State private var showTagEditor = false
+
     // 已分类计数
     @State private var classifiedCount = 0
     @State private var totalCount = 0
@@ -101,8 +105,14 @@ struct ClassifierView: View {
                     Image(systemName: "info.circle")
                         .foregroundStyle(currentFile != nil ? .primary : .tertiary)
                         .onTapGesture {
-                            if currentFile != nil {
+                            if let file = currentFile {
+                                fileInfoTags = []
                                 showInfoSheet = true
+                                if let uuid = file.uuid {
+                                    Task {
+                                        fileInfoTags = (try? await apiService.tag.getFileTags(fileUuid: uuid)) ?? []
+                                    }
+                                }
                             }
                         }
                         .onLongPressGesture(minimumDuration: .infinity, pressing: { isPressing in
@@ -118,12 +128,34 @@ struct ClassifierView: View {
                 }
             }
         }
+        // 标签编辑器
+        .sheet(isPresented: $showTagEditor) {
+            if let file = currentFile, let uuid = file.uuid {
+                TagEditorView(
+                    apiService: apiService,
+                    sourceFolder: sourceFolder,
+                    fileUuid: uuid,
+                    onDismiss: { updatedTags in
+                        fileInfoTags = updatedTags
+                    }
+                )
+                .presentationDetents([.medium, .large])
+            }
+        }
         // 文件信息面板
         .glassBottomSheet(isPresented: $showInfoSheet, title: "文件信息") {
             if let file = currentFile {
                 FileInfoSheetContent(
                     file: file,
                     bottomSpacing: 60,
+                    tags: fileInfoTags,
+                    onAddTag: file.uuid != nil ? {
+                        showInfoSheet = false
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(300))
+                            showTagEditor = true
+                        }
+                    } : nil,
                     onRename: {
                         showInfoSheet = false
                         Task { @MainActor in

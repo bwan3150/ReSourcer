@@ -158,10 +158,8 @@ struct FilePreviewView: View {
                 Button {
                     fileInfoTags = []
                     showInfoSheet = true
-                    if let uuid = currentFile?.uuid {
-                        Task {
-                            fileInfoTags = (try? await apiService.tag.getFileTags(fileUuid: uuid)) ?? []
-                        }
+                    Task {
+                        await resolveUuidAndLoadTags()
                     }
                 } label: {
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -436,7 +434,7 @@ struct FilePreviewView: View {
                 file: file,
                 position: "\(currentIndex + 1) / \(currentFiles.count)",
                 tags: fileInfoTags,
-                onEditTags: file.uuid != nil ? {
+                onAddTag: file.uuid != nil ? {
                     showInfoSheet = false
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(300))
@@ -466,6 +464,48 @@ struct FilePreviewView: View {
         }
     }
 
+
+    // MARK: - UUID 解析 + 标签加载
+
+    /// 如果当前文件 uuid 为空（如从上传/下载历史进入），通过 indexer 查找 uuid 并加载标签
+    private func resolveUuidAndLoadTags() async {
+        guard let file = currentFile else { return }
+
+        var uuid = file.uuid
+
+        // uuid 为空时，通过 indexer 查文件所在目录来获取
+        if uuid == nil {
+            let folderPath = (file.path as NSString).deletingLastPathComponent
+            if let response = try? await apiService.preview.getFilesPaginated(
+                in: folderPath, offset: 0, limit: 500
+            ) {
+                if let matched = response.files.first(where: { $0.fileName == file.name }) {
+                    uuid = matched.uuid
+                    // 回写 uuid 到 currentFiles，后续不用重复查
+                    if let idx = currentFiles.firstIndex(where: { $0.path == file.path }) {
+                        currentFiles[idx] = FileInfo(
+                            uuid: uuid,
+                            name: file.name,
+                            path: file.path,
+                            fileType: file.fileType,
+                            extension: file.extension,
+                            size: file.size,
+                            created: file.created,
+                            modified: file.modified,
+                            width: file.width,
+                            height: file.height,
+                            duration: file.duration
+                        )
+                    }
+                }
+            }
+        }
+
+        // 加载标签
+        if let uuid {
+            fileInfoTags = (try? await apiService.tag.getFileTags(fileUuid: uuid)) ?? []
+        }
+    }
 
     // MARK: - 控制栏显示/隐藏
 

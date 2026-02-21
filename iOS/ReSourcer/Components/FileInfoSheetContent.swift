@@ -20,8 +20,8 @@ struct FileInfoSheetContent: View {
     /// 文件标签
     var tags: [Tag] = []
 
-    /// 编辑标签回调（nil 则隐藏编辑按钮）
-    var onEditTags: (() -> Void)? = nil
+    /// 添加标签回调（nil 则隐藏标签行）
+    var onAddTag: (() -> Void)? = nil
 
     /// 操作按钮闭包（nil 则隐藏该按钮）
     var onRename: (() -> Void)? = nil
@@ -31,6 +31,41 @@ struct FileInfoSheetContent: View {
     var body: some View {
         VStack(spacing: AppTheme.Spacing.lg) {
             infoRow("文件名", value: file.name)
+
+            // 标签行：紧跟文件名下方
+            if let onAddTag {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                    Text("标签")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(tags) { tag in
+                                Text(tag.name)
+                                    .font(.subheadline)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(Color(hex: tag.color).opacity(0.85))
+                                    .foregroundStyle(.white)
+                                    .clipShape(Capsule())
+                            }
+                            // ⊕ 添加按钮
+                            Button {
+                                onAddTag()
+                            } label: {
+                                Image(systemName: "plus")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .overlay(Capsule().stroke(Color.secondary.opacity(0.4), lineWidth: 1))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             if let position {
                 infoRow("位置", value: position)
@@ -46,45 +81,6 @@ struct FileInfoSheetContent: View {
             }
             if let duration = file.formattedDuration {
                 infoRow("时长", value: duration)
-            }
-
-            // 标签区域
-            if !tags.isEmpty || onEditTags != nil {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
-                    HStack {
-                        Text("标签")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        if let onEditTags {
-                            Button {
-                                onEditTags()
-                            } label: {
-                                Label("编辑", systemImage: "pencil")
-                                    .font(.caption)
-                            }
-                            .buttonStyle(.borderless)
-                        }
-                    }
-                    if tags.isEmpty {
-                        Text("暂无标签")
-                            .font(.callout)
-                            .foregroundStyle(.tertiary)
-                    } else {
-                        FlowLayout(spacing: 6) {
-                            ForEach(tags) { tag in
-                                Text(tag.name)
-                                    .font(.caption)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Color(hex: tag.color).opacity(0.2))
-                                    .foregroundStyle(Color(hex: tag.color))
-                                    .clipShape(Capsule())
-                            }
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             // 操作按钮（只显示传入了闭包的按钮）
