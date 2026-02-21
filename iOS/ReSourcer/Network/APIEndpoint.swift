@@ -58,7 +58,16 @@ enum APIEndpoint {
     // MARK: - Preview 预览相关
     case previewFiles(folder: String)        // GET  /api/preview/files?folder=
     case previewThumbnail(path: String, size: Int) // GET /api/preview/thumbnail?path=&size=
+    case previewThumbnailByUuid(uuid: String, size: Int) // GET /api/preview/thumbnail?uuid=&size=
     case previewContent(path: String)        // GET  /api/preview/content/{path}
+
+    // MARK: - Indexer 索引相关
+    case indexerFiles(folderPath: String, offset: Int, limit: Int, fileType: String?, sort: String?)
+    case indexerFile(uuid: String)           // GET  /api/indexer/file?uuid=
+    case indexerFolders(parentPath: String?, sourceFolder: String?)
+    case indexerScan                         // POST /api/indexer/scan
+    case indexerStatus                       // GET  /api/indexer/status
+    case indexerBreadcrumb(folderPath: String) // GET /api/indexer/breadcrumb?folder_path=
 
     // MARK: - Browser 文件系统浏览
     case browserBrowse                       // POST /api/browser/browse
@@ -155,8 +164,30 @@ enum APIEndpoint {
             return "/api/preview/files?folder=\(folder.urlEncoded)"
         case .previewThumbnail(let path, let size):
             return "/api/preview/thumbnail?path=\(path.urlEncoded)&size=\(size)"
+        case .previewThumbnailByUuid(let uuid, let size):
+            return "/api/preview/thumbnail?uuid=\(uuid.urlEncoded)&size=\(size)"
         case .previewContent(let path):
             return "/api/preview/content/\(path.urlEncoded)"
+
+        // Indexer
+        case .indexerFiles(let folderPath, let offset, let limit, let fileType, let sort):
+            var path = "/api/indexer/files?folder_path=\(folderPath.urlEncoded)&offset=\(offset)&limit=\(limit)"
+            if let fileType { path += "&file_type=\(fileType)" }
+            if let sort { path += "&sort=\(sort)" }
+            return path
+        case .indexerFile(let uuid):
+            return "/api/indexer/file?uuid=\(uuid.urlEncoded)"
+        case .indexerFolders(let parentPath, let sourceFolder):
+            var path = "/api/indexer/folders?"
+            if let parentPath { path += "parent_path=\(parentPath.urlEncoded)" }
+            if let sourceFolder { path += "source_folder=\(sourceFolder.urlEncoded)" }
+            return path
+        case .indexerScan:
+            return "/api/indexer/scan"
+        case .indexerStatus:
+            return "/api/indexer/status"
+        case .indexerBreadcrumb(let folderPath):
+            return "/api/indexer/breadcrumb?folder_path=\(folderPath.urlEncoded)"
 
         // Browser
         case .browserBrowse:
@@ -200,7 +231,8 @@ enum APIEndpoint {
              .fileInfo, .folderList,
              .downloadTasks, .downloadTaskStatus, .downloadHistory,
              .uploadTasks, .uploadTaskStatus, .uploadHistory,
-             .previewFiles, .previewThumbnail, .previewContent,
+             .previewFiles, .previewThumbnail, .previewThumbnailByUuid, .previewContent,
+             .indexerFiles, .indexerFile, .indexerFolders, .indexerStatus, .indexerBreadcrumb,
              .configState, .configDownload, .configSources:
             return .GET
 

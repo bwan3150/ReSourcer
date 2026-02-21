@@ -160,6 +160,7 @@ struct DownloadTask: Identifiable, Codable, Equatable {
             ? "." + (fileName.components(separatedBy: ".").last ?? "")
             : ""
         return FileInfo(
+            uuid: nil,
             name: fileName,
             path: filePath,
             fileType: FileType.from(extension: ext),

@@ -3,7 +3,7 @@
 //  ReSourcer
 //
 //  缩略图缓存服务 - 内存 + 磁盘双层缓存
-//  磁盘存储结构: thumbnails/{serverHash}/{folderHash}/{fileHash}.jpg
+//  磁盘存储结构: thumbnails/{serverHash}/{uuidPrefix}/{fileHash}.jpg
 //
 
 import UIKit
@@ -11,25 +11,14 @@ import CryptoKit
 
 // MARK: - 缓存信息数据模型
 
-/// 文件夹级缓存信息
-struct ThumbnailFolderCacheInfo: Identifiable {
-    let id = UUID()
-    let folderHash: String
-    let folderPath: String
-    let displayName: String
-    let fileCount: Int
-    let totalSize: Int64
-}
-
 /// 服务器级缓存信息
 struct ThumbnailServerCacheInfo: Identifiable {
     let id = UUID()
     let serverHash: String
     let serverURL: String
     let displayHost: String
-    var folders: [ThumbnailFolderCacheInfo]
-    var totalSize: Int64 { folders.reduce(0) { $0 + $1.totalSize } }
-    var totalFileCount: Int { folders.reduce(0) { $0 + $1.fileCount } }
+    var fileCount: Int
+    var totalSize: Int64
 }
 
 // MARK: - ThumbnailCacheService
@@ -82,33 +71,12 @@ final class ThumbnailCacheService: @unchecked Sendable {
             return cached
         }
 
-        // L2: 新分层磁盘路径
-        let newPath = diskPath(for: key, url: url)
-        if let data = try? Data(contentsOf: newPath),
+        // L2: 分层磁盘路径
+        let path = diskPath(for: key, url: url)
+        if let data = try? Data(contentsOf: path),
            let image = UIImage(data: data) {
             let cost = data.count
             memoryCache.setObject(image, forKey: key as NSString, cost: cost)
-            return image
-        }
-
-        // L3: 旧扁平磁盘路径（兼容迁移）
-        let legacyPath = legacyDiskPath(for: key)
-        if let data = try? Data(contentsOf: legacyPath),
-           let image = UIImage(data: data) {
-            let cost = data.count
-            memoryCache.setObject(image, forKey: key as NSString, cost: cost)
-
-            // 自动迁移到新路径
-            let migrateTarget = newPath
-            let migrateSource = legacyPath
-            ioQueue.async { [weak self] in
-                guard let self else { return }
-                let dir = migrateTarget.deletingLastPathComponent()
-                try? self.fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
-                try? data.write(to: migrateTarget)
-                try? self.fileManager.removeItem(at: migrateSource)
-                self.ensureMetadata(for: url)
-            }
             return image
         }
 
@@ -218,9 +186,9 @@ final class ThumbnailCacheService: @unchecked Sendable {
         return count
     }
 
-    // MARK: - 分层查询
+    // MARK: - 缓存统计
 
-    /// 获取按服务器/文件夹分组的缓存统计信息
+    /// 获取按服务器分组的缓存统计信息
     func getCacheStatistics() -> [ThumbnailServerCacheInfo] {
         var servers: [ThumbnailServerCacheInfo] = []
 
@@ -234,98 +202,41 @@ final class ThumbnailCacheService: @unchecked Sendable {
                   isDir else { continue }
 
             let sHash = serverDir.lastPathComponent
-            // 读取服务器元数据
             let serverMeta = readMeta(at: serverDir)
             let serverURL = serverMeta["url"] ?? sHash
             let displayHost = serverMeta["host"] ?? sHash
 
-            var folders: [ThumbnailFolderCacheInfo] = []
+            // 递归统计此服务器目录下所有缓存文件
+            var fileCount = 0
+            var totalSize: Int64 = 0
 
-            guard let folderDirs = try? fileManager.contentsOfDirectory(
+            if let enumerator = fileManager.enumerator(
                 at: serverDir,
-                includingPropertiesForKeys: [.isDirectoryKey]
-            ) else { continue }
-
-            for folderDir in folderDirs {
-                guard let isFolderDir = try? folderDir.resourceValues(forKeys: [.isDirectoryKey]).isDirectory,
-                      isFolderDir else { continue }
-
-                let fHash = folderDir.lastPathComponent
-                let folderMeta = readMeta(at: folderDir)
-                let folderPath = folderMeta["path"] ?? fHash
-                let displayName = folderMeta["name"] ?? fHash
-
-                // 统计文件夹内的文件
-                var fileCount = 0
-                var totalSize: Int64 = 0
-
-                if let files = try? fileManager.contentsOfDirectory(
-                    at: folderDir,
-                    includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey]
-                ) {
-                    for file in files {
-                        guard file.lastPathComponent != Self.metaFileName else { continue }
-                        if let values = try? file.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey]),
-                           values.isRegularFile == true {
-                            fileCount += 1
-                            totalSize += Int64(values.fileSize ?? 0)
-                        }
+                includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey],
+                options: [.skipsHiddenFiles]
+            ) {
+                for case let fileURL as URL in enumerator {
+                    guard fileURL.lastPathComponent != Self.metaFileName else { continue }
+                    if let values = try? fileURL.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey]),
+                       values.isRegularFile == true {
+                        fileCount += 1
+                        totalSize += Int64(values.fileSize ?? 0)
                     }
-                }
-
-                if fileCount > 0 {
-                    folders.append(ThumbnailFolderCacheInfo(
-                        folderHash: fHash,
-                        folderPath: folderPath,
-                        displayName: displayName,
-                        fileCount: fileCount,
-                        totalSize: totalSize
-                    ))
                 }
             }
 
-            if !folders.isEmpty {
+            if fileCount > 0 {
                 servers.append(ThumbnailServerCacheInfo(
                     serverHash: sHash,
                     serverURL: serverURL,
                     displayHost: displayHost,
-                    folders: folders
+                    fileCount: fileCount,
+                    totalSize: totalSize
                 ))
             }
         }
 
         return servers
-    }
-
-    /// 旧版扁平缓存大小（根目录下的 .jpg 文件）
-    func legacyCacheSize() -> Int64 {
-        guard let contents = try? fileManager.contentsOfDirectory(
-            at: cacheDirectory,
-            includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey]
-        ) else { return 0 }
-
-        var totalSize: Int64 = 0
-        for file in contents {
-            guard file.pathExtension.lowercased() == "jpg" else { continue }
-            if let values = try? file.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey]),
-               values.isRegularFile == true {
-                totalSize += Int64(values.fileSize ?? 0)
-            }
-        }
-        return totalSize
-    }
-
-    /// 旧版扁平缓存文件数
-    func legacyCacheCount() -> Int {
-        guard let contents = try? fileManager.contentsOfDirectory(
-            at: cacheDirectory,
-            includingPropertiesForKeys: [.isRegularFileKey]
-        ) else { return 0 }
-
-        return contents.filter { file in
-            file.pathExtension.lowercased() == "jpg" &&
-            (try? file.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
-        }.count
     }
 
     // MARK: - 分层清除
@@ -339,42 +250,13 @@ final class ThumbnailCacheService: @unchecked Sendable {
         clearMemoryCache()
     }
 
-    /// 清除指定服务器下指定文件夹的缓存
-    func clearFolderCache(serverHash: String, folderHash: String) {
-        let folderDir = cacheDirectory
-            .appendingPathComponent(serverHash, isDirectory: true)
-            .appendingPathComponent(folderHash, isDirectory: true)
-        ioQueue.async { [weak self] in
-            try? self?.fileManager.removeItem(at: folderDir)
-        }
-        clearMemoryCache()
-    }
-
-    /// 清除旧版扁平缓存（根目录下的 .jpg 文件）
-    func clearLegacyCache() {
-        ioQueue.async { [weak self] in
-            guard let self else { return }
-            guard let contents = try? self.fileManager.contentsOfDirectory(
-                at: self.cacheDirectory,
-                includingPropertiesForKeys: [.isRegularFileKey]
-            ) else { return }
-
-            for file in contents {
-                if file.pathExtension.lowercased() == "jpg",
-                   let values = try? file.resourceValues(forKeys: [.isRegularFileKey]),
-                   values.isRegularFile == true {
-                    try? self.fileManager.removeItem(at: file)
-                }
-            }
-        }
-        clearMemoryCache()
-    }
-
     // MARK: - Private: URL 解析
 
-    /// 从缩略图 URL 解析出 serverBase 和 folderPath
-    /// URL 格式: {baseURL}/api/preview/thumbnail?path=xxx&size=300&key=xxx
-    private func parseThumbnailURL(_ url: URL) -> (serverBase: String, folderPath: String)? {
+    /// 从缩略图 URL 解析出 serverBase 和 uuidPrefix（用于磁盘分桶）
+    /// URL 格式:
+    ///   UUID: {baseURL}/api/preview/thumbnail?uuid=xxx&size=300&key=xxx
+    ///   Path: {baseURL}/api/preview/thumbnail?path=xxx&size=300&key=xxx
+    private func parseThumbnailURL(_ url: URL) -> (serverBase: String, bucketKey: String)? {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
 
         // 构建 serverBase: scheme://host:port
@@ -384,22 +266,30 @@ final class ThumbnailCacheService: @unchecked Sendable {
             serverBase += ":\(port)"
         }
 
-        // 从 query 参数中提取 path
-        guard let queryItems = components.queryItems,
-              let pathParam = queryItems.first(where: { $0.name == "path" })?.value else {
-            return (serverBase, "/")
+        // 优先使用 uuid 参数的前 2 字符做分桶
+        if let queryItems = components.queryItems,
+           let uuidParam = queryItems.first(where: { $0.name == "uuid" })?.value,
+           uuidParam.count >= 2 {
+            let prefix = String(uuidParam.prefix(2))
+            return (serverBase, prefix)
         }
 
-        // 取目录部分
-        let folderPath: String
-        if let lastSlash = pathParam.lastIndex(of: "/") {
-            let dir = String(pathParam[pathParam.startIndex..<lastSlash])
-            folderPath = dir.isEmpty ? "/" : dir
-        } else {
-            folderPath = "/"
+        // 兼容 path 参数：取目录部分的哈希前 2 字符
+        if let queryItems = components.queryItems,
+           let pathParam = queryItems.first(where: { $0.name == "path" })?.value {
+            let folderPath: String
+            if let lastSlash = pathParam.lastIndex(of: "/") {
+                let dir = String(pathParam[pathParam.startIndex..<lastSlash])
+                folderPath = dir.isEmpty ? "/" : dir
+            } else {
+                folderPath = "/"
+            }
+            let fHash = shortHash(for: folderPath)
+            let prefix = String(fHash.prefix(2))
+            return (serverBase, prefix)
         }
 
-        return (serverBase, folderPath)
+        return (serverBase, "00")
     }
 
     /// 生成 SHA256 哈希的前 16 个字符
@@ -418,7 +308,7 @@ final class ThumbnailCacheService: @unchecked Sendable {
         return hash.compactMap { String(format: "%02x", $0) }.joined()
     }
 
-    /// 新分层磁盘路径: thumbnails/{serverHash}/{folderHash}/{fileHash}.jpg
+    /// 分层磁盘路径: thumbnails/{serverHash}/{uuidPrefix}/{fileHash}.jpg
     private func diskPath(for key: String, url: URL) -> URL {
         guard let parsed = parseThumbnailURL(url) else {
             // 解析失败降级到根目录
@@ -426,35 +316,25 @@ final class ThumbnailCacheService: @unchecked Sendable {
         }
 
         let sHash = shortHash(for: parsed.serverBase)
-        let fHash = shortHash(for: parsed.folderPath)
 
         return cacheDirectory
             .appendingPathComponent(sHash, isDirectory: true)
-            .appendingPathComponent(fHash, isDirectory: true)
+            .appendingPathComponent(parsed.bucketKey, isDirectory: true)
             .appendingPathComponent("\(key).jpg")
-    }
-
-    /// 旧扁平磁盘路径: thumbnails/{fileHash}.jpg
-    private func legacyDiskPath(for key: String) -> URL {
-        return cacheDirectory.appendingPathComponent("\(key).jpg")
     }
 
     // MARK: - Private: 元数据
 
-    /// 在服务器和文件夹目录下写入 _meta.json（如果不存在）
+    /// 在服务器目录下写入 _meta.json（如果不存在）
     private func ensureMetadata(for url: URL) {
         guard let parsed = parseThumbnailURL(url) else { return }
 
         let sHash = shortHash(for: parsed.serverBase)
-        let fHash = shortHash(for: parsed.folderPath)
-
         let serverDir = cacheDirectory.appendingPathComponent(sHash, isDirectory: true)
-        let folderDir = serverDir.appendingPathComponent(fHash, isDirectory: true)
 
         // 服务器 _meta.json
         let serverMetaPath = serverDir.appendingPathComponent(Self.metaFileName)
         if !fileManager.fileExists(atPath: serverMetaPath.path) {
-            // 提取 host 显示名
             let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
             var displayHost = components?.host ?? sHash
             if let port = components?.port {
@@ -467,28 +347,6 @@ final class ThumbnailCacheService: @unchecked Sendable {
             ]
             if let data = try? JSONSerialization.data(withJSONObject: serverMeta) {
                 try? data.write(to: serverMetaPath)
-            }
-        }
-
-        // 文件夹 _meta.json
-        let folderMetaPath = folderDir.appendingPathComponent(Self.metaFileName)
-        if !fileManager.fileExists(atPath: folderMetaPath.path) {
-            // 显示名取最后一个路径分量
-            let displayName: String
-            if parsed.folderPath == "/" {
-                displayName = "根目录"
-            } else if let lastComponent = parsed.folderPath.split(separator: "/").last {
-                displayName = String(lastComponent)
-            } else {
-                displayName = parsed.folderPath
-            }
-
-            let folderMeta: [String: String] = [
-                "path": parsed.folderPath,
-                "name": displayName
-            ]
-            if let data = try? JSONSerialization.data(withJSONObject: folderMeta) {
-                try? data.write(to: folderMetaPath)
             }
         }
     }

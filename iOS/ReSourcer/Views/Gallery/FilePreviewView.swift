@@ -94,12 +94,19 @@ struct FilePreviewView: View {
     // 操作状态
     @State private var isOperating = false
 
+    // 分页加载
+    var hasMore: Bool = false
+    var onLoadMore: (() async -> [FileInfo])? = nil
+
     // MARK: - Init
 
-    init(apiService: APIService, files: [FileInfo], initialIndex: Int) {
+    init(apiService: APIService, files: [FileInfo], initialIndex: Int,
+         hasMore: Bool = false, onLoadMore: (() async -> [FileInfo])? = nil) {
         self.apiService = apiService
         _currentFiles = State(initialValue: files)
-        _currentIndex = State(initialValue: min(initialIndex, files.count - 1))
+        _currentIndex = State(initialValue: min(initialIndex, max(files.count - 1, 0)))
+        self.hasMore = hasMore
+        self.onLoadMore = onLoadMore
     }
 
     // MARK: - Computed
@@ -184,9 +191,18 @@ struct FilePreviewView: View {
         .toolbar(.hidden, for: .tabBar)
         .statusBarHidden(!showControls)
         .animation(AppTheme.Animation.standard, value: showControls)
-        .onChange(of: currentIndex) { _, _ in
+        .onChange(of: currentIndex) { _, newIndex in
             scheduleAutoHide()
             startAutoAdvanceTimer()
+
+            // 接近末尾时预加载更多文件
+            if hasMore && newIndex >= currentFiles.count - 5 {
+                Task {
+                    if let moreFiles = await onLoadMore?() {
+                        currentFiles.append(contentsOf: moreFiles)
+                    }
+                }
+            }
         }
         .onAppear {
             scheduleAutoHide()
@@ -790,12 +806,7 @@ struct ImagePreviewContent: View {
                 // 加载占位
                 if !gifLoaded {
                     CachedThumbnailView(
-                        url: apiService.preview.getThumbnailURL(
-                            for: file.path,
-                            size: 300,
-                            baseURL: apiService.baseURL,
-                            apiKey: apiService.apiKey
-                        )
+                        url: file.thumbnailURL(apiService: apiService)
                     ) { thumb in
                         thumb
                             .resizable()

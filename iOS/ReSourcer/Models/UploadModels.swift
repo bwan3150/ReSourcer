@@ -106,6 +106,7 @@ struct UploadTask: Identifiable, Codable, Equatable {
             ? "." + (fileName.components(separatedBy: ".").last ?? "")
             : ""
         return FileInfo(
+            uuid: nil,
             name: fileName,
             path: targetFolder + "/" + fileName,
             fileType: FileType.from(extension: ext),

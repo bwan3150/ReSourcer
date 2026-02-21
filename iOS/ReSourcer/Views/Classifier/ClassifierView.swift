@@ -377,12 +377,7 @@ struct ClassifierView: View {
             } else {
                 // 缩略图模式 / 非视频原图（图片/GIF/其他有缩略图的文件）
                 let previewURL: URL? = if useThumbnail || file.isVideo {
-                    apiService.preview.getThumbnailURL(
-                        for: file.path,
-                        size: 600,
-                        baseURL: apiService.baseURL,
-                        apiKey: apiService.apiKey
-                    )
+                    file.thumbnailURL(apiService: apiService, size: 600)
                 } else {
                     apiService.preview.getContentURL(
                         for: file.path,
@@ -943,6 +938,7 @@ struct ClassifierView: View {
                 // 更新本地文件列表中的路径
                 if let idx = files.firstIndex(where: { $0.path == file.path }) {
                     files[idx] = FileInfo(
+                        uuid: file.uuid,
                         name: newName,
                         path: newPath,
                         fileType: file.fileType,

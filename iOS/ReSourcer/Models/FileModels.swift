@@ -57,6 +57,9 @@ enum FileType: String, Codable, CaseIterable {
 /// 文件信息模型
 struct FileInfo: Identifiable, Codable, Equatable {
 
+    /// 文件唯一标识符（索引系统分配，旧 API 返回时为 nil）
+    let uuid: String?
+
     /// 文件名（包含扩展名）
     let name: String
 
@@ -89,7 +92,8 @@ struct FileInfo: Identifiable, Codable, Equatable {
 
     // MARK: - Identifiable
 
-    var id: String { path }
+    /// UUID 优先作为 ID，兼容旧 API 时回退到 path
+    var id: String { uuid ?? path }
 
     // MARK: - Computed Properties
 
@@ -177,4 +181,49 @@ struct FileMoveRequest: Codable {
 struct FileMoveResponse: Codable {
     let status: String
     let newPath: String
+}
+
+// MARK: - 索引系统模型
+
+/// 服务端 IndexedFile（索引 API 原始返回格式）
+struct IndexedFile: Codable {
+    let uuid: String
+    let fingerprint: String
+    let currentPath: String?
+    let folderPath: String
+    let fileName: String
+    let fileType: String
+    let `extension`: String
+    let fileSize: Int64
+    let createdAt: String
+    let modifiedAt: String
+    let indexedAt: String
+}
+
+/// 索引文件分页响应
+struct IndexedFilesResponse: Codable {
+    let files: [IndexedFile]
+    let total: Int
+    let offset: Int
+    let limit: Int
+    let hasMore: Bool
+}
+
+/// IndexedFile → FileInfo 转换
+extension IndexedFile {
+    func toFileInfo() -> FileInfo {
+        FileInfo(
+            uuid: uuid,
+            name: fileName,
+            path: currentPath ?? "",
+            fileType: FileType(rawValue: fileType) ?? .other,
+            extension: self.extension,
+            size: UInt64(max(fileSize, 0)),
+            created: createdAt,
+            modified: modifiedAt,
+            width: nil,
+            height: nil,
+            duration: nil
+        )
+    }
 }

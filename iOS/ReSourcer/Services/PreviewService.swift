@@ -30,12 +30,27 @@ actor PreviewService {
 
     // MARK: - Public Methods
 
-    /// 获取指定文件夹内的媒体文件列表
+    /// 获取指定文件夹内的媒体文件列表（旧 API，ClassifierView 等仍可使用）
     /// - Parameter folder: 文件夹路径
     /// - Returns: 文件信息列表
     func getFiles(in folder: String) async throws -> [FileInfo] {
         let response: FileListResponse = try await networkManager.request(.previewFiles(folder: folder))
         return response.files
+    }
+
+    /// 分页获取索引文件列表（新 indexer API）
+    /// - Parameters:
+    ///   - folder: 文件夹路径
+    ///   - offset: 分页偏移量
+    ///   - limit: 每页数量
+    ///   - fileType: 可选文件类型过滤
+    ///   - sort: 可选排序方式
+    /// - Returns: 索引文件分页响应
+    func getFilesPaginated(in folder: String, offset: Int, limit: Int,
+                           fileType: String? = nil, sort: String? = nil) async throws -> IndexedFilesResponse {
+        return try await networkManager.request(
+            .indexerFiles(folderPath: folder, offset: offset, limit: limit, fileType: fileType, sort: sort)
+        )
     }
 
     /// 获取文件缩略图数据
@@ -70,7 +85,7 @@ actor PreviewService {
         return try await networkManager.downloadData(.previewContent(path: path))
     }
 
-    /// 获取缩略图 URL（用于直接显示）
+    /// 获取缩略图 URL（基于文件路径，兼容旧 API 调用方）
     /// - Parameters:
     ///   - path: 文件路径
     ///   - size: 缩略图尺寸
@@ -80,6 +95,19 @@ actor PreviewService {
     nonisolated func getThumbnailURL(for path: String, size: Int = 300, baseURL: URL, apiKey: String) -> URL? {
         let encodedPath = path.urlEncoded
         let urlString = "\(baseURL.absoluteString)/api/preview/thumbnail?path=\(encodedPath)&size=\(size)&key=\(apiKey)"
+        return URL(string: urlString)
+    }
+
+    /// 获取缩略图 URL（基于 UUID，索引系统优先使用）
+    /// - Parameters:
+    ///   - uuid: 文件唯一标识符
+    ///   - size: 缩略图尺寸
+    ///   - baseURL: 服务器基础 URL
+    ///   - apiKey: API Key
+    /// - Returns: 完整的缩略图 URL
+    nonisolated func getThumbnailURL(uuid: String, size: Int = 300, baseURL: URL, apiKey: String) -> URL? {
+        let encodedUuid = uuid.urlEncoded
+        let urlString = "\(baseURL.absoluteString)/api/preview/thumbnail?uuid=\(encodedUuid)&size=\(size)&key=\(apiKey)"
         return URL(string: urlString)
     }
 

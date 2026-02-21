@@ -23,6 +23,13 @@ struct GalleryView: View {
     @State private var isLoading = false
     @State private var isSourceSelected = true  // 是否选中源文件夹
 
+    // 分页状态
+    @State private var filesOffset = 0
+    @State private var hasMoreFiles = true
+    @State private var isLoadingMore = false
+    @State private var filesTotalCount = 0
+    private let filesPageSize = 100
+
     // 下拉菜单状态
     @State private var isDropdownOpen = false
 
@@ -109,7 +116,15 @@ struct GalleryView: View {
             }
             .navigationBarHidden(true)
             .navigationDestination(for: Int.self) { index in
-                FilePreviewView(apiService: apiService, files: files, initialIndex: index)
+                FilePreviewView(
+                    apiService: apiService,
+                    files: files,
+                    initialIndex: index,
+                    hasMore: hasMoreFiles,
+                    onLoadMore: {
+                        await loadMoreForPreview()
+                    }
+                )
             }
             .navigationDestination(isPresented: $showUploadTaskList) {
                 UploadTaskListView(apiService: apiService)
@@ -411,6 +426,14 @@ struct GalleryView: View {
                 }
                 .buttonStyle(.plain)
             }
+
+            // 分页加载哨兵
+            if hasMoreFiles {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .onAppear { loadMoreFiles() }
+            }
         }
         .padding(AppTheme.Spacing.md)
     }
@@ -429,6 +452,14 @@ struct GalleryView: View {
                         fileInfoToShow = file
                     }
                 )
+            }
+
+            // 分页加载哨兵
+            if hasMoreFiles {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .onAppear { loadMoreFiles() }
             }
         }
         .padding(AppTheme.Spacing.md)
@@ -465,7 +496,6 @@ struct GalleryView: View {
             // 默认加载源文件夹
             if isSourceSelected {
                 await loadFiles(path: sourceFolder)
-                sourceFolderFileCount = files.count
             }
         } catch {
             if !error.isCancelledRequest {
@@ -484,7 +514,6 @@ struct GalleryView: View {
 
         Task {
             await loadFiles(path: sourceFolder)
-            sourceFolderFileCount = files.count
         }
     }
 
@@ -501,40 +530,89 @@ struct GalleryView: View {
         }
     }
 
-    private func loadFiles(path: String) async {
-        isLoading = true
-        GlassAlertManager.shared.showQuickLoading()
+    private func loadFiles(path: String, reset: Bool = true) async {
+        if reset {
+            filesOffset = 0
+            files = []
+            hasMoreFiles = true
+        }
+        if reset { isLoading = true; GlassAlertManager.shared.showQuickLoading() }
         do {
-            files = try await apiService.preview.getFiles(in: path)
+            let response = try await apiService.preview.getFilesPaginated(
+                in: path, offset: filesOffset, limit: filesPageSize
+            )
+            let newFiles = response.files.map { $0.toFileInfo() }
+            if reset {
+                files = newFiles
+            } else {
+                files.append(contentsOf: newFiles)
+            }
+            filesOffset += newFiles.count
+            hasMoreFiles = response.hasMore
+            filesTotalCount = response.total
+            if reset && isSourceSelected {
+                sourceFolderFileCount = response.total
+            }
         } catch {
             if !error.isCancelledRequest {
                 GlassAlertManager.shared.showError("加载失败", message: error.localizedDescription)
             }
         }
-        GlassAlertManager.shared.hideQuickLoading()
-        isLoading = false
+        if reset { GlassAlertManager.shared.hideQuickLoading(); isLoading = false }
     }
 
-    /// 下拉刷新 — 不设置 isLoading，避免触发视图重建导致 .refreshable 任务被取消
-    private func refreshFiles() async {
-        let path: String
-        if isSourceSelected {
-            path = sourceFolder
-        } else if let folder = selectedFolder {
-            path = sourceFolder + "/" + folder.name
-        } else {
-            return
+    /// 加载更多文件（分页续载）
+    private func loadMoreFiles() {
+        guard !isLoadingMore && hasMoreFiles else { return }
+        isLoadingMore = true
+        Task {
+            await loadFiles(path: currentFolderPath, reset: false)
+            isLoadingMore = false
         }
+    }
+
+    /// 供 FilePreviewView 调用的分页加载，返回新增文件
+    private func loadMoreForPreview() async -> [FileInfo] {
+        guard hasMoreFiles else { return [] }
+        do {
+            let response = try await apiService.preview.getFilesPaginated(
+                in: currentFolderPath, offset: filesOffset, limit: filesPageSize
+            )
+            let newFiles = response.files.map { $0.toFileInfo() }
+            files.append(contentsOf: newFiles)
+            filesOffset += newFiles.count
+            hasMoreFiles = response.hasMore
+            filesTotalCount = response.total
+            return newFiles
+        } catch {
+            return []
+        }
+    }
+
+    /// 下拉刷新 — 重置分页，从头加载
+    private func refreshFiles() async {
+        let path = currentFolderPath
 
         do {
             // 同时刷新文件夹列表和当前文件列表
             async let newFolders = apiService.folder.getSubfolders(in: sourceFolder)
-            async let newFiles = apiService.preview.getFiles(in: path)
+
+            // 重置分页状态
+            filesOffset = 0
+            hasMoreFiles = true
+
+            let response = try await apiService.preview.getFilesPaginated(
+                in: path, offset: 0, limit: filesPageSize
+            )
+            let newFiles = response.files.map { $0.toFileInfo() }
 
             folders = try await newFolders.filter { !$0.hidden }
-            files = try await newFiles
+            files = newFiles
+            filesOffset = newFiles.count
+            hasMoreFiles = response.hasMore
+            filesTotalCount = response.total
             if isSourceSelected {
-                sourceFolderFileCount = files.count
+                sourceFolderFileCount = response.total
             }
         } catch {
             if !error.isCancelledRequest {
@@ -806,12 +884,7 @@ struct GalleryGridItem: View {
             .aspectRatio(1, contentMode: .fit)
             .overlay {
                     CachedThumbnailView(
-                        url: apiService.preview.getThumbnailURL(
-                            for: file.path,
-                            size: 300,
-                            baseURL: apiService.baseURL,
-                            apiKey: apiService.apiKey
-                        )
+                        url: file.thumbnailURL(apiService: apiService)
                     ) { image in
                         image
                             .resizable()
@@ -898,12 +971,7 @@ struct GalleryListItem: View {
                 HStack(spacing: AppTheme.Spacing.md) {
                     // 缩略图
                     CachedThumbnailView(
-                        url: apiService.preview.getThumbnailURL(
-                            for: file.path,
-                            size: 300,
-                            baseURL: apiService.baseURL,
-                            apiKey: apiService.apiKey
-                        )
+                        url: file.thumbnailURL(apiService: apiService)
                     ) { image in
                         image
                             .resizable()
@@ -967,6 +1035,25 @@ struct GalleryListItem: View {
         if file.isAudio { return "music.note" }
         if file.isPdf { return "doc.fill" }
         return "photo"
+    }
+}
+
+// MARK: - FileInfo 缩略图 URL 辅助
+
+extension FileInfo {
+    /// 根据 uuid 是否存在选择缩略图 URL 策略
+    @MainActor
+    func thumbnailURL(apiService: APIService, size: Int = 300) -> URL? {
+        if let uuid {
+            return apiService.preview.getThumbnailURL(
+                uuid: uuid, size: size,
+                baseURL: apiService.baseURL, apiKey: apiService.apiKey
+            )
+        }
+        return apiService.preview.getThumbnailURL(
+            for: path, size: size,
+            baseURL: apiService.baseURL, apiKey: apiService.apiKey
+        )
     }
 }
 
