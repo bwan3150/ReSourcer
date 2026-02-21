@@ -183,12 +183,18 @@ pub async fn folders(
             }
 
             match storage::get_subfolders(parent) {
-                Ok(folders) => FoldersResult::Ok(folders),
+                Ok(mut folders) => {
+                    apply_subfolder_order(&mut folders, parent);
+                    FoldersResult::Ok(folders)
+                }
                 Err(e) => FoldersResult::Err(format!("查询失败: {}", e)),
             }
         } else if let Some(ref source) = source_folder {
             match storage::get_subfolders(source) {
-                Ok(folders) => FoldersResult::Ok(folders),
+                Ok(mut folders) => {
+                    apply_subfolder_order(&mut folders, source);
+                    FoldersResult::Ok(folders)
+                }
                 Err(e) => FoldersResult::Err(format!("查询失败: {}", e)),
             }
         } else {
@@ -215,6 +221,25 @@ pub async fn breadcrumb(
 
     let crumbs = storage::get_breadcrumb(&folder_path, &source_folder);
     Ok(HttpResponse::Ok().json(crumbs))
+}
+
+/// 对子文件夹列表应用保存的排序
+fn apply_subfolder_order(folders: &mut Vec<IndexedFolder>, parent_path: &str) {
+    let order = crate::config_api::storage::get_subfolder_order(parent_path);
+    if !order.is_empty() {
+        folders.sort_by(|a, b| {
+            let pos_a = order.iter().position(|x| x == &a.name);
+            let pos_b = order.iter().position(|x| x == &b.name);
+            match (pos_a, pos_b) {
+                (Some(pa), Some(pb)) => pa.cmp(&pb),
+                (Some(_), None) => std::cmp::Ordering::Less,
+                (None, Some(_)) => std::cmp::Ordering::Greater,
+                (None, None) => a.name.cmp(&b.name),
+            }
+        });
+    } else {
+        folders.sort_by(|a, b| a.name.cmp(&b.name));
+    }
 }
 
 /// 从数据库查找给定路径的源文件夹

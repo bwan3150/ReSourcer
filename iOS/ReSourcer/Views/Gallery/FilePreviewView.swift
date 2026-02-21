@@ -79,8 +79,6 @@ struct FilePreviewView: View {
 
     // 移动
     @State private var showMoveSheet = false
-    @State private var targetFolders: [FolderInfo] = []
-    @State private var sourceFolder = ""
 
     // 视频播放状态
     @State private var isVideoPlaying = false
@@ -248,9 +246,20 @@ struct FilePreviewView: View {
             }
             .padding(.vertical, AppTheme.Spacing.md)
         }
-        // 移动面板
-        .glassBottomSheet(isPresented: $showMoveSheet, title: "移动到") {
-            moveSheetContent
+        // 移动面板（复用 GalleryView 的 MoveSheetView）
+        .sheet(isPresented: $showMoveSheet) {
+            MoveSheetView(
+                apiService: apiService,
+                sourceFolder: NavigationState.shared.sourceFolder,
+                file: currentFile,
+                onDismiss: { showMoveSheet = false },
+                onMoved: { folderName in
+                    showMoveSheet = false
+                    GlassAlertManager.shared.showSuccess("已移动到 \(folderName)")
+                    handlePostOperation()
+                }
+            )
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -416,7 +425,6 @@ struct FilePreviewView: View {
                     showInfoSheet = false
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(300))
-                        await self.loadFolders()
                         showMoveSheet = true
                     }
                 },
@@ -428,42 +436,6 @@ struct FilePreviewView: View {
         }
     }
 
-    // MARK: - 移动面板内容
-
-    private var moveSheetContent: some View {
-        VStack(spacing: AppTheme.Spacing.sm) {
-            if targetFolders.isEmpty {
-                GlassEmptyView(icon: "folder", title: "暂无可用文件夹")
-                    .padding(.vertical, AppTheme.Spacing.xl)
-            } else {
-                ForEach(targetFolders) { folder in
-                    let isSource = folder.name == URL(fileURLWithPath: sourceFolder).lastPathComponent
-                    Button {
-                        Task { await performMove(to: folder) }
-                    } label: {
-                        HStack(spacing: AppTheme.Spacing.md) {
-                            Image(systemName: isSource ? "folder.fill.badge.gearshape" : "folder.fill")
-                                .font(.title3)
-                                .foregroundStyle(isSource ? .orange : .yellow)
-                            Text(folder.name)
-                                .font(.body)
-                                .foregroundStyle(.primary)
-                            Spacer()
-                            if !isSource {
-                                Text("\(folder.fileCount)")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(AppTheme.Spacing.md)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-        .padding(.vertical, AppTheme.Spacing.md)
-    }
 
     // MARK: - 控制栏显示/隐藏
 
@@ -705,21 +677,6 @@ struct FilePreviewView: View {
         }
     }
 
-    private func loadFolders() async {
-        do {
-            let configState = try await apiService.config.getConfigState()
-            sourceFolder = configState.sourceFolder
-            var folders = try await apiService.folder.getSubfolders(in: sourceFolder)
-                .filter { !$0.hidden }
-            // 在开头插入源文件夹，方便将文件送回源目录
-            let sourceName = URL(fileURLWithPath: sourceFolder).lastPathComponent
-            let sourceEntry = FolderInfo(name: sourceName, hidden: false, fileCount: 0)
-            folders.insert(sourceEntry, at: 0)
-            targetFolders = folders
-        } catch {
-            GlassAlertManager.shared.showError("加载文件夹失败", message: error.localizedDescription)
-        }
-    }
 
     private func performRename() async {
         guard let file = currentFile, !renameText.isEmpty else { return }
@@ -736,22 +693,6 @@ struct FilePreviewView: View {
         isOperating = false
     }
 
-    private func performMove(to folder: FolderInfo) async {
-        guard let file = currentFile else { return }
-        isOperating = true
-        do {
-            // 判断是否移动到源文件夹本身
-            let sourceName = URL(fileURLWithPath: sourceFolder).lastPathComponent
-            let targetPath = folder.name == sourceName ? sourceFolder : sourceFolder + "/" + folder.name
-            _ = try await apiService.file.moveFile(at: file.path, to: targetPath)
-            showMoveSheet = false
-            GlassAlertManager.shared.showSuccess("已移动到 \(folder.name)")
-            handlePostOperation()
-        } catch {
-            GlassAlertManager.shared.showError("移动失败", message: error.localizedDescription)
-        }
-        isOperating = false
-    }
 
     /// 操作完成后的导航逻辑
     private func handlePostOperation() {

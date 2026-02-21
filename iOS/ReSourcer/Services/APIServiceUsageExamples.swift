@@ -109,10 +109,10 @@ enum APIServiceUsageExamples {
             let newFolder = try await apiService.folder.createFolder(name: "新分类")
             print("已创建文件夹: \(newFolder)")
 
-            // 保存分类排序
-            try await apiService.folder.saveCategoryOrder(
-                sourceFolder: "/path/to/source",
-                categoryOrder: ["分类A", "分类B", "分类C"]
+            // 保存子文件夹排序
+            try await apiService.folder.saveFolderOrder(
+                folderPath: "/path/to/source",
+                order: ["分类A", "分类B", "分类C"]
             )
         } catch {
             print("文件夹操作失败: \(error)")

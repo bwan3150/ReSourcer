@@ -108,12 +108,12 @@ fn get_subfolders(source_folder: &str) -> Result<HttpResponse> {
         }
     }
 
-    // 按照保存的顺序排序，如果没有保存的顺序则按名称排序
-    let category_order = crate::config_api::storage::get_category_order(source_folder);
-    if !category_order.is_empty() {
+    // 按照保存的顺序排序（支持任意层级文件夹路径），没有则按名称排序
+    let subfolder_order = crate::config_api::storage::get_subfolder_order(source_folder);
+    if !subfolder_order.is_empty() {
         folders.sort_by(|a, b| {
-            let pos_a = category_order.iter().position(|x| x == &a.name);
-            let pos_b = category_order.iter().position(|x| x == &b.name);
+            let pos_a = subfolder_order.iter().position(|x| x == &a.name);
+            let pos_b = subfolder_order.iter().position(|x| x == &b.name);
 
             match (pos_a, pos_b) {
                 (Some(pa), Some(pb)) => pa.cmp(&pb),

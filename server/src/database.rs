@@ -61,7 +61,7 @@ pub fn init_db() -> SqliteResult<()> {
         [],
     )?;
 
-    // 创建分类排序表
+    // 创建分类排序表（旧表，保留用于迁移）
     conn.execute(
         "CREATE TABLE IF NOT EXISTS category_order (
             source_folder TEXT PRIMARY KEY,
@@ -69,6 +69,28 @@ pub fn init_db() -> SqliteResult<()> {
         )",
         [],
     )?;
+
+    // 创建子文件夹排序表（新表，支持任意层级文件夹排序）
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS subfolder_order (
+            folder_path TEXT PRIMARY KEY,
+            order_list TEXT NOT NULL DEFAULT '[]'
+        )",
+        [],
+    )?;
+
+    // 从 category_order 迁移数据到 subfolder_order
+    conn.execute(
+        "INSERT OR IGNORE INTO subfolder_order (folder_path, order_list)
+         SELECT source_folder, order_list FROM category_order",
+        [],
+    )?;
+
+    // 修复 .clip 文件分类：旧版 indexer 将 .clip 归为 "other"，应为 "image"
+    conn.execute(
+        "UPDATE file_index SET file_type = 'image' WHERE extension = 'clip' AND file_type = 'other'",
+        [],
+    ).ok(); // file_index 表可能尚未创建，忽略错误
 
     // 创建下载历史表
     conn.execute(
@@ -217,6 +239,11 @@ fn migrate_from_json(conn: &Connection) -> SqliteResult<()> {
                         if let Ok(order_json) = serde_json::to_string(order_list) {
                             conn.execute(
                                 "INSERT OR REPLACE INTO category_order (source_folder, order_list) VALUES (?1, ?2)",
+                                rusqlite::params![source_folder, order_json],
+                            )?;
+                            // 同时写入新表
+                            conn.execute(
+                                "INSERT OR REPLACE INTO subfolder_order (folder_path, order_list) VALUES (?1, ?2)",
                                 rusqlite::params![source_folder, order_json],
                             )?;
                         }

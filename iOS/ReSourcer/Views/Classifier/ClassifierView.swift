@@ -850,6 +850,12 @@ struct ClassifierView: View {
 
     // MARK: - Methods
 
+    /// 当前工作目录（从全局导航状态获取）
+    private var currentPath: String {
+        let nav = NavigationState.shared
+        return nav.currentFolderPath.isEmpty ? sourceFolder : nav.currentFolderPath
+    }
+
     private func loadData() async {
         isLoading = true
 
@@ -858,12 +864,19 @@ struct ClassifierView: View {
             let configState = try await apiService.config.getConfigState()
             sourceFolder = configState.sourceFolder
 
-            // 获取待分类文件
-            files = try await apiService.file.getFiles(in: sourceFolder)
+            let workPath = currentPath
 
-            // 获取分类文件夹
-            categories = try await apiService.folder.getSubfolders(in: sourceFolder)
-                .filter { !$0.hidden }
+            // 获取待分类文件（使用 indexer 分页 API，一次最多 500 条）
+            let response = try await apiService.preview.getFilesPaginated(
+                in: workPath, offset: 0, limit: 500)
+            files = response.files.map { $0.toFileInfo() }
+
+            // 获取分类子文件夹（使用 indexer API）
+            let indexed = try await apiService.preview.getIndexedFolders(
+                parentPath: workPath, sourceFolder: sourceFolder)
+            categories = indexed.map {
+                FolderInfo(name: $0.name, hidden: false, fileCount: Int($0.fileCount))
+            }
 
             currentIndex = 0
             classifiedCount = 0
@@ -883,7 +896,7 @@ struct ClassifierView: View {
         GlassAlertManager.shared.showQuickLoading()
         Task {
             do {
-                let targetPath = "\(sourceFolder)/\(category.name)"
+                let targetPath = "\(currentPath)/\(category.name)"
                 let newPath = try await apiService.file.moveFile(at: file.path, to: targetPath)
 
                 GlassAlertManager.shared.hideQuickLoading()
@@ -966,9 +979,12 @@ struct ClassifierView: View {
             do {
                 _ = try await apiService.folder.createFolder(name: name)
                 newFolderName = ""
-                // 刷新分类列表
-                categories = try await apiService.folder.getSubfolders(in: sourceFolder)
-                    .filter { !$0.hidden }
+                // 刷新分类列表（使用 indexer API）
+                let indexed = try await apiService.preview.getIndexedFolders(
+                    parentPath: currentPath, sourceFolder: sourceFolder)
+                categories = indexed.map {
+                    FolderInfo(name: $0.name, hidden: false, fileCount: Int($0.fileCount))
+                }
             } catch {
                 GlassAlertManager.shared.showError("创建失败", message: error.localizedDescription)
             }
@@ -979,7 +995,7 @@ struct ClassifierView: View {
         let order = categories.map(\.name)
         Task {
             do {
-                try await apiService.folder.saveCategoryOrder(sourceFolder: sourceFolder, categoryOrder: order)
+                try await apiService.folder.saveFolderOrder(folderPath: currentPath, order: order)
             } catch {
                 GlassAlertManager.shared.showError("保存排序失败", message: error.localizedDescription)
             }
@@ -992,7 +1008,7 @@ struct ClassifierView: View {
         Task {
             do {
                 // 移回原位置
-                _ = try await apiService.file.moveFile(at: lastOp.newPath, to: sourceFolder)
+                _ = try await apiService.file.moveFile(at: lastOp.newPath, to: currentPath)
 
                 // 恢复目标文件夹计数 -1
                 if let idx = categories.firstIndex(where: { $0.name == lastOp.toCategory }) {

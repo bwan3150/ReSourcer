@@ -41,12 +41,12 @@ actor FolderService {
         return response.folderName
     }
 
-    /// 保存分类文件夹排序
+    /// 保存子文件夹排序（支持任意层级）
     /// - Parameters:
-    ///   - sourceFolder: 源文件夹路径
-    ///   - categoryOrder: 分类名称顺序数组
-    func saveCategoryOrder(sourceFolder: String, categoryOrder: [String]) async throws {
-        let request = FolderReorderRequest(sourceFolder: sourceFolder, categoryOrder: categoryOrder)
+    ///   - folderPath: 当前文件夹路径
+    ///   - order: 子文件夹名称顺序数组
+    func saveFolderOrder(folderPath: String, order: [String]) async throws {
+        let request = FolderReorderRequest(folderPath: folderPath, order: order)
         _ = try await networkManager.requestStatus(.folderReorder, body: request)
     }
 

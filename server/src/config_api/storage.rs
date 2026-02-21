@@ -140,16 +140,28 @@ pub fn save_category_order_config(config: &CategoryOrderConfig) -> io::Result<()
     Ok(())
 }
 
-/// 获取指定源文件夹的分类排序
+/// 获取指定源文件夹的分类排序（兼容旧接口，内部委托到 get_subfolder_order）
+#[allow(dead_code)]
 pub fn get_category_order(source_folder: &str) -> Vec<String> {
+    get_subfolder_order(source_folder)
+}
+
+/// 保存指定源文件夹的分类排序（兼容旧接口，内部委托到 set_subfolder_order）
+#[allow(dead_code)]
+pub fn set_category_order(source_folder: &str, order: Vec<String>) -> io::Result<()> {
+    set_subfolder_order(source_folder, order)
+}
+
+/// 获取指定文件夹的子文件夹排序
+pub fn get_subfolder_order(folder_path: &str) -> Vec<String> {
     let conn = match database::get_connection() {
         Ok(c) => c,
         Err(_) => return Vec::new(),
     };
 
     conn.query_row(
-        "SELECT order_list FROM category_order WHERE source_folder = ?1",
-        rusqlite::params![source_folder],
+        "SELECT order_list FROM subfolder_order WHERE folder_path = ?1",
+        rusqlite::params![folder_path],
         |row| {
             let order_list_json: String = row.get(0)?;
             Ok(serde_json::from_str::<Vec<String>>(&order_list_json).unwrap_or_default())
@@ -157,8 +169,8 @@ pub fn get_category_order(source_folder: &str) -> Vec<String> {
     ).unwrap_or_default()
 }
 
-/// 保存指定源文件夹的分类排序
-pub fn set_category_order(source_folder: &str, order: Vec<String>) -> io::Result<()> {
+/// 保存指定文件夹的子文件夹排序
+pub fn set_subfolder_order(folder_path: &str, order: Vec<String>) -> io::Result<()> {
     let conn = database::get_connection()
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
 
@@ -166,9 +178,9 @@ pub fn set_category_order(source_folder: &str, order: Vec<String>) -> io::Result
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
     conn.execute(
-        "INSERT OR REPLACE INTO category_order (source_folder, order_list) VALUES (?1, ?2)",
-        rusqlite::params![source_folder, order_json],
-    ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("保存分类排序失败: {}", e)))?;
+        "INSERT OR REPLACE INTO subfolder_order (folder_path, order_list) VALUES (?1, ?2)",
+        rusqlite::params![folder_path, order_json],
+    ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("保存子文件夹排序失败: {}", e)))?;
 
     Ok(())
 }

@@ -27,7 +27,7 @@ fn classify_extension(ext: &str) -> Option<String> {
     } else if ext_lower == PDF_EXTENSION {
         Some("pdf".to_string())
     } else if ext_lower == CLIP_EXTENSION {
-        Some("other".to_string())
+        Some("image".to_string())
     } else {
         None // 不支持的文件类型，跳过
     }

@@ -58,6 +58,7 @@
 		A100008D233F0001 /* PhotoExporter.m in Sources */ = {isa = PBXBuildFile; fileRef = A100008D233F0000 /* PhotoExporter.m */; };
 		A1000090233F0001 /* FileInfoSheetContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000090233F0000 /* FileInfoSheetContent.swift */; };
 		A1000091233F0001 /* ThumbnailCacheDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000091233F0000 /* ThumbnailCacheDetailView.swift */; };
+		A1000092233F0001 /* NavigationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000092233F0000 /* NavigationState.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -115,6 +116,7 @@
 		A100008E233F0000 /* ReSourcer-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ReSourcer-Bridging-Header.h"; sourceTree = "<group>"; };
 		A1000090233F0000 /* FileInfoSheetContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileInfoSheetContent.swift; sourceTree = "<group>"; };
 		A1000091233F0000 /* ThumbnailCacheDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCacheDetailView.swift; sourceTree = "<group>"; };
+		A1000092233F0000 /* NavigationState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationState.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -237,6 +239,7 @@
 				A1000059233F0000 /* PreviewService.swift */,
 				A100005A233F0000 /* UploadService.swift */,
 				A1000077233F0000 /* ThumbnailCacheService.swift */,
+				A1000092233F0000 /* NavigationState.swift */,
 				A100008C233F0000 /* PhotoExporter.h */,
 				A100008D233F0000 /* PhotoExporter.m */,
 			);
@@ -421,6 +424,7 @@
 				A1000076233F0001 /* CacheSettingsView.swift in Sources */,
 				A1000091233F0001 /* ThumbnailCacheDetailView.swift in Sources */,
 				A1000077233F0001 /* ThumbnailCacheService.swift in Sources */,
+				A1000092233F0001 /* NavigationState.swift in Sources */,
 				A1000078233F0001 /* CachedThumbnailView.swift in Sources */,
 
 				A1000079233F0001 /* QRScannerView.swift in Sources */,

@@ -102,10 +102,10 @@ struct FolderCreateResponse: Codable {
     let folderName: String
 }
 
-/// 文件夹排序请求
+/// 文件夹排序请求（支持任意层级文件夹）
 struct FolderReorderRequest: Codable {
-    let sourceFolder: String
-    let categoryOrder: [String]
+    let folderPath: String
+    let order: [String]
 }
 
 /// 打开文件夹请求

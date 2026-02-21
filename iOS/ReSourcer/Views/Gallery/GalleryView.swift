@@ -47,7 +47,7 @@ struct GalleryView: View {
     @State private var showRenameAlert = false
     @State private var renameText = ""
     @State private var showMoveSheet = false
-    @State private var targetFolders: [FolderInfo] = []
+
 
     // 上传相关
     @State private var showPhotoPicker = false
@@ -145,6 +145,12 @@ struct GalleryView: View {
                 }
             }
         }
+        // 从其他 tab 切回 Gallery 时，同步本地路径到全局状态
+        .onAppear {
+            if !sourceFolder.isEmpty {
+                NavigationState.shared.setCurrentFolder(currentFolderPath)
+            }
+        }
         // 文件信息面板
         .glassBottomSheet(
             isPresented: Binding(
@@ -189,9 +195,20 @@ struct GalleryView: View {
             }
             .padding(.vertical, AppTheme.Spacing.md)
         }
-        // 移动面板
-        .glassBottomSheet(isPresented: $showMoveSheet, title: "移动到") {
-            galleryMoveSheetContent
+        // 移动面板（使用标准 sheet 确保生命周期正确）
+        .sheet(isPresented: $showMoveSheet) {
+            MoveSheetView(
+                apiService: apiService,
+                sourceFolder: sourceFolder,
+                file: selectedFile,
+                onDismiss: { showMoveSheet = false },
+                onMoved: { folderName in
+                    showMoveSheet = false
+                    GlassAlertManager.shared.showSuccess("已移动到 \(folderName)")
+                    await refreshFiles()
+                }
+            )
+            .presentationDetents([.medium, .large])
         }
         // 照片选择器
         .sheet(isPresented: $showPhotoPicker) {
@@ -547,6 +564,7 @@ struct GalleryView: View {
         do {
             let configState = try await apiService.config.getConfigState()
             sourceFolder = configState.sourceFolder
+            NavigationState.shared.setSourceFolder(sourceFolder)
             await navigateToFolder(path: sourceFolder)
         } catch {
             if !error.isCancelledRequest {
@@ -558,6 +576,7 @@ struct GalleryView: View {
     /// 统一导航方法：切换到指定文件夹路径
     private func navigateToFolder(path: String) async {
         currentFolderFullPath = path
+        NavigationState.shared.setCurrentFolder(path)
         files = []
         isLoading = true
         GlassAlertManager.shared.showQuickLoading()
@@ -735,7 +754,6 @@ struct GalleryView: View {
                     fileInfoToShow = nil
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(300))
-                        await self.loadTargetFolders()
                         showMoveSheet = true
                     }
                 },
@@ -748,61 +766,9 @@ struct GalleryView: View {
         }
     }
 
-    // MARK: - 移动面板内容
-
-    @ViewBuilder
-    private var galleryMoveSheetContent: some View {
-        VStack(spacing: AppTheme.Spacing.sm) {
-            if targetFolders.isEmpty {
-                GlassEmptyView(icon: "folder", title: "暂无可用文件夹")
-                    .padding(.vertical, AppTheme.Spacing.xl)
-            } else {
-                ForEach(targetFolders) { folder in
-                    let isSource = folder.name == URL(fileURLWithPath: sourceFolder).lastPathComponent
-                    Button {
-                        Task { await performMove(to: folder) }
-                    } label: {
-                        HStack(spacing: AppTheme.Spacing.md) {
-                            Image(systemName: isSource ? "folder.fill.badge.gearshape" : "folder.fill")
-                                .font(.title3)
-                                .foregroundStyle(isSource ? .orange : .yellow)
-                            Text(folder.name)
-                                .font(.body)
-                                .foregroundStyle(.primary)
-                            Spacer()
-                            if !isSource {
-                                Text("\(folder.fileCount)")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(AppTheme.Spacing.md)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            // 给底部 navbar 留空间
-            Spacer().frame(height: 60)
-        }
-        .padding(.vertical, AppTheme.Spacing.md)
-    }
 
     // MARK: - 文件操作
 
-    private func loadTargetFolders() async {
-        do {
-            var folders = try await apiService.folder.getSubfolders(in: sourceFolder)
-                .filter { !$0.hidden }
-            // 在开头插入源文件夹，方便将文件送回源目录
-            let sourceName = URL(fileURLWithPath: sourceFolder).lastPathComponent
-            let sourceEntry = FolderInfo(name: sourceName, hidden: false, fileCount: 0)
-            folders.insert(sourceEntry, at: 0)
-            targetFolders = folders
-        } catch {
-            GlassAlertManager.shared.showError("加载文件夹失败", message: error.localizedDescription)
-        }
-    }
 
     private func performRename() async {
         guard let file = selectedFile, !renameText.isEmpty else { return }
@@ -898,20 +864,6 @@ struct GalleryView: View {
         }
     }
 
-    private func performMove(to folder: FolderInfo) async {
-        guard let file = selectedFile else { return }
-        do {
-            // 判断是否移动到源文件夹本身
-            let sourceName = URL(fileURLWithPath: sourceFolder).lastPathComponent
-            let targetPath = folder.name == sourceName ? sourceFolder : sourceFolder + "/" + folder.name
-            _ = try await apiService.file.moveFile(at: file.path, to: targetPath)
-            showMoveSheet = false
-            GlassAlertManager.shared.showSuccess("已移动到 \(folder.name)")
-            await refreshFiles()
-        } catch {
-            GlassAlertManager.shared.showError("移动失败", message: error.localizedDescription)
-        }
-    }
 }
 
 // MARK: - View Mode
@@ -919,6 +871,167 @@ struct GalleryView: View {
 enum GalleryViewMode {
     case grid
     case list
+}
+
+// MARK: - Move Sheet View（标准 .sheet，生命周期可靠）
+
+/// 文件移动面板 — 多级文件夹导航
+struct MoveSheetView: View {
+    let apiService: APIService
+    let sourceFolder: String
+    let file: FileInfo?
+    let onDismiss: () -> Void
+    let onMoved: (String) async -> Void
+
+    @State private var currentPath: String = ""
+    @State private var subfolders: [IndexedFolder] = []
+    @State private var isLoading = false
+
+    private var displayName: String {
+        if currentPath.isEmpty || currentPath == sourceFolder {
+            return URL(fileURLWithPath: sourceFolder).lastPathComponent
+        }
+        return URL(fileURLWithPath: currentPath).lastPathComponent
+    }
+
+    private var canGoBack: Bool {
+        !currentPath.isEmpty && currentPath != sourceFolder
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // 路径导航栏
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    if canGoBack {
+                        Button {
+                            let parent = (currentPath as NSString).deletingLastPathComponent
+                            Task { await loadSubfolders(path: parent) }
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 32, height: 32)
+                                .contentShape(Rectangle())
+                        }
+                    }
+
+                    Image(systemName: canGoBack ? "folder.fill" : "folder.fill.badge.gearshape")
+                        .font(.title3)
+                        .foregroundStyle(canGoBack ? .yellow : .orange)
+
+                    Text(displayName)
+                        .font(.body)
+                        .fontWeight(.semibold)
+                        .lineLimit(1)
+
+                    Spacer()
+                }
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.vertical, AppTheme.Spacing.sm)
+
+                Divider()
+
+                // 移动到当前文件夹
+                Button {
+                    Task { await moveToPath(currentPath.isEmpty ? sourceFolder : currentPath, name: displayName) }
+                } label: {
+                    HStack(spacing: AppTheme.Spacing.md) {
+                        Image(systemName: "arrow.right.doc.on.clipboard")
+                            .font(.body)
+                            .foregroundStyle(.blue)
+                        Text("移动到「\(displayName)」")
+                            .font(.body)
+                            .foregroundStyle(.blue)
+                        Spacer()
+                    }
+                    .padding(.horizontal, AppTheme.Spacing.lg)
+                    .padding(.vertical, AppTheme.Spacing.md)
+                    .contentShape(Rectangle())
+                }
+
+                Divider()
+
+                // 子文件夹列表
+                if isLoading {
+                    Spacer()
+                    ProgressView()
+                    Spacer()
+                } else if subfolders.isEmpty {
+                    Spacer()
+                    Text("没有子文件夹")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                } else {
+                    List {
+                        ForEach(subfolders) { folder in
+                            Button {
+                                Task { await loadSubfolders(path: folder.path) }
+                            } label: {
+                                HStack(spacing: AppTheme.Spacing.md) {
+                                    Image(systemName: "folder.fill")
+                                        .font(.title3)
+                                        .foregroundStyle(.yellow)
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(folder.name)
+                                            .font(.body)
+                                            .foregroundStyle(.primary)
+                                            .lineLimit(1)
+
+                                        Text("\(folder.fileCount) 个文件")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+
+                                    Spacer()
+
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                }
+                            }
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle("移动到")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { onDismiss() }
+                }
+            }
+        }
+        .task {
+            await loadSubfolders(path: sourceFolder)
+        }
+    }
+
+    private func loadSubfolders(path: String) async {
+        currentPath = path
+        isLoading = true
+        do {
+            let result = try await apiService.preview.getIndexedFolders(
+                parentPath: path, sourceFolder: sourceFolder)
+            subfolders = result
+        } catch {
+            subfolders = []
+        }
+        isLoading = false
+    }
+
+    private func moveToPath(_ path: String, name: String) async {
+        guard let file else { return }
+        do {
+            _ = try await apiService.file.moveFile(at: file.path, to: path)
+            await onMoved(name)
+        } catch {
+            GlassAlertManager.shared.showError("移动失败", message: error.localizedDescription)
+        }
+    }
 }
 
 // MARK: - Gallery Grid Item

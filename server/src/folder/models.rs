@@ -24,11 +24,21 @@ pub struct GalleryFoldersResponse {
     pub folders: Vec<GalleryFolderInfo>,
 }
 
-/// 分类排序请求
+/// 子文件夹排序请求（支持任意层级文件夹）
 #[derive(Debug, Deserialize)]
 pub struct ReorderCategoriesRequest {
-    pub source_folder: String,
-    pub category_order: Vec<String>,
+    /// 文件夹路径（新字段）；若缺失则回退到 source_folder
+    #[serde(default)]
+    pub folder_path: Option<String>,
+    /// 兼容旧请求
+    #[serde(default)]
+    pub source_folder: Option<String>,
+    /// 排序列表（新字段）；若缺失则回退到 category_order
+    #[serde(default)]
+    pub order: Option<Vec<String>>,
+    /// 兼容旧请求
+    #[serde(default)]
+    pub category_order: Option<Vec<String>>,
 }
 
 /// 创建文件夹请求

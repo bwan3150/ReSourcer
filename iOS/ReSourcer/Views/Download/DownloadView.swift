@@ -304,12 +304,25 @@ struct DownloadView: View {
 
     // MARK: - Methods
 
+    /// 当前工作目录（从全局导航状态获取）
+    private var currentPath: String {
+        let nav = NavigationState.shared
+        return nav.currentFolderPath.isEmpty ? sourceFolder : nav.currentFolderPath
+    }
+
     private func loadFolders() async {
         do {
             let configState = try await apiService.config.getConfigState()
             sourceFolder = configState.sourceFolder
-            folders = try await apiService.folder.getSubfolders(in: sourceFolder)
-                .filter { !$0.hidden }
+
+            let workPath = currentPath
+
+            // 使用 indexer API 获取子文件夹
+            let indexed = try await apiService.preview.getIndexedFolders(
+                parentPath: workPath, sourceFolder: sourceFolder)
+            folders = indexed.map {
+                FolderInfo(name: $0.name, hidden: false, fileCount: Int($0.fileCount))
+            }
         } catch {
             print("加载文件夹失败: \(error)")
         }
@@ -319,7 +332,7 @@ struct DownloadView: View {
         let order = folders.map(\.name)
         Task {
             do {
-                try await apiService.folder.saveCategoryOrder(sourceFolder: sourceFolder, categoryOrder: order)
+                try await apiService.folder.saveFolderOrder(folderPath: currentPath, order: order)
             } catch {
                 GlassAlertManager.shared.showError("保存排序失败", message: error.localizedDescription)
             }
@@ -392,8 +405,8 @@ struct DownloadView: View {
 
         Task {
             do {
-                let config = try await apiService.config.getConfigState()
-                let saveFolder = selectedFolder.isEmpty ? config.sourceFolder : "\(config.sourceFolder)/\(selectedFolder)"
+                let workPath = currentPath
+                let saveFolder = selectedFolder.isEmpty ? workPath : "\(workPath)/\(selectedFolder)"
 
                 _ = try await apiService.download.createTask(url: url, saveFolder: saveFolder, downloader: selectedDownloader)
 
