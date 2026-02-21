@@ -329,6 +329,24 @@ pub fn clear_file_index_for_source(source_folder: &str) -> Result<u64, rusqlite:
     Ok(affected as u64)
 }
 
+/// 从数据库查找给定路径所属的源文件夹（最长前缀匹配）
+pub fn find_source_folder(path: &str) -> Option<String> {
+    let conn = get_connection().ok()?;
+    let mut stmt = conn.prepare(
+        "SELECT folder_path FROM source_folders ORDER BY LENGTH(folder_path) DESC"
+    ).ok()?;
+    let paths: Vec<String> = stmt.query_map([], |row| row.get(0)).ok()?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    for source in &paths {
+        if path.starts_with(source.as_str()) {
+            return Some(source.clone());
+        }
+    }
+    None
+}
+
 /// 行映射函数
 fn map_file_row(row: &rusqlite::Row) -> Result<IndexedFile, rusqlite::Error> {
     Ok(IndexedFile {

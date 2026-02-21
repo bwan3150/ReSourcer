@@ -13,23 +13,23 @@ pub struct ScanResult {
     pub scanned_folders: u64,
 }
 
-/// 判断扩展名对应的文件类型
-fn classify_extension(ext: &str) -> Option<String> {
+/// 判断扩展名对应的文件类型（未知扩展名归为 "other"，确保所有文件都被索引）
+fn classify_extension(ext: &str) -> String {
     let ext_lower = ext.to_lowercase();
     if IMAGE_EXTENSIONS.contains(&ext_lower.as_str()) {
-        Some("image".to_string())
+        "image".to_string()
     } else if ext_lower == GIF_EXTENSION {
-        Some("gif".to_string())
+        "gif".to_string()
     } else if VIDEO_EXTENSIONS.contains(&ext_lower.as_str()) {
-        Some("video".to_string())
+        "video".to_string()
     } else if AUDIO_EXTENSIONS.contains(&ext_lower.as_str()) {
-        Some("audio".to_string())
+        "audio".to_string()
     } else if ext_lower == PDF_EXTENSION {
-        Some("pdf".to_string())
+        "pdf".to_string()
     } else if ext_lower == CLIP_EXTENSION {
-        Some("image".to_string())
+        "image".to_string()
     } else {
-        None // 不支持的文件类型，跳过
+        "other".to_string()
     }
 }
 
@@ -70,14 +70,9 @@ pub fn scan_folder(folder_path: &str, source_folder: &str) -> Result<Vec<Indexed
     for entry in entries.flatten() {
         let entry_path = entry.path();
 
-        // 跳过目录和隐藏文件
+        // 跳过目录
         if entry_path.is_dir() {
             continue;
-        }
-        if let Some(name) = entry_path.file_name().and_then(|n| n.to_str()) {
-            if name.starts_with('.') {
-                continue;
-            }
         }
 
         let ext = entry_path.extension()
@@ -85,11 +80,7 @@ pub fn scan_folder(folder_path: &str, source_folder: &str) -> Result<Vec<Indexed
             .unwrap_or("")
             .to_lowercase();
 
-        // 只索引支持的媒体文件
-        let file_type = match classify_extension(&ext) {
-            Some(ft) => ft,
-            None => continue,
-        };
+        let file_type = classify_extension(&ext);
 
         let path_str = entry_path.to_string_lossy().to_string();
         existing_paths.push(path_str.clone());
@@ -218,9 +209,9 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
     for entry in WalkDir::new(source_folder).into_iter().filter_map(|e| e.ok()) {
         let entry_path = entry.path();
 
-        // 跳过隐藏目录/文件
+        // 跳过隐藏目录（.git, .Trash 等），但允许隐藏文件被索引
         if let Some(name) = entry_path.file_name().and_then(|n| n.to_str()) {
-            if name.starts_with('.') {
+            if name.starts_with('.') && entry_path.is_dir() {
                 continue;
             }
         }
@@ -261,10 +252,7 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
                 .unwrap_or("")
                 .to_lowercase();
 
-            let file_type = match classify_extension(&ext) {
-                Some(ft) => ft,
-                None => continue,
-            };
+            let file_type = classify_extension(&ext);
 
             let path_str = entry_path.to_string_lossy().to_string();
             let folder_str = entry_path.parent()
@@ -335,4 +323,108 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
         scanned_files,
         scanned_folders,
     })
+}
+
+/// 单文件索引：上传/下载完成后立即将文件编入索引，避免扫描整个目录
+pub fn index_single_file(file_path: &str, source_folder: &str) -> Result<IndexedFile, Box<dyn std::error::Error + Send + Sync>> {
+    let entry_path = Path::new(file_path);
+    if !entry_path.is_file() {
+        return Err(format!("文件不存在: {}", file_path).into());
+    }
+
+    let now = Utc::now().to_rfc3339();
+
+    let ext = entry_path.extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+
+    let file_type = classify_extension(&ext);
+
+    let metadata = fs::metadata(entry_path)?;
+
+    let modified_at = metadata.modified()
+        .map(|t| DateTime::<Utc>::from(t).to_rfc3339())
+        .unwrap_or_else(|_| now.clone());
+
+    let created_at = metadata.created()
+        .map(|t| DateTime::<Utc>::from(t).to_rfc3339())
+        .unwrap_or_else(|_| now.clone());
+
+    // 如果已索引且 mtime 未变，直接返回
+    if let Ok(Some(existing)) = storage::get_file_by_path(file_path) {
+        if existing.modified_at == modified_at {
+            return Ok(existing);
+        }
+    }
+
+    let fingerprint = compute_fingerprint(entry_path)?;
+
+    let file_name = entry_path.file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
+
+    let folder_path = entry_path.parent()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_default();
+
+    // 移动检测：指纹匹配的孤儿文件复用旧 UUID
+    let file_uuid = if let Ok(Some(orphan)) = storage::find_orphan_by_fingerprint(&fingerprint) {
+        orphan.uuid
+    } else {
+        uuid::Uuid::new_v4().to_string()
+    };
+
+    let indexed_file = IndexedFile {
+        uuid: file_uuid,
+        fingerprint,
+        current_path: Some(file_path.to_string()),
+        folder_path: folder_path.clone(),
+        file_name,
+        file_type,
+        extension: ext,
+        file_size: metadata.len() as i64,
+        created_at,
+        modified_at,
+        indexed_at: now.clone(),
+    };
+
+    storage::upsert_file(&indexed_file)?;
+
+    // 确保文件所在文件夹也在 folder_index 中
+    let depth = if folder_path == source_folder {
+        0
+    } else {
+        let source_path = Path::new(source_folder);
+        Path::new(&folder_path).strip_prefix(source_path)
+            .map(|rel| rel.components().count() as i32)
+            .unwrap_or(0)
+    };
+
+    let folder_name = Path::new(&folder_path)
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
+
+    let parent_path = if folder_path == source_folder {
+        None
+    } else {
+        Path::new(&folder_path).parent()
+            .map(|p| p.to_string_lossy().to_string())
+    };
+
+    let folder = IndexedFolder {
+        path: folder_path,
+        parent_path,
+        source_folder: source_folder.to_string(),
+        name: folder_name,
+        depth,
+        file_count: 0, // 不精确更新，下次全量扫描会修正
+        indexed_at: now,
+    };
+    let _ = storage::upsert_folder(&folder);
+
+    Ok(indexed_file)
 }

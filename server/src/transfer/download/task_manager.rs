@@ -270,7 +270,7 @@ impl TaskManager {
                         platform: task.platform.to_string(),
                         status: "completed".to_string(),
                         file_name: Some(file_name),
-                        file_path: Some(file_path),
+                        file_path: Some(file_path.clone()),
                         error: None,
                         created_at: task.created_at.clone(),
                     };
@@ -278,6 +278,16 @@ impl TaskManager {
                     if let Err(e) = storage::add_to_history(history_item) {
                         eprintln!("保存历史记录失败: {}", e);
                     }
+
+                    // 下载完成后立即索引新文件
+                    let file_path_clone = file_path.clone();
+                    let _ = tokio::task::spawn_blocking(move || {
+                        if let Some(source_folder) = crate::indexer::storage::find_source_folder(&file_path_clone) {
+                            if let Err(e) = crate::indexer::scanner::index_single_file(&file_path_clone, &source_folder) {
+                                eprintln!("下载后索引文件失败: {} - {}", file_path_clone, e);
+                            }
+                        }
+                    }).await;
                 }
                 Err(error) => {
                     // 下载失败

@@ -215,12 +215,12 @@ impl TaskManager {
         }
     }
 
-    /// 完成任务并移到历史记录
+    /// 完成任务并移到历史记录，同时触发文件索引
     async fn complete_task(
         tasks: &Arc<Mutex<HashMap<String, UploadTask>>>,
         task_id: &str,
         uploaded_size: u64,
-        _file_path: String,
+        file_path: String,
         target_folder: String,
     ) {
         // 更新进度并获取任务信息
@@ -243,7 +243,7 @@ impl TaskManager {
         let history_item = storage::HistoryItem {
             id: task_id.to_string(),
             file_name,
-            target_folder,
+            target_folder: target_folder.clone(),
             status: "completed".to_string(),
             file_size: uploaded_size,
             error: None,
@@ -253,6 +253,16 @@ impl TaskManager {
         if let Err(e) = storage::add_to_history(history_item) {
             eprintln!("保存上传历史记录失败: {}", e);
         }
+
+        // 上传完成后立即索引新文件
+        let file_path_clone = file_path.clone();
+        let _ = tokio::task::spawn_blocking(move || {
+            if let Some(source_folder) = crate::indexer::storage::find_source_folder(&file_path_clone) {
+                if let Err(e) = crate::indexer::scanner::index_single_file(&file_path_clone, &source_folder) {
+                    eprintln!("上传后索引文件失败: {} - {}", file_path_clone, e);
+                }
+            }
+        }).await;
     }
 }
 

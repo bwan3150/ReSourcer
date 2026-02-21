@@ -251,23 +251,9 @@ fn apply_subfolder_order(folders: &mut Vec<IndexedFolder>, parent_path: &str) {
     }
 }
 
-/// 从数据库查找给定路径的源文件夹
+/// 从数据库查找给定路径的源文件夹（委托给 storage 模块）
 fn find_source_folder(folder_path: &str) -> Option<String> {
-    let conn = crate::database::get_connection().ok()?;
-    let mut stmt = conn.prepare(
-        "SELECT folder_path FROM source_folders ORDER BY LENGTH(folder_path) DESC"
-    ).ok()?;
-    let paths: Vec<String> = stmt.query_map([], |row| row.get(0)).ok()?
-        .filter_map(|r| r.ok())
-        .collect();
-
-    // 找最长匹配的源文件夹
-    for source in &paths {
-        if folder_path.starts_with(source.as_str()) {
-            return Some(source.clone());
-        }
-    }
-    None
+    storage::find_source_folder(folder_path)
 }
 
 /// 扫描并索引一个目录下的直接子文件夹
