@@ -277,59 +277,105 @@ struct GalleryView: View {
 
     @State private var headerDragOffset: CGFloat = 0
 
+    /// 胶囊内标签：icon + 文件夹名（不含下拉箭头，箭头固定不随滑动）
+    private func headerLabel(icon: String, iconColor: Color, name: String) -> some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundStyle(iconColor)
+
+            Text(name)
+                .font(.body)
+                .fontWeight(.semibold)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+
+            Spacer()
+        }
+        .padding(.leading, 20)
+        .padding(.trailing, 36) // 给固定箭头留空间
+        .padding(.vertical, 12)
+    }
+
+    /// 上级文件夹名称（用于拖动过渡显示）
+    private var parentFolderDisplayName: String {
+        let parent = (currentFolderFullPath as NSString).deletingLastPathComponent
+        if parent == sourceFolder || parent.isEmpty {
+            return sourceFolderDisplayName
+        }
+        return parent.components(separatedBy: "/").last ?? sourceFolderDisplayName
+    }
+
     private var floatingHeader: some View {
         HStack(spacing: AppTheme.Spacing.md) {
-            // 文件夹选择器：点击展开下拉，左划返回上级
-            Button {
+            // 文件夹选择器：外壳固定，内容随拖动滑动
+            // 用隐藏内容撑出尺寸，可见部分用 overlay 渲染
+            headerLabel(
+                icon: canGoBack ? "folder.fill" : "folder.fill.badge.gearshape",
+                iconColor: canGoBack ? .yellow : .orange,
+                name: currentFolderDisplayName
+            )
+            .opacity(0) // 仅用于占位
+            .glassBackground(in: Capsule())
+            .overlay {
+                GeometryReader { geo in
+                    let width = geo.size.width
+                    HStack(spacing: 0) {
+                        // 上级文件夹（左侧，可见区域外）
+                        headerLabel(
+                            icon: "folder.fill.badge.gearshape",
+                            iconColor: .orange,
+                            name: parentFolderDisplayName
+                        )
+                        .frame(width: width, height: geo.size.height)
+
+                        // 当前文件夹
+                        headerLabel(
+                            icon: canGoBack ? "folder.fill" : "folder.fill.badge.gearshape",
+                            iconColor: canGoBack ? .yellow : .orange,
+                            name: currentFolderDisplayName
+                        )
+                        .frame(width: width, height: geo.size.height)
+                    }
+                    .offset(x: -width + headerDragOffset)
+                }
+                .clipShape(Capsule())
+            }
+            // 固定的下拉箭头（不随内容滑动）
+            .overlay(alignment: .trailing) {
+                Image(systemName: isDropdownOpen ? "chevron.up" : "chevron.down")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.trailing, 16)
+            }
+            .contentShape(Capsule())
+            .onTapGesture {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isDropdownOpen.toggle()
                 }
-            } label: {
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    // 不在根目录时显示返回箭头
-                    if canGoBack {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Image(systemName: canGoBack ? "folder.fill" : "folder.fill.badge.gearshape")
-                        .font(.system(size: 18))
-                        .foregroundStyle(canGoBack ? .yellow : .orange)
-
-                    Text(currentFolderDisplayName)
-                        .font(.body)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-
-                    Spacer()
-
-                    Image(systemName: isDropdownOpen ? "chevron.up" : "chevron.down")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
             }
-            .glassBackground(in: Capsule())
-            .offset(x: headerDragOffset)
-            .gesture(
+            .simultaneousGesture(
                 canGoBack ?
-                DragGesture(minimumDistance: 30)
+                DragGesture(minimumDistance: 20)
                     .onChanged { value in
-                        // 只允许向左拖
-                        if value.translation.width < 0 {
-                            headerDragOffset = value.translation.width * 0.3
+                        if value.translation.width > 0 {
+                            headerDragOffset = value.translation.width * 0.8
                         }
                     }
                     .onEnded { value in
-                        withAnimation(.spring(duration: 0.3)) {
-                            headerDragOffset = 0
-                        }
-                        // 左划超过阈值则返回上级
-                        if value.translation.width < -60 {
-                            goToParentFolder()
+                        if value.translation.width > 80 {
+                            // 超过阈值：动画滑到上级位置，结束后导航
+                            withAnimation(.easeOut(duration: 0.25)) {
+                                headerDragOffset = UIScreen.main.bounds.width
+                            } completion: {
+                                headerDragOffset = 0
+                                goToParentFolder()
+                            }
+                        } else {
+                            // 未达阈值：弹回原位
+                            withAnimation(.spring(duration: 0.3)) {
+                                headerDragOffset = 0
+                            }
                         }
                     }
                 : nil
@@ -901,63 +947,12 @@ struct MoveSheetView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // 路径导航栏
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    if canGoBack {
-                        Button {
-                            let parent = (currentPath as NSString).deletingLastPathComponent
-                            Task { await loadSubfolders(path: parent) }
-                        } label: {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 32, height: 32)
-                                .contentShape(Rectangle())
-                        }
-                    }
-
-                    Image(systemName: canGoBack ? "folder.fill" : "folder.fill.badge.gearshape")
-                        .font(.title3)
-                        .foregroundStyle(canGoBack ? .yellow : .orange)
-
-                    Text(displayName)
-                        .font(.body)
-                        .fontWeight(.semibold)
-                        .lineLimit(1)
-
-                    Spacer()
-                }
-                .padding(.horizontal, AppTheme.Spacing.lg)
-                .padding(.vertical, AppTheme.Spacing.sm)
-
-                Divider()
-
-                // 移动到当前文件夹
-                Button {
-                    Task { await moveToPath(currentPath.isEmpty ? sourceFolder : currentPath, name: displayName) }
-                } label: {
-                    HStack(spacing: AppTheme.Spacing.md) {
-                        Image(systemName: "arrow.right.doc.on.clipboard")
-                            .font(.body)
-                            .foregroundStyle(.blue)
-                        Text("移动到「\(displayName)」")
-                            .font(.body)
-                            .foregroundStyle(.blue)
-                        Spacer()
-                    }
-                    .padding(.horizontal, AppTheme.Spacing.lg)
-                    .padding(.vertical, AppTheme.Spacing.md)
-                    .contentShape(Rectangle())
-                }
-
-                Divider()
-
-                // 子文件夹列表
+                // 文件夹列表
                 if isLoading {
                     Spacer()
                     ProgressView()
                     Spacer()
-                } else if subfolders.isEmpty {
+                } else if subfolders.isEmpty && !canGoBack {
                     Spacer()
                     Text("没有子文件夹")
                         .font(.subheadline)
@@ -965,6 +960,41 @@ struct MoveSheetView: View {
                     Spacer()
                 } else {
                     List {
+                        if canGoBack {
+                            // 子文件夹层级：显示 .. 返回上级
+                            Button {
+                                let parent = (currentPath as NSString).deletingLastPathComponent
+                                Task { await loadSubfolders(path: parent) }
+                            } label: {
+                                HStack(spacing: AppTheme.Spacing.md) {
+                                    Image(systemName: "arrowshape.turn.up.left.fill")
+                                        .font(.title3)
+                                        .foregroundStyle(.secondary)
+
+                                    Text("..")
+                                        .font(.body)
+                                        .foregroundStyle(.secondary)
+
+                                    Spacer()
+                                }
+                            }
+                        } else {
+                            // 源文件夹层级：显示源文件夹名（不可点击）
+                            HStack(spacing: AppTheme.Spacing.md) {
+                                Image(systemName: "folder.fill.badge.gearshape")
+                                    .font(.title3)
+                                    .foregroundStyle(.orange)
+
+                                Text(displayName)
+                                    .font(.body)
+                                    .foregroundStyle(.primary)
+
+                                Spacer()
+                            }
+                            .listRowBackground(Color.clear)
+                        }
+
+                        // 子文件夹
                         ForEach(subfolders) { folder in
                             Button {
                                 Task { await loadSubfolders(path: folder.path) }
@@ -996,8 +1026,23 @@ struct MoveSheetView: View {
                     }
                     .listStyle(.plain)
                 }
+
+                // 底部「移动至此」按钮
+                Button {
+                    Task { await moveToPath(currentPath.isEmpty ? sourceFolder : currentPath, name: displayName) }
+                } label: {
+                    Text("移动至此")
+                        .font(.body)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, AppTheme.Spacing.md)
+                        .background(.blue, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+                }
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.vertical, AppTheme.Spacing.md)
             }
-            .navigationTitle("移动到")
+            .navigationTitle(displayName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
