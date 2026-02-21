@@ -27,6 +27,7 @@ struct GalleryView: View {
     @State private var filesOffset = 0
     @State private var hasMoreFiles = true
     @State private var isLoadingMore = false
+    @State private var isRefreshing = false
     @State private var filesTotalCount = 0
     private let filesPageSize = 100
 
@@ -205,6 +206,10 @@ struct GalleryView: View {
                 onDismiss: { showMoveSheet = false },
                 onMoved: { folderName in
                     showMoveSheet = false
+                    // 立即从本地数组移除被移动的文件（即时反馈）
+                    if let movedFile = selectedFile {
+                        files.removeAll { $0.id == movedFile.id }
+                    }
                     GlassAlertManager.shared.showSuccess("已移动到 \(folderName)")
                     await refreshFiles()
                 }
@@ -702,7 +707,7 @@ struct GalleryView: View {
 
     /// 加载更多文件（分页续载）
     private func loadMoreFiles() {
-        guard !isLoadingMore && hasMoreFiles else { return }
+        guard !isLoadingMore && !isRefreshing && hasMoreFiles else { return }
         isLoadingMore = true
         Task {
             await loadFiles(path: currentFolderPath, reset: false)
@@ -730,16 +735,18 @@ struct GalleryView: View {
 
     /// 下拉刷新 — 重置分页，从头加载当前文件夹
     private func refreshFiles() async {
+        isRefreshing = true
         let path = currentFolderPath
+
+        // 立即清空文件列表和重置分页状态，防止哨兵触发 loadMoreFiles 导致重复 ID
+        files = []
+        filesOffset = 0
+        hasMoreFiles = false
 
         // 并行刷新子文件夹和面包屑（各自独立处理错误）
         async let foldersTask = apiService.preview.getIndexedFolders(
             parentPath: path, sourceFolder: sourceFolder)
         async let breadcrumbTask = apiService.preview.getBreadcrumb(folderPath: path)
-
-        // 重置分页状态并加载文件
-        filesOffset = 0
-        hasMoreFiles = true
 
         do {
             let response = try await apiService.preview.getFilesPaginated(
@@ -764,6 +771,8 @@ struct GalleryView: View {
         do { breadcrumb = try await breadcrumbTask } catch {
             breadcrumb = [BreadcrumbItem(name: sourceFolderDisplayName, path: sourceFolder)]
         }
+
+        isRefreshing = false
     }
 
     /// 点击文件打开预览，带 quick loading 反馈

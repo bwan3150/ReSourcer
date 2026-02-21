@@ -73,8 +73,8 @@ struct FileInfoSheetContent: View {
 
             infoRow("类型", value: file.extension.uppercased())
             infoRow("大小", value: file.formattedSize)
-            infoRow("创建时间", value: file.created)
-            infoRow("修改时间", value: file.modified)
+            infoRow("创建时间", value: file.created.toLocalDateTime)
+            infoRow("修改时间", value: file.modified.toLocalDateTime)
 
             if let sourceUrl = file.sourceUrl, let url = URL(string: sourceUrl) {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {

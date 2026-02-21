@@ -73,6 +73,16 @@ actor PreviewService {
         )
     }
 
+    /// 触发索引扫描
+    /// - Parameters:
+    ///   - sourceFolder: 源文件夹路径
+    ///   - force: 是否强制重新扫描
+    /// - Returns: 扫描响应
+    func scanIndexer(sourceFolder: String, force: Bool = false) async throws -> IndexerScanResponse {
+        let body = IndexerScanRequest(sourceFolder: sourceFolder, force: force)
+        return try await networkManager.request(.indexerScan, body: body)
+    }
+
     /// 获取文件缩略图数据
     /// - Parameters:
     ///   - path: 文件路径

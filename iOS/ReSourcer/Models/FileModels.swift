@@ -213,6 +213,19 @@ struct IndexedFilesResponse: Codable {
     let hasMore: Bool
 }
 
+/// 索引扫描请求
+struct IndexerScanRequest: Codable {
+    let sourceFolder: String
+    let force: Bool
+}
+
+/// 索引扫描响应
+struct IndexerScanResponse: Codable {
+    let status: String
+    let scannedFiles: UInt64?
+    let scannedFolders: UInt64?
+}
+
 /// IndexedFile → FileInfo 转换
 extension IndexedFile {
     func toFileInfo() -> FileInfo {

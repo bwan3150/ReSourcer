@@ -202,30 +202,46 @@ struct SettingsView: View {
     private func sourceFolderRow(path: String, isCurrent: Bool) -> some View {
         let name = URL(fileURLWithPath: path).lastPathComponent
 
-        Button {
-            if !isCurrent {
-                switchSourceFolder(to: path)
-            }
-        } label: {
-            HStack(spacing: AppTheme.Spacing.md) {
-                Image(systemName: isCurrent ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 16))
-                    .foregroundStyle(isCurrent ? .green : Color.gray)
-                    .frame(width: 24)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(name)
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
+        HStack(spacing: AppTheme.Spacing.sm) {
+            Button {
+                if !isCurrent {
+                    switchSourceFolder(to: path)
                 }
+            } label: {
+                HStack(spacing: AppTheme.Spacing.md) {
+                    Image(systemName: isCurrent ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 16))
+                        .foregroundStyle(isCurrent ? .green : Color.gray)
+                        .frame(width: 24)
 
-                Spacer()
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(name)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                    }
+
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+                .padding(.vertical, AppTheme.Spacing.xxs)
             }
-            .contentShape(Rectangle())
-            .padding(.vertical, AppTheme.Spacing.xxs)
+            .buttonStyle(.plain)
+            .disabled(isCurrent)
+
+            // 当前源文件夹显示重新索引按钮
+            if isCurrent {
+                Button {
+                    reindexCurrentSourceFolder()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.blue)
+                        .frame(width: 32, height: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .buttonStyle(.plain)
-        .disabled(isCurrent)
     }
 
     // MARK: - 3. 语言切换
@@ -452,6 +468,25 @@ struct SettingsView: View {
             return thumb + video + network + temp
         }.value
         totalCacheSize = ThumbnailCacheService.formatSize(size)
+    }
+
+    private func reindexCurrentSourceFolder() {
+        guard let current = sourceFolders?.current else { return }
+        Task {
+            do {
+                GlassAlertManager.shared.showQuickLoading()
+                let response = try await apiService.preview.scanIndexer(sourceFolder: current, force: true)
+                GlassAlertManager.shared.hideQuickLoading()
+                if response.status == "already_scanning" {
+                    GlassAlertManager.shared.showWarning("正在扫描中")
+                } else {
+                    GlassAlertManager.shared.showSuccess("已开始重新索引")
+                }
+            } catch {
+                GlassAlertManager.shared.hideQuickLoading()
+                GlassAlertManager.shared.showError("索引失败", message: error.localizedDescription)
+            }
+        }
     }
 
     private func switchSourceFolder(to path: String) {
