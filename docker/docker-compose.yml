@@ -9,6 +9,8 @@ services:
     ports:
       - "1234:1234"
     volumes:
+      # 二进制文件持久化,避免每次重启都重新下载
+      - /volume1/docker/ReSourcer/bin:/app
       # 配置文件持久化 (对应容器内 $HOME/.config/re-sourcer)
       - /volume1/docker/ReSourcer:/home/appuser/.config/re-sourcer
       # 资源文件夹挂载
