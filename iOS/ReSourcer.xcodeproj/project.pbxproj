@@ -51,7 +51,6 @@
 		A1000076233F0001 /* CacheSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000076233F0000 /* CacheSettingsView.swift */; };
 		A1000077233F0001 /* ThumbnailCacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000077233F0000 /* ThumbnailCacheService.swift */; };
 		A1000078233F0001 /* CachedThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000078233F0000 /* CachedThumbnailView.swift */; };
-
 		A1000079233F0001 /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000079233F0000 /* QRScannerView.swift */; };
 		A1000080233F0001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000080233F0000 /* Assets.xcassets */; };
 		A1000081233F0001 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000081233F0000 /* Preview Assets.xcassets */; };
@@ -110,7 +109,6 @@
 		A1000076233F0000 /* CacheSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheSettingsView.swift; sourceTree = "<group>"; };
 		A1000077233F0000 /* ThumbnailCacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCacheService.swift; sourceTree = "<group>"; };
 		A1000078233F0000 /* CachedThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedThumbnailView.swift; sourceTree = "<group>"; };
-
 		A1000079233F0000 /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
 		A1000080233F0000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1000081233F0000 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -191,7 +189,6 @@
 				A1000015233F0000 /* GlassNavigationBar.swift */,
 				A1000016233F0000 /* GlassTabBar.swift */,
 				A1000078233F0000 /* CachedThumbnailView.swift */,
-
 				A1000079233F0000 /* QRScannerView.swift */,
 				A1000090233F0000 /* FileInfoSheetContent.swift */,
 				A1000093233F0000 /* TagEditorView.swift */,
@@ -438,7 +435,6 @@
 				A1000092233F0001 /* NavigationState.swift in Sources */,
 				A1000093233F0001 /* TagEditorView.swift in Sources */,
 				A1000078233F0001 /* CachedThumbnailView.swift in Sources */,
-
 				A1000079233F0001 /* QRScannerView.swift in Sources */,
 				A100008A233F0001 /* PhotoUploadView.swift in Sources */,
 				A100008B233F0001 /* UploadTaskListView.swift in Sources */,
@@ -600,7 +596,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.5;
+				MARKETING_VERSION = 0.0.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.resourcer.apple;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -638,7 +634,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.5;
+				MARKETING_VERSION = 0.0.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.resourcer.apple;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

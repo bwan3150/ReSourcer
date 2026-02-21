@@ -6,11 +6,13 @@ use super::storage;
 use super::scanner;
 
 /// POST /api/indexer/scan — 后台全量扫描源文件夹
+/// 参数 force=true 时先清除旧索引再全量重建
 pub async fn scan(
     req: web::Json<ScanRequest>,
     scan_status: web::Data<Arc<RwLock<ScanStatus>>>,
 ) -> Result<HttpResponse> {
     let source_folder = req.source_folder.clone();
+    let force = req.force;
 
     // 检查是否正在扫描
     {
@@ -35,6 +37,13 @@ pub async fn scan(
     let status_clone = scan_status.get_ref().clone();
     tokio::spawn(async move {
         let result = tokio::task::spawn_blocking(move || {
+            // force 模式：先清除该源文件夹下的所有文件索引
+            if force {
+                match storage::clear_file_index_for_source(&source_folder) {
+                    Ok(deleted) => eprintln!("强制重建：已清除 {} 条文件索引", deleted),
+                    Err(e) => eprintln!("清除文件索引失败: {}", e),
+                }
+            }
             scanner::scan_source_folder(&source_folder)
         }).await;
 

@@ -1,9 +1,8 @@
 // 配置存储功能 - 使用 SQLite 数据库
-use super::models::{AppState, Preset, CategoryOrderConfig};
+use super::models::{AppState, Preset};
 use crate::database;
 use std::path::PathBuf;
 use std::io;
-use std::collections::HashMap;
 
 /// 获取配置文件目录 ~/.config/re-sourcer/（仍需要用于 secret.json 和 credentials）
 #[allow(dead_code)]
@@ -94,63 +93,6 @@ pub fn get_default_state() -> AppState {
     }
 }
 
-/// 加载分类排序配置（从 SQLite）
-#[allow(dead_code)]
-pub fn load_category_order_config() -> io::Result<CategoryOrderConfig> {
-    let conn = database::get_connection()
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
-
-    let mut stmt = conn.prepare("SELECT source_folder, order_list FROM category_order")
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("准备查询失败: {}", e)))?;
-
-    let mut orders = HashMap::new();
-    let rows = stmt.query_map([], |row| {
-        let source_folder: String = row.get(0)?;
-        let order_list_json: String = row.get(1)?;
-        Ok((source_folder, order_list_json))
-    }).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("查询分类排序失败: {}", e)))?;
-
-    for row in rows {
-        if let Ok((source_folder, order_list_json)) = row {
-            if let Ok(order_list) = serde_json::from_str::<Vec<String>>(&order_list_json) {
-                orders.insert(source_folder, order_list);
-            }
-        }
-    }
-
-    Ok(CategoryOrderConfig { orders })
-}
-
-/// 保存分类排序配置（写入 SQLite）
-#[allow(dead_code)]
-pub fn save_category_order_config(config: &CategoryOrderConfig) -> io::Result<()> {
-    let conn = database::get_connection()
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
-
-    for (source_folder, order_list) in &config.orders {
-        let order_list_json = serde_json::to_string(order_list)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-
-        conn.execute(
-            "INSERT OR REPLACE INTO category_order (source_folder, order_list) VALUES (?1, ?2)",
-            rusqlite::params![source_folder, order_list_json],
-        ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("保存分类排序失败: {}", e)))?;
-    }
-
-    Ok(())
-}
-
-/// 获取指定源文件夹的分类排序（兼容旧接口，内部委托到 get_subfolder_order）
-#[allow(dead_code)]
-pub fn get_category_order(source_folder: &str) -> Vec<String> {
-    get_subfolder_order(source_folder)
-}
-
-/// 保存指定源文件夹的分类排序（兼容旧接口，内部委托到 set_subfolder_order）
-#[allow(dead_code)]
-pub fn set_category_order(source_folder: &str, order: Vec<String>) -> io::Result<()> {
-    set_subfolder_order(source_folder, order)
-}
 
 /// 获取指定文件夹的子文件夹排序
 pub fn get_subfolder_order(folder_path: &str) -> Vec<String> {

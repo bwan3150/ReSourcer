@@ -1,6 +1,5 @@
 // 配置API相关的数据模型
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// 应用状态（主配置结构）
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -16,13 +15,6 @@ pub struct AppState {
 
 fn default_use_cookies() -> bool {
     true
-}
-
-/// 分类排序配置
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct CategoryOrderConfig {
-    #[serde(default)]
-    pub orders: HashMap<String, Vec<String>>, // 源文件夹 -> 分类顺序
 }
 
 /// 预设信息

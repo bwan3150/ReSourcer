@@ -33,6 +33,9 @@ pub struct IndexedFolder {
 #[derive(Debug, Deserialize)]
 pub struct ScanRequest {
     pub source_folder: String,
+    /// 强制重建索引（清除旧的 file_index 后全量重新扫描）
+    #[serde(default)]
+    pub force: bool,
 }
 
 /// 分页查询文件

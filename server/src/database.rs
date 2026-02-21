@@ -61,28 +61,15 @@ pub fn init_db() -> SqliteResult<()> {
         [],
     )?;
 
-    // 创建分类排序表（旧表，保留用于迁移）
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS category_order (
-            source_folder TEXT PRIMARY KEY,
-            order_list TEXT NOT NULL DEFAULT '[]'
-        )",
-        [],
-    )?;
+    // 清理已废弃的 category_order 表（已迁移到 subfolder_order）
+    conn.execute("DROP TABLE IF EXISTS category_order", [])?;
 
-    // 创建子文件夹排序表（新表，支持任意层级文件夹排序）
+    // 子文件夹排序表（支持任意层级文件夹排序）
     conn.execute(
         "CREATE TABLE IF NOT EXISTS subfolder_order (
             folder_path TEXT PRIMARY KEY,
             order_list TEXT NOT NULL DEFAULT '[]'
         )",
-        [],
-    )?;
-
-    // 从 category_order 迁移数据到 subfolder_order
-    conn.execute(
-        "INSERT OR IGNORE INTO subfolder_order (folder_path, order_list)
-         SELECT source_folder, order_list FROM category_order",
         [],
     )?;
 
@@ -257,18 +244,13 @@ fn migrate_from_json(conn: &Connection) -> SqliteResult<()> {
         let _ = fs::remove_file(&old_config_path);
     }
 
-    // 迁移分类排序配置
+    // 迁移分类排序配置（旧 JSON → subfolder_order）
     if old_category_order_path.exists() {
         if let Ok(content) = fs::read_to_string(&old_category_order_path) {
             if let Ok(old_config) = serde_json::from_str::<serde_json::Value>(&content) {
                 if let Some(orders) = old_config.get("orders").and_then(|v| v.as_object()) {
                     for (source_folder, order_list) in orders {
                         if let Ok(order_json) = serde_json::to_string(order_list) {
-                            conn.execute(
-                                "INSERT OR REPLACE INTO category_order (source_folder, order_list) VALUES (?1, ?2)",
-                                rusqlite::params![source_folder, order_json],
-                            )?;
-                            // 同时写入新表
                             conn.execute(
                                 "INSERT OR REPLACE INTO subfolder_order (folder_path, order_list) VALUES (?1, ?2)",
                                 rusqlite::params![source_folder, order_json],
@@ -278,7 +260,6 @@ fn migrate_from_json(conn: &Connection) -> SqliteResult<()> {
                 }
             }
         }
-        // 删除旧文件
         let _ = fs::remove_file(&old_category_order_path);
     }
 

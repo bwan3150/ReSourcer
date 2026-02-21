@@ -290,15 +290,43 @@ pub fn update_folder_file_counts(source_folder: &str) -> Result<(), rusqlite::Er
     Ok(())
 }
 
-/// 判断文件夹是否已建索引
+/// 判断文件夹是否已完成文件索引
+/// 注意：scan_subfolders 只会在 folder_index 中创建文件夹记录，不会索引文件。
+/// 因此仅凭 folder_index 有记录不能认为文件已被索引，还需检查 file_index。
 pub fn is_folder_indexed(folder_path: &str) -> Result<bool, rusqlite::Error> {
     let conn = get_connection()?;
-    let count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM folder_index WHERE path = ?1",
+
+    // 先检查 folder_index 中是否存在
+    let in_folder_index: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM folder_index WHERE path = ?1",
         params![folder_path],
         |row| row.get(0),
     )?;
-    Ok(count > 0)
+
+    if !in_folder_index {
+        return Ok(false);
+    }
+
+    // folder_index 有记录，但可能只是 scan_subfolders 添加的（未扫描文件）
+    // 需要确认 file_index 中确实有该文件夹的文件记录
+    let has_file_records: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM file_index WHERE folder_path = ?1",
+        params![folder_path],
+        |row| row.get(0),
+    )?;
+
+    Ok(has_file_records)
+}
+
+/// 清除指定源文件夹下的所有文件索引（用于强制重建）
+pub fn clear_file_index_for_source(source_folder: &str) -> Result<u64, rusqlite::Error> {
+    let conn = get_connection()?;
+    // file_index.folder_path 是具体的子文件夹路径，以 source_folder 开头
+    let affected = conn.execute(
+        "DELETE FROM file_index WHERE folder_path = ?1 OR folder_path LIKE ?2",
+        params![source_folder, format!("{}/%", source_folder)],
+    )?;
+    Ok(affected as u64)
 }
 
 /// 行映射函数
