@@ -118,107 +118,107 @@ jobs:
           path: ${{ matrix.platform.artifact_name }}
           retention-days: 7
 
-  build-tauri:
-    name: Build Tauri App ${{ matrix.platform.target }}
-    needs: build
-    runs-on: ${{ matrix.platform.os }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            cli_artifact: re-sourcer-macos-aarch64
-            tauri_artifact: resourcer-tray-macos
-
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            cli_artifact: re-sourcer-windows-x86_64.exe
-            tauri_artifact: resourcer-tray-windows
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - name: Download CLI artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ matrix.platform.cli_artifact }}
-          path: tray/src-tauri/bin/
-
-      - name: Rename CLI binary for Tauri (Unix)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          cd tray/src-tauri/bin/
-          mv ${{ matrix.platform.cli_artifact }} re-sourcer-${{ matrix.platform.target }}
-          chmod +x re-sourcer-${{ matrix.platform.target }}
-          ls -lh
-
-      - name: Rename CLI binary for Tauri (Windows)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          cd tray/src-tauri/bin/
-          mv ${{ matrix.platform.cli_artifact }} re-sourcer-${{ matrix.platform.target }}.exe
-          ls -lh
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform.target }}
-
-      - name: Create dist directory with placeholder
-        working-directory: tray
-        shell: bash
-        run: |
-          mkdir -p dist
-          cat > dist/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-          <head>
-              <meta charset="UTF-8">
-              <title>ReSourcer</title>
-          </head>
-          <body>
-              <h1>ReSourcer</h1>
-          </body>
-          </html>
-          EOF
-          echo "✅ Created dist/index.html"
-          ls -la dist/
-
-      - name: Install npm dependencies
-        working-directory: tray
-        run: npm install
-
-      - name: Build Tauri app
-        working-directory: tray
-        run: npm run build
-
-      - name: Upload Tauri artifacts (macOS)
-        if: runner.os == 'macOS'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.platform.tauri_artifact }}-dmg
-          path: tray/src-tauri/target/release/bundle/dmg/*.dmg
-          retention-days: 7
-
-      - name: Upload Tauri artifacts (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.platform.tauri_artifact }}-msi
-          path: tray/src-tauri/target/release/bundle/msi/*.msi
-          retention-days: 7
+  # build-tauri:
+  #   name: Build Tauri App ${{ matrix.platform.target }}
+  #   needs: build
+  #   runs-on: ${{ matrix.platform.os }}
+  #
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       platform:
+  #         - os: macos-latest
+  #           target: aarch64-apple-darwin
+  #           cli_artifact: re-sourcer-macos-aarch64
+  #           tauri_artifact: resourcer-tray-macos
+  #
+  #         - os: windows-latest
+  #           target: x86_64-pc-windows-msvc
+  #           cli_artifact: re-sourcer-windows-x86_64.exe
+  #           tauri_artifact: resourcer-tray-windows
+  #
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #       with:
+  #         lfs: true
+  #
+  #     - name: Download CLI artifact
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: ${{ matrix.platform.cli_artifact }}
+  #         path: tray/src-tauri/bin/
+  #
+  #     - name: Rename CLI binary for Tauri (Unix)
+  #       if: runner.os != 'Windows'
+  #       shell: bash
+  #       run: |
+  #         cd tray/src-tauri/bin/
+  #         mv ${{ matrix.platform.cli_artifact }} re-sourcer-${{ matrix.platform.target }}
+  #         chmod +x re-sourcer-${{ matrix.platform.target }}
+  #         ls -lh
+  #
+  #     - name: Rename CLI binary for Tauri (Windows)
+  #       if: runner.os == 'Windows'
+  #       shell: bash
+  #       run: |
+  #         cd tray/src-tauri/bin/
+  #         mv ${{ matrix.platform.cli_artifact }} re-sourcer-${{ matrix.platform.target }}.exe
+  #         ls -lh
+  #
+  #     - name: Install Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+  #
+  #     - name: Install Rust toolchain
+  #       uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         targets: ${{ matrix.platform.target }}
+  #
+  #     - name: Create dist directory with placeholder
+  #       working-directory: tray
+  #       shell: bash
+  #       run: |
+  #         mkdir -p dist
+  #         cat > dist/index.html << 'EOF'
+  #         <!DOCTYPE html>
+  #         <html>
+  #         <head>
+  #             <meta charset="UTF-8">
+  #             <title>ReSourcer</title>
+  #         </head>
+  #         <body>
+  #             <h1>ReSourcer</h1>
+  #         </body>
+  #         </html>
+  #         EOF
+  #         echo "Created dist/index.html"
+  #         ls -la dist/
+  #
+  #     - name: Install npm dependencies
+  #       working-directory: tray
+  #       run: npm install
+  #
+  #     - name: Build Tauri app
+  #       working-directory: tray
+  #       run: npm run build
+  #
+  #     - name: Upload Tauri artifacts (macOS)
+  #       if: runner.os == 'macOS'
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: ${{ matrix.platform.tauri_artifact }}-dmg
+  #         path: tray/src-tauri/target/release/bundle/dmg/*.dmg
+  #         retention-days: 7
+  #
+  #     - name: Upload Tauri artifacts (Windows)
+  #       if: runner.os == 'Windows'
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: ${{ matrix.platform.tauri_artifact }}-msi
+  #         path: tray/src-tauri/target/release/bundle/msi/*.msi
+  #         retention-days: 7
 
   build-android:
     name: Build Android APK
@@ -289,7 +289,7 @@ jobs:
 # TAG触发
   create-release:
     name: Create GitHub Release
-    needs: [build, build-tauri, build-android]
+    needs: [build, build-android]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
@@ -314,17 +314,12 @@ jobs:
           prerelease: false
           generate_release_notes: true  # 自动生成
           body: |
-            ### CLI 命令行工具
+            ### Server CLI
             - `re-sourcer-linux-x86_64` - Linux x86_64
             - `re-sourcer-macos-aarch64` - macOS Apple Silicon
             - `re-sourcer-windows-x86_64.exe` - Windows x86_64
 
-            ### Tauri 桌面应用（系统托盘）
-            - `resourcer-tray-macos` - macOS (.dmg)
-            - `resourcer-tray-linux` - Linux (.deb)
-            - `resourcer-tray-windows` - Windows (.msi)
-
-            ### Android 应用
+            ### Android App
             - `resourcer-android.apk` - Android APK
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
