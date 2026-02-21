@@ -7,8 +7,8 @@ use crate::database::get_connection;
 pub fn upsert_file(file: &IndexedFile) -> Result<(), rusqlite::Error> {
     let conn = get_connection()?;
     conn.execute(
-        "INSERT INTO file_index (uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+        "INSERT INTO file_index (uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at, source_url)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
          ON CONFLICT(uuid) DO UPDATE SET
             fingerprint = excluded.fingerprint,
             current_path = excluded.current_path,
@@ -18,7 +18,8 @@ pub fn upsert_file(file: &IndexedFile) -> Result<(), rusqlite::Error> {
             extension = excluded.extension,
             file_size = excluded.file_size,
             modified_at = excluded.modified_at,
-            indexed_at = excluded.indexed_at",
+            indexed_at = excluded.indexed_at,
+            source_url = COALESCE(excluded.source_url, file_index.source_url)",
         params![
             file.uuid,
             file.fingerprint,
@@ -31,6 +32,7 @@ pub fn upsert_file(file: &IndexedFile) -> Result<(), rusqlite::Error> {
             file.created_at,
             file.modified_at,
             file.indexed_at,
+            file.source_url,
         ],
     )?;
     Ok(())
@@ -91,7 +93,7 @@ pub fn get_files_paginated(
         )?;
 
         let query = format!(
-            "SELECT uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at
+            "SELECT uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at, source_url
              FROM file_index WHERE folder_path = ?1 AND file_type = ?2 AND current_path IS NOT NULL
              ORDER BY {} LIMIT ?3 OFFSET ?4", order_clause
         );
@@ -108,7 +110,7 @@ pub fn get_files_paginated(
         )?;
 
         let query = format!(
-            "SELECT uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at
+            "SELECT uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at, source_url
              FROM file_index WHERE folder_path = ?1 AND current_path IS NOT NULL
              ORDER BY {} LIMIT ?2 OFFSET ?3", order_clause
         );
@@ -126,7 +128,7 @@ pub fn get_files_paginated(
 pub fn get_file_by_uuid(uuid: &str) -> Result<Option<IndexedFile>, rusqlite::Error> {
     let conn = get_connection()?;
     let mut stmt = conn.prepare(
-        "SELECT uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at
+        "SELECT uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at, source_url
          FROM file_index WHERE uuid = ?1"
     )?;
     let mut rows = stmt.query_map(params![uuid], map_file_row)?;
@@ -141,7 +143,7 @@ pub fn get_file_by_uuid(uuid: &str) -> Result<Option<IndexedFile>, rusqlite::Err
 pub fn get_file_by_path(path: &str) -> Result<Option<IndexedFile>, rusqlite::Error> {
     let conn = get_connection()?;
     let mut stmt = conn.prepare(
-        "SELECT uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at
+        "SELECT uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at, source_url
          FROM file_index WHERE current_path = ?1"
     )?;
     let mut rows = stmt.query_map(params![path], map_file_row)?;
@@ -156,7 +158,7 @@ pub fn get_file_by_path(path: &str) -> Result<Option<IndexedFile>, rusqlite::Err
 pub fn find_orphan_by_fingerprint(fingerprint: &str) -> Result<Option<IndexedFile>, rusqlite::Error> {
     let conn = get_connection()?;
     let mut stmt = conn.prepare(
-        "SELECT uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at
+        "SELECT uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at, source_url
          FROM file_index WHERE fingerprint = ?1 AND current_path IS NULL LIMIT 1"
     )?;
     let mut rows = stmt.query_map(params![fingerprint], map_file_row)?;
@@ -361,5 +363,6 @@ fn map_file_row(row: &rusqlite::Row) -> Result<IndexedFile, rusqlite::Error> {
         created_at: row.get(8)?,
         modified_at: row.get(9)?,
         indexed_at: row.get(10)?,
+        source_url: row.get(11)?,
     })
 }

@@ -90,6 +90,9 @@ struct FileInfo: Identifiable, Codable, Equatable {
     /// 视频时长（秒，仅视频有效）
     let duration: Double?
 
+    /// 下载来源 URL（仅下载的文件有值）
+    let sourceUrl: String?
+
     // MARK: - Identifiable
 
     /// UUID 优先作为 ID，兼容旧 API 时回退到 path
@@ -198,6 +201,7 @@ struct IndexedFile: Codable {
     let createdAt: String
     let modifiedAt: String
     let indexedAt: String
+    let sourceUrl: String?
 }
 
 /// 索引文件分页响应
@@ -223,7 +227,8 @@ extension IndexedFile {
             modified: modifiedAt,
             width: nil,
             height: nil,
-            duration: nil
+            duration: nil,
+            sourceUrl: sourceUrl
         )
     }
 }

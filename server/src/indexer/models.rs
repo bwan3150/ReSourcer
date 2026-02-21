@@ -15,6 +15,7 @@ pub struct IndexedFile {
     pub created_at: String,
     pub modified_at: String,
     pub indexed_at: String,
+    pub source_url: Option<String>,
 }
 
 /// 索引文件夹记录

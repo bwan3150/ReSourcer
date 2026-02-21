@@ -170,7 +170,8 @@ struct DownloadTask: Identifiable, Codable, Equatable {
             modified: createdAt,
             width: nil,
             height: nil,
-            duration: nil
+            duration: nil,
+            sourceUrl: nil
         )
     }
 }
@@ -231,6 +232,7 @@ struct DownloadTaskStatusResponse: Codable {
     let status: String
     let task: DownloadTask
 }
+
 
 // MARK: - ISO 8601 时间格式化
 

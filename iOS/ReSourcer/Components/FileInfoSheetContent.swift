@@ -76,6 +76,26 @@ struct FileInfoSheetContent: View {
             infoRow("创建时间", value: file.created)
             infoRow("修改时间", value: file.modified)
 
+            if let sourceUrl = file.sourceUrl, let url = URL(string: sourceUrl) {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                    Text("来源地址")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Link(destination: url) {
+                        HStack(spacing: 4) {
+                            Text(sourceUrl)
+                                .font(.body)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.blue)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
             if let width = file.width, let height = file.height {
                 infoRow("分辨率", value: "\(width) × \(height)")
             }

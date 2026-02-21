@@ -137,6 +137,7 @@ pub fn scan_folder(folder_path: &str, source_folder: &str) -> Result<Vec<Indexed
             created_at,
             modified_at,
             indexed_at: now.clone(),
+            source_url: None,
         };
 
         if let Err(e) = storage::upsert_file(&indexed_file) {
@@ -309,6 +310,7 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
                 created_at,
                 modified_at,
                 indexed_at: now.clone(),
+                source_url: None,
             };
 
             let _ = storage::upsert_file(&indexed_file);
@@ -326,7 +328,8 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
 }
 
 /// 单文件索引：上传/下载完成后立即将文件编入索引，避免扫描整个目录
-pub fn index_single_file(file_path: &str, source_folder: &str) -> Result<IndexedFile, Box<dyn std::error::Error + Send + Sync>> {
+/// source_url: 下载来源 URL（仅下载任务传入，上传和扫描传 None）
+pub fn index_single_file(file_path: &str, source_folder: &str, source_url: Option<&str>) -> Result<IndexedFile, Box<dyn std::error::Error + Send + Sync>> {
     let entry_path = Path::new(file_path);
     if !entry_path.is_file() {
         return Err(format!("文件不存在: {}", file_path).into());
@@ -388,6 +391,7 @@ pub fn index_single_file(file_path: &str, source_folder: &str) -> Result<Indexed
         created_at,
         modified_at,
         indexed_at: now.clone(),
+        source_url: source_url.map(|s| s.to_string()),
     };
 
     storage::upsert_file(&indexed_file)?;

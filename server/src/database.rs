@@ -130,6 +130,9 @@ pub fn init_db() -> SqliteResult<()> {
     conn.execute("CREATE INDEX IF NOT EXISTS idx_file_fingerprint ON file_index(fingerprint)", [])?;
     conn.execute("CREATE INDEX IF NOT EXISTS idx_file_modified ON file_index(modified_at)", [])?;
 
+    // 迁移：为 file_index 添加 source_url 列（已有数据库兼容）
+    let _ = conn.execute("ALTER TABLE file_index ADD COLUMN source_url TEXT", []);
+
     // 创建文件夹索引表
     conn.execute(
         "CREATE TABLE IF NOT EXISTS folder_index (

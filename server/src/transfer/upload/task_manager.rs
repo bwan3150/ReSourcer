@@ -258,7 +258,7 @@ impl TaskManager {
         let file_path_clone = file_path.clone();
         let _ = tokio::task::spawn_blocking(move || {
             if let Some(source_folder) = crate::indexer::storage::find_source_folder(&file_path_clone) {
-                if let Err(e) = crate::indexer::scanner::index_single_file(&file_path_clone, &source_folder) {
+                if let Err(e) = crate::indexer::scanner::index_single_file(&file_path_clone, &source_folder, None) {
                     eprintln!("上传后索引文件失败: {} - {}", file_path_clone, e);
                 }
             }

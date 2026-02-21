@@ -494,7 +494,8 @@ struct FilePreviewView: View {
                             modified: file.modified,
                             width: file.width,
                             height: file.height,
-                            duration: file.duration
+                            duration: file.duration,
+                            sourceUrl: file.sourceUrl
                         )
                     }
                 }

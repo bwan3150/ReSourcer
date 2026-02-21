@@ -279,11 +279,12 @@ impl TaskManager {
                         eprintln!("保存历史记录失败: {}", e);
                     }
 
-                    // 下载完成后立即索引新文件
+                    // 下载完成后立即索引新文件，携带来源 URL
                     let file_path_clone = file_path.clone();
+                    let source_url_clone = task.url.clone();
                     let _ = tokio::task::spawn_blocking(move || {
                         if let Some(source_folder) = crate::indexer::storage::find_source_folder(&file_path_clone) {
-                            if let Err(e) = crate::indexer::scanner::index_single_file(&file_path_clone, &source_folder) {
+                            if let Err(e) = crate::indexer::scanner::index_single_file(&file_path_clone, &source_folder, Some(&source_url_clone)) {
                                 eprintln!("下载后索引文件失败: {} - {}", file_path_clone, e);
                             }
                         }
