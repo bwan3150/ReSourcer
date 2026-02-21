@@ -53,6 +53,26 @@ actor PreviewService {
         )
     }
 
+    /// 获取子文件夹列表（indexer API）
+    /// - Parameters:
+    ///   - parentPath: 父文件夹路径
+    ///   - sourceFolder: 源文件夹路径
+    /// - Returns: 索引文件夹数组
+    func getIndexedFolders(parentPath: String?, sourceFolder: String?) async throws -> [IndexedFolder] {
+        return try await networkManager.request(
+            .indexerFolders(parentPath: parentPath, sourceFolder: sourceFolder)
+        )
+    }
+
+    /// 获取面包屑路径（indexer API）
+    /// - Parameter folderPath: 文件夹路径
+    /// - Returns: 面包屑项数组
+    func getBreadcrumb(folderPath: String) async throws -> [BreadcrumbItem] {
+        return try await networkManager.request(
+            .indexerBreadcrumb(folderPath: folderPath)
+        )
+    }
+
     /// 获取文件缩略图数据
     /// - Parameters:
     ///   - path: 文件路径
@@ -104,10 +124,14 @@ actor PreviewService {
     ///   - size: 缩略图尺寸
     ///   - baseURL: 服务器基础 URL
     ///   - apiKey: API Key
+    ///   - sourceFolder: 源文件夹路径（仅本地缓存分层使用，不影响服务端）
     /// - Returns: 完整的缩略图 URL
-    nonisolated func getThumbnailURL(uuid: String, size: Int = 300, baseURL: URL, apiKey: String) -> URL? {
+    nonisolated func getThumbnailURL(uuid: String, size: Int = 300, baseURL: URL, apiKey: String, sourceFolder: String? = nil) -> URL? {
         let encodedUuid = uuid.urlEncoded
-        let urlString = "\(baseURL.absoluteString)/api/preview/thumbnail?uuid=\(encodedUuid)&size=\(size)&key=\(apiKey)"
+        var urlString = "\(baseURL.absoluteString)/api/preview/thumbnail?uuid=\(encodedUuid)&size=\(size)&key=\(apiKey)"
+        if let sf = sourceFolder {
+            urlString += "&sf=\(sf.urlEncoded)"
+        }
         return URL(string: urlString)
     }
 

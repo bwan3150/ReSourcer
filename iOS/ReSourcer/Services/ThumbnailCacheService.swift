@@ -11,14 +11,24 @@ import CryptoKit
 
 // MARK: - 缓存信息数据模型
 
+/// 源文件夹级缓存信息
+struct ThumbnailSourceFolderCacheInfo: Identifiable {
+    let folderHash: String
+    let folderName: String
+    var fileCount: Int
+    var totalSize: Int64
+    var id: String { folderHash }
+}
+
 /// 服务器级缓存信息
 struct ThumbnailServerCacheInfo: Identifiable {
-    let id = UUID()
     let serverHash: String
     let serverURL: String
     let displayHost: String
-    var fileCount: Int
-    var totalSize: Int64
+    var sourceFolders: [ThumbnailSourceFolderCacheInfo]
+    var fileCount: Int { sourceFolders.reduce(0) { $0 + $1.fileCount } }
+    var totalSize: Int64 { sourceFolders.reduce(0) { $0 + $1.totalSize } }
+    var id: String { serverHash }
 }
 
 // MARK: - ThumbnailCacheService
@@ -188,7 +198,7 @@ final class ThumbnailCacheService: @unchecked Sendable {
 
     // MARK: - 缓存统计
 
-    /// 获取按服务器分组的缓存统计信息
+    /// 获取按服务器 > 源文件夹分组的缓存统计信息
     func getCacheStatistics() -> [ThumbnailServerCacheInfo] {
         var servers: [ThumbnailServerCacheInfo] = []
 
@@ -206,32 +216,88 @@ final class ThumbnailCacheService: @unchecked Sendable {
             let serverURL = serverMeta["url"] ?? sHash
             let displayHost = serverMeta["host"] ?? sHash
 
-            // 递归统计此服务器目录下所有缓存文件
-            var fileCount = 0
-            var totalSize: Int64 = 0
+            // 扫描子目录，判断是否有 sourceFolder 层
+            var sourceFolders: [ThumbnailSourceFolderCacheInfo] = []
+            var ungroupedFileCount = 0
+            var ungroupedSize: Int64 = 0
 
-            if let enumerator = fileManager.enumerator(
+            if let subDirs = try? fileManager.contentsOfDirectory(
                 at: serverDir,
-                includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey],
-                options: [.skipsHiddenFiles]
+                includingPropertiesForKeys: [.isDirectoryKey]
             ) {
-                for case let fileURL as URL in enumerator {
-                    guard fileURL.lastPathComponent != Self.metaFileName else { continue }
-                    if let values = try? fileURL.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey]),
-                       values.isRegularFile == true {
-                        fileCount += 1
-                        totalSize += Int64(values.fileSize ?? 0)
+                for subDir in subDirs {
+                    guard subDir.lastPathComponent != Self.metaFileName else { continue }
+                    guard let subIsDir = try? subDir.resourceValues(forKeys: [.isDirectoryKey]).isDirectory,
+                          subIsDir else { continue }
+
+                    let subHash = subDir.lastPathComponent
+                    let subMeta = readMeta(at: subDir)
+
+                    if subMeta["sourceFolder"] != nil {
+                        // 这是 sourceFolderHash 层
+                        let folderName = subMeta["name"] ?? subHash
+                        var sfFileCount = 0
+                        var sfSize: Int64 = 0
+
+                        if let enumerator = fileManager.enumerator(
+                            at: subDir,
+                            includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey],
+                            options: [.skipsHiddenFiles]
+                        ) {
+                            for case let fileURL as URL in enumerator {
+                                guard fileURL.lastPathComponent != Self.metaFileName else { continue }
+                                if let values = try? fileURL.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey]),
+                                   values.isRegularFile == true {
+                                    sfFileCount += 1
+                                    sfSize += Int64(values.fileSize ?? 0)
+                                }
+                            }
+                        }
+
+                        if sfFileCount > 0 {
+                            sourceFolders.append(ThumbnailSourceFolderCacheInfo(
+                                folderHash: subHash,
+                                folderName: folderName,
+                                fileCount: sfFileCount,
+                                totalSize: sfSize
+                            ))
+                        }
+                    } else {
+                        // 旧格式的 bucketKey 目录（无 sourceFolder 分层），归入未分组
+                        if let enumerator = fileManager.enumerator(
+                            at: subDir,
+                            includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey],
+                            options: [.skipsHiddenFiles]
+                        ) {
+                            for case let fileURL as URL in enumerator {
+                                guard fileURL.lastPathComponent != Self.metaFileName else { continue }
+                                if let values = try? fileURL.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey]),
+                                   values.isRegularFile == true {
+                                    ungroupedFileCount += 1
+                                    ungroupedSize += Int64(values.fileSize ?? 0)
+                                }
+                            }
+                        }
                     }
                 }
             }
 
-            if fileCount > 0 {
+            // 未分组的缓存文件归入一个 "未分组" 条目
+            if ungroupedFileCount > 0 {
+                sourceFolders.insert(ThumbnailSourceFolderCacheInfo(
+                    folderHash: "_ungrouped",
+                    folderName: "未分组",
+                    fileCount: ungroupedFileCount,
+                    totalSize: ungroupedSize
+                ), at: 0)
+            }
+
+            if !sourceFolders.isEmpty {
                 servers.append(ThumbnailServerCacheInfo(
                     serverHash: sHash,
                     serverURL: serverURL,
                     displayHost: displayHost,
-                    fileCount: fileCount,
-                    totalSize: totalSize
+                    sourceFolders: sourceFolders
                 ))
             }
         }
@@ -250,13 +316,45 @@ final class ThumbnailCacheService: @unchecked Sendable {
         clearMemoryCache()
     }
 
+    /// 清除指定服务器下某个源文件夹的缓存
+    func clearSourceFolderCache(serverHash: String, folderHash: String) {
+        if folderHash == "_ungrouped" {
+            // 清除旧格式的未分组缓存：删除 serverDir 下不含 _meta.json(sourceFolder) 的子目录
+            let serverDir = cacheDirectory.appendingPathComponent(serverHash, isDirectory: true)
+            ioQueue.async { [weak self] in
+                guard let self else { return }
+                if let subDirs = try? self.fileManager.contentsOfDirectory(
+                    at: serverDir, includingPropertiesForKeys: [.isDirectoryKey]
+                ) {
+                    for subDir in subDirs {
+                        guard subDir.lastPathComponent != Self.metaFileName else { continue }
+                        guard let isDir = try? subDir.resourceValues(forKeys: [.isDirectoryKey]).isDirectory,
+                              isDir else { continue }
+                        let meta = self.readMeta(at: subDir)
+                        if meta["sourceFolder"] == nil {
+                            try? self.fileManager.removeItem(at: subDir)
+                        }
+                    }
+                }
+            }
+        } else {
+            let sfDir = cacheDirectory
+                .appendingPathComponent(serverHash, isDirectory: true)
+                .appendingPathComponent(folderHash, isDirectory: true)
+            ioQueue.async { [weak self] in
+                try? self?.fileManager.removeItem(at: sfDir)
+            }
+        }
+        clearMemoryCache()
+    }
+
     // MARK: - Private: URL 解析
 
-    /// 从缩略图 URL 解析出 serverBase 和 uuidPrefix（用于磁盘分桶）
+    /// 从缩略图 URL 解析出 serverBase、sourceFolderHash 和 bucketKey（用于磁盘分桶）
     /// URL 格式:
-    ///   UUID: {baseURL}/api/preview/thumbnail?uuid=xxx&size=300&key=xxx
+    ///   UUID: {baseURL}/api/preview/thumbnail?uuid=xxx&size=300&key=xxx&sf=xxx
     ///   Path: {baseURL}/api/preview/thumbnail?path=xxx&size=300&key=xxx
-    private func parseThumbnailURL(_ url: URL) -> (serverBase: String, bucketKey: String)? {
+    private func parseThumbnailURL(_ url: URL) -> (serverBase: String, sourceFolder: String?, bucketKey: String)? {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
 
         // 构建 serverBase: scheme://host:port
@@ -266,12 +364,15 @@ final class ThumbnailCacheService: @unchecked Sendable {
             serverBase += ":\(port)"
         }
 
+        // 提取 sf（source folder）参数
+        let sourceFolder = components.queryItems?.first(where: { $0.name == "sf" })?.value
+
         // 优先使用 uuid 参数的前 2 字符做分桶
         if let queryItems = components.queryItems,
            let uuidParam = queryItems.first(where: { $0.name == "uuid" })?.value,
            uuidParam.count >= 2 {
             let prefix = String(uuidParam.prefix(2))
-            return (serverBase, prefix)
+            return (serverBase, sourceFolder, prefix)
         }
 
         // 兼容 path 参数：取目录部分的哈希前 2 字符
@@ -286,10 +387,10 @@ final class ThumbnailCacheService: @unchecked Sendable {
             }
             let fHash = shortHash(for: folderPath)
             let prefix = String(fHash.prefix(2))
-            return (serverBase, prefix)
+            return (serverBase, sourceFolder, prefix)
         }
 
-        return (serverBase, "00")
+        return (serverBase, sourceFolder, "00")
     }
 
     /// 生成 SHA256 哈希的前 16 个字符
@@ -308,7 +409,7 @@ final class ThumbnailCacheService: @unchecked Sendable {
         return hash.compactMap { String(format: "%02x", $0) }.joined()
     }
 
-    /// 分层磁盘路径: thumbnails/{serverHash}/{uuidPrefix}/{fileHash}.jpg
+    /// 分层磁盘路径: thumbnails/{serverHash}/{sourceFolderHash}/{bucketKey}/{fileHash}.jpg
     private func diskPath(for key: String, url: URL) -> URL {
         guard let parsed = parseThumbnailURL(url) else {
             // 解析失败降级到根目录
@@ -316,16 +417,22 @@ final class ThumbnailCacheService: @unchecked Sendable {
         }
 
         let sHash = shortHash(for: parsed.serverBase)
+        var base = cacheDirectory.appendingPathComponent(sHash, isDirectory: true)
 
-        return cacheDirectory
-            .appendingPathComponent(sHash, isDirectory: true)
+        // 有 sourceFolder 时加入 sourceFolderHash 层
+        if let sf = parsed.sourceFolder {
+            let sfHash = String(shortHash(for: sf).prefix(8))
+            base = base.appendingPathComponent(sfHash, isDirectory: true)
+        }
+
+        return base
             .appendingPathComponent(parsed.bucketKey, isDirectory: true)
             .appendingPathComponent("\(key).jpg")
     }
 
     // MARK: - Private: 元数据
 
-    /// 在服务器目录下写入 _meta.json（如果不存在）
+    /// 在服务器目录和源文件夹目录下写入 _meta.json（如果不存在）
     private func ensureMetadata(for url: URL) {
         guard let parsed = parseThumbnailURL(url) else { return }
 
@@ -347,6 +454,24 @@ final class ThumbnailCacheService: @unchecked Sendable {
             ]
             if let data = try? JSONSerialization.data(withJSONObject: serverMeta) {
                 try? data.write(to: serverMetaPath)
+            }
+        }
+
+        // 源文件夹 _meta.json
+        if let sf = parsed.sourceFolder {
+            let sfHash = String(shortHash(for: sf).prefix(8))
+            let sfDir = serverDir.appendingPathComponent(sfHash, isDirectory: true)
+            let sfMetaPath = sfDir.appendingPathComponent(Self.metaFileName)
+            if !fileManager.fileExists(atPath: sfMetaPath.path) {
+                try? fileManager.createDirectory(at: sfDir, withIntermediateDirectories: true)
+                let sfName = sf.components(separatedBy: "/").last ?? sf
+                let sfMeta: [String: String] = [
+                    "sourceFolder": sf,
+                    "name": sfName
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: sfMeta) {
+                    try? data.write(to: sfMetaPath)
+                }
             }
         }
     }

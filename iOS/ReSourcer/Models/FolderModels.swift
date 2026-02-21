@@ -68,6 +68,28 @@ struct GalleryFolderListResponse: Codable {
     let folders: [GalleryFolderInfo]
 }
 
+// MARK: - 索引文件夹（Indexer API）
+
+/// 索引文件夹（来自 /api/indexer/folders）
+struct IndexedFolder: Identifiable, Codable, Equatable {
+    let path: String
+    let parentPath: String?
+    let sourceFolder: String
+    let name: String
+    let depth: Int
+    let fileCount: Int
+    var id: String { path }
+}
+
+/// 面包屑项（来自 /api/indexer/breadcrumb）
+struct BreadcrumbItem: Identifiable, Codable, Equatable {
+    let name: String
+    let path: String
+    var id: String { path }
+}
+
+// MARK: - 文件夹操作请求/响应
+
 /// 文件夹创建请求
 struct FolderCreateRequest: Codable {
     let folderName: String

@@ -173,20 +173,13 @@ pub async fn folders(
 
     let result = tokio::task::spawn_blocking(move || -> FoldersResult {
         if let Some(ref parent) = parent_path {
-            // 检查父文件夹是否已索引
-            let indexed = match storage::is_folder_indexed(parent) {
-                Ok(v) => v,
-                Err(e) => return FoldersResult::Err(format!("数据库错误: {}", e)),
-            };
-
-            if !indexed {
-                let source = source_folder.as_deref()
-                    .unwrap_or(parent);
-                let source_resolved = find_source_folder(parent)
-                    .unwrap_or_else(|| source.to_string());
-                if let Err(e) = scan_subfolders(parent, &source_resolved) {
-                    return FoldersResult::Err(format!("扫描子文件夹失败: {}", e));
-                }
+            // 每次都扫描子文件夹（upsert 安全，确保新增子文件夹被发现）
+            let source = source_folder.as_deref()
+                .unwrap_or(parent);
+            let source_resolved = find_source_folder(parent)
+                .unwrap_or_else(|| source.to_string());
+            if let Err(e) = scan_subfolders(parent, &source_resolved) {
+                return FoldersResult::Err(format!("扫描子文件夹失败: {}", e));
             }
 
             match storage::get_subfolders(parent) {

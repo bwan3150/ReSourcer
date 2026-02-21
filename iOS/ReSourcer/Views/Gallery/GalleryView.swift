@@ -15,13 +15,13 @@ struct GalleryView: View {
 
     let apiService: APIService
 
-    @State private var folders: [FolderInfo] = []
-    @State private var selectedFolder: FolderInfo?  // nil 表示选中源文件夹
     @State private var sourceFolder = ""
     @State private var sourceFolderFileCount = 0
+    @State private var currentFolderFullPath = ""        // 当前浏览的完整文件夹路径
+    @State private var subfolders: [IndexedFolder] = []  // 当前层的子文件夹
+    @State private var breadcrumb: [BreadcrumbItem] = [] // 面包屑路径
     @State private var files: [FileInfo] = []
     @State private var isLoading = false
-    @State private var isSourceSelected = true  // 是否选中源文件夹
 
     // 分页状态
     @State private var filesOffset = 0
@@ -131,17 +131,17 @@ struct GalleryView: View {
             }
         }
         .task {
-            await loadFolders()
+            await loadInitial()
         }
         // 监听源文件夹切换：清空当前状态，重新加载新源文件夹
         .onReceive(NotificationCenter.default.publisher(for: .sourceFolderDidChange)) { _ in
             files = []
-            folders = []
-            isSourceSelected = true
-            selectedFolder = nil
+            subfolders = []
+            breadcrumb = []
+            currentFolderFullPath = ""
             Task {
                 await GlassAlertManager.shared.withQuickLoading {
-                    await loadFolders()
+                    await loadInitial()
                 }
             }
         }
@@ -238,20 +238,49 @@ struct GalleryView: View {
 
     // MARK: - Floating Header
 
+    /// 是否不在源文件夹根目录（可以返回上级）
+    private var canGoBack: Bool {
+        !currentFolderFullPath.isEmpty && currentFolderFullPath != sourceFolder
+    }
+
+    /// 当前显示的文件夹名称
+    private var currentFolderDisplayName: String {
+        if currentFolderFullPath.isEmpty || currentFolderFullPath == sourceFolder {
+            return sourceFolderDisplayName
+        }
+        return currentFolderFullPath.components(separatedBy: "/").last ?? sourceFolderDisplayName
+    }
+
+    /// 左划返回上一级
+    private func goToParentFolder() {
+        guard canGoBack else { return }
+        let parent = (currentFolderFullPath as NSString).deletingLastPathComponent
+        Task { await navigateToFolder(path: parent) }
+    }
+
+    @State private var headerDragOffset: CGFloat = 0
+
     private var floatingHeader: some View {
         HStack(spacing: AppTheme.Spacing.md) {
-            // 文件夹选择器按钮
+            // 文件夹选择器：点击展开下拉，左划返回上级
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isDropdownOpen.toggle()
                 }
             } label: {
                 HStack(spacing: AppTheme.Spacing.sm) {
-                    Image(systemName: isSourceSelected ? "folder.fill.badge.gearshape" : "folder.fill")
-                        .font(.system(size: 18))
-                        .foregroundStyle(isSourceSelected ? .orange : .yellow)
+                    // 不在根目录时显示返回箭头
+                    if canGoBack {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
 
-                    Text(isSourceSelected ? sourceFolderDisplayName : (selectedFolder?.name ?? "画廊"))
+                    Image(systemName: canGoBack ? "folder.fill" : "folder.fill.badge.gearshape")
+                        .font(.system(size: 18))
+                        .foregroundStyle(canGoBack ? .yellow : .orange)
+
+                    Text(currentFolderDisplayName)
                         .font(.body)
                         .fontWeight(.semibold)
                         .foregroundStyle(.primary)
@@ -267,6 +296,27 @@ struct GalleryView: View {
                 .padding(.vertical, 12)
             }
             .glassBackground(in: Capsule())
+            .offset(x: headerDragOffset)
+            .gesture(
+                canGoBack ?
+                DragGesture(minimumDistance: 30)
+                    .onChanged { value in
+                        // 只允许向左拖
+                        if value.translation.width < 0 {
+                            headerDragOffset = value.translation.width * 0.3
+                        }
+                    }
+                    .onEnded { value in
+                        withAnimation(.spring(duration: 0.3)) {
+                            headerDragOffset = 0
+                        }
+                        // 左划超过阈值则返回上级
+                        if value.translation.width < -60 {
+                            goToParentFolder()
+                        }
+                    }
+                : nil
+            )
 
             // 上传记录
             Button {
@@ -298,55 +348,59 @@ struct GalleryView: View {
 
     private var folderDropdown: some View {
         VStack(spacing: 0) {
-            // 源文件夹选项
-            Button {
-                selectSourceFolder()
-            } label: {
-                HStack(spacing: AppTheme.Spacing.md) {
-                    Image(systemName: "folder.fill.badge.gearshape")
-                        .font(.title3)
-                        .foregroundStyle(.orange)
+            // 回到源文件夹（不在根目录时显示）
+            if canGoBack {
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        isDropdownOpen = false
+                    }
+                    Task { await navigateToFolder(path: sourceFolder) }
+                } label: {
+                    HStack(spacing: AppTheme.Spacing.md) {
+                        Image(systemName: "folder.fill.badge.gearshape")
+                            .font(.title3)
+                            .foregroundStyle(.orange)
 
-                    VStack(alignment: .leading, spacing: 2) {
                         Text(sourceFolderDisplayName)
                             .font(.body)
                             .foregroundStyle(.primary)
                             .lineLimit(1)
 
-                        Text("\(sourceFolderFileCount) 个文件")
+                        Spacer()
+
+                        Text("回到根目录")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-
-                    Spacer()
-
-                    if isSourceSelected {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                    }
+                    .padding(.horizontal, AppTheme.Spacing.md)
+                    .padding(.vertical, AppTheme.Spacing.sm)
+                    .contentShape(Rectangle())
                 }
-                .padding(.horizontal, AppTheme.Spacing.md)
-                .padding(.vertical, AppTheme.Spacing.sm)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+                .buttonStyle(.plain)
 
-            // 分类文件夹列表（可滚动）
-            if folders.isEmpty {
+                Divider()
+                    .padding(.horizontal, AppTheme.Spacing.md)
+            }
+
+            // 子文件夹列表
+            if subfolders.isEmpty {
                 HStack {
                     Spacer()
-                    Text("暂无分类文件夹")
+                    Text("当前文件夹没有子文件夹")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     Spacer()
                 }
-                .padding(.vertical, AppTheme.Spacing.sm)
+                .padding(.vertical, AppTheme.Spacing.lg)
             } else {
                 ScrollView {
                     VStack(spacing: 0) {
-                        ForEach(folders) { folder in
+                        ForEach(subfolders) { folder in
                             Button {
-                                selectFolder(folder)
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    isDropdownOpen = false
+                                }
+                                Task { await navigateToFolder(path: folder.path) }
                             } label: {
                                 HStack(spacing: AppTheme.Spacing.md) {
                                     Image(systemName: "folder.fill")
@@ -366,10 +420,9 @@ struct GalleryView: View {
 
                                     Spacer()
 
-                                    if !isSourceSelected && selectedFolder?.id == folder.id {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundStyle(.green)
-                                    }
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
                                 }
                                 .padding(.horizontal, AppTheme.Spacing.md)
                                 .padding(.vertical, AppTheme.Spacing.sm)
@@ -422,7 +475,7 @@ struct GalleryView: View {
                 Button {
                     openFilePreview(at: index)
                 } label: {
-                    GalleryGridItem(file: file, apiService: apiService)
+                    GalleryGridItem(file: file, apiService: apiService, sourceFolder: sourceFolder)
                 }
                 .buttonStyle(.plain)
             }
@@ -446,6 +499,7 @@ struct GalleryView: View {
                 GalleryListItem(
                     file: file,
                     apiService: apiService,
+                    sourceFolder: sourceFolder,
                     onTap: { openFilePreview(at: index) },
                     onInfoTap: {
                         selectedFile = file
@@ -483,20 +537,17 @@ struct GalleryView: View {
         sourceFolder.components(separatedBy: "/").last ?? "源文件夹"
     }
 
-    private func loadFolders() async {
+    /// 当前选中的文件夹完整路径
+    private var currentFolderPath: String {
+        currentFolderFullPath.isEmpty ? sourceFolder : currentFolderFullPath
+    }
+
+    /// 初始加载：获取源文件夹配置 → 导航到源文件夹
+    private func loadInitial() async {
         do {
-            // 获取源文件夹路径
             let configState = try await apiService.config.getConfigState()
             sourceFolder = configState.sourceFolder
-
-            // 获取分类子文件夹（已按排序返回）
-            folders = try await apiService.folder.getSubfolders(in: sourceFolder)
-                .filter { !$0.hidden }
-
-            // 默认加载源文件夹
-            if isSourceSelected {
-                await loadFiles(path: sourceFolder)
-            }
+            await navigateToFolder(path: sourceFolder)
         } catch {
             if !error.isCancelledRequest {
                 GlassAlertManager.shared.showError("加载失败", message: error.localizedDescription)
@@ -504,39 +555,40 @@ struct GalleryView: View {
         }
     }
 
-    private func selectSourceFolder() {
-        isSourceSelected = true
-        selectedFolder = nil
+    /// 统一导航方法：切换到指定文件夹路径
+    private func navigateToFolder(path: String) async {
+        currentFolderFullPath = path
         files = []
-        withAnimation(.easeOut(duration: 0.2)) {
-            isDropdownOpen = false
+        isLoading = true
+        GlassAlertManager.shared.showQuickLoading()
+
+        // 加载子文件夹
+        do {
+            subfolders = try await apiService.preview.getIndexedFolders(
+                parentPath: path, sourceFolder: sourceFolder)
+        } catch {
+            subfolders = []
         }
 
-        Task {
-            await loadFiles(path: sourceFolder)
+        // 加载面包屑
+        do {
+            breadcrumb = try await apiService.preview.getBreadcrumb(folderPath: path)
+        } catch {
+            breadcrumb = [BreadcrumbItem(name: sourceFolderDisplayName, path: sourceFolder)]
         }
+
+        await loadFiles(path: path, reset: true, showLoading: false)
+        GlassAlertManager.shared.hideQuickLoading()
+        isLoading = false
     }
 
-    private func selectFolder(_ folder: FolderInfo) {
-        isSourceSelected = false
-        selectedFolder = folder
-        files = []
-        withAnimation(.easeOut(duration: 0.2)) {
-            isDropdownOpen = false
-        }
-
-        Task {
-            await loadFiles(path: sourceFolder + "/" + folder.name)
-        }
-    }
-
-    private func loadFiles(path: String, reset: Bool = true) async {
+    private func loadFiles(path: String, reset: Bool = true, showLoading: Bool = true) async {
         if reset {
             filesOffset = 0
             files = []
             hasMoreFiles = true
         }
-        if reset { isLoading = true; GlassAlertManager.shared.showQuickLoading() }
+        if reset && showLoading { isLoading = true; GlassAlertManager.shared.showQuickLoading() }
         do {
             let response = try await apiService.preview.getFilesPaginated(
                 in: path, offset: filesOffset, limit: filesPageSize
@@ -550,7 +602,8 @@ struct GalleryView: View {
             filesOffset += newFiles.count
             hasMoreFiles = response.hasMore
             filesTotalCount = response.total
-            if reset && isSourceSelected {
+            // 在源文件夹层级时记录文件总数
+            if reset && path == sourceFolder {
                 sourceFolderFileCount = response.total
             }
         } catch {
@@ -558,7 +611,7 @@ struct GalleryView: View {
                 GlassAlertManager.shared.showError("加载失败", message: error.localizedDescription)
             }
         }
-        if reset { GlassAlertManager.shared.hideQuickLoading(); isLoading = false }
+        if reset && showLoading { GlassAlertManager.shared.hideQuickLoading(); isLoading = false }
     }
 
     /// 加载更多文件（分页续载）
@@ -589,29 +642,29 @@ struct GalleryView: View {
         }
     }
 
-    /// 下拉刷新 — 重置分页，从头加载
+    /// 下拉刷新 — 重置分页，从头加载当前文件夹
     private func refreshFiles() async {
         let path = currentFolderPath
 
+        // 并行刷新子文件夹和面包屑（各自独立处理错误）
+        async let foldersTask = apiService.preview.getIndexedFolders(
+            parentPath: path, sourceFolder: sourceFolder)
+        async let breadcrumbTask = apiService.preview.getBreadcrumb(folderPath: path)
+
+        // 重置分页状态并加载文件
+        filesOffset = 0
+        hasMoreFiles = true
+
         do {
-            // 同时刷新文件夹列表和当前文件列表
-            async let newFolders = apiService.folder.getSubfolders(in: sourceFolder)
-
-            // 重置分页状态
-            filesOffset = 0
-            hasMoreFiles = true
-
             let response = try await apiService.preview.getFilesPaginated(
                 in: path, offset: 0, limit: filesPageSize
             )
             let newFiles = response.files.map { $0.toFileInfo() }
-
-            folders = try await newFolders.filter { !$0.hidden }
             files = newFiles
             filesOffset = newFiles.count
             hasMoreFiles = response.hasMore
             filesTotalCount = response.total
-            if isSourceSelected {
+            if path == sourceFolder {
                 sourceFolderFileCount = response.total
             }
         } catch {
@@ -619,16 +672,12 @@ struct GalleryView: View {
                 GlassAlertManager.shared.showError("刷新失败", message: error.localizedDescription)
             }
         }
-    }
 
-    /// 当前选中的文件夹完整路径
-    private var currentFolderPath: String {
-        if isSourceSelected {
-            return sourceFolder
-        } else if let folder = selectedFolder {
-            return sourceFolder + "/" + folder.name
+        // 等待子文件夹和面包屑
+        do { subfolders = try await foldersTask } catch { subfolders = [] }
+        do { breadcrumb = try await breadcrumbTask } catch {
+            breadcrumb = [BreadcrumbItem(name: sourceFolderDisplayName, path: sourceFolder)]
         }
-        return sourceFolder
     }
 
     /// 点击文件打开预览，带 quick loading 反馈
@@ -877,6 +926,7 @@ enum GalleryViewMode {
 struct GalleryGridItem: View {
     let file: FileInfo
     let apiService: APIService
+    var sourceFolder: String?
 
     var body: some View {
         // 用 Color.clear 占住正方形尺寸，图片用 overlay 填充后裁切
@@ -884,7 +934,7 @@ struct GalleryGridItem: View {
             .aspectRatio(1, contentMode: .fit)
             .overlay {
                     CachedThumbnailView(
-                        url: file.thumbnailURL(apiService: apiService)
+                        url: file.thumbnailURL(apiService: apiService, sourceFolder: sourceFolder)
                     ) { image in
                         image
                             .resizable()
@@ -959,6 +1009,7 @@ struct GalleryGridItem: View {
 struct GalleryListItem: View {
     let file: FileInfo
     let apiService: APIService
+    var sourceFolder: String?
     var onTap: (() -> Void)?
     var onInfoTap: (() -> Void)?
 
@@ -971,7 +1022,7 @@ struct GalleryListItem: View {
                 HStack(spacing: AppTheme.Spacing.md) {
                     // 缩略图
                     CachedThumbnailView(
-                        url: file.thumbnailURL(apiService: apiService)
+                        url: file.thumbnailURL(apiService: apiService, sourceFolder: sourceFolder)
                     ) { image in
                         image
                             .resizable()
@@ -1043,11 +1094,12 @@ struct GalleryListItem: View {
 extension FileInfo {
     /// 根据 uuid 是否存在选择缩略图 URL 策略
     @MainActor
-    func thumbnailURL(apiService: APIService, size: Int = 300) -> URL? {
+    func thumbnailURL(apiService: APIService, size: Int = 300, sourceFolder: String? = nil) -> URL? {
         if let uuid {
             return apiService.preview.getThumbnailURL(
                 uuid: uuid, size: size,
-                baseURL: apiService.baseURL, apiKey: apiService.apiKey
+                baseURL: apiService.baseURL, apiKey: apiService.apiKey,
+                sourceFolder: sourceFolder
             )
         }
         return apiService.preview.getThumbnailURL(

@@ -179,8 +179,15 @@ enum APIEndpoint {
             return "/api/indexer/file?uuid=\(uuid.urlEncoded)"
         case .indexerFolders(let parentPath, let sourceFolder):
             var path = "/api/indexer/folders?"
-            if let parentPath { path += "parent_path=\(parentPath.urlEncoded)" }
-            if let sourceFolder { path += "source_folder=\(sourceFolder.urlEncoded)" }
+            var hasParam = false
+            if let parentPath {
+                path += "parent_path=\(parentPath.urlEncoded)"
+                hasParam = true
+            }
+            if let sourceFolder {
+                if hasParam { path += "&" }
+                path += "source_folder=\(sourceFolder.urlEncoded)"
+            }
             return path
         case .indexerScan:
             return "/api/indexer/scan"

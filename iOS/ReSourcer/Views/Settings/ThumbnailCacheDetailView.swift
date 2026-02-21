@@ -2,7 +2,7 @@
 //  ThumbnailCacheDetailView.swift
 //  ReSourcer
 //
-//  缩略图缓存详情页 — 按服务器分组展示，支持分层清除
+//  缩略图缓存详情页 — 按服务器 > 源文件夹分组展示，支持分层清除
 //
 
 import SwiftUI
@@ -13,6 +13,7 @@ struct ThumbnailCacheDetailView: View {
 
     @State private var isLoading = true
     @State private var servers: [ThumbnailServerCacheInfo] = []
+    @State private var expandedServers: Set<String> = []
 
     // MARK: - Body
 
@@ -59,45 +60,125 @@ struct ThumbnailCacheDetailView: View {
 
     @ViewBuilder
     private func serverCard(_ server: ThumbnailServerCacheInfo) -> some View {
+        VStack(spacing: 0) {
+            // 服务器头部行
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    if expandedServers.contains(server.serverHash) {
+                        expandedServers.remove(server.serverHash)
+                    } else {
+                        expandedServers.insert(server.serverHash)
+                    }
+                }
+            } label: {
+                HStack(spacing: AppTheme.Spacing.md) {
+                    Image(systemName: "server.rack")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.blue)
+                        .frame(width: 28)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(server.displayHost)
+                            .font(.body)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.primary)
+
+                        Text("\(server.fileCount) 个文件")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Text(ThumbnailCacheService.formatSize(server.totalSize))
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+
+                    Image(systemName: expandedServers.contains(server.serverHash) ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(AppTheme.Spacing.md)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            // 展开的源文件夹列表
+            if expandedServers.contains(server.serverHash) {
+                VStack(spacing: 0) {
+                    Divider()
+                        .padding(.horizontal, AppTheme.Spacing.md)
+
+                    ForEach(server.sourceFolders) { folder in
+                        sourceFolderRow(server: server, folder: folder)
+                    }
+
+                    // 服务器级全部清除
+                    Button {
+                        clearServer(server)
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Text("清除此服务器全部缓存")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundStyle(.red)
+                            Spacer()
+                        }
+                        .padding(.vertical, AppTheme.Spacing.sm)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
+    }
+
+    // MARK: - 源文件夹行
+
+    @ViewBuilder
+    private func sourceFolderRow(server: ThumbnailServerCacheInfo, folder: ThumbnailSourceFolderCacheInfo) -> some View {
         HStack(spacing: AppTheme.Spacing.md) {
-            Image(systemName: "server.rack")
-                .font(.system(size: 18))
-                .foregroundStyle(.blue)
+            Image(systemName: folder.folderHash == "_ungrouped" ? "questionmark.folder.fill" : "folder.fill")
+                .font(.system(size: 16))
+                .foregroundStyle(folder.folderHash == "_ungrouped" ? .gray : .yellow)
                 .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(server.displayHost)
-                    .font(.body)
-                    .fontWeight(.medium)
+                Text(folder.folderName)
+                    .font(.subheadline)
                     .foregroundStyle(.primary)
+                    .lineLimit(1)
 
-                Text("\(server.fileCount) 个文件")
-                    .font(.caption)
+                Text("\(folder.fileCount) 个文件")
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
 
-            Text(ThumbnailCacheService.formatSize(server.totalSize))
-                .font(.subheadline)
-                .fontWeight(.medium)
+            Text(ThumbnailCacheService.formatSize(folder.totalSize))
+                .font(.caption)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
 
             Button {
-                clearServer(server)
+                clearSourceFolder(server: server, folder: folder)
             } label: {
                 Text("清除")
-                    .font(.caption)
+                    .font(.caption2)
                     .fontWeight(.medium)
                     .foregroundStyle(.primary)
-                    .padding(.horizontal, AppTheme.Spacing.sm)
+                    .padding(.horizontal, AppTheme.Spacing.xs)
                     .padding(.vertical, AppTheme.Spacing.xxs)
             }
             .interactiveGlassBackground(in: Capsule())
         }
-        .padding(AppTheme.Spacing.md)
-        .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
+        .padding(.horizontal, AppTheme.Spacing.md)
+        .padding(.vertical, AppTheme.Spacing.sm)
     }
 
     // MARK: - 总计
@@ -120,7 +201,25 @@ struct ThumbnailCacheDetailView: View {
         }.value
 
         servers = stats
+        // 默认展开所有服务器
+        expandedServers = Set(stats.map { $0.serverHash })
         isLoading = false
+    }
+
+    private func clearSourceFolder(server: ThumbnailServerCacheInfo, folder: ThumbnailSourceFolderCacheInfo) {
+        ThumbnailCacheService.shared.clearSourceFolderCache(
+            serverHash: server.serverHash, folderHash: folder.folderHash
+        )
+        withAnimation {
+            if let serverIdx = servers.firstIndex(where: { $0.serverHash == server.serverHash }) {
+                servers[serverIdx].sourceFolders.removeAll { $0.folderHash == folder.folderHash }
+                // 如果服务器下没有源文件夹了，移除整个服务器
+                if servers[serverIdx].sourceFolders.isEmpty {
+                    servers.remove(at: serverIdx)
+                }
+            }
+        }
+        GlassAlertManager.shared.showSuccess("\(folder.folderName) 缓存已清除")
     }
 
     private func clearServer(_ server: ThumbnailServerCacheInfo) {
