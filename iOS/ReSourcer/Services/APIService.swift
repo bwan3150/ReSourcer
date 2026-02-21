@@ -45,6 +45,9 @@ final class APIService: ObservableObject {
     /// 配置服务
     let config: ConfigService
 
+    /// 标签服务
+    let tag: TagService
+
     // MARK: - Initialization
 
     /// 初始化 API 服务
@@ -70,6 +73,7 @@ final class APIService: ObservableObject {
         self.preview = PreviewService(networkManager: networkManager)
         self.browser = BrowserService(networkManager: networkManager)
         self.config = ConfigService(networkManager: networkManager)
+        self.tag = TagService(networkManager: networkManager)
     }
 
     // MARK: - Convenience Methods

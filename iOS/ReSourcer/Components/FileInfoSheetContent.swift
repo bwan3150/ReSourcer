@@ -17,6 +17,12 @@ struct FileInfoSheetContent: View {
     /// 底部额外间距（如 GalleryView 需要给 navbar 留空间）
     var bottomSpacing: CGFloat = 0
 
+    /// 文件标签
+    var tags: [Tag] = []
+
+    /// 编辑标签回调（nil 则隐藏编辑按钮）
+    var onEditTags: (() -> Void)? = nil
+
     /// 操作按钮闭包（nil 则隐藏该按钮）
     var onRename: (() -> Void)? = nil
     var onMove: (() -> Void)? = nil
@@ -40,6 +46,45 @@ struct FileInfoSheetContent: View {
             }
             if let duration = file.formattedDuration {
                 infoRow("时长", value: duration)
+            }
+
+            // 标签区域
+            if !tags.isEmpty || onEditTags != nil {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                    HStack {
+                        Text("标签")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        if let onEditTags {
+                            Button {
+                                onEditTags()
+                            } label: {
+                                Label("编辑", systemImage: "pencil")
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                    if tags.isEmpty {
+                        Text("暂无标签")
+                            .font(.callout)
+                            .foregroundStyle(.tertiary)
+                    } else {
+                        FlowLayout(spacing: 6) {
+                            ForEach(tags) { tag in
+                                Text(tag.name)
+                                    .font(.caption)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color(hex: tag.color).opacity(0.2))
+                                    .foregroundStyle(Color(hex: tag.color))
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             // 操作按钮（只显示传入了闭包的按钮）

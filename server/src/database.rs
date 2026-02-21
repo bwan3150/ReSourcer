@@ -160,6 +160,33 @@ pub fn init_db() -> SqliteResult<()> {
     conn.execute("CREATE INDEX IF NOT EXISTS idx_folder_parent ON folder_index(parent_path)", [])?;
     conn.execute("CREATE INDEX IF NOT EXISTS idx_folder_source ON folder_index(source_folder)", [])?;
 
+    // 创建标签表（按源文件夹隔离）
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS tags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_folder TEXT NOT NULL,
+            name TEXT NOT NULL,
+            color TEXT NOT NULL DEFAULT '#007AFF',
+            created_at TEXT NOT NULL,
+            UNIQUE(source_folder, name)
+        )",
+        [],
+    )?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_tags_source ON tags(source_folder)", [])?;
+
+    // 创建文件-标签关联表（多对多）
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS file_tags (
+            file_uuid TEXT NOT NULL,
+            tag_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY(file_uuid, tag_id)
+        )",
+        [],
+    )?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_file_tags_file ON file_tags(file_uuid)", [])?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_file_tags_tag ON file_tags(tag_id)", [])?;
+
     // 确保 config 表有初始行
     conn.execute(
         "INSERT OR IGNORE INTO config (id, hidden_folders, use_cookies) VALUES (1, '[]', 1)",

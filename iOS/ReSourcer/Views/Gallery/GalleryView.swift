@@ -47,7 +47,8 @@ struct GalleryView: View {
     @State private var showRenameAlert = false
     @State private var renameText = ""
     @State private var showMoveSheet = false
-
+    @State private var fileInfoTags: [Tag] = []
+    @State private var showTagEditor = false
 
     // 上传相关
     @State private var showPhotoPicker = false
@@ -209,6 +210,20 @@ struct GalleryView: View {
                 }
             )
             .presentationDetents([.medium, .large])
+        }
+        // 标签编辑器
+        .sheet(isPresented: $showTagEditor) {
+            if let file = selectedFile, let uuid = file.uuid {
+                TagEditorView(
+                    apiService: apiService,
+                    sourceFolder: sourceFolder,
+                    fileUuid: uuid,
+                    onDismiss: { updatedTags in
+                        fileInfoTags = updatedTags
+                    }
+                )
+                .presentationDetents([.medium, .large])
+            }
         }
         // 照片选择器
         .sheet(isPresented: $showPhotoPicker) {
@@ -566,7 +581,13 @@ struct GalleryView: View {
                     onTap: { openFilePreview(at: index) },
                     onInfoTap: {
                         selectedFile = file
+                        fileInfoTags = []
                         fileInfoToShow = file
+                        if let uuid = file.uuid {
+                            Task {
+                                fileInfoTags = (try? await apiService.tag.getFileTags(fileUuid: uuid)) ?? []
+                            }
+                        }
                     }
                 )
             }
@@ -788,6 +809,14 @@ struct GalleryView: View {
             FileInfoSheetContent(
                 file: file,
                 bottomSpacing: 60,
+                tags: fileInfoTags,
+                onEditTags: file.uuid != nil ? {
+                    fileInfoToShow = nil
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        showTagEditor = true
+                    }
+                } : nil,
                 onRename: {
                     fileInfoToShow = nil
                     Task { @MainActor in

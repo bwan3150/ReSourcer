@@ -10,6 +10,7 @@ mod config_api;
 mod preview;
 mod browser;
 mod indexer;
+mod tag;
 
 // 工具模块
 mod static_files;
@@ -208,6 +209,8 @@ async fn main() -> std::io::Result<()> {
             .service(web::scope("/api/preview").configure(preview::routes))
             // 文件索引 API 路由
             .service(web::scope("/api/indexer").configure(indexer::routes))
+            // 标签 API 路由
+            .service(web::scope("/api/tag").configure(tag::routes))
             // 文件系统浏览 API 路由
             .service(web::scope("/api/browser").configure(browser::routes))
             // 静态文件服务（嵌入式）

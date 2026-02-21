@@ -72,6 +72,8 @@ struct FilePreviewView: View {
 
     // 文件信息面板
     @State private var showInfoSheet = false
+    @State private var fileInfoTags: [Tag] = []
+    @State private var showTagEditor = false
 
     // 重命名
     @State private var showRenameAlert = false
@@ -154,7 +156,13 @@ struct FilePreviewView: View {
 
             ToolbarItem(placement: .principal) {
                 Button {
+                    fileInfoTags = []
                     showInfoSheet = true
+                    if let uuid = currentFile?.uuid {
+                        Task {
+                            fileInfoTags = (try? await apiService.tag.getFileTags(fileUuid: uuid)) ?? []
+                        }
+                    }
                 } label: {
                     ScrollView(.horizontal, showsIndicators: false) {
                         Text(currentFile?.name ?? "")
@@ -260,6 +268,20 @@ struct FilePreviewView: View {
                 }
             )
             .presentationDetents([.medium, .large])
+        }
+        // 标签编辑器
+        .sheet(isPresented: $showTagEditor) {
+            if let file = currentFile, let uuid = file.uuid {
+                TagEditorView(
+                    apiService: apiService,
+                    sourceFolder: NavigationState.shared.sourceFolder,
+                    fileUuid: uuid,
+                    onDismiss: { updatedTags in
+                        fileInfoTags = updatedTags
+                    }
+                )
+                .presentationDetents([.medium, .large])
+            }
         }
     }
 
@@ -413,6 +435,14 @@ struct FilePreviewView: View {
             FileInfoSheetContent(
                 file: file,
                 position: "\(currentIndex + 1) / \(currentFiles.count)",
+                tags: fileInfoTags,
+                onEditTags: file.uuid != nil ? {
+                    showInfoSheet = false
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        showTagEditor = true
+                    }
+                } : nil,
                 onRename: {
                     showInfoSheet = false
                     Task { @MainActor in

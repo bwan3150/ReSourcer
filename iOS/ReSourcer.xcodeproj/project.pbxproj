@@ -25,6 +25,7 @@
 		A1000034233F0001 /* FolderModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000034233F0000 /* FolderModels.swift */; };
 		A1000035233F0001 /* Server.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000035233F0000 /* Server.swift */; };
 		A1000036233F0001 /* UploadModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000036233F0000 /* UploadModels.swift */; };
+		A1000037233F0001 /* TagModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000037233F0000 /* TagModels.swift */; };
 		A1000040233F0001 /* APIEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000040233F0000 /* APIEndpoint.swift */; };
 		A1000041233F0001 /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000041233F0000 /* APIError.swift */; };
 		A1000042233F0001 /* NetworkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000042233F0000 /* NetworkManager.swift */; };
@@ -39,6 +40,7 @@
 		A1000058233F0001 /* LocalStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000058233F0000 /* LocalStorageService.swift */; };
 		A1000059233F0001 /* PreviewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000059233F0000 /* PreviewService.swift */; };
 		A100005A233F0001 /* UploadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100005A233F0000 /* UploadService.swift */; };
+		A100005B233F0001 /* TagService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100005B233F0000 /* TagService.swift */; };
 		A1000060233F0001 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000060233F0000 /* AppTheme.swift */; };
 		A1000070233F0001 /* ClassifierView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000070233F0000 /* ClassifierView.swift */; };
 		A1000071233F0001 /* DownloadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000071233F0000 /* DownloadView.swift */; };
@@ -59,6 +61,7 @@
 		A1000090233F0001 /* FileInfoSheetContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000090233F0000 /* FileInfoSheetContent.swift */; };
 		A1000091233F0001 /* ThumbnailCacheDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000091233F0000 /* ThumbnailCacheDetailView.swift */; };
 		A1000092233F0001 /* NavigationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000092233F0000 /* NavigationState.swift */; };
+		A1000093233F0001 /* TagEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000093233F0000 /* TagEditorView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -81,6 +84,7 @@
 		A1000034233F0000 /* FolderModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderModels.swift; sourceTree = "<group>"; };
 		A1000035233F0000 /* Server.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Server.swift; sourceTree = "<group>"; };
 		A1000036233F0000 /* UploadModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadModels.swift; sourceTree = "<group>"; };
+		A1000037233F0000 /* TagModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagModels.swift; sourceTree = "<group>"; };
 		A1000040233F0000 /* APIEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIEndpoint.swift; sourceTree = "<group>"; };
 		A1000041233F0000 /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
 		A1000042233F0000 /* NetworkManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkManager.swift; sourceTree = "<group>"; };
@@ -95,6 +99,7 @@
 		A1000058233F0000 /* LocalStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStorageService.swift; sourceTree = "<group>"; };
 		A1000059233F0000 /* PreviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewService.swift; sourceTree = "<group>"; };
 		A100005A233F0000 /* UploadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadService.swift; sourceTree = "<group>"; };
+		A100005B233F0000 /* TagService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagService.swift; sourceTree = "<group>"; };
 		A1000060233F0000 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		A1000070233F0000 /* ClassifierView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassifierView.swift; sourceTree = "<group>"; };
 		A1000071233F0000 /* DownloadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadView.swift; sourceTree = "<group>"; };
@@ -117,6 +122,7 @@
 		A1000090233F0000 /* FileInfoSheetContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileInfoSheetContent.swift; sourceTree = "<group>"; };
 		A1000091233F0000 /* ThumbnailCacheDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCacheDetailView.swift; sourceTree = "<group>"; };
 		A1000092233F0000 /* NavigationState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationState.swift; sourceTree = "<group>"; };
+		A1000093233F0000 /* TagEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagEditorView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -188,6 +194,7 @@
 
 				A1000079233F0000 /* QRScannerView.swift */,
 				A1000090233F0000 /* FileInfoSheetContent.swift */,
+				A1000093233F0000 /* TagEditorView.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -210,6 +217,7 @@
 				A1000034233F0000 /* FolderModels.swift */,
 				A1000035233F0000 /* Server.swift */,
 				A1000036233F0000 /* UploadModels.swift */,
+				A1000037233F0000 /* TagModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -238,6 +246,7 @@
 				A1000058233F0000 /* LocalStorageService.swift */,
 				A1000059233F0000 /* PreviewService.swift */,
 				A100005A233F0000 /* UploadService.swift */,
+				A100005B233F0000 /* TagService.swift */,
 				A1000077233F0000 /* ThumbnailCacheService.swift */,
 				A1000092233F0000 /* NavigationState.swift */,
 				A100008C233F0000 /* PhotoExporter.h */,
@@ -400,6 +409,7 @@
 				A1000034233F0001 /* FolderModels.swift in Sources */,
 				A1000035233F0001 /* Server.swift in Sources */,
 				A1000036233F0001 /* UploadModels.swift in Sources */,
+				A1000037233F0001 /* TagModels.swift in Sources */,
 				A1000040233F0001 /* APIEndpoint.swift in Sources */,
 				A1000041233F0001 /* APIError.swift in Sources */,
 				A1000042233F0001 /* NetworkManager.swift in Sources */,
@@ -414,6 +424,7 @@
 				A1000058233F0001 /* LocalStorageService.swift in Sources */,
 				A1000059233F0001 /* PreviewService.swift in Sources */,
 				A100005A233F0001 /* UploadService.swift in Sources */,
+				A100005B233F0001 /* TagService.swift in Sources */,
 				A1000060233F0001 /* AppTheme.swift in Sources */,
 				A1000070233F0001 /* ClassifierView.swift in Sources */,
 				A1000071233F0001 /* DownloadView.swift in Sources */,
@@ -425,6 +436,7 @@
 				A1000091233F0001 /* ThumbnailCacheDetailView.swift in Sources */,
 				A1000077233F0001 /* ThumbnailCacheService.swift in Sources */,
 				A1000092233F0001 /* NavigationState.swift in Sources */,
+				A1000093233F0001 /* TagEditorView.swift in Sources */,
 				A1000078233F0001 /* CachedThumbnailView.swift in Sources */,
 
 				A1000079233F0001 /* QRScannerView.swift in Sources */,

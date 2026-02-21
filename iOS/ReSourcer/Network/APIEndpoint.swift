@@ -73,6 +73,15 @@ enum APIEndpoint {
     case browserBrowse                       // POST /api/browser/browse
     case browserCreate                       // POST /api/browser/create
 
+    // MARK: - Tag 标签
+    case tagList(sourceFolder: String)          // GET  /api/tag/list?source_folder=
+    case tagCreate                               // POST /api/tag/create
+    case tagUpdate(id: Int)                      // PUT  /api/tag/update/{id}
+    case tagDelete(id: Int)                      // DELETE /api/tag/delete/{id}
+    case tagGetFileTags(fileUuid: String)        // GET  /api/tag/file?file_uuid=
+    case tagSetFileTags                          // POST /api/tag/file
+    case tagGetFilesTags                         // POST /api/tag/files
+
     // MARK: - Config 配置管理
     case configState                         // GET  /api/config/state
     case configSave                          // POST /api/config/save
@@ -202,6 +211,22 @@ enum APIEndpoint {
         case .browserCreate:
             return "/api/browser/create"
 
+        // Tag
+        case .tagList(let sourceFolder):
+            return "/api/tag/list?source_folder=\(sourceFolder.urlEncoded)"
+        case .tagCreate:
+            return "/api/tag/create"
+        case .tagUpdate(let id):
+            return "/api/tag/update/\(id)"
+        case .tagDelete(let id):
+            return "/api/tag/delete/\(id)"
+        case .tagGetFileTags(let fileUuid):
+            return "/api/tag/file?file_uuid=\(fileUuid.urlEncoded)"
+        case .tagSetFileTags:
+            return "/api/tag/file"
+        case .tagGetFilesTags:
+            return "/api/tag/files"
+
         // Config
         case .configState:
             return "/api/config/state"
@@ -240,12 +265,17 @@ enum APIEndpoint {
              .uploadTasks, .uploadTaskStatus, .uploadHistory,
              .previewFiles, .previewThumbnail, .previewThumbnailByUuid, .previewContent,
              .indexerFiles, .indexerFile, .indexerFolders, .indexerStatus, .indexerBreadcrumb,
+             .tagList, .tagGetFileTags,
              .configState, .configDownload, .configSources:
             return .GET
 
+        // PUT 请求
+        case .tagUpdate:
+            return .PUT
+
         // DELETE 请求
         case .downloadTaskDelete, .downloadHistoryClear,
-             .uploadTaskDelete, .configPresetDelete:
+             .uploadTaskDelete, .tagDelete, .configPresetDelete:
             return .DELETE
 
         // POST 请求（默认）
