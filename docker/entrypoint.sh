@@ -5,6 +5,8 @@ REPO="bwan3150/ReSourcer"
 BINARY_NAME="re-sourcer"
 BINARY_PATH="/app/${BINARY_NAME}"
 VERSION_FILE="/app/.current_version"
+PUID="${PUID:-1000}"
+PGID="${PGID:-1000}"
 
 # 获取 GitHub 最新 release 版本号
 get_latest_version() {
@@ -55,7 +57,8 @@ if [ -z "${LATEST_VERSION}" ]; then
     echo "警告: 无法获取最新版本信息（网络问题？）"
     if [ -x "${BINARY_PATH}" ]; then
         echo "使用本地已有的二进制文件启动..."
-        exec "${BINARY_PATH}" "$@"
+        chown -R "${PUID}:${PGID}" /app
+        exec gosu "${PUID}:${PGID}" "${BINARY_PATH}" "$@"
     else
         echo "错误: 无法获取最新版本，且本地没有可用的二进制文件" >&2
         exit 1
@@ -77,7 +80,8 @@ else
         echo "错误: 无法获取下载链接" >&2
         if [ -x "${BINARY_PATH}" ]; then
             echo "使用本地已有的二进制文件启动..."
-            exec "${BINARY_PATH}" "$@"
+            chown -R "${PUID}:${PGID}" /app
+            exec gosu "${PUID}:${PGID}" "${BINARY_PATH}" "$@"
         fi
         exit 1
     fi
@@ -103,5 +107,7 @@ else
     fi
 fi
 
-echo "=== 启动 ReSourcer ==="
-exec "${BINARY_PATH}" "$@"
+# 修正文件权限并以目标用户启动服务
+chown -R "${PUID}:${PGID}" /app
+echo "=== 启动 ReSourcer (UID=${PUID}, GID=${PGID}) ==="
+exec gosu "${PUID}:${PGID}" "${BINARY_PATH}" "$@"

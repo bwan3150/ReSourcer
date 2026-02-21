@@ -8,6 +8,7 @@ RUN apt-get update && \
     vim \
     python3 \
     libfontconfig1 \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
