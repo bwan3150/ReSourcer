@@ -99,6 +99,45 @@ pub fn init_db() -> SqliteResult<()> {
         [],
     )?;
 
+    // 创建文件索引表
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS file_index (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT UNIQUE NOT NULL,
+            fingerprint TEXT NOT NULL,
+            current_path TEXT UNIQUE,
+            folder_path TEXT NOT NULL,
+            file_name TEXT NOT NULL,
+            file_type TEXT NOT NULL,
+            extension TEXT NOT NULL,
+            file_size INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            modified_at TEXT NOT NULL,
+            indexed_at TEXT NOT NULL
+        )",
+        [],
+    )?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_file_folder ON file_index(folder_path)", [])?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_file_fingerprint ON file_index(fingerprint)", [])?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_file_modified ON file_index(modified_at)", [])?;
+
+    // 创建文件夹索引表
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS folder_index (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            path TEXT UNIQUE NOT NULL,
+            parent_path TEXT,
+            source_folder TEXT NOT NULL,
+            name TEXT NOT NULL,
+            depth INTEGER NOT NULL DEFAULT 0,
+            file_count INTEGER DEFAULT 0,
+            indexed_at TEXT NOT NULL
+        )",
+        [],
+    )?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_folder_parent ON folder_index(parent_path)", [])?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_folder_source ON folder_index(source_folder)", [])?;
+
     // 确保 config 表有初始行
     conn.execute(
         "INSERT OR IGNORE INTO config (id, hidden_folders, use_cookies) VALUES (1, '[]', 1)",

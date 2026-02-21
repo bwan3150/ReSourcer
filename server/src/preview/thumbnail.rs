@@ -7,16 +7,27 @@ use super::models::*;
 use super::utils::{extract_video_first_frame, extract_clip_thumbnail, extract_image_frame_ffmpeg, extract_pdf_thumbnail};
 
 /// GET /api/preview/thumbnail?path=<file_path>&size=<size>
-/// 生成并返回图片/视频缩略图
+/// GET /api/preview/thumbnail?uuid=<uuid>&size=<size>
+/// 生成并返回图片/视频缩略图，支持通过 UUID 或路径查询
 pub async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, String>>) -> Result<HttpResponse> {
-    let file_path = query.get("path")
-        .ok_or_else(|| actix_web::error::ErrorBadRequest("缺少 path 参数"))?;
+    // 优先使用 UUID 查询
+    let file_path_resolved = if let Some(uuid) = query.get("uuid") {
+        let file = crate::indexer::storage::get_file_by_uuid(uuid)
+            .map_err(|e| actix_web::error::ErrorInternalServerError(format!("数据库错误: {}", e)))?
+            .ok_or_else(|| actix_web::error::ErrorNotFound("UUID 对应的文件未找到"))?;
+        file.current_path
+            .ok_or_else(|| actix_web::error::ErrorNotFound("文件已被删除或移动"))?
+    } else {
+        query.get("path")
+            .ok_or_else(|| actix_web::error::ErrorBadRequest("缺少 path 或 uuid 参数"))?
+            .clone()
+    };
 
     let size: u32 = query.get("size")
         .and_then(|s| s.parse().ok())
         .unwrap_or(300); // 默认300px
 
-    let path = Path::new(file_path);
+    let path = Path::new(&file_path_resolved);
     if !path.exists() || !path.is_file() {
         return Err(actix_web::error::ErrorNotFound("文件不存在"));
     }

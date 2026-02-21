@@ -1,5 +1,6 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Result};
 use std::net::UdpSocket;
+use std::sync::{Arc, RwLock};
 
 // API模块 - 面向开发者的系统操作
 mod file;
@@ -8,6 +9,7 @@ mod transfer;
 mod config_api;
 mod preview;
 mod browser;
+mod indexer;
 
 // 工具模块
 mod static_files;
@@ -104,6 +106,9 @@ async fn main() -> std::io::Result<()> {
     // 初始化上传器任务管理器
     let upload_task_manager = web::Data::new(transfer::upload::TaskManager::new());
 
+    // 初始化扫描状态（索引模块共享）
+    let scan_status = web::Data::new(Arc::new(RwLock::new(indexer::models::ScanStatus::default())));
+
     // 读取 API Key (优先级: secret.json > 环境变量 > 随机生成)
     fn load_api_key_from_secret() -> Option<String> {
         use std::fs;
@@ -181,6 +186,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(api_key_data.clone())
             .app_data(download_task_manager.clone())
             .app_data(upload_task_manager.clone())
+            .app_data(scan_status.clone())
             // 健康检查 API（不需要认证）
             .route("/api/health", web::get().to(health_check))
             // 认证 API 路由
@@ -200,6 +206,8 @@ async fn main() -> std::io::Result<()> {
             .service(web::scope("/api/config").configure(config_api::routes))
             // 预览操作 API 路由
             .service(web::scope("/api/preview").configure(preview::routes))
+            // 文件索引 API 路由
+            .service(web::scope("/api/indexer").configure(indexer::routes))
             // 文件系统浏览 API 路由
             .service(web::scope("/api/browser").configure(browser::routes))
             // 静态文件服务（嵌入式）

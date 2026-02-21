@@ -27,3 +27,5 @@ dirs = "5.0"
 rusqlite = { version = "0.31", features = ["bundled"] }
 mupdf = "0.6"
 colored = "2"
+sha2 = "0.10"
+walkdir = "2"

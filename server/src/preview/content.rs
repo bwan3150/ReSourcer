@@ -27,9 +27,18 @@ pub async fn serve_file(
     query: web::Query<std::collections::HashMap<String, String>>,
     _req: actix_web::HttpRequest,
 ) -> Result<NamedFile> {
-    let file_path = percent_encoding::percent_decode_str(&path)
-        .decode_utf8_lossy()
-        .to_string();
+    // 支持通过 UUID 查询文件路径
+    let file_path = if let Some(uuid) = query.get("uuid") {
+        let file = crate::indexer::storage::get_file_by_uuid(uuid)
+            .map_err(|e| actix_web::error::ErrorInternalServerError(format!("数据库错误: {}", e)))?
+            .ok_or_else(|| actix_web::error::ErrorNotFound("UUID 对应的文件未找到"))?;
+        file.current_path
+            .ok_or_else(|| actix_web::error::ErrorNotFound("文件已被删除或移动"))?
+    } else {
+        percent_encoding::percent_decode_str(&path)
+            .decode_utf8_lossy()
+            .to_string()
+    };
 
     let source_path = Path::new(&file_path);
 
