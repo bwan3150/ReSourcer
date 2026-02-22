@@ -67,21 +67,21 @@ enum APIServiceUsageExamples {
             }
 
             // 移动文件到分类文件夹
-            if let firstFile = files.first {
-                let newPath = try await apiService.file.moveFile(
-                    at: firstFile.path,
+            if let firstFile = files.first, let uuid = firstFile.uuid {
+                let response = try await apiService.file.moveFile(
+                    uuid: uuid,
                     to: "/path/to/target/category"
                 )
-                print("文件已移动到: \(newPath)")
+                print("文件已移动到: \(response.newPath)")
             }
 
             // 重命名文件
-            if let file = files.first {
-                let newPath = try await apiService.file.renameFile(
-                    at: file.path,
+            if let file = files.first, let uuid = file.uuid {
+                let response = try await apiService.file.renameFile(
+                    uuid: uuid,
                     to: "new_name.jpg"
                 )
-                print("文件已重命名，新路径: \(newPath)")
+                print("文件已重命名，新路径: \(response.newPath)")
             }
         } catch {
             print("文件操作失败: \(error)")
