@@ -34,6 +34,21 @@ struct GalleryView: View {
     // 下拉菜单状态
     @State private var isDropdownOpen = false
 
+    // 下拉菜单内浏览状态（与 gallery 当前文件夹独立）
+    @State private var dropdownBrowsingPath: String = ""
+    @State private var dropdownSubfolders: [IndexedFolder] = []
+    @State private var isLoadingDropdown = false
+
+    // 浏览器式导航历史
+    @State private var historyBack: [String] = []    // 后退栈
+    @State private var historyForward: [String] = [] // 前进栈
+    @State private var capsuleWidth: CGFloat = 0
+
+    // 下拉菜单内新增/排序
+    @State private var showAddFolder = false
+    @State private var newFolderName = ""
+    @State private var showReorder = false
+
     // 显示模式
     @State private var viewMode: GalleryViewMode = .grid
     /// 每个网格单元格的最小宽度，SwiftUI 根据屏幕宽度自动计算列数
@@ -66,8 +81,17 @@ struct GalleryView: View {
                 Group {
                     if !files.isEmpty {
                         contentView
-                    } else if !isLoading {
-                        emptyView
+                    } else {
+                        ScrollView {
+                            if !isLoading {
+                                emptyView
+                            }
+                        }
+                        .refreshable {
+                            await GlassAlertManager.shared.withQuickLoading {
+                                await refreshFiles()
+                            }
+                        }
                     }
                 }
                 .padding(.top, 70) // 给顶部浮动栏留空间
@@ -141,6 +165,8 @@ struct GalleryView: View {
             subfolders = []
             breadcrumb = []
             currentFolderFullPath = ""
+            historyBack = []
+            historyForward = []
             Task {
                 await GlassAlertManager.shared.withQuickLoading {
                     await loadInitial()
@@ -271,6 +297,58 @@ struct GalleryView: View {
                 }
             )
         }
+        // 新建文件夹弹窗
+        .alert("新建文件夹", isPresented: $showAddFolder) {
+            TextField("文件夹名称", text: $newFolderName)
+            Button("取消", role: .cancel) {
+                newFolderName = ""
+            }
+            Button("创建") {
+                createFolderInDropdown()
+            }
+            .disabled(newFolderName.trimmingCharacters(in: .whitespaces).isEmpty)
+        }
+        // 文件夹排序面板
+        .sheet(isPresented: $showReorder) {
+            NavigationStack {
+                List {
+                    ForEach(dropdownSubfolders) { folder in
+                        HStack(spacing: AppTheme.Spacing.md) {
+                            Image(systemName: "folder.fill")
+                                .foregroundStyle(.yellow)
+                            Text(folder.name)
+                                .font(.body)
+                            Spacer()
+                            Text("\(folder.fileCount)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .onMove { from, to in
+                        dropdownSubfolders.move(fromOffsets: from, toOffset: to)
+                    }
+                }
+                .environment(\.editMode, .constant(.active))
+                .navigationTitle("调整排序")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("完成") {
+                            saveDropdownFolderOrder()
+                            showReorder = false
+                        }
+                    }
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("取消") {
+                            showReorder = false
+                            // 恢复原顺序
+                            Task { await browseInDropdown(path: dropdownBrowsingPath) }
+                        }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+        }
     }
 
     // MARK: - Floating Header
@@ -286,13 +364,6 @@ struct GalleryView: View {
             return sourceFolderDisplayName
         }
         return currentFolderFullPath.components(separatedBy: "/").last ?? sourceFolderDisplayName
-    }
-
-    /// 左划返回上一级
-    private func goToParentFolder() {
-        guard canGoBack else { return }
-        let parent = (currentFolderFullPath as NSString).deletingLastPathComponent
-        Task { await navigateToFolder(path: parent) }
     }
 
     @State private var headerDragOffset: CGFloat = 0
@@ -317,13 +388,26 @@ struct GalleryView: View {
         .padding(.vertical, 12)
     }
 
-    /// 上级文件夹名称（用于拖动过渡显示）
-    private var parentFolderDisplayName: String {
-        let parent = (currentFolderFullPath as NSString).deletingLastPathComponent
-        if parent == sourceFolder || parent.isEmpty {
+    /// 后退目标文件夹显示名
+    private var backTargetDisplayName: String {
+        guard let path = historyBack.last else { return "" }
+        if path == sourceFolder { return sourceFolderDisplayName }
+        return path.components(separatedBy: "/").last ?? ""
+    }
+
+    /// 前进目标文件夹显示名
+    private var forwardTargetDisplayName: String {
+        guard let path = historyForward.last else { return "" }
+        if path == sourceFolder { return sourceFolderDisplayName }
+        return path.components(separatedBy: "/").last ?? ""
+    }
+
+    /// 下拉菜单当前浏览路径的显示名
+    private var dropdownDisplayName: String {
+        if dropdownBrowsingPath == sourceFolder || dropdownBrowsingPath.isEmpty {
             return sourceFolderDisplayName
         }
-        return parent.components(separatedBy: "/").last ?? sourceFolderDisplayName
+        return dropdownBrowsingPath.components(separatedBy: "/").last ?? ""
     }
 
     private var floatingHeader: some View {
@@ -341,12 +425,18 @@ struct GalleryView: View {
                 GeometryReader { geo in
                     let width = geo.size.width
                     HStack(spacing: 0) {
-                        // 上级文件夹（左侧，可见区域外）
-                        headerLabel(
-                            icon: "folder.fill.badge.gearshape",
-                            iconColor: .orange,
-                            name: parentFolderDisplayName
-                        )
+                        // 后退目标（左侧）
+                        Group {
+                            if let backPath = historyBack.last {
+                                headerLabel(
+                                    icon: backPath == sourceFolder ? "folder.fill.badge.gearshape" : "folder.fill",
+                                    iconColor: backPath == sourceFolder ? .orange : .yellow,
+                                    name: backTargetDisplayName
+                                )
+                            } else {
+                                Color.clear
+                            }
+                        }
                         .frame(width: width, height: geo.size.height)
 
                         // 当前文件夹
@@ -356,8 +446,26 @@ struct GalleryView: View {
                             name: currentFolderDisplayName
                         )
                         .frame(width: width, height: geo.size.height)
+
+                        // 前进目标（右侧）
+                        Group {
+                            if let forwardPath = historyForward.last {
+                                headerLabel(
+                                    icon: forwardPath == sourceFolder ? "folder.fill.badge.gearshape" : "folder.fill",
+                                    iconColor: forwardPath == sourceFolder ? .orange : .yellow,
+                                    name: forwardTargetDisplayName
+                                )
+                            } else {
+                                Color.clear
+                            }
+                        }
+                        .frame(width: width, height: geo.size.height)
                     }
                     .offset(x: -width + headerDragOffset)
+                    .onAppear { capsuleWidth = width }
+                    .onChange(of: geo.size.width) { _, newWidth in
+                        capsuleWidth = newWidth
+                    }
                 }
                 .clipShape(Capsule())
             }
@@ -370,35 +478,63 @@ struct GalleryView: View {
             }
             .contentShape(Capsule())
             .onTapGesture {
+                if !isDropdownOpen {
+                    Task { await browseInDropdown(path: currentFolderFullPath.isEmpty ? sourceFolder : currentFolderFullPath) }
+                }
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isDropdownOpen.toggle()
                 }
             }
             .simultaneousGesture(
-                canGoBack ?
                 DragGesture(minimumDistance: 20)
                     .onChanged { value in
-                        if value.translation.width > 0 {
-                            headerDragOffset = value.translation.width * 0.8
+                        let dx = value.translation.width
+                        if dx > 0 && !historyBack.isEmpty {
+                            // 右滑（后退）— 带阻尼
+                            headerDragOffset = dx * 0.6
+                        } else if dx < 0 && !historyForward.isEmpty {
+                            // 左滑（前进）— 带阻尼
+                            headerDragOffset = dx * 0.6
                         }
                     }
                     .onEnded { value in
-                        if value.translation.width > 80 {
-                            // 超过阈值：动画滑到上级位置，结束后导航
-                            withAnimation(.easeOut(duration: 0.25)) {
-                                headerDragOffset = UIScreen.main.bounds.width
-                            } completion: {
-                                headerDragOffset = 0
-                                goToParentFolder()
+                        let dx = value.translation.width
+                        let threshold = capsuleWidth * 0.5
+
+                        if dx > 0 && !historyBack.isEmpty {
+                            if dx * 0.6 > threshold {
+                                // 超过 50%：滑到位，完成后导航
+                                withAnimation(.easeOut(duration: 0.25)) {
+                                    headerDragOffset = capsuleWidth
+                                } completion: {
+                                    headerDragOffset = 0
+                                    Task { await goBack() }
+                                }
+                            } else {
+                                // 未达 50%：弹回
+                                withAnimation(.spring(duration: 0.3)) {
+                                    headerDragOffset = 0
+                                }
+                            }
+                        } else if dx < 0 && !historyForward.isEmpty {
+                            if abs(dx * 0.6) > threshold {
+                                withAnimation(.easeOut(duration: 0.25)) {
+                                    headerDragOffset = -capsuleWidth
+                                } completion: {
+                                    headerDragOffset = 0
+                                    Task { await goForward() }
+                                }
+                            } else {
+                                withAnimation(.spring(duration: 0.3)) {
+                                    headerDragOffset = 0
+                                }
                             }
                         } else {
-                            // 未达阈值：弹回原位
                             withAnimation(.spring(duration: 0.3)) {
                                 headerDragOffset = 0
                             }
                         }
                     }
-                : nil
             )
 
             // 上传记录
@@ -431,92 +567,176 @@ struct GalleryView: View {
 
     private var folderDropdown: some View {
         VStack(spacing: 0) {
-            // 回到源文件夹（不在根目录时显示）
-            if canGoBack {
-                Button {
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        isDropdownOpen = false
+            // 根目录行 + ".." 返回行（不在根目录时显示，与子文件夹样式统一）
+            if dropdownBrowsingPath != sourceFolder && !dropdownBrowsingPath.isEmpty {
+                // 根目录行
+                HStack(spacing: 0) {
+                    Button {
+                        Task { await browseInDropdown(path: sourceFolder) }
+                    } label: {
+                        HStack(spacing: AppTheme.Spacing.md) {
+                            Image(systemName: "folder.fill.badge.gearshape")
+                                .font(.title3)
+                                .foregroundStyle(.orange)
+
+                            Text(sourceFolderDisplayName)
+                                .font(.body)
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+
+                            Spacer()
+                        }
+                        .contentShape(Rectangle())
                     }
-                    Task { await navigateToFolder(path: sourceFolder) }
-                } label: {
-                    HStack(spacing: AppTheme.Spacing.md) {
-                        Image(systemName: "folder.fill.badge.gearshape")
+                    .buttonStyle(.plain)
+
+                    // 右侧导航按钮：点击真正导航到根目录
+                    Button {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            isDropdownOpen = false
+                        }
+                        Task { await navigateWithHistory(path: sourceFolder) }
+                    } label: {
+                        Image(systemName: "arrow.right.circle")
                             .font(.title3)
-                            .foregroundStyle(.orange)
-
-                        Text(sourceFolderDisplayName)
-                            .font(.body)
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-
-                        Spacer()
-
-                        Text("回到根目录")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.blue)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
-                    .padding(.horizontal, AppTheme.Spacing.md)
-                    .padding(.vertical, AppTheme.Spacing.sm)
-                    .contentShape(Rectangle())
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
+                .padding(.horizontal, AppTheme.Spacing.md)
+                .padding(.vertical, AppTheme.Spacing.sm)
 
-                Divider()
-                    .padding(.horizontal, AppTheme.Spacing.md)
+                // ".." 返回上一级
+                HStack(spacing: 0) {
+                    Button {
+                        let parent = (dropdownBrowsingPath as NSString).deletingLastPathComponent
+                        Task { await browseInDropdown(path: parent) }
+                    } label: {
+                        HStack(spacing: AppTheme.Spacing.md) {
+                            Image(systemName: "arrowshape.turn.up.left.fill")
+                                .font(.title3)
+                                .foregroundStyle(.secondary)
+
+                            Text("..")
+                                .font(.body)
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+
+                            Spacer()
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, AppTheme.Spacing.md)
+                .padding(.vertical, AppTheme.Spacing.sm)
             }
 
             // 子文件夹列表
-            if subfolders.isEmpty {
+            if isLoadingDropdown {
                 HStack {
                     Spacer()
-                    Text("当前文件夹没有子文件夹")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    ProgressView()
                     Spacer()
                 }
                 .padding(.vertical, AppTheme.Spacing.lg)
+            } else if dropdownSubfolders.isEmpty {
+                Spacer().frame(height: AppTheme.Spacing.lg)
             } else {
                 ScrollView {
                     VStack(spacing: 0) {
-                        ForEach(subfolders) { folder in
-                            Button {
-                                withAnimation(.easeOut(duration: 0.2)) {
-                                    isDropdownOpen = false
-                                }
-                                Task { await navigateToFolder(path: folder.path) }
-                            } label: {
-                                HStack(spacing: AppTheme.Spacing.md) {
-                                    Image(systemName: "folder.fill")
-                                        .font(.title3)
-                                        .foregroundStyle(.yellow)
+                        ForEach(dropdownSubfolders) { folder in
+                            HStack(spacing: 0) {
+                                // 左侧主区域：点击进入浏览
+                                Button {
+                                    Task { await browseInDropdown(path: folder.path) }
+                                } label: {
+                                    HStack(spacing: AppTheme.Spacing.md) {
+                                        Image(systemName: "folder.fill")
+                                            .font(.title3)
+                                            .foregroundStyle(.yellow)
 
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(folder.name)
-                                            .font(.body)
-                                            .foregroundStyle(.primary)
-                                            .lineLimit(1)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(folder.name)
+                                                .font(.body)
+                                                .foregroundStyle(.primary)
+                                                .lineLimit(1)
 
-                                        Text("\(folder.fileCount) 个文件")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
+                                            Text("\(folder.fileCount) 个文件")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+
+                                        Spacer()
                                     }
-
-                                    Spacer()
-
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption)
-                                        .foregroundStyle(.tertiary)
+                                    .contentShape(Rectangle())
                                 }
-                                .padding(.horizontal, AppTheme.Spacing.md)
-                                .padding(.vertical, AppTheme.Spacing.sm)
-                                .contentShape(Rectangle())
+                                .buttonStyle(.plain)
+
+                                // 右侧导航按钮：点击真正导航到该文件夹
+                                Button {
+                                    withAnimation(.easeOut(duration: 0.2)) {
+                                        isDropdownOpen = false
+                                    }
+                                    Task { await navigateWithHistory(path: folder.path) }
+                                } label: {
+                                    Image(systemName: "arrow.right.circle")
+                                        .font(.title3)
+                                        .foregroundStyle(.blue)
+                                        .frame(width: 44, height: 44)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
+                            .padding(.horizontal, AppTheme.Spacing.md)
+                            .padding(.vertical, AppTheme.Spacing.sm)
                         }
                     }
                 }
                 .frame(maxHeight: 400)
             }
+
+            // 添加 + 排序按钮
+            HStack(spacing: AppTheme.Spacing.sm) {
+                Button {
+                    newFolderName = ""
+                    showAddFolder = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.caption)
+                        Text("添加")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    showReorder = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .font(.caption)
+                        Text("排序")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+            }
+            .padding(.horizontal, AppTheme.Spacing.md)
+            .padding(.vertical, AppTheme.Spacing.xs)
         }
         .padding(AppTheme.Spacing.sm)
         .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
@@ -535,9 +755,8 @@ struct GalleryView: View {
                 }
             }
             .refreshable {
-                await GlassAlertManager.shared.withQuickLoading {
-                    await refreshFiles()
-                }
+                await refreshFiles()
+                try? await Task.sleep(for: .milliseconds(300))
             }
         }
     }
@@ -645,6 +864,84 @@ struct GalleryView: View {
         }
     }
 
+    // MARK: - 浏览器式导航
+
+    /// 带历史记录的导航（用户主动导航时使用）
+    private func navigateWithHistory(path: String) async {
+        let current = currentFolderFullPath.isEmpty ? sourceFolder : currentFolderFullPath
+        if !current.isEmpty {
+            historyBack.append(current)
+        }
+        historyForward.removeAll()
+        await navigateToFolder(path: path)
+    }
+
+    /// 后退到上一个历史路径
+    private func goBack() async {
+        guard let prevPath = historyBack.popLast() else { return }
+        let current = currentFolderFullPath.isEmpty ? sourceFolder : currentFolderFullPath
+        historyForward.append(current)
+        await navigateToFolder(path: prevPath)
+    }
+
+    /// 前进到下一个历史路径
+    private func goForward() async {
+        guard let nextPath = historyForward.popLast() else { return }
+        let current = currentFolderFullPath.isEmpty ? sourceFolder : currentFolderFullPath
+        historyBack.append(current)
+        await navigateToFolder(path: nextPath)
+    }
+
+    /// 在下拉菜单中浏览文件夹（不触发 gallery 导航）
+    private func browseInDropdown(path: String) async {
+        dropdownBrowsingPath = path
+        isLoadingDropdown = true
+        do {
+            dropdownSubfolders = try await apiService.preview.getIndexedFolders(
+                parentPath: path, sourceFolder: sourceFolder)
+        } catch {
+            dropdownSubfolders = []
+        }
+        isLoadingDropdown = false
+    }
+
+    /// 在下拉菜单当前浏览路径下创建新文件夹
+    private func createFolderInDropdown() {
+        let name = newFolderName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+
+        Task {
+            do {
+                _ = try await apiService.folder.createFolder(name: name)
+                newFolderName = ""
+                // 刷新下拉菜单的子文件夹列表
+                await browseInDropdown(path: dropdownBrowsingPath)
+                // 同步刷新 gallery 的子文件夹（如果正在浏览同一路径）
+                if dropdownBrowsingPath == currentFolderPath {
+                    subfolders = dropdownSubfolders
+                }
+            } catch {
+                GlassAlertManager.shared.showError("创建失败", message: error.localizedDescription)
+            }
+        }
+    }
+
+    /// 保存下拉菜单当前浏览路径的文件夹排序
+    private func saveDropdownFolderOrder() {
+        let order = dropdownSubfolders.map(\.name)
+        Task {
+            do {
+                try await apiService.folder.saveFolderOrder(folderPath: dropdownBrowsingPath, order: order)
+                // 同步刷新 gallery 的子文件夹（如果正在浏览同一路径）
+                if dropdownBrowsingPath == currentFolderPath {
+                    subfolders = dropdownSubfolders
+                }
+            } catch {
+                GlassAlertManager.shared.showError("保存排序失败", message: error.localizedDescription)
+            }
+        }
+    }
+
     /// 统一导航方法：切换到指定文件夹路径
     private func navigateToFolder(path: String) async {
         currentFolderFullPath = path
@@ -738,9 +1035,7 @@ struct GalleryView: View {
         isRefreshing = true
         let path = currentFolderPath
 
-        // 立即清空文件列表和重置分页状态，防止哨兵触发 loadMoreFiles 导致重复 ID
-        files = []
-        filesOffset = 0
+        // 先禁止分页加载，防止哨兵触发 loadMoreFiles 导致重复 ID（不清空 files，避免闪"暂无"）
         hasMoreFiles = false
 
         // 并行刷新子文件夹和面包屑（各自独立处理错误）
