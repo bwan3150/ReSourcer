@@ -185,6 +185,7 @@ final class LocalStorageService: @unchecked Sendable {
         var enableNotifications: Bool = true
         var darkModePreference: DarkModePreference = .system
         var language: Language = .zh
+        var ignoredFiles: [String] = [".DS_Store"]
 
         enum DarkModePreference: String, Codable {
             case light, dark, system

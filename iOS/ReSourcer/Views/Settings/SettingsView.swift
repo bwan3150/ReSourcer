@@ -30,11 +30,6 @@ struct SettingsView: View {
     // 缓存大小
     @State private var totalCacheSize: String = ""
 
-    // 忽略文件夹
-    @State private var ignoredFolders: [String] = []
-    @State private var showAddIgnoredFolder = false
-    @State private var newIgnoredFolderName = ""
-
     // 断开连接
     @State private var showDisconnectConfirm = false
 
@@ -56,8 +51,8 @@ struct SettingsView: View {
                     // 4. 主题切换
                     themeSection
 
-                    // 5. 忽略文件夹
-                    ignoredFoldersSection
+                    // 5. 忽略配置
+                    ignoredSection
 
                     // 6. 认证
                     authSection
@@ -288,91 +283,29 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - 5. 忽略文件夹
+    // MARK: - 5. 忽略配置
 
-    private var ignoredFoldersSection: some View {
-        SettingsSection(title: "忽略文件夹") {
-            VStack(spacing: AppTheme.Spacing.sm) {
-                // 说明文字
-                Text("扫描和浏览时会跳过这些文件夹")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                // 已有的忽略文件夹列表
-                ForEach(ignoredFolders, id: \.self) { folder in
-                    HStack(spacing: AppTheme.Spacing.sm) {
-                        Image(systemName: "folder.badge.minus")
-                            .font(.system(size: 14))
-                            .foregroundStyle(.orange)
-                            .frame(width: 24)
-
-                        Text(folder)
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
-
-                        Spacer()
-
-                        Button {
-                            removeIgnoredFolder(folder)
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 16))
-                                .foregroundStyle(.tertiary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(.vertical, AppTheme.Spacing.xxs)
+    private var ignoredSection: some View {
+        SettingsSection(title: "忽略配置") {
+            NavigationLink {
+                IgnoreSettingsView(apiService: apiService)
+            } label: {
+                HStack(spacing: AppTheme.Spacing.md) {
+                    Image(systemName: "eye.slash.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.orange)
+                        .frame(width: 28)
+                    Text("忽略配置")
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
-
-                // 添加按钮
-                if showAddIgnoredFolder {
-                    HStack(spacing: AppTheme.Spacing.sm) {
-                        TextField("文件夹名称", text: $newIgnoredFolderName)
-                            .textFieldStyle(.roundedBorder)
-                            .font(.subheadline)
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
-
-                        Button {
-                            addIgnoredFolder()
-                        } label: {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 20))
-                                .foregroundStyle(.green)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(newIgnoredFolderName.trimmingCharacters(in: .whitespaces).isEmpty)
-
-                        Button {
-                            showAddIgnoredFolder = false
-                            newIgnoredFolderName = ""
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 20))
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                } else {
-                    Button {
-                        showAddIgnoredFolder = true
-                    } label: {
-                        HStack(spacing: AppTheme.Spacing.sm) {
-                            Image(systemName: "plus.circle")
-                                .font(.system(size: 16))
-                                .foregroundStyle(.blue)
-
-                            Text("添加忽略文件夹")
-                                .font(.subheadline)
-                                .foregroundStyle(.blue)
-
-                            Spacer()
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
         }
     }
 
@@ -526,9 +459,8 @@ struct SettingsView: View {
         async let configTask: () = loadAppConfig()
         async let sourcesTask: () = loadSourceFolders()
         async let cacheTask: () = loadCacheSize()
-        async let ignoredTask: () = loadIgnoredFolders()
 
-        _ = await (healthTask, configTask, sourcesTask, cacheTask, ignoredTask)
+        _ = await (healthTask, configTask, sourcesTask, cacheTask)
     }
 
     private func loadHealth() async {
@@ -599,47 +531,6 @@ struct SettingsView: View {
             } catch {
                 GlassAlertManager.shared.hideQuickLoading()
                 GlassAlertManager.shared.showError("切换失败", message: error.localizedDescription)
-            }
-        }
-    }
-
-    private func loadIgnoredFolders() async {
-        do {
-            let state = try await apiService.config.getConfigState()
-            ignoredFolders = state.ignoredFolders ?? ["@eaDir", "#recycle", "$RECYCLE.BIN"]
-        } catch {
-            // 静默失败，使用默认值
-            ignoredFolders = ["@eaDir", "#recycle", "$RECYCLE.BIN"]
-        }
-    }
-
-    private func addIgnoredFolder() {
-        let name = newIgnoredFolderName.trimmingCharacters(in: .whitespaces)
-        guard !name.isEmpty, !ignoredFolders.contains(name) else { return }
-
-        ignoredFolders.append(name)
-        newIgnoredFolderName = ""
-        showAddIgnoredFolder = false
-        saveIgnoredFolders()
-    }
-
-    private func removeIgnoredFolder(_ folder: String) {
-        ignoredFolders.removeAll { $0 == folder }
-        saveIgnoredFolders()
-    }
-
-    private func saveIgnoredFolders() {
-        Task {
-            do {
-                let state = try await apiService.config.getConfigState()
-                try await apiService.config.saveConfig(
-                    sourceFolder: state.sourceFolder,
-                    categories: [],
-                    hiddenFolders: state.hiddenFolders,
-                    ignoredFolders: ignoredFolders
-                )
-            } catch {
-                GlassAlertManager.shared.showError("保存失败", message: error.localizedDescription)
             }
         }
     }

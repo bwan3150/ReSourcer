@@ -981,13 +981,15 @@ struct GalleryView: View {
             let response = try await apiService.preview.getFilesPaginated(
                 in: path, offset: filesOffset, limit: filesPageSize
             )
+            let ignoredFiles = LocalStorageService.shared.getAppSettings().ignoredFiles
             let newFiles = response.files.map { $0.toFileInfo() }
+                .filter { file in !ignoredFiles.contains(file.name) }
             if reset {
                 files = newFiles
             } else {
                 files.append(contentsOf: newFiles)
             }
-            filesOffset += newFiles.count
+            filesOffset += response.files.count
             hasMoreFiles = response.hasMore
             filesTotalCount = response.total
             // 在源文件夹层级时记录文件总数
@@ -1019,9 +1021,11 @@ struct GalleryView: View {
             let response = try await apiService.preview.getFilesPaginated(
                 in: currentFolderPath, offset: filesOffset, limit: filesPageSize
             )
+            let ignoredFileNames = LocalStorageService.shared.getAppSettings().ignoredFiles
             let newFiles = response.files.map { $0.toFileInfo() }
+                .filter { file in !ignoredFileNames.contains(file.name) }
             files.append(contentsOf: newFiles)
-            filesOffset += newFiles.count
+            filesOffset += response.files.count
             hasMoreFiles = response.hasMore
             filesTotalCount = response.total
             return newFiles
@@ -1047,9 +1051,11 @@ struct GalleryView: View {
             let response = try await apiService.preview.getFilesPaginated(
                 in: path, offset: 0, limit: filesPageSize
             )
+            let ignoredFileNames = LocalStorageService.shared.getAppSettings().ignoredFiles
             let newFiles = response.files.map { $0.toFileInfo() }
+                .filter { file in !ignoredFileNames.contains(file.name) }
             files = newFiles
-            filesOffset = newFiles.count
+            filesOffset = response.files.count
             hasMoreFiles = response.hasMore
             filesTotalCount = response.total
             if path == sourceFolder {

@@ -916,7 +916,9 @@ struct ClassifierView: View {
             // 获取待分类文件（使用 indexer 分页 API，一次最多 500 条）
             let response = try await apiService.preview.getFilesPaginated(
                 in: workPath, offset: 0, limit: 500)
+            let ignoredFileNames = LocalStorageService.shared.getAppSettings().ignoredFiles
             files = response.files.map { $0.toFileInfo() }
+                .filter { file in !ignoredFileNames.contains(file.name) }
 
             // 获取分类子文件夹（使用 indexer API）
             let indexed = try await apiService.preview.getIndexedFolders(
