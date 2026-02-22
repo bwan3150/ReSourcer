@@ -197,6 +197,7 @@ pub fn scan_folder(folder_path: &str, source_folder: &str, skip_mark_missing: bo
         name: folder_name,
         depth,
         file_count: existing_paths.len() as i64,
+        subfolder_count: 0,
         indexed_at: now,
     };
     storage::upsert_folder_with_conn(&tx, &folder)?;
@@ -275,6 +276,7 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
                 name: folder_name,
                 depth,
                 file_count: 0, // 后面批量更新
+                subfolder_count: 0,
                 indexed_at: now.clone(),
             };
             let _ = storage::upsert_folder_with_conn(&conn, &folder);
@@ -448,6 +450,7 @@ pub fn index_single_file(file_path: &str, source_folder: &str, source_url: Optio
         name: folder_name,
         depth,
         file_count: 0, // 不精确更新，下次全量扫描会修正
+        subfolder_count: 0,
         indexed_at: now,
     };
     let _ = storage::upsert_folder(&folder);

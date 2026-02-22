@@ -27,6 +27,8 @@ pub struct IndexedFolder {
     pub name: String,
     pub depth: i32,
     pub file_count: i64,
+    #[serde(default)]
+    pub subfolder_count: i64,
     pub indexed_at: String,
 }
 

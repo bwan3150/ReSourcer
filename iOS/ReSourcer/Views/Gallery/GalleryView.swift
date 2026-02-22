@@ -664,7 +664,7 @@ struct GalleryView: View {
                                                 .foregroundStyle(.primary)
                                                 .lineLimit(1)
 
-                                            Text("\(folder.fileCount) 个文件")
+                                            Text(folder.contentDescription)
                                                 .font(.caption)
                                                 .foregroundStyle(.secondary)
                                         }
@@ -1358,7 +1358,7 @@ struct MoveSheetView: View {
                                             .foregroundStyle(.primary)
                                             .lineLimit(1)
 
-                                        Text("\(folder.fileCount) 个文件")
+                                        Text(folder.contentDescription)
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                     }

@@ -35,6 +35,12 @@ struct ClassifierView: View {
     @State private var classifiedCount = 0
     @State private var totalCount = 0
 
+    // 分页状态
+    @State private var filesOffset = 0
+    @State private var hasMoreFiles = true
+    @State private var isLoadingMore = false
+    private let classifierPageSize = 200
+
     // 操作历史（用于撤销）
     @State private var operationHistory: [ClassifyOperation] = []
 
@@ -73,7 +79,7 @@ struct ClassifierView: View {
                 // 内容区域
                 if isLoading {
                     loadingView
-                } else if files.isEmpty {
+                } else if files.isEmpty && !hasMoreFiles {
                     emptyView
                 } else {
                     classifierContent
@@ -276,12 +282,16 @@ struct ClassifierView: View {
                 .padding(.bottom, AppTheme.Spacing.sm)
         }
         // 切换文件或切换模式时管理视频/音频播放器 + 重置缩放
-        .onChange(of: currentIndex) { _, _ in
+        .onChange(of: currentIndex) { _, newIndex in
             resetZoom()
             if !useThumbnail, let file = currentFile, (file.isVideo || file.isAudio) {
                 setupVideoPlayer(for: file)
             } else {
                 cleanupVideoPlayer()
+            }
+            // 预加载：接近末尾时拉取下一页
+            if hasMoreFiles && !isLoadingMore && newIndex >= files.count - 20 {
+                Task { await loadMoreFiles() }
             }
         }
         .onChange(of: useThumbnail) { _, newValue in
@@ -440,6 +450,11 @@ struct ClassifierView: View {
                 .padding(.horizontal, AppTheme.Spacing.lg)
                 .padding(.vertical, AppTheme.Spacing.md)
             }
+        } else if hasMoreFiles {
+            // 当前页文件已用完但还有更多 → 显示加载中并触发加载
+            ProgressView("加载更多文件...")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .task { await loadMoreFiles() }
         }
     }
 
@@ -913,12 +928,17 @@ struct ClassifierView: View {
 
             let workPath = currentPath
 
-            // 获取待分类文件（使用 indexer 分页 API，一次最多 500 条）
+            // 获取待分类文件（使用 indexer 分页 API）
             let response = try await apiService.preview.getFilesPaginated(
-                in: workPath, offset: 0, limit: 500)
+                in: workPath, offset: 0, limit: classifierPageSize)
             let ignoredFileNames = LocalStorageService.shared.getAppSettings().ignoredFiles
             files = response.files.map { $0.toFileInfo() }
                 .filter { file in !ignoredFileNames.contains(file.name) }
+
+            // 记录分页状态
+            filesOffset = response.files.count
+            hasMoreFiles = response.hasMore
+            totalCount = response.total
 
             // 获取分类子文件夹（使用 indexer API）
             let indexed = try await apiService.preview.getIndexedFolders(
@@ -929,7 +949,6 @@ struct ClassifierView: View {
 
             currentIndex = 0
             classifiedCount = 0
-            totalCount = files.count
             operationHistory = []
 
         } catch {
@@ -937,6 +956,23 @@ struct ClassifierView: View {
         }
 
         isLoading = false
+    }
+
+    /// 分页加载更多文件
+    private func loadMoreFiles() async {
+        guard !isLoadingMore && hasMoreFiles else { return }
+        isLoadingMore = true
+        do {
+            let response = try await apiService.preview.getFilesPaginated(
+                in: currentPath, offset: filesOffset, limit: classifierPageSize)
+            let ignoredFileNames = LocalStorageService.shared.getAppSettings().ignoredFiles
+            let newFiles = response.files.map { $0.toFileInfo() }
+                .filter { file in !ignoredFileNames.contains(file.name) }
+            files.append(contentsOf: newFiles)
+            filesOffset += response.files.count
+            hasMoreFiles = response.hasMore
+        } catch {}
+        isLoadingMore = false
     }
 
     private func classifyToCategory(_ category: FolderInfo) {

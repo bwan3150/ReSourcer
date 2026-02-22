@@ -31,6 +31,24 @@ pub fn count_media_files(path: &Path) -> usize {
     count
 }
 
+/// 统计文件夹中的可见子文件夹数量（排除隐藏目录和 ignored_folders）
+pub fn count_subfolders(folder_path: &Path, ignored_folders: &[String]) -> usize {
+    let mut count = 0;
+    if let Ok(entries) = fs::read_dir(folder_path) {
+        for entry in entries.flatten() {
+            if let Ok(metadata) = entry.metadata() {
+                if metadata.is_dir() {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if name.starts_with('.') { continue; }
+                    if ignored_folders.iter().any(|ig| ig == &name) { continue; }
+                    count += 1;
+                }
+            }
+        }
+    }
+    count
+}
+
 /// 统计文件夹中的支持文件数量（使用 classifier 的 SUPPORTED_EXTENSIONS）
 pub fn count_files_in_folder(folder_path: &Path) -> usize {
     use crate::config_api::models::SUPPORTED_EXTENSIONS;

@@ -78,7 +78,35 @@ struct IndexedFolder: Identifiable, Codable, Equatable {
     let name: String
     let depth: Int
     let fileCount: Int
+    let subfolderCount: Int
     var id: String { path }
+
+    enum CodingKeys: String, CodingKey {
+        case path, parentPath, sourceFolder, name, depth, fileCount, subfolderCount
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        path = try container.decode(String.self, forKey: .path)
+        parentPath = try container.decodeIfPresent(String.self, forKey: .parentPath)
+        sourceFolder = try container.decode(String.self, forKey: .sourceFolder)
+        name = try container.decode(String.self, forKey: .name)
+        depth = try container.decode(Int.self, forKey: .depth)
+        fileCount = try container.decode(Int.self, forKey: .fileCount)
+        subfolderCount = try container.decodeIfPresent(Int.self, forKey: .subfolderCount) ?? 0
+    }
+}
+
+extension IndexedFolder {
+    /// 内容描述：文件数 + 子文件夹数
+    var contentDescription: String {
+        let parts: [String?] = [
+            fileCount > 0 ? "\(fileCount) 个文件" : nil,
+            subfolderCount > 0 ? "\(subfolderCount) 个文件夹" : nil,
+        ]
+        let result = parts.compactMap { $0 }.joined(separator: " · ")
+        return result.isEmpty ? "空文件夹" : result
+    }
 }
 
 /// 面包屑项（来自 /api/indexer/breadcrumb）

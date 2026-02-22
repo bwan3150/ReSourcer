@@ -236,7 +236,7 @@ pub async fn breadcrumb(
 
 /// 直接从文件系统读取子文件夹列表，跳过隐藏目录和 ignored_folders
 fn read_subfolders_from_fs(parent_path: &str, source_folder: &str, ignored_folders: &[String]) -> Result<Vec<IndexedFolder>, String> {
-    use crate::folder::utils::count_files_in_folder;
+    use crate::folder::utils::{count_files_in_folder, count_subfolders};
 
     let dir_path = std::path::Path::new(parent_path);
     if !dir_path.is_dir() {
@@ -276,6 +276,7 @@ fn read_subfolders_from_fs(parent_path: &str, source_folder: &str, ignored_folde
             .unwrap_or(0);
 
         let file_count = count_files_in_folder(&entry_path) as i64;
+        let subfolder_count = count_subfolders(&entry_path, ignored_folders) as i64;
 
         folders.push(IndexedFolder {
             path: entry_path.to_string_lossy().to_string(),
@@ -284,6 +285,7 @@ fn read_subfolders_from_fs(parent_path: &str, source_folder: &str, ignored_folde
             name,
             depth,
             file_count,
+            subfolder_count,
             indexed_at: now.clone(),
         });
     }
