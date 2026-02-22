@@ -174,7 +174,7 @@ enum FoldersResult {
     BadRequest(String),
 }
 
-/// GET /api/indexer/folders — 子文件夹查询（惰性索引）
+/// GET /api/indexer/folders — 子文件夹查询（直接读文件系统）
 pub async fn folders(
     query: web::Query<FoldersQuery>,
 ) -> Result<HttpResponse> {
@@ -188,33 +188,25 @@ pub async fn folders(
             .unwrap_or_default();
 
         if let Some(ref parent) = parent_path {
-            // 每次都扫描子文件夹（upsert 安全，确保新增子文件夹被发现）
             let source = source_folder.as_deref()
                 .unwrap_or(parent);
             let source_resolved = find_source_folder(parent)
                 .unwrap_or_else(|| source.to_string());
-            if let Err(e) = scan_subfolders(parent, &source_resolved) {
-                return FoldersResult::Err(format!("扫描子文件夹失败: {}", e));
-            }
 
-            match storage::get_subfolders(parent) {
+            match read_subfolders_from_fs(parent, &source_resolved, &ignored_folders) {
                 Ok(mut folders) => {
-                    // 过滤 ignored_folders 并使用文件系统实时计数
-                    filter_and_recount(&mut folders, &ignored_folders);
                     apply_subfolder_order(&mut folders, parent);
                     FoldersResult::Ok(folders)
                 }
-                Err(e) => FoldersResult::Err(format!("查询失败: {}", e)),
+                Err(e) => FoldersResult::Err(e),
             }
         } else if let Some(ref source) = source_folder {
-            match storage::get_subfolders(source) {
+            match read_subfolders_from_fs(source, source, &ignored_folders) {
                 Ok(mut folders) => {
-                    // 过滤 ignored_folders 并使用文件系统实时计数
-                    filter_and_recount(&mut folders, &ignored_folders);
                     apply_subfolder_order(&mut folders, source);
                     FoldersResult::Ok(folders)
                 }
-                Err(e) => FoldersResult::Err(format!("查询失败: {}", e)),
+                Err(e) => FoldersResult::Err(e),
             }
         } else {
             FoldersResult::BadRequest("需要 parent_path 或 source_folder 参数".to_string())
@@ -242,18 +234,61 @@ pub async fn breadcrumb(
     Ok(HttpResponse::Ok().json(crumbs))
 }
 
-/// 过滤 ignored_folders 并使用文件系统实时计数替代 DB 中的 file_count
-fn filter_and_recount(folders: &mut Vec<IndexedFolder>, ignored_folders: &[String]) {
+/// 直接从文件系统读取子文件夹列表，跳过隐藏目录和 ignored_folders
+fn read_subfolders_from_fs(parent_path: &str, source_folder: &str, ignored_folders: &[String]) -> Result<Vec<IndexedFolder>, String> {
     use crate::folder::utils::count_files_in_folder;
 
-    // 过滤掉 ignored_folders 中的文件夹
-    folders.retain(|f| !ignored_folders.contains(&f.name));
-
-    // 使用文件系统实时计数
-    for folder in folders.iter_mut() {
-        let path = std::path::Path::new(&folder.path);
-        folder.file_count = count_files_in_folder(path) as i64;
+    let dir_path = std::path::Path::new(parent_path);
+    if !dir_path.is_dir() {
+        return Ok(vec![]);
     }
+
+    let source_path = std::path::Path::new(source_folder);
+    let now = chrono::Utc::now().to_rfc3339();
+
+    let entries = std::fs::read_dir(dir_path)
+        .map_err(|e| format!("读取目录失败: {}", e))?;
+
+    let mut folders = Vec::new();
+    for entry in entries.flatten() {
+        let entry_path = entry.path();
+        if !entry_path.is_dir() {
+            continue;
+        }
+
+        let name = match entry_path.file_name().and_then(|n| n.to_str()) {
+            Some(n) => n.to_string(),
+            None => continue,
+        };
+
+        // 跳过隐藏目录
+        if name.starts_with('.') {
+            continue;
+        }
+
+        // 跳过 ignored_folders
+        if ignored_folders.iter().any(|ig| ig == &name) {
+            continue;
+        }
+
+        let depth = entry_path.strip_prefix(source_path)
+            .map(|rel| rel.components().count() as i32)
+            .unwrap_or(0);
+
+        let file_count = count_files_in_folder(&entry_path) as i64;
+
+        folders.push(IndexedFolder {
+            path: entry_path.to_string_lossy().to_string(),
+            parent_path: Some(parent_path.to_string()),
+            source_folder: source_folder.to_string(),
+            name,
+            depth,
+            file_count,
+            indexed_at: now.clone(),
+        });
+    }
+
+    Ok(folders)
 }
 
 /// 对子文件夹列表应用保存的排序
@@ -280,101 +315,3 @@ fn find_source_folder(folder_path: &str) -> Option<String> {
     storage::find_source_folder(folder_path)
 }
 
-/// 扫描并索引一个目录下的直接子文件夹
-/// - 使用 INSERT OR IGNORE：不覆盖已有记录的 file_count 和 files_scanned
-/// - 使用 mtime 缓存：父文件夹未变化时跳过扫描
-/// - 使用单连接：避免每个子文件夹都 get_connection()
-fn scan_subfolders(parent_path: &str, source_folder: &str) -> Result<(), String> {
-    let dir_path = std::path::Path::new(parent_path);
-    if !dir_path.is_dir() {
-        return Ok(());
-    }
-
-    // mtime 缓存：如果父文件夹的 mtime 没变，说明子文件夹结构没变，跳过
-    if let Ok(Some(indexed_at)) = storage::get_folder_indexed_at(parent_path) {
-        if let Ok(indexed_time) = chrono::DateTime::parse_from_rfc3339(&indexed_at) {
-            let indexed_utc = indexed_time.with_timezone(&chrono::Utc);
-            if let Ok(meta) = std::fs::metadata(dir_path) {
-                if let Ok(mtime) = meta.modified() {
-                    let mtime_utc = chrono::DateTime::<chrono::Utc>::from(mtime);
-                    if mtime_utc <= indexed_utc {
-                        // 文件夹结构未变化，直接返回数据库缓存
-                        return Ok(());
-                    }
-                }
-            }
-        }
-    }
-
-    let now = chrono::Utc::now().to_rfc3339();
-    let source_path = std::path::Path::new(source_folder);
-
-    // 单连接处理所有子文件夹
-    let conn = crate::database::get_connection()
-        .map_err(|e| format!("数据库连接失败: {}", e))?;
-
-    let entries = std::fs::read_dir(dir_path)
-        .map_err(|e| format!("读取目录失败: {}", e))?;
-
-    for entry in entries.flatten() {
-        let entry_path = entry.path();
-        if !entry_path.is_dir() {
-            continue;
-        }
-        // 跳过隐藏目录
-        if let Some(name) = entry_path.file_name().and_then(|n| n.to_str()) {
-            if name.starts_with('.') {
-                continue;
-            }
-        }
-
-        let dir_str = entry_path.to_string_lossy().to_string();
-        let depth = entry_path.strip_prefix(source_path)
-            .map(|rel| rel.components().count() as i32)
-            .unwrap_or(0);
-        let folder_name = entry_path.file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_string();
-
-        // INSERT OR IGNORE：新文件夹才插入，已有的不覆盖（保留 file_count 和 files_scanned）
-        let folder = IndexedFolder {
-            path: dir_str,
-            parent_path: Some(parent_path.to_string()),
-            source_folder: source_folder.to_string(),
-            name: folder_name,
-            depth,
-            file_count: 0,
-            indexed_at: now.clone(),
-        };
-        let _ = storage::insert_folder_if_new(&conn, &folder);
-    }
-
-    // 确保父文件夹自身也在索引中（同样 INSERT OR IGNORE）
-    let parent_depth = std::path::Path::new(parent_path).strip_prefix(source_path)
-        .map(|rel| rel.components().count() as i32)
-        .unwrap_or(0);
-    let parent_name = std::path::Path::new(parent_path)
-        .file_name()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .to_string();
-    let parent_parent = if parent_path == source_folder {
-        None
-    } else {
-        std::path::Path::new(parent_path).parent()
-            .map(|p| p.to_string_lossy().to_string())
-    };
-    let parent_folder = IndexedFolder {
-        path: parent_path.to_string(),
-        parent_path: parent_parent,
-        source_folder: source_folder.to_string(),
-        name: parent_name,
-        depth: parent_depth,
-        file_count: 0,
-        indexed_at: now,
-    };
-    let _ = storage::insert_folder_if_new(&conn, &parent_folder);
-
-    Ok(())
-}

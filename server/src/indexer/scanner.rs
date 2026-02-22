@@ -352,9 +352,6 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
     // 提交最后一批
     conn.execute_batch("COMMIT")?;
 
-    // 批量更新文件计数
-    let _ = storage::update_folder_file_counts(source_folder);
-
     Ok(ScanResult {
         scanned_files,
         scanned_folders,

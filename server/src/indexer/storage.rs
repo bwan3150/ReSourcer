@@ -294,44 +294,6 @@ pub fn upsert_folder_with_conn(conn: &Connection, folder: &IndexedFolder) -> Res
     Ok(())
 }
 
-/// 仅插入新文件夹，不覆盖已有记录（scan_subfolders 使用，files_scanned=0）
-pub fn insert_folder_if_new(conn: &Connection, folder: &IndexedFolder) -> Result<(), rusqlite::Error> {
-    conn.execute(
-        "INSERT OR IGNORE INTO folder_index (path, parent_path, source_folder, name, depth, file_count, indexed_at, files_scanned)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0)",
-        params![
-            folder.path,
-            folder.parent_path,
-            folder.source_folder,
-            folder.name,
-            folder.depth,
-            folder.file_count,
-            folder.indexed_at,
-        ],
-    )?;
-    Ok(())
-}
-
-/// 查询子文件夹
-pub fn get_subfolders(parent_path: &str) -> Result<Vec<IndexedFolder>, rusqlite::Error> {
-    let conn = get_connection()?;
-    let mut stmt = conn.prepare(
-        "SELECT path, parent_path, source_folder, name, depth, file_count, indexed_at
-         FROM folder_index WHERE parent_path = ?1 ORDER BY name ASC"
-    )?;
-    let folders = stmt.query_map(params![parent_path], |row| {
-        Ok(IndexedFolder {
-            path: row.get(0)?,
-            parent_path: row.get(1)?,
-            source_folder: row.get(2)?,
-            name: row.get(3)?,
-            depth: row.get(4)?,
-            file_count: row.get(5)?,
-            indexed_at: row.get(6)?,
-        })
-    })?.collect::<Result<Vec<_>, _>>()?;
-    Ok(folders)
-}
 
 /// 获取面包屑路径
 pub fn get_breadcrumb(folder_path: &str, source_folder: &str) -> Vec<BreadcrumbItem> {
@@ -378,18 +340,6 @@ pub fn get_folder_indexed_at(folder_path: &str) -> Result<Option<String>, rusqli
     }
 }
 
-/// 批量更新文件夹的文件计数
-pub fn update_folder_file_counts(source_folder: &str) -> Result<(), rusqlite::Error> {
-    let conn = get_connection()?;
-    conn.execute(
-        "UPDATE folder_index SET file_count = (
-            SELECT COUNT(*) FROM file_index
-            WHERE file_index.folder_path = folder_index.path AND file_index.current_path IS NOT NULL
-        ) WHERE source_folder = ?1",
-        params![source_folder],
-    )?;
-    Ok(())
-}
 
 /// 判断文件夹是否已完成文件索引
 /// files_scanned=0: scan_subfolders 只发现了文件夹，文件未扫描
@@ -402,6 +352,17 @@ pub fn is_folder_indexed(folder_path: &str) -> Result<bool, rusqlite::Error> {
         |row| row.get(0),
     )?;
     Ok(scanned)
+}
+
+/// 判断源文件夹是否已完成索引（是否有任何 files_scanned=1 的记录）
+pub fn is_source_folder_indexed(source_folder: &str) -> Result<bool, rusqlite::Error> {
+    let conn = get_connection()?;
+    let indexed: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM folder_index WHERE (path = ?1 OR path LIKE ?1 || '/%') AND files_scanned = 1",
+        params![source_folder],
+        |row| row.get(0),
+    )?;
+    Ok(indexed)
 }
 
 /// 清除指定源文件夹下的所有文件索引（用于强制重建）
