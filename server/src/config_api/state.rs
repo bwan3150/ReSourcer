@@ -18,6 +18,7 @@ pub async fn get_state() -> Result<HttpResponse> {
         "source_folder": state.source_folder,
         "hidden_folders": state.hidden_folders,
         "backup_source_folders": state.backup_source_folders,
+        "ignored_folders": state.ignored_folders,
         "presets": presets
     })))
 }
@@ -32,6 +33,11 @@ pub async fn save_settings(req: web::Json<SaveSettingsRequest>) -> Result<HttpRe
     // 更新源文件夹
     state.source_folder = req.source_folder.clone();
     state.hidden_folders = req.hidden_folders.clone();
+
+    // 更新忽略文件夹（如果请求中包含）
+    if let Some(ref ignored) = req.ignored_folders {
+        state.ignored_folders = ignored.clone();
+    }
 
     // 验证源文件夹存在
     let source_path = Path::new(&state.source_folder);

@@ -11,6 +11,16 @@ pub struct AppState {
     pub backup_source_folders: Vec<String>, // 备用源文件夹列表
     #[serde(default = "default_use_cookies")]
     pub use_cookies: bool, // 下载器是否使用cookies
+    #[serde(default = "default_ignored_folders")]
+    pub ignored_folders: Vec<String>, // 忽略的文件夹列表（扫描和查询时过滤）
+}
+
+fn default_ignored_folders() -> Vec<String> {
+    vec![
+        "@eaDir".to_string(),
+        "#recycle".to_string(),
+        "$RECYCLE.BIN".to_string(),
+    ]
 }
 
 fn default_use_cookies() -> bool {
@@ -30,6 +40,7 @@ pub struct SaveSettingsRequest {
     pub source_folder: String,
     pub categories: Vec<String>,
     pub hidden_folders: Vec<String>,
+    pub ignored_folders: Option<Vec<String>>,
 }
 
 /// 下载器配置响应

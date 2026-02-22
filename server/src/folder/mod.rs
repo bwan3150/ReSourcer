@@ -4,7 +4,7 @@ mod list;
 mod create;
 mod reorder;
 mod open;
-mod utils;
+pub mod utils;
 
 use actix_web::web;
 

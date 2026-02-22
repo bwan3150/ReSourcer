@@ -41,7 +41,7 @@ fn get_gallery_folders() -> Result<HttpResponse> {
         }
     }
 
-    // 2. 添加分类文件夹（排除隐藏文件夹）
+    // 2. 添加分类文件夹（排除隐藏文件夹和忽略文件夹）
     if let Ok(entries) = fs::read_dir(&config.source_folder) {
         for entry in entries.flatten() {
             if let Ok(metadata) = entry.metadata() {
@@ -50,6 +50,11 @@ fn get_gallery_folders() -> Result<HttpResponse> {
 
                     // 跳过隐藏文件夹
                     if config.hidden_folders.contains(&folder_name) {
+                        continue;
+                    }
+
+                    // 跳过忽略文件夹（NAS 系统文件夹等）
+                    if config.ignored_folders.contains(&folder_name) {
                         continue;
                     }
 
@@ -89,8 +94,10 @@ fn get_subfolders(source_folder: &str) -> Result<HttpResponse> {
             if let Ok(metadata) = entry.metadata() {
                 if metadata.is_dir() {
                     let folder_name = entry.file_name().to_string_lossy().to_string();
-                    // 跳过隐藏文件夹（以.开头的）
-                    if !folder_name.starts_with('.') {
+                    // 跳过隐藏文件夹（以.开头的）和忽略文件夹
+                    if !folder_name.starts_with('.')
+                        && !state.ignored_folders.contains(&folder_name)
+                    {
                         let hidden = state.hidden_folders.contains(&folder_name);
 
                         // 统计文件夹中的文件数量

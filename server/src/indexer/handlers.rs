@@ -182,6 +182,11 @@ pub async fn folders(
     let source_folder = query.source_folder.clone();
 
     let result = tokio::task::spawn_blocking(move || -> FoldersResult {
+        // 读取 ignored_folders 配置
+        let ignored_folders = crate::config_api::storage::load_config()
+            .map(|c| c.ignored_folders)
+            .unwrap_or_default();
+
         if let Some(ref parent) = parent_path {
             // 每次都扫描子文件夹（upsert 安全，确保新增子文件夹被发现）
             let source = source_folder.as_deref()
@@ -194,6 +199,8 @@ pub async fn folders(
 
             match storage::get_subfolders(parent) {
                 Ok(mut folders) => {
+                    // 过滤 ignored_folders 并使用文件系统实时计数
+                    filter_and_recount(&mut folders, &ignored_folders);
                     apply_subfolder_order(&mut folders, parent);
                     FoldersResult::Ok(folders)
                 }
@@ -202,6 +209,8 @@ pub async fn folders(
         } else if let Some(ref source) = source_folder {
             match storage::get_subfolders(source) {
                 Ok(mut folders) => {
+                    // 过滤 ignored_folders 并使用文件系统实时计数
+                    filter_and_recount(&mut folders, &ignored_folders);
                     apply_subfolder_order(&mut folders, source);
                     FoldersResult::Ok(folders)
                 }
@@ -231,6 +240,20 @@ pub async fn breadcrumb(
 
     let crumbs = storage::get_breadcrumb(&folder_path, &source_folder);
     Ok(HttpResponse::Ok().json(crumbs))
+}
+
+/// 过滤 ignored_folders 并使用文件系统实时计数替代 DB 中的 file_count
+fn filter_and_recount(folders: &mut Vec<IndexedFolder>, ignored_folders: &[String]) {
+    use crate::folder::utils::count_files_in_folder;
+
+    // 过滤掉 ignored_folders 中的文件夹
+    folders.retain(|f| !ignored_folders.contains(&f.name));
+
+    // 使用文件系统实时计数
+    for folder in folders.iter_mut() {
+        let path = std::path::Path::new(&folder.path);
+        folder.file_count = count_files_in_folder(path) as i64;
+    }
 }
 
 /// 对子文件夹列表应用保存的排序

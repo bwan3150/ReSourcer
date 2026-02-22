@@ -215,6 +215,11 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
         return Err(format!("源文件夹不存在: {}", source_folder).into());
     }
 
+    // 读取 ignored_folders 配置
+    let ignored_folders = crate::config_api::storage::load_config()
+        .map(|c| c.ignored_folders)
+        .unwrap_or_default();
+
     let now = Utc::now().to_rfc3339();
     let mut scanned_files: u64 = 0;
     let mut scanned_folders: u64 = 0;
@@ -227,15 +232,23 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
     conn.execute_batch("BEGIN")?;
 
     // 递归遍历
-    for entry in WalkDir::new(source_folder).into_iter().filter_map(|e| e.ok()) {
-        let entry_path = entry.path();
-
-        // 跳过隐藏目录（.git, .Trash 等），但允许隐藏文件被索引
-        if let Some(name) = entry_path.file_name().and_then(|n| n.to_str()) {
-            if name.starts_with('.') && entry_path.is_dir() {
-                continue;
+    for entry in WalkDir::new(source_folder).into_iter().filter_entry(|e| {
+        // WalkDir filter_entry：返回 false 会跳过该目录及其所有子目录
+        if let Some(name) = e.file_name().to_str() {
+            if e.file_type().is_dir() {
+                // 跳过隐藏目录
+                if name.starts_with('.') {
+                    return false;
+                }
+                // 跳过 ignored_folders
+                if ignored_folders.iter().any(|ig| ig == name) {
+                    return false;
+                }
             }
         }
+        true
+    }).filter_map(|e| e.ok()) {
+        let entry_path = entry.path();
 
         if entry_path.is_dir() {
             let dir_str = entry_path.to_string_lossy().to_string();

@@ -191,6 +191,12 @@ pub fn init_db() -> SqliteResult<()> {
     conn.execute("CREATE INDEX IF NOT EXISTS idx_file_tags_file ON file_tags(file_uuid)", [])?;
     conn.execute("CREATE INDEX IF NOT EXISTS idx_file_tags_tag ON file_tags(tag_id)", [])?;
 
+    // 迁移：为 config 表添加 ignored_folders 列（NAS 系统文件夹过滤）
+    let _ = conn.execute(
+        "ALTER TABLE config ADD COLUMN ignored_folders TEXT NOT NULL DEFAULT '[\"@eaDir\",\"#recycle\",\"$RECYCLE.BIN\"]'",
+        [],
+    );
+
     // 确保 config 表有初始行
     conn.execute(
         "INSERT OR IGNORE INTO config (id, hidden_folders, use_cookies) VALUES (1, '[]', 1)",
