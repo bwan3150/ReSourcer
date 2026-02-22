@@ -35,14 +35,14 @@ pub struct FilesResponse {
 /// 重命名文件请求
 #[derive(Debug, Deserialize)]
 pub struct RenameFileRequest {
-    pub file_path: String,
+    pub uuid: String,
     pub new_name: String,
 }
 
 /// 移动文件请求
 #[derive(Debug, Deserialize)]
 pub struct MoveFileRequest {
-    pub file_path: String,
+    pub uuid: String,
     pub target_folder: String,
     #[serde(default)]
     pub new_name: Option<String>,  // 可选：移动时同时重命名
@@ -52,6 +52,7 @@ pub struct MoveFileRequest {
 #[derive(Debug, Serialize)]
 pub struct FileOperationResponse {
     pub status: String,
+    pub uuid: Option<String>,
     pub new_path: Option<String>,
 }
 

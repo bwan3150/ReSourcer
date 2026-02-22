@@ -157,24 +157,25 @@ struct FileListResponse: Codable {
 
 /// 文件重命名请求
 struct FileRenameRequest: Codable {
-    let filePath: String
+    let uuid: String
     let newName: String
 }
 
 /// 文件重命名响应
 struct FileRenameResponse: Codable {
     let status: String
+    let uuid: String
     let newPath: String
 }
 
 /// 文件移动请求
 struct FileMoveRequest: Codable {
-    let filePath: String
+    let uuid: String
     let targetFolder: String
     let newName: String?
 
-    init(filePath: String, targetFolder: String, newName: String? = nil) {
-        self.filePath = filePath
+    init(uuid: String, targetFolder: String, newName: String? = nil) {
+        self.uuid = uuid
         self.targetFolder = targetFolder
         self.newName = newName
     }
@@ -183,6 +184,7 @@ struct FileMoveRequest: Codable {
 /// 文件移动响应
 struct FileMoveResponse: Codable {
     let status: String
+    let uuid: String
     let newPath: String
 }
 

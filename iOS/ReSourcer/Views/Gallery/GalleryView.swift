@@ -855,10 +855,10 @@ struct GalleryView: View {
 
 
     private func performRename() async {
-        guard let file = selectedFile, !renameText.isEmpty else { return }
+        guard let file = selectedFile, let uuid = file.uuid, !renameText.isEmpty else { return }
         let newName = renameText + file.extension
         do {
-            _ = try await apiService.file.renameFile(at: file.path, to: newName)
+            _ = try await apiService.file.renameFile(uuid: uuid, to: newName)
             GlassAlertManager.shared.showSuccess("重命名成功")
             await refreshFiles()
         } catch {
@@ -867,11 +867,20 @@ struct GalleryView: View {
     }
 
     private func saveFileToDevice(_ file: FileInfo) {
-        guard let contentURL = apiService.preview.getContentURL(
-            for: file.path,
-            baseURL: apiService.baseURL,
-            apiKey: apiService.apiKey
-        ) else {
+        let contentURL: URL? = if let uuid = file.uuid {
+            apiService.preview.getContentURL(
+                uuid: uuid,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        } else {
+            apiService.preview.getContentURL(
+                for: file.path,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        }
+        guard let contentURL else {
             GlassAlertManager.shared.showError("无法获取文件地址")
             return
         }
@@ -1107,9 +1116,9 @@ struct MoveSheetView: View {
     }
 
     private func moveToPath(_ path: String, name: String) async {
-        guard let file else { return }
+        guard let file, let uuid = file.uuid else { return }
         do {
-            _ = try await apiService.file.moveFile(at: file.path, to: path)
+            _ = try await apiService.file.moveFile(uuid: uuid, to: path)
             await onMoved(name)
         } catch {
             GlassAlertManager.shared.showError("移动失败", message: error.localizedDescription)

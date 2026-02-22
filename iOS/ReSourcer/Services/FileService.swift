@@ -28,24 +28,24 @@ actor FileService {
 
     /// 重命名文件
     /// - Parameters:
-    ///   - filePath: 文件完整路径
+    ///   - uuid: 文件 UUID
     ///   - newName: 新文件名（不含路径）
-    /// - Returns: 新文件路径
-    func renameFile(at filePath: String, to newName: String) async throws -> String {
-        let request = FileRenameRequest(filePath: filePath, newName: newName)
+    /// - Returns: 重命名响应（含 uuid + newPath）
+    func renameFile(uuid: String, to newName: String) async throws -> FileRenameResponse {
+        let request = FileRenameRequest(uuid: uuid, newName: newName)
         let response: FileRenameResponse = try await networkManager.request(.fileRename, body: request)
-        return response.newPath
+        return response
     }
 
     /// 移动文件到其他文件夹
     /// - Parameters:
-    ///   - filePath: 源文件完整路径
+    ///   - uuid: 文件 UUID
     ///   - targetFolder: 目标文件夹路径
     ///   - newName: 可选的新文件名
-    /// - Returns: 新文件路径
-    func moveFile(at filePath: String, to targetFolder: String, newName: String? = nil) async throws -> String {
-        let request = FileMoveRequest(filePath: filePath, targetFolder: targetFolder, newName: newName)
+    /// - Returns: 移动响应（含 uuid + newPath）
+    func moveFile(uuid: String, to targetFolder: String, newName: String? = nil) async throws -> FileMoveResponse {
+        let request = FileMoveRequest(uuid: uuid, targetFolder: targetFolder, newName: newName)
         let response: FileMoveResponse = try await networkManager.request(.fileMove, body: request)
-        return response.newPath
+        return response
     }
 }

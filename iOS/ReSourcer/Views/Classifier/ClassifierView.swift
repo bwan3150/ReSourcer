@@ -410,6 +410,12 @@ struct ClassifierView: View {
                 // 缩略图模式 / 非视频原图（图片/GIF/其他有缩略图的文件）
                 let previewURL: URL? = if useThumbnail || file.isVideo {
                     file.thumbnailURL(apiService: apiService, size: 600)
+                } else if let uuid = file.uuid {
+                    apiService.preview.getContentURL(
+                        uuid: uuid,
+                        baseURL: apiService.baseURL,
+                        apiKey: apiService.apiKey
+                    )
                 } else {
                     apiService.preview.getContentURL(
                         for: file.path,
@@ -854,11 +860,20 @@ struct ClassifierView: View {
 
     private func setupVideoPlayer(for file: FileInfo) {
         cleanupVideoPlayer()
-        guard let url = apiService.preview.getContentURL(
-            for: file.path,
-            baseURL: apiService.baseURL,
-            apiKey: apiService.apiKey
-        ) else { return }
+        let url: URL? = if let uuid = file.uuid {
+            apiService.preview.getContentURL(
+                uuid: uuid,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        } else {
+            apiService.preview.getContentURL(
+                for: file.path,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        }
+        guard let url else { return }
 
         let player = AVPlayer(url: url)
         videoPlayer = player
@@ -923,22 +938,21 @@ struct ClassifierView: View {
     }
 
     private func classifyToCategory(_ category: FolderInfo) {
-        guard let file = currentFile else { return }
+        guard let file = currentFile, let uuid = file.uuid else { return }
 
         GlassAlertManager.shared.showQuickLoading()
         Task {
             do {
                 let targetPath = "\(currentPath)/\(category.name)"
-                let newPath = try await apiService.file.moveFile(at: file.path, to: targetPath)
+                _ = try await apiService.file.moveFile(uuid: uuid, to: targetPath)
 
                 GlassAlertManager.shared.hideQuickLoading()
 
-                // 记录操作历史
+                // 记录操作历史（UUID 不变，撤销时仍可用）
                 let operation = ClassifyOperation(
                     file: file,
                     fromIndex: currentIndex,
-                    toCategory: category.name,
-                    newPath: newPath
+                    toCategory: category.name
                 )
                 operationHistory.append(operation)
 
@@ -974,18 +988,19 @@ struct ClassifierView: View {
     }
 
     private func renameCurrentFile() {
-        guard let file = currentFile, !renameText.isEmpty, renameText != file.baseName else { return }
+        guard let file = currentFile, let uuid = file.uuid,
+              !renameText.isEmpty, renameText != file.baseName else { return }
 
         let newName = renameText + file.extension
         Task {
             do {
-                let newPath = try await apiService.file.renameFile(at: file.path, to: newName)
+                let response = try await apiService.file.renameFile(uuid: uuid, to: newName)
                 // 更新本地文件列表中的路径
-                if let idx = files.firstIndex(where: { $0.path == file.path }) {
+                if let idx = files.firstIndex(where: { $0.id == file.id }) {
                     files[idx] = FileInfo(
                         uuid: file.uuid,
                         name: newName,
-                        path: newPath,
+                        path: response.newPath,
                         fileType: file.fileType,
                         extension: file.extension,
                         size: file.size,
@@ -1040,8 +1055,8 @@ struct ClassifierView: View {
 
         Task {
             do {
-                // 移回原位置
-                _ = try await apiService.file.moveFile(at: lastOp.newPath, to: currentPath)
+                // 移回原位置（UUID 不变，文件移动后仍有效）
+                _ = try await apiService.file.moveFile(uuid: lastOp.file.uuid!, to: currentPath)
 
                 // 恢复目标文件夹计数 -1
                 if let idx = categories.firstIndex(where: { $0.name == lastOp.toCategory }) {
@@ -1092,11 +1107,20 @@ struct ClassifierPDFPreview: View {
             }
         }
         .task {
-            guard let url = apiService.preview.getContentURL(
-                for: file.path,
-                baseURL: apiService.baseURL,
-                apiKey: apiService.apiKey
-            ) else {
+            let url: URL? = if let uuid = file.uuid {
+                apiService.preview.getContentURL(
+                    uuid: uuid,
+                    baseURL: apiService.baseURL,
+                    apiKey: apiService.apiKey
+                )
+            } else {
+                apiService.preview.getContentURL(
+                    for: file.path,
+                    baseURL: apiService.baseURL,
+                    apiKey: apiService.apiKey
+                )
+            }
+            guard let url else {
                 isLoading = false
                 return
             }
@@ -1111,12 +1135,11 @@ struct ClassifierPDFPreview: View {
 
 // MARK: - Classify Operation
 
-/// 分类操作记录（用于撤销）
+/// 分类操作记录（用于撤销，UUID 不变所以不需要记录 newPath）
 struct ClassifyOperation {
     let file: FileInfo
     let fromIndex: Int
     let toCategory: String
-    let newPath: String
 }
 
 // MARK: - Preview

@@ -145,7 +145,7 @@ actor PreviewService {
         return URL(string: urlString)
     }
 
-    /// 获取文件内容 URL（用于视频播放等）
+    /// 获取文件内容 URL（基于文件路径，兼容旧 API 调用方）
     /// - Parameters:
     ///   - path: 文件路径
     ///   - baseURL: 服务器基础 URL
@@ -154,6 +154,18 @@ actor PreviewService {
     nonisolated func getContentURL(for path: String, baseURL: URL, apiKey: String) -> URL? {
         let encodedPath = path.urlEncoded
         let urlString = "\(baseURL.absoluteString)/api/preview/content/\(encodedPath)?key=\(apiKey)"
+        return URL(string: urlString)
+    }
+
+    /// 获取文件内容 URL（基于 UUID，索引系统优先使用）
+    /// - Parameters:
+    ///   - uuid: 文件唯一标识符
+    ///   - baseURL: 服务器基础 URL
+    ///   - apiKey: API Key
+    /// - Returns: 完整的内容 URL
+    nonisolated func getContentURL(uuid: String, baseURL: URL, apiKey: String) -> URL? {
+        let encodedUuid = uuid.urlEncoded
+        let urlString = "\(baseURL.absoluteString)/api/preview/content/_?uuid=\(encodedUuid)&key=\(apiKey)"
         return URL(string: urlString)
     }
 

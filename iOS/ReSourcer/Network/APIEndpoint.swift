@@ -60,6 +60,7 @@ enum APIEndpoint {
     case previewThumbnail(path: String, size: Int) // GET /api/preview/thumbnail?path=&size=
     case previewThumbnailByUuid(uuid: String, size: Int) // GET /api/preview/thumbnail?uuid=&size=
     case previewContent(path: String)        // GET  /api/preview/content/{path}
+    case previewContentByUuid(uuid: String)  // GET  /api/preview/content/_?uuid=
 
     // MARK: - Indexer 索引相关
     case indexerFiles(folderPath: String, offset: Int, limit: Int, fileType: String?, sort: String?)
@@ -177,6 +178,8 @@ enum APIEndpoint {
             return "/api/preview/thumbnail?uuid=\(uuid.urlEncoded)&size=\(size)"
         case .previewContent(let path):
             return "/api/preview/content/\(path.urlEncoded)"
+        case .previewContentByUuid(let uuid):
+            return "/api/preview/content/_?uuid=\(uuid.urlEncoded)"
 
         // Indexer
         case .indexerFiles(let folderPath, let offset, let limit, let fileType, let sort):
@@ -263,7 +266,7 @@ enum APIEndpoint {
              .fileInfo, .folderList,
              .downloadTasks, .downloadTaskStatus, .downloadHistory,
              .uploadTasks, .uploadTaskStatus, .uploadHistory,
-             .previewFiles, .previewThumbnail, .previewThumbnailByUuid, .previewContent,
+             .previewFiles, .previewThumbnail, .previewThumbnailByUuid, .previewContent, .previewContentByUuid,
              .indexerFiles, .indexerFile, .indexerFolders, .indexerStatus, .indexerBreadcrumb,
              .tagList, .tagGetFileTags,
              .configState, .configDownload, .configSources:

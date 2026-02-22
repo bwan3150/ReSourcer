@@ -6,9 +6,16 @@ use super::models::{MoveFileRequest, FileOperationResponse};
 use super::utils::get_unique_path;
 
 /// POST /api/file/move
-/// 移动文件到其他文件夹
+/// 移动文件到其他文件夹（通过 UUID 标识）
 pub async fn move_file(req: web::Json<MoveFileRequest>) -> Result<HttpResponse> {
-    let file_path = Path::new(&req.file_path);
+    // 通过 UUID 查询索引获取当前路径
+    let indexed = crate::indexer::storage::get_file_by_uuid(&req.uuid)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(format!("查询索引失败: {}", e)))?
+        .ok_or_else(|| actix_web::error::ErrorNotFound("UUID 对应的文件不存在"))?;
+
+    let current_path = indexed.current_path
+        .ok_or_else(|| actix_web::error::ErrorNotFound("文件路径为空"))?;
+    let file_path = Path::new(&current_path);
     let target_folder = Path::new(&req.target_folder);
 
     // 检查文件是否存在
@@ -35,25 +42,23 @@ pub async fn move_file(req: web::Json<MoveFileRequest>) -> Result<HttpResponse> 
     let target_path = get_unique_path(target_folder, &file_name);
 
     // 移动文件
-    let old_path_str = file_path.to_string_lossy().to_string();
     fs::rename(file_path, &target_path)
         .map_err(|e| actix_web::error::ErrorInternalServerError(format!("移动失败: {}", e)))?;
 
-    // 更新文件索引（如果已索引）
+    // 更新文件索引
     let new_path_str = target_path.to_string_lossy().to_string();
     let new_folder_str = target_folder.to_string_lossy().to_string();
     let new_file_name = target_path.file_name()
         .unwrap_or_default()
         .to_string_lossy()
         .to_string();
-    if let Ok(Some(indexed)) = crate::indexer::storage::get_file_by_path(&old_path_str) {
-        let _ = crate::indexer::storage::update_file_path(
-            &indexed.uuid, &new_path_str, &new_folder_str, &new_file_name,
-        );
-    }
+    let _ = crate::indexer::storage::update_file_path(
+        &req.uuid, &new_path_str, &new_folder_str, &new_file_name,
+    );
 
     Ok(HttpResponse::Ok().json(FileOperationResponse {
         status: "success".to_string(),
+        uuid: Some(req.uuid.clone()),
         new_path: Some(new_path_str),
     }))
 }

@@ -590,11 +590,20 @@ struct FilePreviewView: View {
 
     private func captureVideoScreenshot() {
         guard let file = currentFile else { return }
-        guard let url = apiService.preview.getContentURL(
-            for: file.path,
-            baseURL: apiService.baseURL,
-            apiKey: apiService.apiKey
-        ) else {
+        let url: URL? = if let uuid = file.uuid {
+            apiService.preview.getContentURL(
+                uuid: uuid,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        } else {
+            apiService.preview.getContentURL(
+                for: file.path,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        }
+        guard let url else {
             GlassAlertManager.shared.showError("无法获取文件地址")
             return
         }
@@ -667,11 +676,20 @@ struct FilePreviewView: View {
     // MARK: - 文件操作
 
     private func saveFileToDevice(_ file: FileInfo) {
-        guard let contentURL = apiService.preview.getContentURL(
-            for: file.path,
-            baseURL: apiService.baseURL,
-            apiKey: apiService.apiKey
-        ) else {
+        let contentURL: URL? = if let uuid = file.uuid {
+            apiService.preview.getContentURL(
+                uuid: uuid,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        } else {
+            apiService.preview.getContentURL(
+                for: file.path,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        }
+        guard let contentURL else {
             GlassAlertManager.shared.showError("无法获取文件地址")
             return
         }
@@ -750,12 +768,12 @@ struct FilePreviewView: View {
 
 
     private func performRename() async {
-        guard let file = currentFile, !renameText.isEmpty else { return }
+        guard let file = currentFile, let uuid = file.uuid, !renameText.isEmpty else { return }
         let newName = renameText + file.extension
 
         isOperating = true
         do {
-            _ = try await apiService.file.renameFile(at: file.path, to: newName)
+            _ = try await apiService.file.renameFile(uuid: uuid, to: newName)
             GlassAlertManager.shared.showSuccess("重命名成功")
             handlePostOperation()
         } catch {
@@ -792,11 +810,19 @@ struct ImagePreviewContent: View {
     @State private var gifLoaded = false
 
     var body: some View {
-        let contentURL = apiService.preview.getContentURL(
-            for: file.path,
-            baseURL: apiService.baseURL,
-            apiKey: apiService.apiKey
-        )
+        let contentURL: URL? = if let uuid = file.uuid {
+            apiService.preview.getContentURL(
+                uuid: uuid,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        } else {
+            apiService.preview.getContentURL(
+                for: file.path,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        }
 
         GeometryReader { geometry in
             if file.isGif {
@@ -1195,11 +1221,20 @@ struct VideoPreviewContent: View {
     // MARK: - 播放器管理
 
     private func setupPlayer() {
-        guard let url = apiService.preview.getContentURL(
-            for: file.path,
-            baseURL: apiService.baseURL,
-            apiKey: apiService.apiKey
-        ) else { return }
+        let url: URL? = if let uuid = file.uuid {
+            apiService.preview.getContentURL(
+                uuid: uuid,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        } else {
+            apiService.preview.getContentURL(
+                for: file.path,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        }
+        guard let url else { return }
 
         isBuffering = true
         let avPlayer = AVPlayer(url: url)
@@ -1418,11 +1453,20 @@ struct AudioPreviewContent: View {
     // MARK: - 播放器管理
 
     private func setupPlayer() {
-        guard let url = apiService.preview.getContentURL(
-            for: file.path,
-            baseURL: apiService.baseURL,
-            apiKey: apiService.apiKey
-        ) else { return }
+        let url: URL? = if let uuid = file.uuid {
+            apiService.preview.getContentURL(
+                uuid: uuid,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        } else {
+            apiService.preview.getContentURL(
+                for: file.path,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        }
+        guard let url else { return }
 
         let avPlayer = AVPlayer(url: url)
         avPlayer.isMuted = isMuted
@@ -1529,11 +1573,20 @@ struct PDFPreviewContent: View {
     }
 
     private func loadPDF() async {
-        guard let url = apiService.preview.getContentURL(
-            for: file.path,
-            baseURL: apiService.baseURL,
-            apiKey: apiService.apiKey
-        ) else {
+        let url: URL? = if let uuid = file.uuid {
+            apiService.preview.getContentURL(
+                uuid: uuid,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        } else {
+            apiService.preview.getContentURL(
+                for: file.path,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        }
+        guard let url else {
             loadError = "无法获取文件地址"
             isLoading = false
             return
