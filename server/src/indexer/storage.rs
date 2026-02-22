@@ -38,14 +38,15 @@ pub fn upsert_file(file: &IndexedFile) -> Result<(), rusqlite::Error> {
     Ok(())
 }
 
-/// 插入或更新文件索引（使用外部连接，用于事务批量操作）
-pub fn upsert_file_with_conn(conn: &Connection, file: &IndexedFile) -> Result<(), rusqlite::Error> {
+/// 快速 upsert 文件索引（基于 current_path 冲突处理）
+/// - 新文件：直接插入（uuid 由调用方生成）
+/// - 已有文件（路径已存在）：更新元数据，保留已有的 uuid、fingerprint、source_url
+/// 用于不计算指纹的快速扫描场景
+pub fn fast_upsert_file_with_conn(conn: &Connection, file: &IndexedFile) -> Result<(), rusqlite::Error> {
     conn.execute(
         "INSERT INTO file_index (uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at, source_url)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
-         ON CONFLICT(uuid) DO UPDATE SET
-            fingerprint = excluded.fingerprint,
-            current_path = excluded.current_path,
+         ON CONFLICT(current_path) DO UPDATE SET
             folder_path = excluded.folder_path,
             file_name = excluded.file_name,
             file_type = excluded.file_type,
@@ -72,19 +73,20 @@ pub fn upsert_file_with_conn(conn: &Connection, file: &IndexedFile) -> Result<()
     Ok(())
 }
 
-/// 插入或更新文件夹索引
+/// 插入或更新文件夹索引（标记 files_scanned=1，表示文件已扫描过）
 pub fn upsert_folder(folder: &IndexedFolder) -> Result<(), rusqlite::Error> {
     let conn = get_connection()?;
     conn.execute(
-        "INSERT INTO folder_index (path, parent_path, source_folder, name, depth, file_count, indexed_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+        "INSERT INTO folder_index (path, parent_path, source_folder, name, depth, file_count, indexed_at, files_scanned)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1)
          ON CONFLICT(path) DO UPDATE SET
             parent_path = excluded.parent_path,
             source_folder = excluded.source_folder,
             name = excluded.name,
             depth = excluded.depth,
             file_count = excluded.file_count,
-            indexed_at = excluded.indexed_at",
+            indexed_at = excluded.indexed_at,
+            files_scanned = 1",
         params![
             folder.path,
             folder.parent_path,
@@ -208,21 +210,6 @@ pub fn get_indexed_files_for_folder(folder_path: &str) -> Result<std::collection
     Ok(map)
 }
 
-/// 查找指纹匹配的孤儿文件（current_path 为 NULL，即文件已被标记为缺失）
-pub fn find_orphan_by_fingerprint(fingerprint: &str) -> Result<Option<IndexedFile>, rusqlite::Error> {
-    let conn = get_connection()?;
-    let mut stmt = conn.prepare(
-        "SELECT uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at, source_url
-         FROM file_index WHERE fingerprint = ?1 AND current_path IS NULL LIMIT 1"
-    )?;
-    let mut rows = stmt.query_map(params![fingerprint], map_file_row)?;
-    match rows.next() {
-        Some(Ok(file)) => Ok(Some(file)),
-        Some(Err(e)) => Err(e),
-        None => Ok(None),
-    }
-}
-
 /// 更新文件路径（移动/重命名时使用）
 pub fn update_file_path(uuid: &str, new_path: &str, new_folder: &str, new_name: &str) -> Result<(), rusqlite::Error> {
     let conn = get_connection()?;
@@ -281,32 +268,37 @@ pub fn mark_missing_with_conn(conn: &Connection, folder_path: &str, still_existi
     Ok(())
 }
 
-/// 查找指纹匹配的孤儿文件（使用外部连接，用于事务批量操作）
-pub fn find_orphan_by_fingerprint_with_conn(conn: &Connection, fingerprint: &str) -> Result<Option<IndexedFile>, rusqlite::Error> {
-    let mut stmt = conn.prepare(
-        "SELECT uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at, source_url
-         FROM file_index WHERE fingerprint = ?1 AND current_path IS NULL LIMIT 1"
-    )?;
-    let mut rows = stmt.query_map(params![fingerprint], map_file_row)?;
-    match rows.next() {
-        Some(Ok(file)) => Ok(Some(file)),
-        Some(Err(e)) => Err(e),
-        None => Ok(None),
-    }
-}
-
-/// 插入或更新文件夹索引（使用外部连接，用于事务批量操作）
+/// 插入或更新文件夹索引（使用外部连接，标记 files_scanned=1）
 pub fn upsert_folder_with_conn(conn: &Connection, folder: &IndexedFolder) -> Result<(), rusqlite::Error> {
     conn.execute(
-        "INSERT INTO folder_index (path, parent_path, source_folder, name, depth, file_count, indexed_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+        "INSERT INTO folder_index (path, parent_path, source_folder, name, depth, file_count, indexed_at, files_scanned)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1)
          ON CONFLICT(path) DO UPDATE SET
             parent_path = excluded.parent_path,
             source_folder = excluded.source_folder,
             name = excluded.name,
             depth = excluded.depth,
             file_count = excluded.file_count,
-            indexed_at = excluded.indexed_at",
+            indexed_at = excluded.indexed_at,
+            files_scanned = 1",
+        params![
+            folder.path,
+            folder.parent_path,
+            folder.source_folder,
+            folder.name,
+            folder.depth,
+            folder.file_count,
+            folder.indexed_at,
+        ],
+    )?;
+    Ok(())
+}
+
+/// 仅插入新文件夹，不覆盖已有记录（scan_subfolders 使用，files_scanned=0）
+pub fn insert_folder_if_new(conn: &Connection, folder: &IndexedFolder) -> Result<(), rusqlite::Error> {
+    conn.execute(
+        "INSERT OR IGNORE INTO folder_index (path, parent_path, source_folder, name, depth, file_count, indexed_at, files_scanned)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0)",
         params![
             folder.path,
             folder.parent_path,
@@ -400,19 +392,16 @@ pub fn update_folder_file_counts(source_folder: &str) -> Result<(), rusqlite::Er
 }
 
 /// 判断文件夹是否已完成文件索引
-/// scan_subfolders 创建的记录 depth > 0 且 file_count 初始为 0，
-/// 而 scan_folder 完成后会通过 upsert_folder 更新 indexed_at。
-/// 这里通过检查 folder_index 是否有记录来判断：
-/// - 有记录 = 至少被扫描过一次（可能是空文件夹，也已索引过）
-/// - 无记录 = 从未扫描
+/// files_scanned=0: scan_subfolders 只发现了文件夹，文件未扫描
+/// files_scanned=1: scan_folder/scan_source_folder 已扫描过文件
 pub fn is_folder_indexed(folder_path: &str) -> Result<bool, rusqlite::Error> {
     let conn = get_connection()?;
-    let in_folder_index: bool = conn.query_row(
-        "SELECT COUNT(*) > 0 FROM folder_index WHERE path = ?1",
+    let scanned: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM folder_index WHERE path = ?1 AND files_scanned = 1",
         params![folder_path],
         |row| row.get(0),
     )?;
-    Ok(in_folder_index)
+    Ok(scanned)
 }
 
 /// 清除指定源文件夹下的所有文件索引（用于强制重建）

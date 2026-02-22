@@ -6,7 +6,6 @@ use crate::database::get_connection;
 use crate::preview::models::*;
 use rusqlite::params;
 use super::models::{IndexedFile, IndexedFolder};
-use super::fingerprint::compute_fingerprint;
 use super::storage;
 
 /// 扫描结果
@@ -56,9 +55,11 @@ pub fn needs_rescan(folder_path: &str) -> bool {
     mtime > indexed_time
 }
 
-/// 单文件夹扫描（惰性索引核心）
-/// skip_mark_missing: 后台增量扫描时为 true，跳过标记缺失文件，避免竞态导致文件"消失"
-pub fn scan_folder(folder_path: &str, source_folder: &str, skip_mark_missing: bool) -> Result<Vec<IndexedFile>, Box<dyn std::error::Error + Send + Sync>> {
+/// 单文件夹快速扫描（惰性索引核心）
+/// - 不计算指纹（指纹是首次打开慢的元凶：5000 文件 × 128KB 读取 = 640MB IO）
+/// - 不构建返回值（handler 直接查 DB，Vec<IndexedFile> 从未被使用）
+/// - skip_mark_missing: 后台增量扫描时为 true，避免竞态
+pub fn scan_folder(folder_path: &str, source_folder: &str, skip_mark_missing: bool) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let dir_path = Path::new(folder_path);
     if !dir_path.is_dir() {
         return Err(format!("路径不是目录: {}", folder_path).into());
@@ -66,11 +67,12 @@ pub fn scan_folder(folder_path: &str, source_folder: &str, skip_mark_missing: bo
 
     let now = Utc::now().to_rfc3339();
 
-    // 第一阶段：一次性查出该文件夹所有已索引文件（避免逐个 get_file_by_path 开连接）
+    // 一次性查出该文件夹所有已索引文件的 mtime，用于跳过未变化的文件
     let indexed_map = storage::get_indexed_files_for_folder(folder_path)
         .unwrap_or_default();
 
-    struct FileEntry {
+    // 收集需要 upsert 的文件和所有存在的路径
+    struct NewFile {
         path_str: String,
         ext: String,
         file_type: String,
@@ -78,11 +80,9 @@ pub fn scan_folder(folder_path: &str, source_folder: &str, skip_mark_missing: bo
         file_size: i64,
         created_at: String,
         modified_at: String,
-        fingerprint: Option<String>,
-        existing_file: Option<IndexedFile>,
     }
 
-    let mut file_entries: Vec<FileEntry> = Vec::new();
+    let mut new_files: Vec<NewFile> = Vec::new();
     let mut existing_paths: Vec<String> = Vec::new();
 
     let entries = fs::read_dir(dir_path)?;
@@ -92,12 +92,6 @@ pub fn scan_folder(folder_path: &str, source_folder: &str, skip_mark_missing: bo
             continue;
         }
 
-        let ext = entry_path.extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("")
-            .to_lowercase();
-
-        let file_type = classify_extension(&ext);
         let path_str = entry_path.to_string_lossy().to_string();
         existing_paths.push(path_str.clone());
 
@@ -110,6 +104,18 @@ pub fn scan_folder(folder_path: &str, source_folder: &str, skip_mark_missing: bo
             .map(|t| DateTime::<Utc>::from(t).to_rfc3339())
             .unwrap_or_else(|_| now.clone());
 
+        // mtime 未变 → 跳过（不需要读文件内容、不需要写 DB）
+        if let Some(existing) = indexed_map.get(&path_str) {
+            if existing.modified_at == modified_at {
+                continue;
+            }
+        }
+
+        let ext = entry_path.extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+
         let created_at = metadata.created()
             .map(|t| DateTime::<Utc>::from(t).to_rfc3339())
             .unwrap_or_else(|_| now.clone());
@@ -119,88 +125,43 @@ pub fn scan_folder(folder_path: &str, source_folder: &str, skip_mark_missing: bo
             .to_string_lossy()
             .to_string();
 
-        // 用内存中的 HashMap 检查 mtime，而非逐个查数据库
-        if let Some(existing) = indexed_map.get(&path_str) {
-            if existing.modified_at == modified_at {
-                file_entries.push(FileEntry {
-                    path_str,
-                    ext,
-                    file_type,
-                    file_name,
-                    file_size: metadata.len() as i64,
-                    created_at,
-                    modified_at,
-                    fingerprint: None,
-                    existing_file: Some(existing.clone()),
-                });
-                continue;
-            }
-        }
-
-        // 新文件或已修改 → 计算指纹
-        let fingerprint = match compute_fingerprint(&entry_path) {
-            Ok(fp) => fp,
-            Err(_) => continue,
-        };
-
-        file_entries.push(FileEntry {
+        new_files.push(NewFile {
+            file_type: classify_extension(&ext),
             path_str,
             ext,
-            file_type,
             file_name,
             file_size: metadata.len() as i64,
             created_at,
             modified_at,
-            fingerprint: Some(fingerprint),
-            existing_file: None,
         });
     }
 
-    // 第二阶段：在单个事务中批量写入数据库
+    // 在单个事务中批量写入（只写新增/变更的文件）
     let conn = get_connection()?;
     let tx = conn.unchecked_transaction()?;
 
-    let mut indexed_files = Vec::new();
-
-    for entry in &file_entries {
-        if let Some(ref existing) = entry.existing_file {
-            indexed_files.push(existing.clone());
-            continue;
-        }
-
-        let fingerprint = entry.fingerprint.as_ref().unwrap();
-
-        // 孤儿检测在事务内，避免竞态
-        let file_uuid = if let Ok(Some(orphan)) = storage::find_orphan_by_fingerprint_with_conn(&tx, fingerprint) {
-            orphan.uuid
-        } else {
-            uuid::Uuid::new_v4().to_string()
-        };
-
+    for file in &new_files {
+        // fast_upsert: ON CONFLICT(current_path) 保留已有 uuid 和 fingerprint
         let indexed_file = IndexedFile {
-            uuid: file_uuid,
-            fingerprint: fingerprint.clone(),
-            current_path: Some(entry.path_str.clone()),
+            uuid: uuid::Uuid::new_v4().to_string(),
+            fingerprint: String::new(), // 空指纹，不计算
+            current_path: Some(file.path_str.clone()),
             folder_path: folder_path.to_string(),
-            file_name: entry.file_name.clone(),
-            file_type: entry.file_type.clone(),
-            extension: entry.ext.clone(),
-            file_size: entry.file_size,
-            created_at: entry.created_at.clone(),
-            modified_at: entry.modified_at.clone(),
+            file_name: file.file_name.clone(),
+            file_type: file.file_type.clone(),
+            extension: file.ext.clone(),
+            file_size: file.file_size,
+            created_at: file.created_at.clone(),
+            modified_at: file.modified_at.clone(),
             indexed_at: now.clone(),
             source_url: None,
         };
 
-        if let Err(e) = storage::upsert_file_with_conn(&tx, &indexed_file) {
-            eprintln!("索引文件失败: {} - {}", entry.path_str, e);
-            continue;
+        if let Err(e) = storage::fast_upsert_file_with_conn(&tx, &indexed_file) {
+            eprintln!("索引文件失败: {} - {}", file.path_str, e);
         }
-
-        indexed_files.push(indexed_file);
     }
 
-    // 只有前台同步扫描才标记缺失文件，后台增量扫描跳过
     if !skip_mark_missing {
         if let Err(e) = storage::mark_missing_with_conn(&tx, folder_path, &existing_paths) {
             eprintln!("标记缺失文件失败: {}", e);
@@ -211,8 +172,7 @@ pub fn scan_folder(folder_path: &str, source_folder: &str, skip_mark_missing: bo
     let depth = if folder_path == source_folder {
         0
     } else {
-        let source_path = Path::new(source_folder);
-        Path::new(folder_path).strip_prefix(source_path)
+        Path::new(folder_path).strip_prefix(Path::new(source_folder))
             .map(|rel| rel.components().count() as i32)
             .unwrap_or(0)
     };
@@ -239,14 +199,10 @@ pub fn scan_folder(folder_path: &str, source_folder: &str, skip_mark_missing: bo
         file_count: existing_paths.len() as i64,
         indexed_at: now,
     };
-    if let Err(e) = storage::upsert_folder_with_conn(&tx, &folder) {
-        eprintln!("更新文件夹索引失败: {}", e);
-    }
+    storage::upsert_folder_with_conn(&tx, &folder)?;
 
-    // 提交事务：所有 upsert + mark_missing 原子生效
     tx.commit()?;
-
-    Ok(indexed_files)
+    Ok(())
 }
 
 /// 全量递归扫描源文件夹
@@ -347,26 +303,15 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
                 .map(|t| DateTime::<Utc>::from(t).to_rfc3339())
                 .unwrap_or_else(|_| now.clone());
 
-            let fingerprint = match compute_fingerprint(entry_path) {
-                Ok(fp) => fp,
-                Err(_) => continue,
-            };
-
             let file_name = entry_path.file_name()
                 .unwrap_or_default()
                 .to_string_lossy()
                 .to_string();
 
-            // 移动检测（复用同一连接）
-            let file_uuid = if let Ok(Some(orphan)) = storage::find_orphan_by_fingerprint_with_conn(&conn, &fingerprint) {
-                orphan.uuid
-            } else {
-                uuid::Uuid::new_v4().to_string()
-            };
-
+            // 不计算指纹 — 全量扫描的目的是快速建索引，指纹可以后续按需计算
             let indexed_file = IndexedFile {
-                uuid: file_uuid,
-                fingerprint,
+                uuid: uuid::Uuid::new_v4().to_string(),
+                fingerprint: String::new(),
                 current_path: Some(path_str),
                 folder_path: folder_str,
                 file_name,
@@ -379,7 +324,7 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
                 source_url: None,
             };
 
-            let _ = storage::upsert_file_with_conn(&conn, &indexed_file);
+            let _ = storage::fast_upsert_file_with_conn(&conn, &indexed_file);
             scanned_files += 1;
         }
 
@@ -437,8 +382,6 @@ pub fn index_single_file(file_path: &str, source_folder: &str, source_url: Optio
         }
     }
 
-    let fingerprint = compute_fingerprint(entry_path)?;
-
     let file_name = entry_path.file_name()
         .unwrap_or_default()
         .to_string_lossy()
@@ -448,16 +391,9 @@ pub fn index_single_file(file_path: &str, source_folder: &str, source_url: Optio
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_default();
 
-    // 移动检测：指纹匹配的孤儿文件复用旧 UUID
-    let file_uuid = if let Ok(Some(orphan)) = storage::find_orphan_by_fingerprint(&fingerprint) {
-        orphan.uuid
-    } else {
-        uuid::Uuid::new_v4().to_string()
-    };
-
     let indexed_file = IndexedFile {
-        uuid: file_uuid,
-        fingerprint,
+        uuid: uuid::Uuid::new_v4().to_string(),
+        fingerprint: String::new(),
         current_path: Some(file_path.to_string()),
         folder_path: folder_path.clone(),
         file_name,

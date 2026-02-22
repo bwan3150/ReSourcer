@@ -1,6 +1,5 @@
 // 文件索引模块 — SQLite 文件索引系统
 pub mod models;
-pub mod fingerprint;
 pub mod storage;
 pub mod scanner;
 mod handlers;

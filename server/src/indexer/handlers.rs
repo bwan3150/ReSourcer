@@ -258,14 +258,37 @@ fn find_source_folder(folder_path: &str) -> Option<String> {
 }
 
 /// 扫描并索引一个目录下的直接子文件夹
+/// - 使用 INSERT OR IGNORE：不覆盖已有记录的 file_count 和 files_scanned
+/// - 使用 mtime 缓存：父文件夹未变化时跳过扫描
+/// - 使用单连接：避免每个子文件夹都 get_connection()
 fn scan_subfolders(parent_path: &str, source_folder: &str) -> Result<(), String> {
     let dir_path = std::path::Path::new(parent_path);
     if !dir_path.is_dir() {
         return Ok(());
     }
 
+    // mtime 缓存：如果父文件夹的 mtime 没变，说明子文件夹结构没变，跳过
+    if let Ok(Some(indexed_at)) = storage::get_folder_indexed_at(parent_path) {
+        if let Ok(indexed_time) = chrono::DateTime::parse_from_rfc3339(&indexed_at) {
+            let indexed_utc = indexed_time.with_timezone(&chrono::Utc);
+            if let Ok(meta) = std::fs::metadata(dir_path) {
+                if let Ok(mtime) = meta.modified() {
+                    let mtime_utc = chrono::DateTime::<chrono::Utc>::from(mtime);
+                    if mtime_utc <= indexed_utc {
+                        // 文件夹结构未变化，直接返回数据库缓存
+                        return Ok(());
+                    }
+                }
+            }
+        }
+    }
+
     let now = chrono::Utc::now().to_rfc3339();
     let source_path = std::path::Path::new(source_folder);
+
+    // 单连接处理所有子文件夹
+    let conn = crate::database::get_connection()
+        .map_err(|e| format!("数据库连接失败: {}", e))?;
 
     let entries = std::fs::read_dir(dir_path)
         .map_err(|e| format!("读取目录失败: {}", e))?;
@@ -291,8 +314,7 @@ fn scan_subfolders(parent_path: &str, source_folder: &str) -> Result<(), String>
             .to_string_lossy()
             .to_string();
 
-        // file_count 由 scan_folder / scan_source_folder 更新，
-        // 此处不再遍历目录计数（几百个子文件夹 × 几千文件 = 不必要的 IO）
+        // INSERT OR IGNORE：新文件夹才插入，已有的不覆盖（保留 file_count 和 files_scanned）
         let folder = IndexedFolder {
             path: dir_str,
             parent_path: Some(parent_path.to_string()),
@@ -302,10 +324,10 @@ fn scan_subfolders(parent_path: &str, source_folder: &str) -> Result<(), String>
             file_count: 0,
             indexed_at: now.clone(),
         };
-        let _ = storage::upsert_folder(&folder);
+        let _ = storage::insert_folder_if_new(&conn, &folder);
     }
 
-    // 同时确保父文件夹自身也在索引中
+    // 确保父文件夹自身也在索引中（同样 INSERT OR IGNORE）
     let parent_depth = std::path::Path::new(parent_path).strip_prefix(source_path)
         .map(|rel| rel.components().count() as i32)
         .unwrap_or(0);
@@ -329,7 +351,7 @@ fn scan_subfolders(parent_path: &str, source_folder: &str) -> Result<(), String>
         file_count: 0,
         indexed_at: now,
     };
-    let _ = storage::upsert_folder(&parent_folder);
+    let _ = storage::insert_folder_if_new(&conn, &parent_folder);
 
     Ok(())
 }

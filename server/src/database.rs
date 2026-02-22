@@ -136,7 +136,7 @@ pub fn init_db() -> SqliteResult<()> {
         [],
     )?;
     conn.execute("CREATE INDEX IF NOT EXISTS idx_file_folder ON file_index(folder_path)", [])?;
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_file_fingerprint ON file_index(fingerprint)", [])?;
+    // 指纹索引已废弃（指纹功能已移除，留待未来去重功能使用）
     conn.execute("CREATE INDEX IF NOT EXISTS idx_file_modified ON file_index(modified_at)", [])?;
 
     // 迁移：为 file_index 添加 source_url 列（已有数据库兼容）
@@ -158,6 +158,11 @@ pub fn init_db() -> SqliteResult<()> {
     )?;
     conn.execute("CREATE INDEX IF NOT EXISTS idx_folder_parent ON folder_index(parent_path)", [])?;
     conn.execute("CREATE INDEX IF NOT EXISTS idx_folder_source ON folder_index(source_folder)", [])?;
+
+    // 迁移：为 folder_index 添加 files_scanned 列
+    // 0 = scan_subfolders 只发现了文件夹（文件未扫描），1 = scan_folder 已扫描过文件
+    // 已有记录默认设为 1（假设旧数据已扫描过）
+    let _ = conn.execute("ALTER TABLE folder_index ADD COLUMN files_scanned INTEGER NOT NULL DEFAULT 1", []);
 
     // 创建标签表（按源文件夹隔离）
     conn.execute(
