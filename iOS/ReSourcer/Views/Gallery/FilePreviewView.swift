@@ -199,6 +199,9 @@ struct FilePreviewView: View {
             scheduleAutoHide()
             startAutoAdvanceTimer()
 
+            // 切换文件时自动解析 UUID
+            Task { await resolveCurrentFileUuid() }
+
             // 接近末尾时预加载更多文件
             if hasMore && newIndex >= currentFiles.count - 5 {
                 Task {
@@ -211,6 +214,10 @@ struct FilePreviewView: View {
         .onAppear {
             scheduleAutoHide()
             startAutoAdvanceTimer()
+        }
+        .task {
+            // 预览页打开时自动解析 UUID，确保内容使用 UUID-based URL 加载
+            await resolveCurrentFileUuid()
         }
         .onDisappear {
             hideControlsTask?.cancel()
@@ -467,43 +474,44 @@ struct FilePreviewView: View {
 
     // MARK: - UUID 解析 + 标签加载
 
-    /// 如果当前文件 uuid 为空（如从上传/下载历史进入），通过 indexer 查找 uuid 并加载标签
-    private func resolveUuidAndLoadTags() async {
-        guard let file = currentFile else { return }
+    /// 解析当前文件的 UUID（如果为空则通过 indexer 查找）
+    /// 用于预览页打开时自动调用，确保内容加载使用 UUID-based URL
+    private func resolveCurrentFileUuid() async {
+        guard let file = currentFile, file.uuid == nil else { return }
 
-        var uuid = file.uuid
-
-        // uuid 为空时，通过 indexer 查文件所在目录来获取
-        if uuid == nil {
-            let folderPath = (file.path as NSString).deletingLastPathComponent
-            if let response = try? await apiService.preview.getFilesPaginated(
-                in: folderPath, offset: 0, limit: 500
-            ) {
-                if let matched = response.files.first(where: { $0.fileName == file.name }) {
-                    uuid = matched.uuid
-                    // 回写 uuid 到 currentFiles，后续不用重复查
-                    if let idx = currentFiles.firstIndex(where: { $0.path == file.path }) {
-                        currentFiles[idx] = FileInfo(
-                            uuid: uuid,
-                            name: file.name,
-                            path: file.path,
-                            fileType: file.fileType,
-                            extension: file.extension,
-                            size: file.size,
-                            created: file.created,
-                            modified: file.modified,
-                            width: file.width,
-                            height: file.height,
-                            duration: file.duration,
-                            sourceUrl: file.sourceUrl
-                        )
-                    }
+        let folderPath = (file.path as NSString).deletingLastPathComponent
+        if let response = try? await apiService.preview.getFilesPaginated(
+            in: folderPath, offset: 0, limit: 500
+        ) {
+            if let matched = response.files.first(where: { $0.fileName == file.name }) {
+                // 回写 uuid 到 currentFiles，后续内容加载自动使用 UUID-based URL
+                if let idx = currentFiles.firstIndex(where: { $0.path == file.path }) {
+                    currentFiles[idx] = FileInfo(
+                        uuid: matched.uuid,
+                        name: file.name,
+                        path: matched.currentPath ?? file.path,
+                        fileType: file.fileType,
+                        extension: file.extension,
+                        size: file.size,
+                        created: file.created,
+                        modified: file.modified,
+                        width: file.width,
+                        height: file.height,
+                        duration: file.duration,
+                        sourceUrl: file.sourceUrl
+                    )
                 }
             }
         }
+    }
+
+    /// 如果当前文件 uuid 为空（如从上传/下载历史进入），通过 indexer 查找 uuid 并加载标签
+    private func resolveUuidAndLoadTags() async {
+        // 先解析 UUID
+        await resolveCurrentFileUuid()
 
         // 加载标签
-        if let uuid {
+        if let uuid = currentFile?.uuid {
             fileInfoTags = (try? await apiService.tag.getFileTags(fileUuid: uuid)) ?? []
         }
     }

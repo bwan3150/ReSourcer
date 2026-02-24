@@ -49,7 +49,6 @@
 		A1000074233F0001 /* FilePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000074233F0000 /* FilePreviewView.swift */; };
 		A1000075233F0001 /* AuthSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000075233F0000 /* AuthSettingsView.swift */; };
 		A1000076233F0001 /* CacheSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000076233F0000 /* CacheSettingsView.swift */; };
-		A1000094233F0001 /* IgnoreSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000094233F0000 /* IgnoreSettingsView.swift */; };
 		A1000077233F0001 /* ThumbnailCacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000077233F0000 /* ThumbnailCacheService.swift */; };
 		A1000078233F0001 /* CachedThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000078233F0000 /* CachedThumbnailView.swift */; };
 		A1000079233F0001 /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000079233F0000 /* QRScannerView.swift */; };
@@ -62,6 +61,7 @@
 		A1000091233F0001 /* ThumbnailCacheDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000091233F0000 /* ThumbnailCacheDetailView.swift */; };
 		A1000092233F0001 /* NavigationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000092233F0000 /* NavigationState.swift */; };
 		A1000093233F0001 /* TagEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000093233F0000 /* TagEditorView.swift */; };
+		A1000094233F0001 /* IgnoreSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000094233F0000 /* IgnoreSettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -108,7 +108,6 @@
 		A1000074233F0000 /* FilePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewView.swift; sourceTree = "<group>"; };
 		A1000075233F0000 /* AuthSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSettingsView.swift; sourceTree = "<group>"; };
 		A1000076233F0000 /* CacheSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheSettingsView.swift; sourceTree = "<group>"; };
-		A1000094233F0000 /* IgnoreSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IgnoreSettingsView.swift; sourceTree = "<group>"; };
 		A1000077233F0000 /* ThumbnailCacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCacheService.swift; sourceTree = "<group>"; };
 		A1000078233F0000 /* CachedThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedThumbnailView.swift; sourceTree = "<group>"; };
 		A1000079233F0000 /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
@@ -123,6 +122,7 @@
 		A1000091233F0000 /* ThumbnailCacheDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCacheDetailView.swift; sourceTree = "<group>"; };
 		A1000092233F0000 /* NavigationState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationState.swift; sourceTree = "<group>"; };
 		A1000093233F0000 /* TagEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagEditorView.swift; sourceTree = "<group>"; };
+		A1000094233F0000 /* IgnoreSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IgnoreSettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -600,7 +600,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.9;
+				MARKETING_VERSION = 0.0.10;
 				PRODUCT_BUNDLE_IDENTIFIER = com.resourcer.apple;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -638,7 +638,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.9;
+				MARKETING_VERSION = 0.0.10;
 				PRODUCT_BUNDLE_IDENTIFIER = com.resourcer.apple;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

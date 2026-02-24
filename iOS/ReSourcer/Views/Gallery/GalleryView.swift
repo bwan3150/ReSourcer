@@ -567,44 +567,31 @@ struct GalleryView: View {
 
     private var folderDropdown: some View {
         VStack(spacing: 0) {
-            // 根目录行 + ".." 返回行（不在根目录时显示，与子文件夹样式统一）
+            // 不在根目录时显示导航辅助行
             if dropdownBrowsingPath != sourceFolder && !dropdownBrowsingPath.isEmpty {
-                // 根目录行
-                HStack(spacing: 0) {
-                    Button {
-                        Task { await browseInDropdown(path: sourceFolder) }
-                    } label: {
-                        HStack(spacing: AppTheme.Spacing.md) {
-                            Image(systemName: "folder.fill.badge.gearshape")
-                                .font(.title3)
-                                .foregroundStyle(.orange)
-
-                            Text(sourceFolderDisplayName)
-                                .font(.body)
-                                .foregroundStyle(.primary)
-                                .lineLimit(1)
-
-                            Spacer()
-                        }
-                        .contentShape(Rectangle())
+                // 前往当前浏览文件夹 — 将 gallery 导航到下拉菜单当前路径
+                Button {
+                    let targetPath = dropdownBrowsingPath
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        isDropdownOpen = false
                     }
-                    .buttonStyle(.plain)
-
-                    // 右侧导航按钮：点击真正导航到根目录
-                    Button {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            isDropdownOpen = false
-                        }
-                        Task { await navigateWithHistory(path: sourceFolder) }
-                    } label: {
-                        Image(systemName: "arrow.right.circle")
+                    Task { await navigateWithHistory(path: targetPath) }
+                } label: {
+                    HStack(spacing: AppTheme.Spacing.md) {
+                        Image(systemName: "arrowshape.turn.up.right.fill")
                             .font(.title3)
                             .foregroundStyle(.blue)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
+
+                        Text(dropdownDisplayName)
+                            .font(.body)
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+
+                        Spacer()
                     }
-                    .buttonStyle(.plain)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.vertical, AppTheme.Spacing.sm)
 
@@ -698,8 +685,28 @@ struct GalleryView: View {
                 .frame(maxHeight: 400)
             }
 
-            // 添加 + 排序按钮
+            // 底部操作按钮行：返回源文件夹 + 添加 + 排序
             HStack(spacing: AppTheme.Spacing.sm) {
+                // 返回源文件夹（仅在不在根目录时显示）
+                if dropdownBrowsingPath != sourceFolder && !dropdownBrowsingPath.isEmpty {
+                    Button {
+                        Task { await browseInDropdown(path: sourceFolder) }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "folder.fill.badge.gearshape")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                            Text("源文件夹")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                    }
+                    .buttonStyle(.plain)
+                }
+
                 Button {
                     newFolderName = ""
                     showAddFolder = true
