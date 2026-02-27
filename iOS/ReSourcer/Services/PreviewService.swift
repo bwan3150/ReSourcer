@@ -121,10 +121,14 @@ actor PreviewService {
     ///   - size: 缩略图尺寸
     ///   - baseURL: 服务器基础 URL
     ///   - apiKey: API Key
+    ///   - serverId: 服务器唯一标识（用于缓存跨地址共享）
     /// - Returns: 完整的缩略图 URL
-    nonisolated func getThumbnailURL(for path: String, size: Int = 300, baseURL: URL, apiKey: String) -> URL? {
+    nonisolated func getThumbnailURL(for path: String, size: Int = 300, baseURL: URL, apiKey: String, serverId: String? = nil) -> URL? {
         let encodedPath = path.urlEncoded
-        let urlString = "\(baseURL.absoluteString)/api/preview/thumbnail?path=\(encodedPath)&size=\(size)&key=\(apiKey)"
+        var urlString = "\(baseURL.absoluteString)/api/preview/thumbnail?path=\(encodedPath)&size=\(size)&key=\(apiKey)"
+        if let sid = serverId {
+            urlString += "&sid=\(sid)"
+        }
         return URL(string: urlString)
     }
 
@@ -135,12 +139,16 @@ actor PreviewService {
     ///   - baseURL: 服务器基础 URL
     ///   - apiKey: API Key
     ///   - sourceFolder: 源文件夹路径（仅本地缓存分层使用，不影响服务端）
+    ///   - serverId: 服务器唯一标识（用于缓存跨地址共享）
     /// - Returns: 完整的缩略图 URL
-    nonisolated func getThumbnailURL(uuid: String, size: Int = 300, baseURL: URL, apiKey: String, sourceFolder: String? = nil) -> URL? {
+    nonisolated func getThumbnailURL(uuid: String, size: Int = 300, baseURL: URL, apiKey: String, sourceFolder: String? = nil, serverId: String? = nil) -> URL? {
         let encodedUuid = uuid.urlEncoded
         var urlString = "\(baseURL.absoluteString)/api/preview/thumbnail?uuid=\(encodedUuid)&size=\(size)&key=\(apiKey)"
         if let sf = sourceFolder {
             urlString += "&sf=\(sf.urlEncoded)"
+        }
+        if let sid = serverId {
+            urlString += "&sid=\(sid)"
         }
         return URL(string: urlString)
     }

@@ -16,6 +16,9 @@ final class APIService: ObservableObject {
     /// 当前连接的服务器
     let server: Server
 
+    /// 当前活动的 baseURL（支持多地址切换）
+    @Published private(set) var activeBaseURL: URL
+
     /// 网络管理器
     private let networkManager: NetworkManager
 
@@ -58,6 +61,7 @@ final class APIService: ObservableObject {
         }
 
         self.server = server
+        self.activeBaseURL = baseURL
         self.networkManager = NetworkManager(
             baseURL: baseURL,
             apiKey: server.apiKey,
@@ -78,9 +82,15 @@ final class APIService: ObservableObject {
 
     // MARK: - Convenience Methods
 
-    /// 获取服务器基础 URL
+    /// 获取服务器基础 URL（返回当前活动地址）
     var baseURL: URL {
-        server.url!
+        activeBaseURL
+    }
+
+    /// 手动切换到指定地址
+    func switchToURL(_ url: URL) async {
+        activeBaseURL = url
+        await networkManager.updateBaseURL(url)
     }
 
     /// 获取 API Key

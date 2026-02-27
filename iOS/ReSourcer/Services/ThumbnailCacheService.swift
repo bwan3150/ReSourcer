@@ -352,16 +352,23 @@ final class ThumbnailCacheService: @unchecked Sendable {
 
     /// 从缩略图 URL 解析出 serverBase、sourceFolderHash 和 bucketKey（用于磁盘分桶）
     /// URL 格式:
-    ///   UUID: {baseURL}/api/preview/thumbnail?uuid=xxx&size=300&key=xxx&sf=xxx
-    ///   Path: {baseURL}/api/preview/thumbnail?path=xxx&size=300&key=xxx
+    ///   UUID: {baseURL}/api/preview/thumbnail?uuid=xxx&size=300&key=xxx&sf=xxx&sid=xxx
+    ///   Path: {baseURL}/api/preview/thumbnail?path=xxx&size=300&key=xxx&sid=xxx
     private func parseThumbnailURL(_ url: URL) -> (serverBase: String, sourceFolder: String?, bucketKey: String)? {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
 
-        // 构建 serverBase: scheme://host:port
-        guard let scheme = components.scheme, let host = components.host else { return nil }
-        var serverBase = "\(scheme)://\(host)"
-        if let port = components.port {
-            serverBase += ":\(port)"
+        // 优先使用 sid（server ID）做目录分层，实现跨地址缓存共享
+        // 若无 sid，降级到基于 URL 的 serverBase
+        let serverBase: String
+        if let sid = components.queryItems?.first(where: { $0.name == "sid" })?.value, !sid.isEmpty {
+            serverBase = sid
+        } else {
+            guard let scheme = components.scheme, let host = components.host else { return nil }
+            var base = "\(scheme)://\(host)"
+            if let port = components.port {
+                base += ":\(port)"
+            }
+            serverBase = base
         }
 
         // 提取 sf（source folder）参数
@@ -402,9 +409,24 @@ final class ThumbnailCacheService: @unchecked Sendable {
 
     // MARK: - Private: 磁盘路径
 
-    /// 生成缓存键（URL 的 SHA256 哈希，64 字符）
+    /// 生成缓存键（基于 uuid/path + size，不含 baseURL，实现跨地址缓存共享）
     private func cacheKey(for url: URL) -> String {
-        let data = Data(url.absoluteString.utf8)
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let queryItems = components.queryItems else {
+            // 解析失败降级到完整 URL 哈希
+            let data = Data(url.absoluteString.utf8)
+            let hash = SHA256.hash(data: data)
+            return hash.compactMap { String(format: "%02x", $0) }.joined()
+        }
+
+        // 只取 uuid/path + size 参数计算哈希（不含 baseURL、key、sid）
+        let relevantParts = queryItems
+            .filter { ["uuid", "path", "size"].contains($0.name) }
+            .sorted { $0.name < $1.name }
+            .map { "\($0.name)=\($0.value ?? "")" }
+            .joined(separator: "&")
+
+        let data = Data(relevantParts.utf8)
         let hash = SHA256.hash(data: data)
         return hash.compactMap { String(format: "%02x", $0) }.joined()
     }

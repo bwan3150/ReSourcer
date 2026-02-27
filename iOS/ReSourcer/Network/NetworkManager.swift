@@ -13,7 +13,7 @@ actor NetworkManager {
     // MARK: - Properties
 
     /// 服务器基础 URL
-    private let baseURL: URL
+    private(set) var baseURL: URL
 
     /// API Key 用于认证
     private let apiKey: String
@@ -55,6 +55,11 @@ actor NetworkManager {
         // 配置 JSON 编码器
         self.encoder = JSONEncoder()
         self.encoder.keyEncodingStrategy = .convertToSnakeCase
+    }
+
+    /// 切换 baseURL（用于多地址切换）
+    func updateBaseURL(_ newURL: URL) {
+        self.baseURL = newURL
     }
 
     // MARK: - Public Methods

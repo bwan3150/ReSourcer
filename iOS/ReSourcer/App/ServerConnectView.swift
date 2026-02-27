@@ -16,6 +16,7 @@ struct ServerConnectView: View {
     @State private var serverURL = ""
     @State private var apiKey = ""
     @State private var serverName = ""
+    @State private var alternateURLs: [String] = []
     @State private var errorMessage: String?
 
     /// 已保存的服务器列表
@@ -90,6 +91,7 @@ struct ServerConnectView: View {
                             serverURL = ""
                             apiKey = ""
                             serverName = ""
+                            alternateURLs = []
                             errorMessage = nil
                             showForm = true
                         } label: {
@@ -227,6 +229,49 @@ struct ServerConnectView: View {
             )
             .textInputAutocapitalization(.never)
 
+            // 备用地址（可选）
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                HStack {
+                    Text("备用地址")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    Text("(可选)")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+
+                    Spacer()
+
+                    Button {
+                        alternateURLs.append("")
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                ForEach(alternateURLs.indices, id: \.self) { index in
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        TextField("http://...", text: $alternateURLs[index])
+                            .textFieldStyle(.plain)
+                            .textInputAutocapitalization(.never)
+                            .keyboardType(.URL)
+                            .font(.body)
+                            .padding(AppTheme.Spacing.sm)
+                            .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+
+                        Button {
+                            alternateURLs.remove(at: index)
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.system(size: 20))
+                                .foregroundStyle(.red.opacity(0.7))
+                        }
+                    }
+                }
+            }
+
             // 扫码快捷填充（小按钮，明确可选）
             HStack {
                 Spacer()
@@ -312,6 +357,7 @@ struct ServerConnectView: View {
         editingServer = server
         serverName = server.name
         serverURL = server.baseURL
+        alternateURLs = server.alternateURLs
         apiKey = server.apiKey
         errorMessage = nil
         withAnimation {
@@ -326,6 +372,7 @@ struct ServerConnectView: View {
             id: oldServer.id,
             name: serverName.isEmpty ? extractServerName(from: serverURL) : serverName,
             baseURL: normalizeURL(serverURL),
+            alternateURLs: alternateURLs.map { normalizeURL($0) }.filter { !$0.isEmpty },
             apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         )
 
@@ -347,6 +394,7 @@ struct ServerConnectView: View {
             id: oldServer.id,
             name: serverName.isEmpty ? extractServerName(from: serverURL) : serverName,
             baseURL: normalizeURL(serverURL),
+            alternateURLs: alternateURLs.map { normalizeURL($0) }.filter { !$0.isEmpty },
             apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         )
 
@@ -398,6 +446,7 @@ struct ServerConnectView: View {
         let server = Server(
             name: serverName.isEmpty ? extractServerName(from: url) : serverName,
             baseURL: url,
+            alternateURLs: alternateURLs.map { normalizeURL($0) }.filter { !$0.isEmpty },
             apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         )
 
@@ -424,6 +473,7 @@ struct ServerConnectView: View {
                     serverURL = ""
                     apiKey = ""
                     serverName = ""
+                    alternateURLs = []
                     showForm = false
 
                     onConnected(apiService)

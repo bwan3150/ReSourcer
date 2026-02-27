@@ -27,6 +27,9 @@ struct Server: Identifiable, Codable, Equatable {
     /// 服务器基础 URL（如 http://192.168.1.100:1234）
     var baseURL: String
 
+    /// 备用地址列表
+    var alternateURLs: [String]
+
     /// API Key 用于认证
     var apiKey: String
 
@@ -39,17 +42,29 @@ struct Server: Identifiable, Codable, Equatable {
     // MARK: - Coding Keys
 
     enum CodingKeys: String, CodingKey {
-        case id, name, baseURL, apiKey, addedAt
+        case id, name, baseURL, alternateURLs, apiKey, addedAt
     }
 
     // MARK: - Initialization
 
-    init(id: String = UUID().uuidString, name: String, baseURL: String, apiKey: String, addedAt: Date = Date()) {
+    init(id: String = UUID().uuidString, name: String, baseURL: String, alternateURLs: [String] = [], apiKey: String, addedAt: Date = Date()) {
         self.id = id
         self.name = name
         self.baseURL = baseURL
+        self.alternateURLs = alternateURLs
         self.apiKey = apiKey
         self.addedAt = addedAt
+    }
+
+    // 向后兼容：旧数据无 alternateURLs 时默认空数组
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        baseURL = try container.decode(String.self, forKey: .baseURL)
+        alternateURLs = try container.decodeIfPresent([String].self, forKey: .alternateURLs) ?? []
+        apiKey = try container.decode(String.self, forKey: .apiKey)
+        addedAt = try container.decode(Date.self, forKey: .addedAt)
     }
 
     // MARK: - Computed Properties
@@ -66,18 +81,23 @@ struct Server: Identifiable, Codable, Equatable {
             .replacingOccurrences(of: "https://", with: "")
     }
 
+    /// 所有地址（主 + 备用）
+    var allURLs: [String] { [baseURL] + alternateURLs }
+
     // MARK: - Methods
 
     /// 复制并修改属性
     func with(
         name: String? = nil,
         baseURL: String? = nil,
+        alternateURLs: [String]? = nil,
         apiKey: String? = nil,
         status: ServerStatus? = nil
     ) -> Server {
         var copy = self
         if let name = name { copy.name = name }
         if let baseURL = baseURL { copy.baseURL = baseURL }
+        if let alternateURLs = alternateURLs { copy.alternateURLs = alternateURLs }
         if let apiKey = apiKey { copy.apiKey = apiKey }
         if let status = status { copy.status = status }
         return copy

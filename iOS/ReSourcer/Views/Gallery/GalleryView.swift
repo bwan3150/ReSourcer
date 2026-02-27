@@ -1608,16 +1608,18 @@ extension FileInfo {
     /// 根据 uuid 是否存在选择缩略图 URL 策略
     @MainActor
     func thumbnailURL(apiService: APIService, size: Int = 300, sourceFolder: String? = nil) -> URL? {
+        let serverId = apiService.server.id
         if let uuid {
             return apiService.preview.getThumbnailURL(
                 uuid: uuid, size: size,
                 baseURL: apiService.baseURL, apiKey: apiService.apiKey,
-                sourceFolder: sourceFolder
+                sourceFolder: sourceFolder, serverId: serverId
             )
         }
         return apiService.preview.getThumbnailURL(
             for: path, size: size,
-            baseURL: apiService.baseURL, apiKey: apiService.apiKey
+            baseURL: apiService.baseURL, apiKey: apiService.apiKey,
+            serverId: serverId
         )
     }
 }

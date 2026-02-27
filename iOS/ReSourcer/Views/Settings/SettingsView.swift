@@ -17,6 +17,10 @@ struct SettingsView: View {
     @State private var healthStatus: ServerStatus = .checking
     @State private var appConfig: AppConfigResponse?
 
+    // 地址切换
+    @State private var showAddressList = false
+    @State private var isSwitchingURL = false
+
     // 源文件夹
     @State private var sourceFolders: SourceFoldersResponse?
     @State private var showSourceFolderList = false
@@ -89,34 +93,144 @@ struct SettingsView: View {
 
     private var serverSection: some View {
         SettingsSection(title: "服务器") {
-            HStack(spacing: AppTheme.Spacing.md) {
-                Image(systemName: "server.rack")
-                    .font(.system(size: 18))
-                    .foregroundStyle(.gray)
-                    .frame(width: 28)
+            VStack(spacing: 0) {
+                // 服务器信息行（可点击展开地址列表）
+                Button {
+                    // 仅在有备用地址时才允许展开
+                    if !apiService.server.alternateURLs.isEmpty {
+                        withAnimation { showAddressList.toggle() }
+                    }
+                } label: {
+                    HStack(spacing: AppTheme.Spacing.md) {
+                        Image(systemName: apiService.activeBaseURL.absoluteString.hasPrefix("https") ? "cloud.fill" : "server.rack")
+                            .font(.system(size: 18))
+                            .foregroundStyle(.gray)
+                            .frame(width: 28)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(apiService.server.name)
-                        .font(.body)
-                        .foregroundStyle(.primary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(apiService.server.name)
+                                .font(.body)
+                                .foregroundStyle(.primary)
 
-                    Text(apiService.server.displayURL)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                            Text(displayURLForActiveAddress)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        // 健康状态指示
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(healthStatusColor)
+                                .frame(width: 8, height: 8)
+
+                            Text(healthStatusText)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        // 有备用地址时显示展开箭头
+                        if !apiService.server.alternateURLs.isEmpty {
+                            Image(systemName: showAddressList ? "chevron.up" : "chevron.down")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
 
-                Spacer()
+                // 展开的地址列表
+                if showAddressList {
+                    Divider()
+                        .padding(.vertical, AppTheme.Spacing.sm)
 
-                // 健康状态指示
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(healthStatusColor)
-                        .frame(width: 8, height: 8)
-
-                    Text(healthStatusText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    addressListContent
                 }
+            }
+        }
+    }
+
+    /// 当前活动地址的简短显示
+    private var displayURLForActiveAddress: String {
+        apiService.activeBaseURL.absoluteString
+            .replacingOccurrences(of: "http://", with: "")
+            .replacingOccurrences(of: "https://", with: "")
+    }
+
+    /// 地址列表内容
+    private var addressListContent: some View {
+        VStack(spacing: AppTheme.Spacing.sm) {
+            ForEach(apiService.server.allURLs, id: \.self) { urlString in
+                let isActive = urlString == apiService.activeBaseURL.absoluteString
+
+                Button {
+                    if !isActive {
+                        switchAddress(to: urlString)
+                    }
+                } label: {
+                    HStack(spacing: AppTheme.Spacing.md) {
+                        Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 16))
+                            .foregroundStyle(isActive ? .green : Color.gray)
+                            .frame(width: 24)
+
+                        // http 用服务器图标，https 用云图标
+                        Image(systemName: urlString.hasPrefix("https") ? "cloud.fill" : "server.rack")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 20)
+
+                        Text(urlString
+                            .replacingOccurrences(of: "http://", with: "")
+                            .replacingOccurrences(of: "https://", with: ""))
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+
+                        Spacer()
+
+                        if isSwitchingURL && !isActive {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .padding(.vertical, AppTheme.Spacing.xxs)
+                }
+                .buttonStyle(.plain)
+                .disabled(isActive || isSwitchingURL)
+            }
+        }
+    }
+
+    /// 切换到指定地址
+    private func switchAddress(to urlString: String) {
+        guard let newURL = URL(string: urlString) else {
+            GlassAlertManager.shared.showError("无效地址")
+            return
+        }
+
+        let previousURL = apiService.activeBaseURL
+        isSwitchingURL = true
+
+        Task {
+            // 先切换地址
+            await apiService.switchToURL(newURL)
+
+            // 验证连接
+            let status = await apiService.checkConnection()
+
+            if status == .online {
+                healthStatus = .online
+                isSwitchingURL = false
+                GlassAlertManager.shared.showSuccess("已切换到新地址")
+            } else {
+                // 连接失败，回退到原来的地址
+                await apiService.switchToURL(previousURL)
+                healthStatus = await apiService.checkConnection()
+                isSwitchingURL = false
+                GlassAlertManager.shared.showError("切换失败", message: "无法连接到该地址，已恢复原地址")
             }
         }
     }
