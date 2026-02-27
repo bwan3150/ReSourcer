@@ -111,13 +111,11 @@ struct SettingsView: View {
                             Text(apiService.server.name)
                                 .font(.body)
                                 .foregroundStyle(.primary)
+                                .lineLimit(1)
 
-                            Text(displayURLForActiveAddress)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            MarqueeText(text: displayURLForActiveAddress, font: .caption, style: .secondary)
                         }
-
-                        Spacer()
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
                         // 健康状态指示
                         HStack(spacing: 6) {
@@ -182,13 +180,13 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                             .frame(width: 20)
 
-                        Text(urlString
-                            .replacingOccurrences(of: "http://", with: "")
-                            .replacingOccurrences(of: "https://", with: ""))
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
-
-                        Spacer()
+                        MarqueeText(
+                            text: urlString
+                                .replacingOccurrences(of: "http://", with: "")
+                                .replacingOccurrences(of: "https://", with: ""),
+                            font: .subheadline,
+                            style: .primary
+                        )
 
                         if isSwitchingURL && !isActive {
                             ProgressView()
@@ -789,6 +787,75 @@ struct SettingsToggleRow: View {
                 .labelsHidden()
                 .tint(.gray)
         }
+    }
+}
+
+// MARK: - Marquee Text
+
+/// 跑马灯文本：文本溢出容器宽度时自动来回滚动
+private struct MarqueeText<S: ShapeStyle>: View {
+    let text: String
+    let font: Font
+    let style: S
+
+    @State private var offset: CGFloat = 0
+    @State private var textWidth: CGFloat = 0
+    @State private var containerWidth: CGFloat = 0
+
+    private var overflow: CGFloat { max(0, textWidth - containerWidth) }
+
+    var body: some View {
+        Text(text)
+            .font(font)
+            .foregroundStyle(style)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .offset(x: -offset)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .clipped()
+            // 测量容器宽度
+            .background(
+                GeometryReader { geo in
+                    Color.clear
+                        .onAppear { containerWidth = geo.size.width }
+                        .onChange(of: geo.size.width) { _, w in containerWidth = w }
+                }
+            )
+            // 测量文本实际宽度
+            .overlay(
+                Text(text)
+                    .font(font)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .background(GeometryReader { geo in
+                        Color.clear
+                            .onAppear { textWidth = geo.size.width }
+                            .onChange(of: geo.size.width) { _, w in textWidth = w }
+                    })
+                    .hidden()
+            )
+            .task(id: overflow) {
+                guard overflow > 0 else {
+                    offset = 0
+                    return
+                }
+                let duration = max(1.5, Double(overflow) / 40)
+                // 初始停顿
+                try? await Task.sleep(for: .seconds(1.5))
+                while !Task.isCancelled {
+                    // 向左滚动
+                    withAnimation(.easeInOut(duration: duration)) {
+                        offset = overflow
+                    }
+                    try? await Task.sleep(for: .seconds(duration + 1.5))
+                    guard !Task.isCancelled else { break }
+                    // 滚回原位
+                    withAnimation(.easeInOut(duration: duration)) {
+                        offset = 0
+                    }
+                    try? await Task.sleep(for: .seconds(duration + 1.5))
+                }
+            }
     }
 }
 

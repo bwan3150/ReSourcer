@@ -687,60 +687,11 @@ struct GalleryView: View {
 
             // 底部操作按钮行：返回源文件夹 + 添加 + 排序
             HStack(spacing: AppTheme.Spacing.sm) {
-                // 返回源文件夹（仅在不在根目录时显示）
-                if dropdownBrowsingPath != sourceFolder && !dropdownBrowsingPath.isEmpty {
-                    Button {
-                        Task { await browseInDropdown(path: sourceFolder) }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "folder.fill.badge.gearshape")
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                            Text("源文件夹")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                        }
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                    }
-                    .buttonStyle(.plain)
+                ViewThatFits(in: .horizontal) {
+                    dropdownActionButtons(font: .subheadline)
+                    dropdownActionButtons(font: .caption)
                 }
-
-                Button {
-                    newFolderName = ""
-                    showAddFolder = true
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus")
-                            .font(.caption)
-                        Text("添加")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                    }
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    showReorder = true
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "arrow.up.arrow.down")
-                            .font(.caption)
-                        Text("排序")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                    }
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
+                Spacer(minLength: 0)
             }
             .padding(.horizontal, AppTheme.Spacing.md)
             .padding(.vertical, AppTheme.Spacing.xs)
@@ -946,6 +897,65 @@ struct GalleryView: View {
             } catch {
                 GlassAlertManager.shared.showError("保存排序失败", message: error.localizedDescription)
             }
+        }
+    }
+
+    /// 下拉菜单底部操作按钮行（统一字号）
+    @ViewBuilder
+    private func dropdownActionButtons(font: Font) -> some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            // 返回源文件夹（仅在不在根目录时显示）
+            if dropdownBrowsingPath != sourceFolder && !dropdownBrowsingPath.isEmpty {
+                Button {
+                    Task { await browseInDropdown(path: sourceFolder) }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "folder.fill.badge.gearshape")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                        Text("源文件夹")
+                            .font(font)
+                            .fontWeight(.semibold)
+                    }
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Button {
+                newFolderName = ""
+                showAddFolder = true
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus")
+                        .font(.caption)
+                    Text("添加")
+                        .font(font)
+                        .fontWeight(.semibold)
+                }
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                showReorder = true
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.up.arrow.down")
+                        .font(.caption)
+                    Text("排序")
+                        .font(font)
+                        .fontWeight(.semibold)
+                }
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+            }
+            .buttonStyle(.plain)
         }
     }
 
