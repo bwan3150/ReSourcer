@@ -151,6 +151,7 @@ pub async fn get_history(query: web::Query<HistoryQuery>) -> Result<HttpResponse
             save_folder: String::new(),
             file_name: item.file_name,
             file_path: item.file_path,
+            file_uuid: item.file_uuid,
             error: item.error,
             created_at: item.created_at,
         }

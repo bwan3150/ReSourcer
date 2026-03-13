@@ -11,6 +11,7 @@ pub struct HistoryItem {
     pub target_folder: String,
     pub status: String, // "completed", "failed"
     pub file_size: u64,
+    pub file_uuid: Option<String>, // 索引后的文件 UUID
     pub error: Option<String>,
     pub created_at: String,
 }
@@ -26,7 +27,7 @@ pub fn load_history_page(offset: i64, limit: i64, status: Option<&str>) -> io::R
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
 
     let (sql, params) = build_history_query(
-        "SELECT id, file_name, target_folder, status, file_size, error, created_at FROM upload_history",
+        "SELECT id, file_name, target_folder, status, file_size, file_uuid, error, created_at FROM upload_history",
         status,
         Some(limit),
         Some(offset),
@@ -43,8 +44,9 @@ pub fn load_history_page(offset: i64, limit: i64, status: Option<&str>) -> io::R
             target_folder: row.get(2)?,
             status: row.get(3)?,
             file_size: file_size as u64,
-            error: row.get(5)?,
-            created_at: row.get(6)?,
+            file_uuid: row.get(5)?,
+            error: row.get(6)?,
+            created_at: row.get(7)?,
         })
     })
     .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("查询历史记录失败: {}", e)))?
@@ -117,14 +119,15 @@ pub fn add_to_history(item: HistoryItem) -> io::Result<()> {
 
     // 使用 INSERT OR REPLACE 实现去重
     conn.execute(
-        "INSERT OR REPLACE INTO upload_history (id, file_name, target_folder, status, file_size, error, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        "INSERT OR REPLACE INTO upload_history (id, file_name, target_folder, status, file_size, file_uuid, error, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         rusqlite::params![
             item.id,
             item.file_name,
             item.target_folder,
             item.status,
             item.file_size as i64,
+            item.file_uuid,
             item.error,
             item.created_at
         ],

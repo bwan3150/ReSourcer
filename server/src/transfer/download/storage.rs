@@ -13,6 +13,7 @@ pub struct HistoryItem {
     pub status: String, // "completed", "failed", "cancelled"
     pub file_name: Option<String>, // 成功时有值
     pub file_path: Option<String>, // 成功时有值
+    pub file_uuid: Option<String>, // 索引后的文件 UUID
     pub error: Option<String>, // 失败时有值
     pub created_at: String,
 }
@@ -104,7 +105,7 @@ pub fn load_history_page(offset: i64, limit: i64, status: Option<&str>) -> Resul
         .map_err(|e| format!("数据库连接失败: {}", e))?;
 
     let (sql, params) = build_history_query(
-        "SELECT id, url, platform, status, file_name, file_path, error, created_at FROM download_history",
+        "SELECT id, url, platform, status, file_name, file_path, file_uuid, error, created_at FROM download_history",
         status,
         Some(limit),
         Some(offset),
@@ -121,8 +122,9 @@ pub fn load_history_page(offset: i64, limit: i64, status: Option<&str>) -> Resul
             status: row.get(3)?,
             file_name: row.get(4)?,
             file_path: row.get(5)?,
-            error: row.get(6)?,
-            created_at: row.get(7)?,
+            file_uuid: row.get(6)?,
+            error: row.get(7)?,
+            created_at: row.get(8)?,
         })
     })
     .map_err(|e| format!("查询历史记录失败: {}", e))?
@@ -196,8 +198,8 @@ pub fn add_to_history(item: HistoryItem) -> Result<(), String> {
 
     // 使用 INSERT OR REPLACE 实现去重
     conn.execute(
-        "INSERT OR REPLACE INTO download_history (id, url, platform, status, file_name, file_path, error, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        "INSERT OR REPLACE INTO download_history (id, url, platform, status, file_name, file_path, file_uuid, error, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         rusqlite::params![
             item.id,
             item.url,
@@ -205,6 +207,7 @@ pub fn add_to_history(item: HistoryItem) -> Result<(), String> {
             item.status,
             item.file_name,
             item.file_path,
+            item.file_uuid,
             item.error,
             item.created_at
         ],

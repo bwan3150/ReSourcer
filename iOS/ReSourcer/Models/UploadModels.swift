@@ -60,6 +60,9 @@ struct UploadTask: Identifiable, Codable, Equatable {
     /// 已上传大小（字节）
     let uploadedSize: UInt64
 
+    /// 索引后的文件 UUID
+    let fileUuid: String?
+
     /// 错误信息
     let error: String?
 
@@ -106,7 +109,7 @@ struct UploadTask: Identifiable, Codable, Equatable {
             ? "." + (fileName.components(separatedBy: ".").last ?? "")
             : ""
         return FileInfo(
-            uuid: nil,
+            uuid: fileUuid,
             name: fileName,
             path: targetFolder + "/" + fileName,
             fileType: FileType.from(extension: ext),

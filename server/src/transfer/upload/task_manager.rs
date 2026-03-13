@@ -40,6 +40,7 @@ impl TaskManager {
             status: UploadStatus::Pending,
             progress: 0.0,
             uploaded_size: 0,
+            file_uuid: None,
             error: None,
             created_at: chrono::Utc::now().to_rfc3339(),
         };
@@ -206,6 +207,7 @@ impl TaskManager {
             target_folder,
             status: "failed".to_string(),
             file_size,
+            file_uuid: None,
             error: Some(error),
             created_at,
         };
@@ -237,8 +239,24 @@ impl TaskManager {
             }
         };
 
-        // 移除任务并添加到历史记录
+        // 移除任务
         tasks.lock().await.remove(task_id);
+
+        // 先索引文件获取 UUID，再写入历史记录
+        let file_path_clone = file_path.clone();
+        let file_uuid = tokio::task::spawn_blocking(move || {
+            if let Some(source_folder) = crate::indexer::storage::find_source_folder(&file_path_clone) {
+                match crate::indexer::scanner::index_single_file(&file_path_clone, &source_folder, None) {
+                    Ok(indexed_file) => Some(indexed_file.uuid),
+                    Err(e) => {
+                        eprintln!("上传后索引文件失败: {} - {}", file_path_clone, e);
+                        None
+                    }
+                }
+            } else {
+                None
+            }
+        }).await.unwrap_or(None);
 
         let history_item = storage::HistoryItem {
             id: task_id.to_string(),
@@ -246,6 +264,7 @@ impl TaskManager {
             target_folder: target_folder.clone(),
             status: "completed".to_string(),
             file_size: uploaded_size,
+            file_uuid,
             error: None,
             created_at,
         };
@@ -253,16 +272,6 @@ impl TaskManager {
         if let Err(e) = storage::add_to_history(history_item) {
             eprintln!("保存上传历史记录失败: {}", e);
         }
-
-        // 上传完成后立即索引新文件
-        let file_path_clone = file_path.clone();
-        let _ = tokio::task::spawn_blocking(move || {
-            if let Some(source_folder) = crate::indexer::storage::find_source_folder(&file_path_clone) {
-                if let Err(e) = crate::indexer::scanner::index_single_file(&file_path_clone, &source_folder, None) {
-                    eprintln!("上传后索引文件失败: {} - {}", file_path_clone, e);
-                }
-            }
-        }).await;
     }
 }
 

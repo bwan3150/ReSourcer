@@ -43,6 +43,7 @@ impl TaskManager {
             save_folder: save_folder.clone(),
             file_name: None,
             file_path: None,
+            file_uuid: None,
             error: None,
             created_at: chrono::Utc::now().to_rfc3339(),
         };
@@ -96,6 +97,7 @@ impl TaskManager {
                             status: "cancelled".to_string(),
                             file_name: None,
                             file_path: None,
+                            file_uuid: None,
                             error: None,
                             created_at: task.created_at.clone(),
                         };
@@ -263,7 +265,24 @@ impl TaskManager {
                         .unwrap_or("unknown")
                         .to_string();
 
-                    // 添加到历史记录
+                    // 先索引文件获取 UUID，再写入历史记录
+                    let file_path_clone = file_path.clone();
+                    let source_url_clone = task.url.clone();
+                    let file_uuid = tokio::task::spawn_blocking(move || {
+                        if let Some(source_folder) = crate::indexer::storage::find_source_folder(&file_path_clone) {
+                            match crate::indexer::scanner::index_single_file(&file_path_clone, &source_folder, Some(&source_url_clone)) {
+                                Ok(indexed_file) => Some(indexed_file.uuid),
+                                Err(e) => {
+                                    eprintln!("下载后索引文件失败: {} - {}", file_path_clone, e);
+                                    None
+                                }
+                            }
+                        } else {
+                            None
+                        }
+                    }).await.unwrap_or(None);
+
+                    // 添加到历史记录（携带 file_uuid）
                     let history_item = storage::HistoryItem {
                         id: task.id.clone(),
                         url: task.url.clone(),
@@ -271,6 +290,7 @@ impl TaskManager {
                         status: "completed".to_string(),
                         file_name: Some(file_name),
                         file_path: Some(file_path.clone()),
+                        file_uuid,
                         error: None,
                         created_at: task.created_at.clone(),
                     };
@@ -278,17 +298,6 @@ impl TaskManager {
                     if let Err(e) = storage::add_to_history(history_item) {
                         eprintln!("保存历史记录失败: {}", e);
                     }
-
-                    // 下载完成后立即索引新文件，携带来源 URL
-                    let file_path_clone = file_path.clone();
-                    let source_url_clone = task.url.clone();
-                    let _ = tokio::task::spawn_blocking(move || {
-                        if let Some(source_folder) = crate::indexer::storage::find_source_folder(&file_path_clone) {
-                            if let Err(e) = crate::indexer::scanner::index_single_file(&file_path_clone, &source_folder, Some(&source_url_clone)) {
-                                eprintln!("下载后索引文件失败: {} - {}", file_path_clone, e);
-                            }
-                        }
-                    }).await;
                 }
                 Err(error) => {
                     // 下载失败
@@ -299,6 +308,7 @@ impl TaskManager {
                         status: "failed".to_string(),
                         file_name: None,
                         file_path: None,
+                        file_uuid: None,
                         error: Some(error),
                         created_at: task.created_at.clone(),
                     };

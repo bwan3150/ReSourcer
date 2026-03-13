@@ -129,6 +129,9 @@ struct DownloadTask: Identifiable, Codable, Equatable {
     /// 文件完整路径
     let filePath: String?
 
+    /// 索引后的文件 UUID
+    let fileUuid: String?
+
     /// 错误信息
     let error: String?
 
@@ -160,7 +163,7 @@ struct DownloadTask: Identifiable, Codable, Equatable {
             ? "." + (fileName.components(separatedBy: ".").last ?? "")
             : ""
         return FileInfo(
-            uuid: nil,
+            uuid: fileUuid,
             name: fileName,
             path: filePath,
             fileType: FileType.from(extension: ext),

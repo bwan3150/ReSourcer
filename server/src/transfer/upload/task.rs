@@ -119,6 +119,7 @@ pub async fn get_history(query: web::Query<HistoryQuery>) -> Result<HttpResponse
             status,
             progress,
             uploaded_size: item.file_size,
+            file_uuid: item.file_uuid,
             error: item.error,
             created_at: item.created_at,
         }

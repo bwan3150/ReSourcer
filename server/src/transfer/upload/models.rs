@@ -21,6 +21,7 @@ pub struct UploadTask {
     pub status: UploadStatus,          // 状态
     pub progress: f32,                 // 进度 (0-100)
     pub uploaded_size: u64,            // 已上传大小（字节）
+    pub file_uuid: Option<String>,     // 索引后的文件 UUID
     pub error: Option<String>,         // 错误信息
     pub created_at: String,            // 创建时间
 }

@@ -103,6 +103,9 @@ pub fn init_db() -> SqliteResult<()> {
         [],
     )?;
 
+    // 迁移：为下载历史表添加 file_uuid 列
+    conn.execute("ALTER TABLE download_history ADD COLUMN file_uuid TEXT", []).ok();
+
     // 创建上传历史表
     conn.execute(
         "CREATE TABLE IF NOT EXISTS upload_history (
@@ -116,6 +119,9 @@ pub fn init_db() -> SqliteResult<()> {
         )",
         [],
     )?;
+
+    // 迁移：为上传历史表添加 file_uuid 列
+    conn.execute("ALTER TABLE upload_history ADD COLUMN file_uuid TEXT", []).ok();
 
     // 创建文件索引表
     conn.execute(

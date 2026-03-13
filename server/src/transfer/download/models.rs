@@ -99,6 +99,7 @@ pub struct DownloadTask {
     pub save_folder: String,
     pub file_name: Option<String>, // 下载完成后的文件名
     pub file_path: Option<String>, // 完整文件路径
+    pub file_uuid: Option<String>, // 索引后的文件 UUID
     pub error: Option<String>,
     pub created_at: String, // ISO 8601 格式
 }
