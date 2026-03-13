@@ -1,7 +1,10 @@
 package com.resourcer.eink.ui.screens
 
 import android.graphics.Bitmap
+import android.graphics.Color as AndroidColor
+import android.graphics.pdf.PdfRenderer
 import android.media.MediaMetadataRetriever
+import android.os.ParcelFileDescriptor
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -21,6 +24,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,14 +32,18 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.resourcer.eink.data.model.IndexedFile
 import com.resourcer.eink.data.model.Server
+import com.resourcer.eink.data.network.ApiClient
 import com.resourcer.eink.ui.theme.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * 文件预览界面（电纸书优化版）
- * - 图片/视频统一：全屏画面 + 左右翻页按钮 + 顶/底控制栏 overlay
- * - 视频底部额外有小步进按钮（-30s / -5s / +5s / +30s）+ 提取帧按钮
+ * - 图片/视频/PDF 统一：全屏画面 + 左右翻页按钮 + 顶/底控制栏 overlay
+ * - 视频底部额外有步进按钮 + 提取帧
+ * - PDF 底部有上一页/下一页
  * - 无任何动画，无滑动手势
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,13 +60,15 @@ fun PreviewScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(EInkWhite)) {
 
-        // ── 文件内容区（全屏，统一布局）──────────────────────────────────
-        FilePage(
-            server = server,
-            file = currentFile,
-            showControls = showControls,
-            onToggleControls = { showControls = !showControls }
-        )
+        // ── 文件内容区（key 绑定 uuid，切换文件时彻底重置所有状态）──────────
+        key(currentFile.uuid) {
+            FilePage(
+                server = server,
+                file = currentFile,
+                showControls = showControls,
+                onToggleControls = { showControls = !showControls }
+            )
+        }
 
         // ── 翻页按钮覆盖层（zIndex 明确置于 FilePage 之上，随 showControls 显隐）
         if (showControls) Box(
@@ -167,6 +177,7 @@ private fun FilePage(
     when {
         file.isVideo -> VideoFramePage(server, file, showControls, onToggleControls)
         file.isImage || file.isGif -> ImagePage(server, file, onToggleControls)
+        file.isPdf -> PdfPage(server, file, showControls, onToggleControls)
         else -> OtherFilePage(file, onToggleControls)
     }
 }
@@ -373,7 +384,7 @@ private fun VideoFramePage(
                                         fontSize = 12.sp,
                                         color = EInkBlack,
                                         fontWeight = FontWeight.Medium,
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                        textAlign = TextAlign.Center
                                     )
                                     listOf(5_000L to "+5s", 30_000L to "+30s").forEach { (delta, label) ->
                                         OutlinedButton(
@@ -387,9 +398,7 @@ private fun VideoFramePage(
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
                             }
-                            else -> {
-                                // 时长未知，仍可提取第一帧
-                            }
+                            else -> { /* 时长未知，仍可提取第一帧 */ }
                         }
 
                         // 提取帧按钮
@@ -423,6 +432,195 @@ private fun VideoFramePage(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PDF 页（下载 → PdfRenderer 逐页渲染）
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun PdfPage(
+    server: Server,
+    file: IndexedFile,
+    showControls: Boolean,
+    onTap: () -> Unit
+) {
+    val context = LocalContext.current
+    val contentUrl = "${server.activeUrl}/api/preview/content/_?uuid=${file.uuid}"
+    val scope = rememberCoroutineScope()
+
+    var pageCount by remember { mutableIntStateOf(0) }
+    var currentPageIndex by remember { mutableIntStateOf(0) }
+    var pageBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    var isRenderingPage by remember { mutableStateOf(false) }
+    var loadError by remember { mutableStateOf<String?>(null) }
+    // PdfRenderer 不能放进 State（会触发 recompose），用普通引用
+    val rendererHolder = remember { arrayOfNulls<PdfRenderer>(1) }
+    val tempFileHolder = remember { arrayOfNulls<File>(1) }
+
+    // 渲染指定页（在 IO 线程）
+    fun renderPageAt(idx: Int) {
+        if (isRenderingPage) return
+        val renderer = rendererHolder[0] ?: return
+        scope.launch {
+            isRenderingPage = true
+            val bmp = withContext(Dispatchers.IO) {
+                runCatching {
+                    val page = renderer.openPage(idx)
+                    val b = Bitmap.createBitmap(page.width * 2, page.height * 2, Bitmap.Config.ARGB_8888)
+                    b.eraseColor(AndroidColor.WHITE)
+                    page.render(b, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                    page.close()
+                    b
+                }.getOrNull()
+            }
+            if (bmp != null) {
+                currentPageIndex = idx
+                pageBitmap = bmp
+            }
+            isRenderingPage = false
+        }
+    }
+
+    // 下载 PDF 并初始化渲染器
+    LaunchedEffect(Unit) {
+        isLoading = true
+        loadError = null
+        runCatching {
+            withContext(Dispatchers.IO) {
+                val client = ApiClient.getOkHttpClient(server)
+                val request = okhttp3.Request.Builder()
+                    .url(contentUrl)
+                    .addHeader("Cookie", "api_key=${server.apiKey}")
+                    .build()
+                val response = client.newCall(request).execute()
+                if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
+                val bytes = response.body?.bytes() ?: throw Exception("空响应")
+                val temp = File.createTempFile("pdf_${file.uuid}_", ".pdf", context.cacheDir)
+                temp.writeBytes(bytes)
+                tempFileHolder[0] = temp
+                val fd = ParcelFileDescriptor.open(temp, ParcelFileDescriptor.MODE_READ_ONLY)
+                val renderer = PdfRenderer(fd)
+                rendererHolder[0] = renderer
+                val count = renderer.pageCount
+                // 渲染第一页
+                val page = renderer.openPage(0)
+                val bmp = Bitmap.createBitmap(page.width * 2, page.height * 2, Bitmap.Config.ARGB_8888)
+                bmp.eraseColor(AndroidColor.WHITE)
+                page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                page.close()
+                count to bmp
+            }
+        }.onSuccess { (count, bmp) ->
+            pageCount = count
+            pageBitmap = bmp
+            isLoading = false
+        }.onFailure { e ->
+            loadError = e.message ?: e.toString()
+            isLoading = false
+        }
+    }
+
+    // 离开时释放资源
+    DisposableEffect(Unit) {
+        onDispose {
+            rendererHolder[0]?.close()
+            tempFileHolder[0]?.delete()
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) { detectTapGestures(onTap = { onTap() }) },
+        contentAlignment = Alignment.Center
+    ) {
+        // ── 内容区域 ──────────────────────────────────────────────────────
+        when {
+            isLoading -> {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = EInkBlack)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("加载 PDF...", fontSize = 14.sp, color = EInkBlack)
+                }
+            }
+            loadError != null -> {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(24.dp)
+                ) {
+                    Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(48.dp), tint = EInkLightGray)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("PDF 加载失败", fontSize = 15.sp, color = EInkBlack, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(loadError!!, fontSize = 12.sp, color = EInkGray)
+                }
+            }
+            pageBitmap != null -> {
+                Image(
+                    bitmap = pageBitmap!!.asImageBitmap(),
+                    contentDescription = "PDF 第 ${currentPageIndex + 1} 页",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+                // 翻页时的加载指示
+                if (isRenderingPage) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                        color = EInkBlack
+                    )
+                }
+            }
+        }
+
+        // ── 底部翻页栏 ────────────────────────────────────────────────────
+        if (showControls && !isLoading && loadError == null) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
+                color = EInkWhite,
+                tonalElevation = 0.dp
+            ) {
+                Column {
+                    HorizontalDivider(color = EInkVeryLightGray)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { renderPageAt(currentPageIndex - 1) },
+                            enabled = currentPageIndex > 0 && !isRenderingPage,
+                            modifier = Modifier.weight(1f).height(36.dp),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Icon(Icons.Default.ChevronLeft, null, modifier = Modifier.size(18.dp))
+                            Text("上一页", fontSize = 13.sp)
+                        }
+                        Text(
+                            if (pageCount > 0) "${currentPageIndex + 1} / $pageCount" else "-",
+                            modifier = Modifier.weight(1f),
+                            fontSize = 13.sp,
+                            color = EInkBlack,
+                            fontWeight = FontWeight.Medium,
+                            textAlign = TextAlign.Center
+                        )
+                        OutlinedButton(
+                            onClick = { renderPageAt(currentPageIndex + 1) },
+                            enabled = currentPageIndex < pageCount - 1 && !isRenderingPage,
+                            modifier = Modifier.weight(1f).height(36.dp),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text("下一页", fontSize = 13.sp)
+                            Icon(Icons.Default.ChevronRight, null, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 其他文件
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -434,7 +632,7 @@ private fun OtherFilePage(file: IndexedFile, onTap: () -> Unit) {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
             Icon(
-                when { file.isAudio -> Icons.Default.AudioFile; file.isPdf -> Icons.Default.PictureAsPdf; else -> Icons.Default.InsertDriveFile },
+                when { file.isAudio -> Icons.Default.AudioFile; else -> Icons.Default.InsertDriveFile },
                 contentDescription = null, modifier = Modifier.size(80.dp), tint = EInkLightGray
             )
             Spacer(modifier = Modifier.height(20.dp))

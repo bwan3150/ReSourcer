@@ -80,26 +80,28 @@ private fun AppRoot(
             viewModel = serverViewModel,
             onServerSelected = { /* 会自动触发 activeServer 更新 */ }
         )
-    } else if (showPreview) {
-        // ── 文件预览（全屏覆盖，无动画） ────────────────────────────────
-        PreviewScreen(
-            server = activeServer!!,
-            files = previewFiles,
-            initialIndex = previewIndex,
-            onBack = { previewFiles = emptyList() }
-        )
     } else {
-        // ── 主界面：Gallery + Settings 底部导航 ─────────────────────────
-        MainTabScreen(
-            server = activeServer!!,
-            serverViewModel = serverViewModel,
-            galleryViewModel = galleryViewModel,
-            settingsViewModel = settingsViewModel,
-            onFileClick = { files, idx ->
-                previewFiles = files
-                previewIndex = idx
+        // ── 主界面始终保持组合，PreviewScreen 以 Box 覆盖在上方（保留 Gallery 文件夹状态）
+        Box(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
+            MainTabScreen(
+                server = activeServer!!,
+                serverViewModel = serverViewModel,
+                galleryViewModel = galleryViewModel,
+                settingsViewModel = settingsViewModel,
+                onFileClick = { files, idx ->
+                    previewFiles = files
+                    previewIndex = idx
+                }
+            )
+            if (showPreview) {
+                PreviewScreen(
+                    server = activeServer!!,
+                    files = previewFiles,
+                    initialIndex = previewIndex,
+                    onBack = { previewFiles = emptyList() }
+                )
             }
-        )
+        }
     }
 }
 
