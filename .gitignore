@@ -101,6 +101,22 @@ app/flutter/flutter_*.png
 app/flutter/flutter_*.json
 
 # ========================================
+# E-ink Android App
+# ========================================
+
+# Gradle 缓存与构建产物
+E-ink/.gradle/
+E-ink/app/build/
+E-ink/build/
+
+# 本地配置（机器相关，不提交）
+E-ink/local.properties
+
+# IDE
+E-ink/.idea/
+E-ink/**/*.iml
+
+# ========================================
 # Tauri Tray App
 # ========================================
 
