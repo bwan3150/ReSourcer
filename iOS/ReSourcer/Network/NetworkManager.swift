@@ -193,6 +193,17 @@ actor NetworkManager {
             if error.code == .cancelled {
                 throw APIError.cancelled
             }
+            // 连接类错误：通知上层可能需要切换地址
+            let connectivityCodes: Set<URLError.Code> = [
+                .notConnectedToInternet,
+                .cannotConnectToHost,
+                .cannotFindHost,
+                .networkConnectionLost,
+                .timedOut
+            ]
+            if connectivityCodes.contains(error.code) {
+                NotificationCenter.default.post(name: .networkConnectivityError, object: nil)
+            }
             throw APIError.networkError(error)
         } catch {
             throw APIError.networkError(error)

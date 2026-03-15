@@ -898,6 +898,8 @@ extension Notification.Name {
     static let themeDidChange = Notification.Name("themeDidChange")
     static let serverDidSwitch = Notification.Name("serverDidSwitch")
     static let sourceFolderDidChange = Notification.Name("sourceFolderDidChange")
+    /// 当 NetworkManager 检测到连接错误时发送（用于触发全局切换地址对话框）
+    static let networkConnectivityError = Notification.Name("networkConnectivityError")
 }
 
 // MARK: - Preview

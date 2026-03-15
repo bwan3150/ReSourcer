@@ -245,4 +245,21 @@ final class LocalStorageService: @unchecked Sendable {
     func getLastActiveTime() -> Date? {
         return defaults.object(forKey: Keys.lastActiveTime) as? Date
     }
+
+    // MARK: - Active URL 持久化（per server）
+
+    /// 保存某台服务器上次使用的活跃地址
+    func saveActiveURL(_ urlString: String, forServerId serverId: String) {
+        defaults.set(urlString, forKey: "active_url_\(serverId)")
+    }
+
+    /// 读取某台服务器上次使用的活跃地址
+    func getActiveURL(forServerId serverId: String) -> String? {
+        defaults.string(forKey: "active_url_\(serverId)")
+    }
+
+    /// 清除某台服务器的活跃地址记录
+    func clearActiveURL(forServerId serverId: String) {
+        defaults.removeObject(forKey: "active_url_\(serverId)")
+    }
 }

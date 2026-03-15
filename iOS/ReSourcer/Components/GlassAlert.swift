@@ -224,6 +224,114 @@ struct GlassAlertDialog: View {
     }
 }
 
+// MARK: - Connection Failure Dialog
+
+/// 连接失败对话框 - 用于在网络不通时提示用户切换地址
+struct ConnectionFailureDialog: View {
+
+    let failedURL: String
+    let alternateURLs: [URL]
+    let onSwitchURL: (URL) -> Void
+    let onReturnToList: () -> Void
+    let onDismiss: () -> Void
+
+    @State private var isVisible = false
+
+    var body: some View {
+        ZStack {
+            // 背景遮罩（不可点击关闭，强制用户做出选择）
+            Color.black.opacity(isVisible ? 0.5 : 0)
+                .ignoresSafeArea()
+
+            // 对话框内容
+            VStack(spacing: AppTheme.Spacing.lg) {
+
+                // 图标
+                Image(systemName: "wifi.exclamationmark")
+                    .font(.system(size: 44))
+                    .foregroundStyle(.primary)
+                    .symbolEffect(.bounce, value: isVisible)
+
+                // 标题
+                Text("连接失败")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+
+                // 失败地址
+                Text(failedURL)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+
+                Divider()
+                    .padding(.horizontal, -AppTheme.Spacing.xxl)
+
+                // 备用地址列表
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                    Text("切换到其他地址")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    ForEach(alternateURLs, id: \.absoluteString) { url in
+                        Button {
+                            onSwitchURL(url)
+                            dismiss()
+                        } label: {
+                            HStack(spacing: AppTheme.Spacing.sm) {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.primary)
+                                Text(url.absoluteString)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.horizontal, AppTheme.Spacing.md)
+                            .padding(.vertical, AppTheme.Spacing.sm)
+                            .frame(maxWidth: .infinity)
+                            .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+                        }
+                    }
+                }
+
+                // 返回服务器列表
+                Button {
+                    onReturnToList()
+                    dismiss()
+                } label: {
+                    Text("返回服务器列表")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, AppTheme.Spacing.xs)
+            }
+            .padding(AppTheme.Spacing.xxl)
+            .frame(maxWidth: 340)
+            .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
+            .scaleEffect(isVisible ? 1 : 0.9)
+            .opacity(isVisible ? 1 : 0)
+        }
+        .onAppear {
+            withAnimation(AppTheme.Animation.spring) {
+                isVisible = true
+            }
+        }
+    }
+
+    private func dismiss() {
+        withAnimation(AppTheme.Animation.quick) {
+            isVisible = false
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            onDismiss()
+        }
+    }
+}
+
 // MARK: - Alert Manager
 
 /// 全局提示管理器
@@ -235,6 +343,15 @@ final class GlassAlertManager {
 
     private(set) var toasts: [GlassAlertData] = []
     private(set) var currentAlert: (data: GlassAlertData, primary: GlassAlertDialog.AlertButton?, secondary: GlassAlertDialog.AlertButton?)?
+
+    /// 连接失败对话框状态
+    struct ConnectionFailureState {
+        let failedURL: String
+        let alternateURLs: [URL]
+        let onSwitchURL: (URL) -> Void
+        let onReturnToList: () -> Void
+    }
+    private(set) var connectionFailure: ConnectionFailureState?
 
     /// Quick Loading 状态
     private(set) var isQuickLoading = false
@@ -293,6 +410,29 @@ final class GlassAlertManager {
     /// 关闭弹窗
     func dismissAlert() {
         currentAlert = nil
+    }
+
+    // MARK: - Connection Failure
+
+    /// 显示连接失败切换对话框（已有对话框时忽略，避免重复弹出）
+    func showConnectionFailure(
+        failedURL: String,
+        alternateURLs: [URL],
+        onSwitchURL: @escaping (URL) -> Void,
+        onReturnToList: @escaping () -> Void
+    ) {
+        guard connectionFailure == nil else { return }
+        connectionFailure = ConnectionFailureState(
+            failedURL: failedURL,
+            alternateURLs: alternateURLs,
+            onSwitchURL: onSwitchURL,
+            onReturnToList: onReturnToList
+        )
+    }
+
+    /// 关闭连接失败对话框
+    func dismissConnectionFailure() {
+        connectionFailure = nil
     }
 
     // MARK: - Quick Loading
@@ -410,6 +550,28 @@ struct GlassQuickLoadingView: View {
     }
 }
 
+// MARK: - Connection Failure Container
+
+/// 连接失败对话框容器视图
+struct ConnectionFailureContainer: View {
+
+    @State private var alertManager = GlassAlertManager.shared
+
+    var body: some View {
+        if let state = alertManager.connectionFailure {
+            ConnectionFailureDialog(
+                failedURL: state.failedURL,
+                alternateURLs: state.alternateURLs,
+                onSwitchURL: state.onSwitchURL,
+                onReturnToList: state.onReturnToList
+            ) {
+                alertManager.dismissConnectionFailure()
+            }
+            .transition(.opacity)
+        }
+    }
+}
+
 // MARK: - Quick Loading Container
 
 /// Quick Loading 容器视图
@@ -428,7 +590,7 @@ struct GlassQuickLoadingContainer: View {
 // MARK: - View Extension
 
 extension View {
-    /// 添加全局 Toast、Alert 和 Quick Loading 支持
+    /// 添加全局 Toast、Alert、Quick Loading 和连接失败对话框支持
     func withGlassAlerts() -> some View {
         self
             .overlay(alignment: .bottom) {
@@ -436,6 +598,9 @@ extension View {
             }
             .overlay {
                 GlassAlertContainer()
+            }
+            .overlay {
+                ConnectionFailureContainer()
             }
             .overlay {
                 GlassQuickLoadingContainer()

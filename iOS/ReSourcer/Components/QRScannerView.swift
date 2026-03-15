@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import AVFoundation
+@preconcurrency import AVFoundation
 
 // MARK: - QR 扫描结果
 
@@ -262,8 +262,10 @@ struct QRCameraPreview: UIViewRepresentable {
 
             // 只处理一次，防止重复回调
             hasScanned = true
-            // 震动反馈
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            // 震动反馈（delegate 固定在 .main queue 执行，用 assumeIsolated 消除编译警告）
+            MainActor.assumeIsolated {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            }
             session?.stopRunning()
             onCodeScanned(code)
         }

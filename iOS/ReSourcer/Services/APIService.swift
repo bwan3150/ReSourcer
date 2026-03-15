@@ -60,10 +60,14 @@ final class APIService: ObservableObject {
             fatalError("Invalid server URL: \(server.baseURL)")
         }
 
+        // 恢复上次记住的活跃地址（内外网切换持久化）
+        let savedURLString = LocalStorageService.shared.getActiveURL(forServerId: server.id)
+        let restoredURL = savedURLString.flatMap { URL(string: $0) } ?? baseURL
+
         self.server = server
-        self.activeBaseURL = baseURL
+        self.activeBaseURL = restoredURL
         self.networkManager = NetworkManager(
-            baseURL: baseURL,
+            baseURL: restoredURL,
             apiKey: server.apiKey,
             timeoutInterval: 30
         )
@@ -78,6 +82,18 @@ final class APIService: ObservableObject {
         self.browser = BrowserService(networkManager: networkManager)
         self.config = ConfigService(networkManager: networkManager)
         self.tag = TagService(networkManager: networkManager)
+
+        // 监听连接错误通知，自动触发地址切换对话框
+        NotificationCenter.default.addObserver(
+            forName: .networkConnectivityError,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            // queue: .main 保证在主线程执行，用 Task @MainActor 满足 Swift 6 隔离要求
+            Task { @MainActor [weak self] in
+                self?.showConnectionFailureDialogIfNeeded()
+            }
+        }
     }
 
     // MARK: - Convenience Methods
@@ -87,10 +103,31 @@ final class APIService: ObservableObject {
         activeBaseURL
     }
 
-    /// 手动切换到指定地址
+    /// 手动切换到指定地址（同时持久化记录）
     func switchToURL(_ url: URL) async {
         activeBaseURL = url
         await networkManager.updateBaseURL(url)
+        LocalStorageService.shared.saveActiveURL(url.absoluteString, forServerId: server.id)
+    }
+
+    /// 当检测到连接错误时，若服务器有备用地址则弹出切换对话框
+    private func showConnectionFailureDialogIfNeeded() {
+        let alternateURLs = server.allURLs
+            .filter { $0 != activeBaseURL.absoluteString }
+            .compactMap { URL(string: $0) }
+
+        guard !alternateURLs.isEmpty else { return }
+
+        GlassAlertManager.shared.showConnectionFailure(
+            failedURL: activeBaseURL.absoluteString,
+            alternateURLs: alternateURLs,
+            onSwitchURL: { [weak self] url in
+                Task { await self?.switchToURL(url) }
+            },
+            onReturnToList: {
+                NotificationCenter.default.post(name: .userDidLogout, object: nil)
+            }
+        )
     }
 
     /// 获取 API Key
