@@ -11,6 +11,8 @@ services:
     volumes:
       # 配置文件持久化 (对应容器内 $HOME/.config/re-sourcer)
       - /volume1/docker/ReSourcer:/home/appuser/.config/re-sourcer
+      # yt-dlp 二进制持久化（避免每次重启重新下载，同时保留手动更新效果）
+      - /volume1/docker/ReSourcer/tools:/home/appuser/.resourcer/bin
       # 资源文件夹挂载
       - /volume1/ReSourcer:/data
     environment:

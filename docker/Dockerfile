@@ -21,8 +21,9 @@ RUN DOWNLOAD_URL=$(curl -s https://api.github.com/repos/bwan3150/ReSourcer/relea
     curl -L -o /app/re-sourcer "${DOWNLOAD_URL}" && \
     chmod +x /app/re-sourcer
 
-# 创建配置和数据目录,确保任何 UID 都有权限访问
+# 创建配置、数据和工具目录，确保任何 UID 都有权限访问
 RUN mkdir -p /home/appuser/.config && \
+    mkdir -p /home/appuser/.resourcer/bin && \
     mkdir -p /data && \
     chmod -R 777 /home/appuser /data
 
