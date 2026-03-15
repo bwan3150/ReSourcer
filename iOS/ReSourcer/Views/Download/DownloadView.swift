@@ -389,11 +389,27 @@ struct DownloadView: View {
 
     private func pasteFromClipboard() {
         if let text = UIPasteboard.general.string?.trimmingCharacters(in: .whitespaces), !text.isEmpty {
-            urlText = text
+            urlText = extractURL(from: text)
             GlassAlertManager.shared.showSuccess("已粘贴")
         } else {
             GlassAlertManager.shared.showInfo("剪贴板为空")
         }
+    }
+
+    /// 从文本中提取第一个 http/https URL
+    /// 处理 B站/抖音等 App 分享时附带标题的情况，如「【标题】https://b23.tv/xxx」
+    private func extractURL(from text: String) -> String {
+        // 如果本身就是合法 URL，直接返回
+        if text.hasPrefix("http://") || text.hasPrefix("https://") {
+            return text
+        }
+        // 用正则提取第一个 http/https URL
+        let pattern = #"https?://[^\s]+"#
+        if let range = text.range(of: pattern, options: .regularExpression) {
+            return String(text[range])
+        }
+        // 没找到 URL，原样返回让用户看到输入内容
+        return text
     }
 
     private func startDownload() {

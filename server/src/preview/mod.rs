@@ -3,7 +3,7 @@ pub mod models;
 mod files;
 mod thumbnail;
 mod content;
-mod utils;
+pub mod utils;
 
 use actix_web::web;
 

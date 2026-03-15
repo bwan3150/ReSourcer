@@ -61,7 +61,10 @@ struct SettingsView: View {
                     // 6. 认证
                     authSection
 
-                    // 7. 缓存管理
+                    // 7. 下载器
+                    downloaderSection
+
+                    // 8. 缓存管理
                     cacheSection
 
                     // 8. GitHub
@@ -450,7 +453,36 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - 6. 缓存管理
+    // MARK: - 7. 下载器
+
+    private var downloaderSection: some View {
+        SettingsSection(title: "下载器") {
+            NavigationLink {
+                DownloaderSettingsView(apiService: apiService)
+            } label: {
+                HStack(spacing: AppTheme.Spacing.md) {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.green)
+                        .frame(width: 28)
+
+                    Text("下载器管理")
+                        .font(.body)
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - 8. 缓存管理
 
     private var cacheSection: some View {
         SettingsSection(title: "缓存") {

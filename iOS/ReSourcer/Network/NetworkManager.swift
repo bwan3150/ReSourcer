@@ -219,7 +219,23 @@ actor NetworkManager {
 
     /// 解码响应数据
     private func decodeResponse<T: Decodable>(_ data: Data, response: URLResponse) throws -> T {
-        try validateResponse(response)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 200...299:
+            break
+        case 401:
+            throw APIError.unauthorized
+        case 404:
+            throw APIError.notFound
+        default:
+            // 尝试从 body 中读取服务端返回的 error 字段
+            let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])
+                .flatMap { $0["error"] as? String }
+            throw APIError.serverError(statusCode: httpResponse.statusCode, message: message)
+        }
 
         do {
             return try decoder.decode(T.self, from: data)

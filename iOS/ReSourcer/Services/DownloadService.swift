@@ -87,6 +87,18 @@ actor DownloadService {
         _ = try await networkManager.requestStatus(.downloadHistoryClear)
     }
 
+    // MARK: - yt-dlp 版本管理
+
+    /// 获取 yt-dlp 当前版本号
+    func getYtdlpVersion() async throws -> YtdlpVersionResponse {
+        return try await networkManager.request(.downloaderYtdlpVersion)
+    }
+
+    /// 更新 yt-dlp 到最新版本
+    func updateYtdlp() async throws -> YtdlpUpdateResponse {
+        return try await networkManager.request(.downloaderYtdlpUpdate)
+    }
+
     // MARK: - 便捷方法
 
     /// 获取活跃的下载任务

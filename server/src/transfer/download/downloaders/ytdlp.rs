@@ -139,6 +139,9 @@ where
     // 构建命令
     let mut cmd = Command::new(&ytdlp_path);
 
+    // 获取 ffmpeg 路径，告知 yt-dlp 合并音视频流（Bilibili 等 DASH 格式必须）
+    let ffmpeg_path = crate::preview::utils::get_ffmpeg_path();
+
     cmd.arg(&url)
        .arg("-o")
        .arg(format!("{}/%(title)s.%(ext)s", output_dir))
@@ -146,6 +149,7 @@ where
        .arg("--progress")      // 强制显示进度条
        .arg("--no-playlist")   // 不下载播放列表
        .arg("--no-update")     // 禁止自动检查更新（由接口管理）
+       .arg("--ffmpeg-location").arg(&ffmpeg_path) // 指定 ffmpeg 路径，用于合并音视频
        .arg("--print")
        .arg("after_move:filepath"); // 打印下载完成后的文件路径
 

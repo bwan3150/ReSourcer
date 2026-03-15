@@ -265,3 +265,16 @@ extension String {
         return "\(timeString) \(tzName)"
     }
 }
+
+// MARK: - yt-dlp 版本管理
+
+struct YtdlpVersionResponse: Codable {
+    let version: String?
+    let installed: Bool
+}
+
+struct YtdlpUpdateResponse: Codable {
+    let status: String?
+    let output: String?
+    let error: String?
+}

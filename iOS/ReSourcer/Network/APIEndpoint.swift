@@ -46,6 +46,8 @@ enum APIEndpoint {
     case downloadTaskDelete(id: String)      // DELETE /api/transfer/download/task/{id}
     case downloadHistory(offset: Int, limit: Int, status: String?)  // GET /api/transfer/download/history
     case downloadHistoryClear                // DELETE /api/transfer/download/history
+    case downloaderYtdlpVersion             // GET  /api/transfer/download/ytdlp/version
+    case downloaderYtdlpUpdate              // POST /api/transfer/download/ytdlp/update
 
     // MARK: - Transfer/Upload 上传相关
     case uploadTask                          // POST /api/transfer/upload/task (multipart)
@@ -152,6 +154,10 @@ enum APIEndpoint {
             return path
         case .downloadHistoryClear:
             return "/api/transfer/download/history"
+        case .downloaderYtdlpVersion:
+            return "/api/transfer/download/ytdlp/version"
+        case .downloaderYtdlpUpdate:
+            return "/api/transfer/download/ytdlp/update"
 
         // Upload
         case .uploadTask:
@@ -264,7 +270,7 @@ enum APIEndpoint {
         // GET 请求
         case .authCheck, .health, .config, .appConfig,
              .fileInfo, .folderList,
-             .downloadTasks, .downloadTaskStatus, .downloadHistory,
+             .downloadTasks, .downloadTaskStatus, .downloadHistory, .downloaderYtdlpVersion,
              .uploadTasks, .uploadTaskStatus, .uploadHistory,
              .previewFiles, .previewThumbnail, .previewThumbnailByUuid, .previewContent, .previewContentByUuid,
              .indexerFiles, .indexerFile, .indexerFolders, .indexerStatus, .indexerBreadcrumb,
