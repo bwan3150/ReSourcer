@@ -94,6 +94,10 @@ struct FilePreviewView: View {
     // 操作状态
     @State private var isOperating = false
 
+    // 调试日志
+    @StateObject private var logger = PreviewLogger()
+    @State private var showDebugLog = false
+
     // 分页加载
     var hasMore: Bool = false
     var onLoadMore: (() async -> [FileInfo])? = nil
@@ -155,22 +159,21 @@ struct FilePreviewView: View {
             }
 
             ToolbarItem(placement: .principal) {
-                Button {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    Text(currentFile?.name ?? "")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                .onTapGesture {
                     fileInfoTags = []
                     showInfoSheet = true
-                    Task {
-                        await resolveUuidAndLoadTags()
-                    }
-                } label: {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        Text(currentFile?.name ?? "")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.white)
-                            .fixedSize(horizontal: true, vertical: false)
-                    }
+                    Task { await resolveUuidAndLoadTags() }
                 }
-                .buttonStyle(.plain)
+                .onLongPressGesture {
+                    showDebugLog = true
+                }
             }
 
             ToolbarItem(placement: .topBarTrailing) {
@@ -198,6 +201,7 @@ struct FilePreviewView: View {
         .onChange(of: currentIndex) { _, newIndex in
             scheduleAutoHide()
             startAutoAdvanceTimer()
+            logger.clear()  // 切换文件时清空日志
 
             // 切换文件时自动解析 UUID
             Task { await resolveCurrentFileUuid() }
@@ -288,6 +292,12 @@ struct FilePreviewView: View {
                 .presentationDetents([.medium, .large])
             }
         }
+        // 调试日志面板（长按标题呼出）
+        .sheet(isPresented: $showDebugLog) {
+            DebugLogSheet(logger: logger, fileName: currentFile?.name ?? "")
+                .presentationDetents([.medium, .large])
+        }
+        .environmentObject(logger)
     }
 
     // MARK: - 文件内容路由
@@ -1113,6 +1123,8 @@ struct AnimatedGIFView: UIViewRepresentable {
 /// 视频播放预览
 struct VideoPreviewContent: View {
 
+    @EnvironmentObject private var logger: PreviewLogger
+
     let file: FileInfo
     let apiService: APIService
     @Binding var isPlaying: Bool
@@ -1245,6 +1257,8 @@ struct VideoPreviewContent: View {
         guard let url else { return }
 
         isBuffering = true
+        logger.info("视频 URL: \(url.absoluteString)")
+
         let avPlayer = AVPlayer(url: url)
         avPlayer.isMuted = isMuted
         player = avPlayer
@@ -1255,8 +1269,18 @@ struct VideoPreviewContent: View {
                 switch item.status {
                 case .readyToPlay:
                     isBuffering = false
+                    let dur = item.duration.seconds
+                    self.logger.info("readyToPlay，时长: \(dur.isFinite ? String(format: "%.2fs", dur) : "未知")")
                 case .failed:
                     isBuffering = false
+                    let err = item.error
+                    self.logger.error("播放失败: \(err?.localizedDescription ?? "未知错误")")
+                    if let nsErr = err as NSError? {
+                        self.logger.error("domain=\(nsErr.domain) code=\(nsErr.code)")
+                        if let underlying = nsErr.userInfo[NSUnderlyingErrorKey] as? NSError {
+                            self.logger.error("底层错误: \(underlying.localizedDescription)")
+                        }
+                    }
                 default:
                     break
                 }
@@ -1368,6 +1392,8 @@ struct VideoPreviewContent: View {
 /// 音频播放预览
 struct AudioPreviewContent: View {
 
+    @EnvironmentObject private var logger: PreviewLogger
+
     let file: FileInfo
     let apiService: APIService
     @Binding var isPlaying: Bool
@@ -1380,6 +1406,7 @@ struct AudioPreviewContent: View {
     @State private var player: AVPlayer?
     @State private var duration: Double = 1
     @State private var timeObserver: Any?
+    @State private var statusObserver: NSKeyValueObservation?
 
     var body: some View {
         ZStack {
@@ -1476,9 +1503,29 @@ struct AudioPreviewContent: View {
         }
         guard let url else { return }
 
+        logger.info("音频 URL: \(url.absoluteString)")
         let avPlayer = AVPlayer(url: url)
         avPlayer.isMuted = isMuted
         player = avPlayer
+
+        statusObserver = avPlayer.currentItem?.observe(\.status, options: [.new]) { item, _ in
+            Task { @MainActor in
+                switch item.status {
+                case .readyToPlay:
+                    self.logger.info("音频 readyToPlay")
+                case .failed:
+                    let err = item.error
+                    self.logger.error("音频加载失败: \(err?.localizedDescription ?? "未知")")
+                    if let nsErr = err as NSError? {
+                        self.logger.error("domain=\(nsErr.domain) code=\(nsErr.code)")
+                        if let underlying = nsErr.userInfo[NSUnderlyingErrorKey] as? NSError {
+                            self.logger.error("底层错误: \(underlying.localizedDescription)")
+                        }
+                    }
+                default: break
+                }
+            }
+        }
 
         // 监听时间
         let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
@@ -1732,6 +1779,76 @@ struct AVPlayerView: UIViewRepresentable {
 }
 
 // MARK: - Preview
+
+// MARK: - DebugLogSheet
+
+struct DebugLogSheet: View {
+    @ObservedObject var logger: PreviewLogger
+    let fileName: String
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 4) {
+                    if logger.entries.isEmpty {
+                        Text("暂无日志")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding()
+                    } else {
+                        ForEach(logger.entries) { entry in
+                            HStack(alignment: .top, spacing: 8) {
+                                Text(entry.timeString)
+                                    .font(.system(.caption2, design: .monospaced))
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize()
+
+                                Text(entry.level.rawValue)
+                                    .font(.system(.caption2, design: .monospaced))
+                                    .foregroundStyle(levelColor(entry.level))
+                                    .fixedSize()
+
+                                Text(entry.message)
+                                    .font(.system(.caption2, design: .monospaced))
+                                    .foregroundStyle(.primary)
+                                    .textSelection(.enabled)
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
+                }
+                .padding(.vertical)
+            }
+            .navigationTitle("调试日志")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        UIPasteboard.general.string = "[\(fileName)]\n" + logger.fullText
+                    } label: {
+                        Label("复制", systemImage: "doc.on.doc")
+                    }
+                }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        logger.clear()
+                    } label: {
+                        Label("清空", systemImage: "trash")
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+        }
+    }
+
+    private func levelColor(_ level: PreviewLogger.Level) -> Color {
+        switch level {
+        case .info:    return .green
+        case .warning: return .orange
+        case .error:   return .red
+        }
+    }
+}
 
 #Preview {
     let server = Server(name: "Test", baseURL: "http://localhost:1234", apiKey: "test")
