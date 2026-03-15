@@ -220,6 +220,35 @@ pub async fn cancel_task(
     }
 }
 
+/// GET /api/transfer/download/ytdlp/version
+/// 获取当前 yt-dlp 版本号
+pub async fn get_ytdlp_version_handler() -> Result<HttpResponse> {
+    match super::downloaders::ytdlp::get_ytdlp_version().await {
+        Ok(version) => Ok(HttpResponse::Ok().json(serde_json::json!({
+            "version": version,
+            "installed": true
+        }))),
+        Err(_) => Ok(HttpResponse::Ok().json(serde_json::json!({
+            "version": null,
+            "installed": false
+        }))),
+    }
+}
+
+/// POST /api/transfer/download/ytdlp/update
+/// 更新 yt-dlp 到最新版本（调用 yt-dlp -U）
+pub async fn update_ytdlp_handler() -> Result<HttpResponse> {
+    match super::downloaders::ytdlp::update_ytdlp().await {
+        Ok(output) => Ok(HttpResponse::Ok().json(serde_json::json!({
+            "status": "success",
+            "output": output
+        }))),
+        Err(e) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": e
+        }))),
+    }
+}
+
 /// DELETE /api/transfer/download/history
 /// 清空历史记录（进行中的任务不受影响）
 pub async fn clear_history() -> Result<HttpResponse> {

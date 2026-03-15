@@ -28,5 +28,10 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         // 历史记录
         .service(web::resource("/history")
             .route(web::get().to(task::get_history))
-            .route(web::delete().to(task::clear_history)));
+            .route(web::delete().to(task::clear_history)))
+        // yt-dlp 版本管理
+        .service(web::resource("/ytdlp/version")
+            .route(web::get().to(task::get_ytdlp_version_handler)))
+        .service(web::resource("/ytdlp/update")
+            .route(web::post().to(task::update_ytdlp_handler)));
 }
