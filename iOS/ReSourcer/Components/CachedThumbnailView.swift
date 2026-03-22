@@ -17,6 +17,7 @@ struct CachedThumbnailView<Content: View, Placeholder: View>: View {
 
     @State private var uiImage: UIImage?
     @State private var isLoading = false
+    @State private var loadTask: Task<Void, Never>?
 
     // MARK: - Init
 
@@ -44,7 +45,11 @@ struct CachedThumbnailView<Content: View, Placeholder: View>: View {
             loadImageIfNeeded()
         }
         .onChange(of: url) { _, _ in
+            // 取消正在进行的加载，防止旧图覆盖新文件
+            loadTask?.cancel()
+            loadTask = nil
             uiImage = nil
+            isLoading = false
             loadImageIfNeeded()
         }
     }
@@ -62,8 +67,11 @@ struct CachedThumbnailView<Content: View, Placeholder: View>: View {
 
         // 异步网络加载
         isLoading = true
-        Task {
-            let loaded = await ThumbnailCacheService.shared.loadImage(from: url)
+        let currentURL = url
+        loadTask = Task {
+            let loaded = await ThumbnailCacheService.shared.loadImage(from: currentURL)
+            // 如果任务已被取消（URL 已切换），丢弃结果，不写入过期图片
+            guard !Task.isCancelled else { return }
             await MainActor.run {
                 uiImage = loaded
                 isLoading = false

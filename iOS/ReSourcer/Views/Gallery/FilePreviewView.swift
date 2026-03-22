@@ -1769,7 +1769,13 @@ struct AVPlayerView: UIViewRepresentable {
         return view
     }
 
-    func updateUIView(_ uiView: UIView, context: Context) {}
+    func updateUIView(_ uiView: UIView, context: Context) {
+        guard let view = uiView as? PlayerUIView else { return }
+        // player 变化时同步更新 playerLayer，否则切换文件后画面不更新
+        if view.playerLayer.player !== player {
+            view.playerLayer.player = player
+        }
+    }
 
     /// 内部 UIView，承载 AVPlayerLayer
     private class PlayerUIView: UIView {
