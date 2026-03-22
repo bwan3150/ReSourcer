@@ -23,8 +23,9 @@ fn is_hevc_hev1(file_path: &str, ffmpeg_path: &std::path::PathBuf) -> bool {
         Ok(o) => {
             let stderr = String::from_utf8_lossy(&o.stderr);
             // 示例：Stream #0:0: Video: hevc (Main) (hev1 / 0x31766568), ...
+            // 用 "(hev1" 而非裸的 "hev1"，避免文件路径中含 "hev1" 导致误判
             let lower = stderr.to_lowercase();
-            lower.contains("video: hevc") && stderr.contains("hev1")
+            lower.contains("video: hevc") && lower.contains("(hev1")
         }
         Err(_) => false,
     }
@@ -111,33 +112,47 @@ pub async fn serve_file(
     // 检测 HEVC hev1 → 重封装为 hvc1（iOS AVPlayer 兼容）
     // 只检测可能包含 HEVC 的容器格式，避免对图片/音频等无谓运行 ffmpeg
     if HEVC_CHECK_EXTENSIONS.contains(&extension.as_str()) && source_path.exists() {
-        let ffmpeg_path = get_ffmpeg_path();
-        if is_hevc_hev1(&file_path, &ffmpeg_path) {
-            let parent = source_path.parent()
-                .ok_or_else(|| actix_web::error::ErrorInternalServerError("无法获取文件所在目录"))?;
-            let transcode_dir = parent.join(".transcoded");
-            let stem = source_path.file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("output");
-            let cache_path = transcode_dir.join(format!("{}_hvc1.mp4", stem));
+        let parent = source_path.parent()
+            .ok_or_else(|| actix_web::error::ErrorInternalServerError("无法获取文件所在目录"))?;
+        let transcode_dir = parent.join(".transcoded");
+        let stem = source_path.file_stem().and_then(|s| s.to_str()).unwrap_or("output");
+        let cache_path = transcode_dir.join(format!("{}_hvc1.mp4", stem));
+        let skip_marker = transcode_dir.join(format!("{}.not_hev1", stem));
 
-            // 缓存有效则直接返回
-            if cache_path.exists() {
-                let src_modified = std::fs::metadata(source_path).and_then(|m| m.modified()).ok();
-                let cache_modified = std::fs::metadata(&cache_path).and_then(|m| m.modified()).ok();
-                if let (Some(src_t), Some(cache_t)) = (src_modified, cache_modified) {
-                    if cache_t >= src_t {
-                        return Ok(NamedFile::open_async(&cache_path).await?);
-                    }
+        let src_modified = std::fs::metadata(source_path).and_then(|m| m.modified()).ok();
+
+        // 1. 已重封装的缓存存在且比源文件新 → 直接返回，不再探测
+        if cache_path.exists() {
+            let cache_modified = std::fs::metadata(&cache_path).and_then(|m| m.modified()).ok();
+            if let (Some(src_t), Some(cache_t)) = (src_modified, cache_modified) {
+                if cache_t >= src_t {
+                    return Ok(NamedFile::open_async(&cache_path).await?);
                 }
             }
+        }
 
+        // 2. 已确认非 hev1 的标记文件存在且比源文件新 → 跳过探测直接返回原文件
+        if skip_marker.exists() {
+            let marker_modified = std::fs::metadata(&skip_marker).and_then(|m| m.modified()).ok();
+            if let (Some(src_t), Some(marker_t)) = (src_modified, marker_modified) {
+                if marker_t >= src_t {
+                    // 不是 hev1，直接走下面的正常流程
+                    return Ok(NamedFile::open_async(&file_path).await?);
+                }
+            }
+        }
+
+        // 3. 首次请求：运行 ffmpeg 探测，结果持久化避免重复探测
+        let ffmpeg_path = get_ffmpeg_path();
+        if is_hevc_hev1(&file_path, &ffmpeg_path) {
             std::fs::create_dir_all(&transcode_dir)
                 .map_err(|e| actix_web::error::ErrorInternalServerError(
                     format!("无法创建转码目录: {}", e)
                 ))?;
 
             // 只改 tag，不重新编码，速度极快
+            let cache_path_str = cache_path.to_str()
+                .ok_or_else(|| actix_web::error::ErrorInternalServerError("缓存路径含非 UTF-8 字符"))?;
             let output = std::process::Command::new(&ffmpeg_path)
                 .args([
                     "-i", &file_path,
@@ -145,7 +160,7 @@ pub async fn serve_file(
                     "-tag:v", "hvc1",
                     "-movflags", "+faststart",
                     "-y",
-                    cache_path.to_str().unwrap(),
+                    cache_path_str,
                 ])
                 .output()
                 .map_err(|e| actix_web::error::ErrorInternalServerError(
@@ -158,6 +173,10 @@ pub async fn serve_file(
                 // 重封装失败，降级直接返回原文件
                 let _ = std::fs::remove_file(&cache_path);
             }
+        } else {
+            // 非 hev1，写入标记文件，下次请求直接跳过探测
+            let _ = std::fs::create_dir_all(&transcode_dir);
+            let _ = std::fs::write(&skip_marker, b"");
         }
     }
 
@@ -200,6 +219,8 @@ pub async fn serve_file(
 
         // 使用 ffmpeg 转码为 MP4
         let ffmpeg_path = get_ffmpeg_path();
+        let cache_path_str = cache_path.to_str()
+            .ok_or_else(|| actix_web::error::ErrorInternalServerError("缓存路径含非 UTF-8 字符"))?;
         let output = std::process::Command::new(&ffmpeg_path)
             .args(&[
                 "-i", &file_path,
@@ -210,7 +231,7 @@ pub async fn serve_file(
                 "-b:a", "128k",
                 "-movflags", "+faststart",  // 将 moov atom 移到文件头部，支持流式播放
                 "-y",
-                cache_path.to_str().unwrap(),
+                cache_path_str,
             ])
             .output()
             .map_err(|e| {
