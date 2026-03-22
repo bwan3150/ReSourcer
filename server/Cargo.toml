@@ -1,6 +1,6 @@
 [package]
 name = "re-sourcer"
-version = "0.2.22-beta"
+version = "0.2.23-beta"
 edition = "2021"
 
 [dependencies]

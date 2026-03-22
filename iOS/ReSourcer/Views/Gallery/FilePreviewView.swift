@@ -95,6 +95,11 @@ struct FilePreviewView: View {
     // 播放模式
     @State private var playbackMode: PlaybackMode = .repeatCurrent
     @State private var autoAdvanceTask: Task<Void, Never>?
+    /// 同类型连播：记录自动播放开始时的文件类型（nil = 不限类型）
+    @State private var autoplayFileType: FileType? = nil
+
+    // 偏好设置（从本地读取）
+    @State private var prefs = LocalStorageService.shared.getPreviewPreferences()
 
     // 操作状态
     @State private var isOperating = false
@@ -203,6 +208,12 @@ struct FilePreviewView: View {
                     .onTapGesture {
                         withAnimation(AppTheme.Animation.standard) {
                             playbackMode = playbackMode.next
+                        }
+                        // 开始顺序/随机播放时记录起始文件类型（用于同类型连播）
+                        if playbackMode != .repeatCurrent {
+                            autoplayFileType = currentFile?.fileType
+                        } else {
+                            autoplayFileType = nil
                         }
                         startAutoAdvanceTimer()
                     }
@@ -334,7 +345,8 @@ struct FilePreviewView: View {
                 currentTime: $videoCurrentTime,
                 showControls: $showControls,
                 playbackMode: playbackMode,
-                onVideoEnd: { advanceToNext() }
+                onVideoEnd: { advanceToNext() },
+                onTap: { toggleControls() }
             )
         case .audio:
             AudioPreviewContent(
@@ -345,7 +357,8 @@ struct FilePreviewView: View {
                 currentTime: $videoCurrentTime,
                 showControls: $showControls,
                 playbackMode: playbackMode,
-                onAudioEnd: { advanceToNext() }
+                onAudioEnd: { advanceToNext() },
+                onTap: { toggleControls() }
             )
         case .pdf:
             PDFPreviewContent(
@@ -604,6 +617,7 @@ struct FilePreviewView: View {
     // MARK: - 控制栏显示/隐藏
 
     private func toggleControls() {
+        guard prefs.allowToggleUI else { return }
         withAnimation(AppTheme.Animation.standard) {
             showControls.toggle()
         }
@@ -614,10 +628,14 @@ struct FilePreviewView: View {
 
     private func scheduleAutoHide() {
         hideControlsTask?.cancel()
-        // 视频和音频播放时自动隐藏（10秒），图片和其他文件始终显示控制栏
+        // 不允许收起 UI，或自动隐藏延迟为 0 → 永不自动隐藏
+        guard prefs.allowToggleUI else { return }
+        guard prefs.autoHideDelay > 0 else { return }
+        // 只对视频和音频自动隐藏
         guard currentFile?.isVideo == true || currentFile?.isAudio == true else { return }
+        let delay = prefs.autoHideDelay
         hideControlsTask = Task {
-            try? await Task.sleep(for: .seconds(10))
+            try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 withAnimation(AppTheme.Animation.standard) {
@@ -635,22 +653,45 @@ struct FilePreviewView: View {
         case .repeatCurrent:
             break
         case .sequential:
-            withAnimation {
-                if currentIndex < currentFiles.count - 1 {
-                    currentIndex += 1
-                } else {
-                    currentIndex = 0
-                }
-            }
+            let targetType = prefs.filterAutoplayByFileType ? autoplayFileType : nil
+            let next = nextSequentialIndex(from: currentIndex, matchingType: targetType)
+            withAnimation { currentIndex = next }
         case .shuffle:
             navigateToRandom()
         }
+    }
+
+    /// 在 currentFiles 中顺序查找下一个符合类型的索引（循环）
+    private func nextSequentialIndex(from current: Int, matchingType: FileType?) -> Int {
+        guard let type = matchingType else {
+            // 不过滤类型，正常往后走
+            return current < currentFiles.count - 1 ? current + 1 : 0
+        }
+        // 从 current+1 开始找，找不到则从头找
+        let count = currentFiles.count
+        for offset in 1...count {
+            let idx = (current + offset) % count
+            if currentFiles[idx].fileType == type { return idx }
+        }
+        return current // 全部都不匹配（不可能，兜底）
     }
 
     /// 跳转到随机文件，覆盖全量文件范围（跨分页）
     private func navigateToRandom() {
         let total = totalCount > 0 ? totalCount : currentFiles.count
         guard total > 1 else { return }
+
+        // 开启同类型过滤时，优先从已缓存文件中随机挑同类型文件
+        if prefs.filterAutoplayByFileType, let targetType = autoplayFileType {
+            let sameTypeIndices = currentFiles.indices.filter {
+                currentFiles[$0].fileType == targetType && $0 != currentIndex
+            }
+            if !sameTypeIndices.isEmpty {
+                withAnimation { currentIndex = sameTypeIndices.randomElement()! }
+                return
+            }
+            // 缓存中无同类文件，继续走全量随机
+        }
 
         // 在全量范围内随机取一个 offset，避免和当前相同
         var randomOffset: Int
@@ -681,15 +722,16 @@ struct FilePreviewView: View {
         }
     }
 
-    /// 启动图片/其他文件的自动跳转定时器（8秒）
+    /// 启动图片/其他文件的自动跳转定时器
     /// 视频和音频由播放结束事件触发跳转，不使用定时器
     private func startAutoAdvanceTimer() {
         cancelAutoAdvanceTimer()
         guard playbackMode != .repeatCurrent else { return }
         guard currentFile?.isVideo != true && currentFile?.isAudio != true else { return }
 
+        let delay = prefs.imageAutoAdvanceSeconds
         autoAdvanceTask = Task {
-            try? await Task.sleep(for: .seconds(8))
+            try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled else { return }
             advanceToNext()
         }
@@ -1231,6 +1273,7 @@ struct VideoPreviewContent: View {
     @Binding var showControls: Bool
     let playbackMode: PlaybackMode
     let onVideoEnd: () -> Void
+    let onTap: () -> Void
 
     @State private var player: AVPlayer?
     @State private var duration: Double = 1
@@ -1282,11 +1325,7 @@ struct VideoPreviewContent: View {
         .gesture(pinchGesture)
         .simultaneousGesture(scale > 1.0 ? dragGesture : nil)
         .onTapGesture(count: 2) { resetZoom() }
-        .onTapGesture(count: 1) {
-            withAnimation(AppTheme.Animation.standard) {
-                showControls.toggle()
-            }
-        }
+        .onTapGesture(count: 1) { onTap() }
         .overlay {
 
             // 进度条控制层（跟随控制栏显隐）
@@ -1500,6 +1539,7 @@ struct AudioPreviewContent: View {
     @Binding var showControls: Bool
     let playbackMode: PlaybackMode
     let onAudioEnd: () -> Void
+    let onTap: () -> Void
 
     @State private var player: AVPlayer?
     @State private var duration: Double = 1
@@ -1563,11 +1603,7 @@ struct AudioPreviewContent: View {
             }
         }
         .contentShape(Rectangle())
-        .onTapGesture {
-            withAnimation(AppTheme.Animation.standard) {
-                showControls.toggle()
-            }
-        }
+        .onTapGesture { onTap() }
         .onAppear { setupPlayer() }
         .onDisappear { cleanupPlayer() }
         .onChange(of: isPlaying) { _, newValue in
@@ -1892,7 +1928,7 @@ private struct SystemVolumeControlView: UIViewRepresentable {
 
     // MARK: Coordinator - KVO 监听系统音量变化
 
-    final class Coordinator: NSObject {
+    final class Coordinator: NSObject, @unchecked Sendable {
         var binding: Binding<Float>
         var observation: NSKeyValueObservation?
 

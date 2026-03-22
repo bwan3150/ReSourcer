@@ -9,6 +9,27 @@ use super::utils::{get_ffmpeg_path, extract_clip_thumbnail};
 /// 不被 AVPlayer 原生支持、需要转码的视频格式
 const TRANSCODE_VIDEO_EXTENSIONS: &[&str] = &["wmv", "flv", "avi"];
 
+/// 可能包含 HEVC hev1 编码的容器格式（iOS AVPlayer 要求 hvc1 tag）
+const HEVC_CHECK_EXTENSIONS: &[&str] = &["mp4", "mov", "m4v"];
+
+/// 检测视频文件是否为 HEVC hev1 编码。
+/// iOS AVPlayer 只支持 hvc1 tag 的 HEVC，hev1 tag（ffmpeg/非 Apple 编码器默认）会黑屏。
+fn is_hevc_hev1(file_path: &str, ffmpeg_path: &std::path::PathBuf) -> bool {
+    // ffmpeg -hide_banner -i <file> 会把流信息输出到 stderr
+    let output = std::process::Command::new(ffmpeg_path)
+        .args(["-hide_banner", "-i", file_path])
+        .output();
+    match output {
+        Ok(o) => {
+            let stderr = String::from_utf8_lossy(&o.stderr);
+            // 示例：Stream #0:0: Video: hevc (Main) (hev1 / 0x31766568), ...
+            let lower = stderr.to_lowercase();
+            lower.contains("video: hevc") && stderr.contains("hev1")
+        }
+        Err(_) => false,
+    }
+}
+
 /// GET /api/preview/content/{path:.*}
 /// 提供文件服务（支持Range请求，流式传输）
 ///
@@ -85,6 +106,59 @@ pub async fn serve_file(
             ))?;
 
         return Ok(NamedFile::open_async(&cache_path).await?);
+    }
+
+    // 检测 HEVC hev1 → 重封装为 hvc1（iOS AVPlayer 兼容）
+    // 只检测可能包含 HEVC 的容器格式，避免对图片/音频等无谓运行 ffmpeg
+    if HEVC_CHECK_EXTENSIONS.contains(&extension.as_str()) && source_path.exists() {
+        let ffmpeg_path = get_ffmpeg_path();
+        if is_hevc_hev1(&file_path, &ffmpeg_path) {
+            let parent = source_path.parent()
+                .ok_or_else(|| actix_web::error::ErrorInternalServerError("无法获取文件所在目录"))?;
+            let transcode_dir = parent.join(".transcoded");
+            let stem = source_path.file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("output");
+            let cache_path = transcode_dir.join(format!("{}_hvc1.mp4", stem));
+
+            // 缓存有效则直接返回
+            if cache_path.exists() {
+                let src_modified = std::fs::metadata(source_path).and_then(|m| m.modified()).ok();
+                let cache_modified = std::fs::metadata(&cache_path).and_then(|m| m.modified()).ok();
+                if let (Some(src_t), Some(cache_t)) = (src_modified, cache_modified) {
+                    if cache_t >= src_t {
+                        return Ok(NamedFile::open_async(&cache_path).await?);
+                    }
+                }
+            }
+
+            std::fs::create_dir_all(&transcode_dir)
+                .map_err(|e| actix_web::error::ErrorInternalServerError(
+                    format!("无法创建转码目录: {}", e)
+                ))?;
+
+            // 只改 tag，不重新编码，速度极快
+            let output = std::process::Command::new(&ffmpeg_path)
+                .args([
+                    "-i", &file_path,
+                    "-c", "copy",
+                    "-tag:v", "hvc1",
+                    "-movflags", "+faststart",
+                    "-y",
+                    cache_path.to_str().unwrap(),
+                ])
+                .output()
+                .map_err(|e| actix_web::error::ErrorInternalServerError(
+                    format!("ffmpeg 重封装失败: {}", e)
+                ))?;
+
+            if output.status.success() {
+                return Ok(NamedFile::open_async(&cache_path).await?);
+            } else {
+                // 重封装失败，降级直接返回原文件
+                let _ = std::fs::remove_file(&cache_path);
+            }
+        }
     }
 
     let needs_transcode = query.get("transcode").map(|v| v == "mp4").unwrap_or(false)

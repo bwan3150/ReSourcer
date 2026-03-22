@@ -20,6 +20,7 @@ final class LocalStorageService: @unchecked Sendable {
 
     private enum Keys {
         static let servers = "saved_servers"
+        static let previewPreferences = "preview_preferences"
         static let currentServerId = "current_server_id"
         static let isLoggedIn = "is_logged_in"
         static let lastActiveTime = "last_active_time"
@@ -222,6 +223,34 @@ final class LocalStorageService: @unchecked Sendable {
         } catch {
             return false
         }
+    }
+
+    // MARK: - Preview Preferences
+
+    /// 预览偏好设置
+    struct PreviewPreferences: Codable {
+        /// 是否允许点击中间切换 UI 显示/隐藏
+        var allowToggleUI: Bool = true
+        /// 视频/音频自动隐藏 UI 的延迟秒数（0 = 永不自动隐藏）
+        var autoHideDelay: Int = 10
+        /// 图片在顺序/随机自动播放时的停留秒数
+        var imageAutoAdvanceSeconds: Int = 8
+        /// 自动播放是否只播放与起始文件相同的类型
+        var filterAutoplayByFileType: Bool = false
+    }
+
+    func getPreviewPreferences() -> PreviewPreferences {
+        guard let data = defaults.data(forKey: Keys.previewPreferences) else {
+            return PreviewPreferences()
+        }
+        return (try? JSONDecoder().decode(PreviewPreferences.self, from: data)) ?? PreviewPreferences()
+    }
+
+    @discardableResult
+    func savePreviewPreferences(_ prefs: PreviewPreferences) -> Bool {
+        guard let data = try? JSONEncoder().encode(prefs) else { return false }
+        defaults.set(data, forKey: Keys.previewPreferences)
+        return true
     }
 
     // MARK: - Utilities

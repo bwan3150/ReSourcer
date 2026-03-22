@@ -58,8 +58,8 @@ struct SettingsView: View {
                     // 4. 主题切换
                     themeSection
 
-                    // 5. 忽略配置
-                    ignoredSection
+                    // 5. 偏好设置
+                    preferencesSection
 
                     // 6. 认证
                     authSection
@@ -430,19 +430,19 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - 5. 忽略配置
+    // MARK: - 5. 偏好设置
 
-    private var ignoredSection: some View {
-        SettingsSection(title: "忽略配置") {
+    private var preferencesSection: some View {
+        SettingsSection(title: "偏好") {
             NavigationLink {
-                IgnoreSettingsView(apiService: apiService)
+                PreferencesView(apiService: apiService)
             } label: {
                 HStack(spacing: AppTheme.Spacing.md) {
-                    Image(systemName: "eye.slash.fill")
+                    Image(systemName: "slider.horizontal.3")
                         .font(.system(size: 18))
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(.blue)
                         .frame(width: 28)
-                    Text("忽略配置")
+                    Text("偏好设置")
                         .font(.body)
                         .foregroundStyle(.primary)
                     Spacer()
