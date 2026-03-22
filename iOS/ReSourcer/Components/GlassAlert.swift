@@ -227,6 +227,13 @@ struct GlassAlertDialog: View {
 // MARK: - Connection Failure Dialog
 
 /// 连接失败对话框 - 用于在网络不通时提示用户切换地址
+/// 每个备用地址的探测状态
+private enum URLProbeState {
+    case checking
+    case reachable
+    case unreachable
+}
+
 struct ConnectionFailureDialog: View {
 
     let failedURL: String
@@ -236,6 +243,8 @@ struct ConnectionFailureDialog: View {
     let onDismiss: () -> Void
 
     @State private var isVisible = false
+    /// 各备用地址的探测状态，key 为 absoluteString
+    @State private var probeStates: [String: URLProbeState] = [:]
 
     var body: some View {
         ZStack {
@@ -275,26 +284,48 @@ struct ConnectionFailureDialog: View {
                         .foregroundStyle(.secondary)
 
                     ForEach(alternateURLs, id: \.absoluteString) { url in
+                        let probe = probeStates[url.absoluteString] ?? .checking
                         Button {
                             onSwitchURL(url)
                             dismiss()
                         } label: {
                             HStack(spacing: AppTheme.Spacing.sm) {
-                                Image(systemName: "arrow.triangle.2.circlepath")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.primary)
+                                // 探测状态图标
+                                Group {
+                                    switch probe {
+                                    case .checking:
+                                        ProgressView()
+                                            .progressViewStyle(.circular)
+                                            .scaleEffect(0.75)
+                                            .frame(width: 16, height: 16)
+                                    case .reachable:
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(.green)
+                                    case .unreachable:
+                                        Image(systemName: "xmark.circle")
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                .font(.subheadline)
+
                                 Text(url.absoluteString)
                                     .font(.subheadline)
                                     .foregroundStyle(.primary)
                                     .lineLimit(1)
                                     .truncationMode(.middle)
                                 Spacer(minLength: 0)
+                                if probe == .reachable {
+                                    Text("可用")
+                                        .font(.caption)
+                                        .foregroundStyle(.green)
+                                }
                             }
                             .padding(.horizontal, AppTheme.Spacing.md)
                             .padding(.vertical, AppTheme.Spacing.sm)
                             .frame(maxWidth: .infinity)
                             .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
                         }
+                        .disabled(probe == .unreachable)
                     }
                 }
 
@@ -318,6 +349,24 @@ struct ConnectionFailureDialog: View {
         .onAppear {
             withAnimation(AppTheme.Animation.spring) {
                 isVisible = true
+            }
+        }
+        .task {
+            await probeAllURLs()
+        }
+    }
+
+    /// 并行探测所有备用地址，各自独立更新状态（哪个先回来就先刷新哪个）
+    private func probeAllURLs() async {
+        await withTaskGroup(of: (String, URLProbeState).self) { group in
+            for url in alternateURLs {
+                group.addTask {
+                    let ok = await APIService.quickHealthCheck(url: url, timeout: 2)
+                    return (url.absoluteString, ok ? .reachable : .unreachable)
+                }
+            }
+            for await (key, state) in group {
+                probeStates[key] = state
             }
         }
     }

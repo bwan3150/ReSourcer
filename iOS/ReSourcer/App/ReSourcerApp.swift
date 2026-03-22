@@ -82,15 +82,15 @@ struct ReSourcerApp: App {
             self.apiService = service
             self.isLoggedIn = true
 
-            // 异步验证连接状态
+            // 快速探测当前地址，不可达则弹切换对话框；仅检查 auth 失效时登出
             Task {
+                await service.probeConnectivity()
+
                 let status = await service.checkConnection()
-                if status != .online {
+                if status == .authError {
                     await MainActor.run {
                         handleLogout()
-                        if status == .authError {
-                            GlassAlertManager.shared.showError("认证失败", message: "API Key 已失效，请重新登录")
-                        }
+                        GlassAlertManager.shared.showError("认证失败", message: "API Key 已失效，请重新登录")
                     }
                 }
             }
@@ -118,13 +118,15 @@ struct ReSourcerApp: App {
             selectedTab = .gallery
         }
 
-        // 异步验证新服务器连接
+        // 快速探测新服务器，不可达则弹切换对话框；仅检查 auth 失效时登出
         Task {
+            await newService.probeConnectivity()
+
             let status = await newService.checkConnection()
-            if status != .online {
+            if status == .authError {
                 await MainActor.run {
                     handleLogout()
-                    GlassAlertManager.shared.showError("连接失败", message: "无法连接到所选服务器")
+                    GlassAlertManager.shared.showError("认证失败", message: "API Key 已失效，请重新登录")
                 }
             }
         }

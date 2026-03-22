@@ -69,7 +69,7 @@ final class APIService: ObservableObject {
         self.networkManager = NetworkManager(
             baseURL: restoredURL,
             apiKey: server.apiKey,
-            timeoutInterval: 30
+            timeoutInterval: 10
         )
 
         // 初始化所有子服务
@@ -83,16 +83,25 @@ final class APIService: ObservableObject {
         self.config = ConfigService(networkManager: networkManager)
         self.tag = TagService(networkManager: networkManager)
 
-        // 监听连接错误通知，自动触发地址切换对话框
+        // 监听连接错误通知，触发地址切换对话框（带并行探测）
         NotificationCenter.default.addObserver(
             forName: .networkConnectivityError,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            // queue: .main 保证在主线程执行，用 Task @MainActor 满足 Swift 6 隔离要求
             Task { @MainActor [weak self] in
                 self?.showConnectionFailureDialogIfNeeded()
             }
+        }
+
+    }
+
+    /// 主动探测当前地址，2 秒内无响应则弹切换对话框
+    /// 仅在 app 启动恢复登录 / 切换服务器时调用，tab 切换和导航不触发
+    func probeConnectivity() async {
+        let reachable = await APIService.quickHealthCheck(url: activeBaseURL, timeout: 2)
+        if !reachable {
+            showConnectionFailureDialogIfNeeded()
         }
     }
 
@@ -110,7 +119,7 @@ final class APIService: ObservableObject {
         LocalStorageService.shared.saveActiveURL(url.absoluteString, forServerId: server.id)
     }
 
-    /// 当检测到连接错误时，若服务器有备用地址则弹出切换对话框
+    /// 当检测到连接错误时，立即弹出切换对话框（对话框内部自行探测各备用地址）
     private func showConnectionFailureDialogIfNeeded() {
         let alternateURLs = server.allURLs
             .filter { $0 != activeBaseURL.absoluteString }
@@ -128,6 +137,25 @@ final class APIService: ObservableObject {
                 NotificationCenter.default.post(name: .userDidLogout, object: nil)
             }
         )
+    }
+
+    /// 用独立的短超时 URLSession 探测 health 端点
+    /// - Parameters:
+    ///   - url: 要探测的服务器地址
+    ///   - timeout: 超时秒数
+    /// - Returns: 是否可达
+    static func quickHealthCheck(url: URL, timeout: TimeInterval) async -> Bool {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = timeout
+        let session = URLSession(configuration: config)
+        var request = URLRequest(url: url.appendingPathComponent("/api/health"))
+        request.httpMethod = "GET"
+        do {
+            let (_, response) = try await session.data(for: request)
+            return (response as? HTTPURLResponse)?.statusCode == 200
+        } catch {
+            return false
+        }
     }
 
     /// 获取 API Key
