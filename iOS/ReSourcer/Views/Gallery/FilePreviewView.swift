@@ -151,9 +151,12 @@ struct FilePreviewView: View {
                     .id(file.id) // 用文件 id 确保移除后视图重建
                     .ignoresSafeArea()
 
-                // 底部控制层
+                // 顶部 + 底部控制层
                 if showControls {
                     VStack {
+                        topControls
+                            .padding(.horizontal, AppTheme.Spacing.md)
+                            .padding(.top, AppTheme.Spacing.xs)
                         Spacer()
                         bottomControls
                     }
@@ -163,62 +166,7 @@ struct FilePreviewView: View {
         }
         .ignoresSafeArea(edges: .bottom)
         .navigationBarBackButtonHidden(true)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.hidden, for: .navigationBar)
-        .toolbarVisibility(showControls ? .visible : .hidden, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.black)
-                    .frame(width: 34, height: 34)
-                    .background(.white.opacity(0.85), in: Circle())
-                    .onTapGesture { dismiss() }
-            }
-
-            ToolbarItem(placement: .principal) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    Text(currentFile?.name ?? "")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.white)
-                        .fixedSize(horizontal: true, vertical: false)
-                }
-                .onTapGesture {
-                    fileInfoTags = []
-                    showInfoSheet = true
-                    Task { await resolveUuidAndLoadTags() }
-                }
-                .onLongPressGesture {
-                    showDebugLog = true
-                }
-            }
-
-            ToolbarItem(placement: .topBarTrailing) {
-                Image(systemName: playbackMode.iconName)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(playbackMode == .repeatCurrent ? .black : .white)
-                    .frame(width: 34, height: 34)
-                    .background(
-                        playbackMode == .repeatCurrent
-                            ? Color.white.opacity(0.85)
-                            : Color.blue.opacity(0.85),
-                        in: Circle()
-                    )
-                    .onTapGesture {
-                        withAnimation(AppTheme.Animation.standard) {
-                            playbackMode = playbackMode.next
-                        }
-                        // 开始顺序/随机播放时记录起始文件类型（用于同类型连播）
-                        if playbackMode != .repeatCurrent {
-                            autoplayFileType = currentFile?.fileType
-                        } else {
-                            autoplayFileType = nil
-                        }
-                        startAutoAdvanceTimer()
-                    }
-            }
-        }
+        .toolbarVisibility(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .statusBarHidden(!showControls)
         .animation(AppTheme.Animation.standard, value: showControls)
@@ -371,6 +319,64 @@ struct FilePreviewView: View {
                 file: file,
                 onTap: { toggleControls() }
             )
+        }
+    }
+
+    // MARK: - 顶部标题栏
+
+    private var topControls: some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+
+            // 返回按钮
+            Image(systemName: "chevron.left")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(.black)
+                .frame(width: 34, height: 34)
+                .background(.white.opacity(0.85), in: Circle())
+                .onTapGesture { dismiss() }
+
+            // 文件名胶囊（点击查看详情，长按看日志，支持横向滚动）
+            ScrollView(.horizontal, showsIndicators: false) {
+                Text(currentFile?.name ?? "")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.horizontal, AppTheme.Spacing.md)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 34)
+            .background(.white.opacity(0.85), in: Capsule())
+            .contentShape(Capsule())
+            .simultaneousGesture(TapGesture().onEnded {
+                fileInfoTags = []
+                showInfoSheet = true
+                Task { await resolveUuidAndLoadTags() }
+            })
+            .onLongPressGesture { showDebugLog = true }
+
+            // 播放模式按钮
+            Image(systemName: playbackMode.iconName)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(playbackMode == .repeatCurrent ? .black : .white)
+                .frame(width: 34, height: 34)
+                .background(
+                    playbackMode == .repeatCurrent
+                        ? Color.white.opacity(0.85)
+                        : Color.blue.opacity(0.85),
+                    in: Circle()
+                )
+                .onTapGesture {
+                    withAnimation(AppTheme.Animation.standard) {
+                        playbackMode = playbackMode.next
+                    }
+                    if playbackMode != .repeatCurrent {
+                        autoplayFileType = currentFile?.fileType
+                    } else {
+                        autoplayFileType = nil
+                    }
+                    startAutoAdvanceTimer()
+                }
         }
     }
 
