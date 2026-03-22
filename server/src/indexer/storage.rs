@@ -366,6 +366,8 @@ pub fn is_source_folder_indexed(source_folder: &str) -> Result<bool, rusqlite::E
 }
 
 /// 清除指定源文件夹下的所有文件索引（用于强制重建）
+/// 注意：此函数会销毁所有 UUID，导致 tag 等关联数据丢失，请改用 mark_missing_for_source
+#[allow(dead_code)]
 pub fn clear_file_index_for_source(source_folder: &str) -> Result<u64, rusqlite::Error> {
     let conn = get_connection()?;
     // file_index.folder_path 是具体的子文件夹路径，以 source_folder 开头
@@ -374,6 +376,39 @@ pub fn clear_file_index_for_source(source_folder: &str) -> Result<u64, rusqlite:
         params![source_folder, format!("{}/%", source_folder)],
     )?;
     Ok(affected as u64)
+}
+
+/// 标记源文件夹下磁盘上已不存在的文件为缺失（current_path = NULL）
+/// 用于 force 重建索引：保留 UUID/tag 关联，只清理已删除的文件记录
+pub fn mark_missing_for_source(source_folder: &str) -> Result<u64, rusqlite::Error> {
+    let conn = get_connection()?;
+
+    // 查出该源文件夹下所有有路径的文件
+    let mut stmt = conn.prepare(
+        "SELECT uuid, current_path FROM file_index
+         WHERE (folder_path = ?1 OR folder_path LIKE ?2) AND current_path IS NOT NULL"
+    )?;
+
+    let rows: Vec<(String, String)> = stmt.query_map(
+        params![source_folder, format!("{}/%", source_folder)],
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    )?.filter_map(|r| r.ok()).collect();
+
+    // 逐个检查磁盘是否存在，批量标记缺失
+    let tx = conn.unchecked_transaction()?;
+    let mut count = 0u64;
+    for (uuid, path) in &rows {
+        if !std::path::Path::new(path).exists() {
+            tx.execute(
+                "UPDATE file_index SET current_path = NULL WHERE uuid = ?1",
+                params![uuid],
+            )?;
+            count += 1;
+        }
+    }
+    tx.commit()?;
+
+    Ok(count)
 }
 
 /// 从数据库查找给定路径所属的源文件夹（最长前缀匹配）
