@@ -1145,7 +1145,6 @@ struct GalleryView: View {
         if let file = fileInfoToShow {
             FileInfoSheetContent(
                 file: file,
-                bottomSpacing: 60,
                 tags: fileInfoTags,
                 onAddTag: file.uuid != nil ? {
                     fileInfoToShow = nil

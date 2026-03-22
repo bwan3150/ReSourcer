@@ -132,7 +132,7 @@ enum AppTheme {
         static let handleWidth: CGFloat = 36
         static let handleHeight: CGFloat = 5
         static let headerHeight: CGFloat = 56
-        static let maxHeightRatio: CGFloat = 0.9
+        static let maxHeightRatio: CGFloat = 0.93
     }
 }
 

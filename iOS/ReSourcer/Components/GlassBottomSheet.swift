@@ -104,6 +104,8 @@ struct GlassBottomSheet<Content: View>: View {
     @ViewBuilder
     private func sheetContent(in geometry: GeometryProxy) -> some View {
         let sheetHeight = calculateHeight(in: geometry)
+        // 安全区域高度：若 GeometryProxy 报告 0（某些 overlay 场景），退回最小间距
+        let safeBottom = max(geometry.safeAreaInsets.bottom, AppTheme.Spacing.lg)
 
         VStack(spacing: 0) {
             // 拖拽手柄
@@ -116,11 +118,10 @@ struct GlassBottomSheet<Content: View>: View {
                 headerBar
             }
 
-            // 内容区域
+            // 内容区域（仅水平 padding，不在 ScrollView 内部加底部安全区域）
             ScrollView {
                 content()
                     .padding(.horizontal, AppTheme.Spacing.lg)
-                    .padding(.bottom, geometry.safeAreaInsets.bottom + AppTheme.Spacing.lg)
                     .background(
                         GeometryReader { contentGeometry in
                             Color.clear.preference(
@@ -131,6 +132,10 @@ struct GlassBottomSheet<Content: View>: View {
                     )
             }
             .scrollBounceBehavior(.basedOnSize)
+
+            // 固定在 ScrollView 外部的安全区域间距
+            // 不参与滚动，确保内容永远不被 home indicator 遮挡
+            Color.clear.frame(height: safeBottom)
         }
         .frame(maxHeight: sheetHeight)
         .glassBackground(in: UnevenRoundedRectangle(
@@ -193,9 +198,11 @@ struct GlassBottomSheet<Content: View>: View {
     // MARK: - Calculations
 
     private func calculateHeight(in geometry: GeometryProxy) -> CGFloat {
+        let safeBottom = max(geometry.safeAreaInsets.bottom, AppTheme.Spacing.lg)
         switch height {
         case .fit:
-            let calculatedHeight = contentHeight + AppTheme.BottomSheet.headerHeight + 40
+            // 内容高度 + 标题栏 + 手柄/间距 + 外部安全区域间距
+            let calculatedHeight = contentHeight + AppTheme.BottomSheet.headerHeight + 40 + safeBottom
             let maxHeight = geometry.size.height * AppTheme.BottomSheet.maxHeightRatio
             return min(calculatedHeight, maxHeight)
         default:
