@@ -117,7 +117,8 @@ pub fn extract_image_frame_ffmpeg(image_path: &Path) -> Result<image::DynamicIma
     let output = Command::new(&ffmpeg_path)
         .args(&[
             "-i", image_path.to_str().unwrap(),
-            "-vframes", "1",
+            "-frames:v", "1",
+            "-update", "1",  // 新版 ffmpeg image2 muxer 需要此参数才能写入单张图片
             "-q:v", "2",
             "-y",
             temp_output.to_str().unwrap(),

@@ -62,7 +62,10 @@ pub async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, S
         // 先尝试 image 库直接打开，失败则 fallback 到 ffmpeg（用于 HEIC/AVIF 等格式）
         match image::open(path) {
             Ok(img) => img,
-            Err(_) => extract_image_frame_ffmpeg(path)?,
+            Err(e) => {
+                eprintln!("[thumbnail] image::open 失败 ({:?}): {}", path, e);
+                extract_image_frame_ffmpeg(path)?
+            }
         }
     };
 
@@ -70,8 +73,10 @@ pub async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, S
     let thumbnail = img.thumbnail(size, size);
 
     // 将缩略图编码为JPEG格式
+    // JPEG 不支持 alpha 通道，统一转为 RGB8（兼容 RGBA/RGBA16 等带透明度的图像）
+    let thumbnail_rgb = image::DynamicImage::ImageRgb8(thumbnail.into_rgb8());
     let mut buffer = Cursor::new(Vec::new());
-    thumbnail.write_to(&mut buffer, ImageFormat::Jpeg)
+    thumbnail_rgb.write_to(&mut buffer, ImageFormat::Jpeg)
         .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法编码图片: {}", e)))?;
 
     Ok(HttpResponse::Ok()
