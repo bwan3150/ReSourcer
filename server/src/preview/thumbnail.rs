@@ -4,7 +4,7 @@ use std::path::Path;
 use std::io::Cursor;
 use image::ImageFormat;
 use super::models::*;
-use super::utils::{extract_video_first_frame, extract_clip_thumbnail, extract_image_frame_ffmpeg, extract_pdf_thumbnail};
+use super::utils::{extract_video_first_frame, extract_clip_thumbnail, extract_image_thumbnail_ffmpeg, extract_pdf_thumbnail};
 
 /// GET /api/preview/thumbnail?path=<file_path>&size=<size>
 /// GET /api/preview/thumbnail?uuid=<uuid>&size=<size>
@@ -59,12 +59,14 @@ pub async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, S
         // PDF 文件：用 MuPDF 渲染第一页
         extract_pdf_thumbnail(path)?
     } else {
-        // 先尝试 image 库直接打开，失败则 fallback 到 ffmpeg（用于 HEIC/AVIF 等格式）
+        // 先尝试 image 库直接打开，失败则 fallback 到 ffmpeg
+        // （用于 HEIC/AVIF 等格式，以及超大图内存超限的情况）
         match image::open(path) {
             Ok(img) => img,
             Err(e) => {
                 eprintln!("[thumbnail] image::open 失败 ({:?}): {}", path, e);
-                extract_image_frame_ffmpeg(path)?
+                // 直接让 ffmpeg 缩放到目标尺寸，避免超大图再次触发内存超限
+                extract_image_thumbnail_ffmpeg(path, size)?
             }
         }
     };

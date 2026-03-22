@@ -109,20 +109,37 @@ pub fn extract_video_first_frame(video_path: &Path) -> Result<image::DynamicImag
 }
 
 /// 使用 ffmpeg 将图片（HEIC/AVIF 等 image 库不支持的格式）转为 JPEG 后读取
+#[allow(dead_code)]
 pub fn extract_image_frame_ffmpeg(image_path: &Path) -> Result<image::DynamicImage> {
+    extract_image_thumbnail_ffmpeg(image_path, 0)
+}
+
+/// 用 ffmpeg 将图片直接缩放到目标尺寸后读取
+/// max_size=0 表示不缩放（保留原始分辨率）
+/// 用于 image::open 内存超限时的 fallback，避免把超大图完整载入内存
+pub fn extract_image_thumbnail_ffmpeg(image_path: &Path, max_size: u32) -> Result<image::DynamicImage> {
     let ffmpeg_path = get_ffmpeg_path();
 
     let temp_output = std::env::temp_dir().join(format!("img_{}.jpg", uuid::Uuid::new_v4()));
 
+    // 如果指定了目标尺寸，用 scale filter 缩放（保持宽高比）
+    let scale_filter = if max_size > 0 {
+        format!("scale={}:{}:force_original_aspect_ratio=decrease", max_size, max_size)
+    } else {
+        String::new()
+    };
+
+    let mut args: Vec<&str> = vec!["-i", image_path.to_str().unwrap()];
+    let filter_str; // 延长生命周期
+    if !scale_filter.is_empty() {
+        filter_str = scale_filter;
+        args.extend_from_slice(&["-vf", &filter_str]);
+    }
+    args.extend_from_slice(&["-frames:v", "1", "-update", "1", "-q:v", "2", "-y",
+        temp_output.to_str().unwrap()]);
+
     let output = Command::new(&ffmpeg_path)
-        .args(&[
-            "-i", image_path.to_str().unwrap(),
-            "-frames:v", "1",
-            "-update", "1",  // 新版 ffmpeg image2 muxer 需要此参数才能写入单张图片
-            "-q:v", "2",
-            "-y",
-            temp_output.to_str().unwrap(),
-        ])
+        .args(&args)
         .output()
         .map_err(|e| {
             actix_web::error::ErrorInternalServerError(format!("FFmpeg 执行失败: {}", e))
