@@ -150,8 +150,12 @@ struct GalleryView: View {
                     files: files,
                     initialIndex: index,
                     hasMore: hasMoreFiles,
+                    totalCount: filesTotalCount,
                     onLoadMore: {
                         await loadMoreForPreview()
+                    },
+                    onLoadAtOffset: { offset in
+                        await loadFileAtOffset(offset)
                     }
                 )
             }
@@ -1048,9 +1052,7 @@ struct GalleryView: View {
             let response = try await apiService.preview.getFilesPaginated(
                 in: currentFolderPath, offset: filesOffset, limit: filesPageSize
             )
-            let ignoredFileNames = LocalStorageService.shared.getAppSettings().ignoredFiles
             let newFiles = response.files.map { $0.toFileInfo() }
-                .filter { file in !ignoredFileNames.contains(file.name) }
             files.append(contentsOf: newFiles)
             filesOffset += response.files.count
             hasMoreFiles = response.hasMore
@@ -1058,6 +1060,18 @@ struct GalleryView: View {
             return newFiles
         } catch {
             return []
+        }
+    }
+
+    /// 供 FilePreviewView 随机模式使用：按 offset 取单条文件
+    private func loadFileAtOffset(_ offset: Int) async -> FileInfo? {
+        do {
+            let response = try await apiService.preview.getFilesPaginated(
+                in: currentFolderPath, offset: offset, limit: 1
+            )
+            return response.files.first?.toFileInfo()
+        } catch {
+            return nil
         }
     }
 
@@ -1078,9 +1092,7 @@ struct GalleryView: View {
             let response = try await apiService.preview.getFilesPaginated(
                 in: path, offset: 0, limit: filesPageSize
             )
-            let ignoredFileNames = LocalStorageService.shared.getAppSettings().ignoredFiles
             let newFiles = response.files.map { $0.toFileInfo() }
-                .filter { file in !ignoredFileNames.contains(file.name) }
             files = newFiles
             filesOffset = response.files.count
             hasMoreFiles = response.hasMore

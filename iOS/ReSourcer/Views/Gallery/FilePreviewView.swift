@@ -104,18 +104,26 @@ struct FilePreviewView: View {
     @State private var showDebugLog = false
 
     // 分页加载
-    var hasMore: Bool = false
+    @State private var hasMore: Bool
     var onLoadMore: (() async -> [FileInfo])? = nil
+    /// 全部文件总数（用于随机模式跨分页跳转）
+    var totalCount: Int = 0
+    /// 按 offset 取单条文件（随机模式专用）
+    var onLoadAtOffset: ((Int) async -> FileInfo?)? = nil
 
     // MARK: - Init
 
     init(apiService: APIService, files: [FileInfo], initialIndex: Int,
-         hasMore: Bool = false, onLoadMore: (() async -> [FileInfo])? = nil) {
+         hasMore: Bool = false, totalCount: Int = 0,
+         onLoadMore: (() async -> [FileInfo])? = nil,
+         onLoadAtOffset: ((Int) async -> FileInfo?)? = nil) {
         self.apiService = apiService
         _currentFiles = State(initialValue: files)
         _currentIndex = State(initialValue: min(initialIndex, max(files.count - 1, 0)))
-        self.hasMore = hasMore
+        _hasMore = State(initialValue: hasMore)
+        self.totalCount = totalCount
         self.onLoadMore = onLoadMore
+        self.onLoadAtOffset = onLoadAtOffset
     }
 
     // MARK: - Computed
@@ -216,6 +224,7 @@ struct FilePreviewView: View {
                 Task {
                     if let moreFiles = await onLoadMore?() {
                         currentFiles.append(contentsOf: moreFiles)
+                        if moreFiles.isEmpty { hasMore = false }
                     }
                 }
             }
@@ -638,15 +647,37 @@ struct FilePreviewView: View {
         }
     }
 
-    /// 跳转到随机文件（确保不重复当前文件）
+    /// 跳转到随机文件，覆盖全量文件范围（跨分页）
     private func navigateToRandom() {
-        guard currentFiles.count > 1 else { return }
-        var nextIndex: Int
+        let total = totalCount > 0 ? totalCount : currentFiles.count
+        guard total > 1 else { return }
+
+        // 在全量范围内随机取一个 offset，避免和当前相同
+        var randomOffset: Int
+        var attempts = 0
         repeat {
-            nextIndex = Int.random(in: 0..<currentFiles.count)
-        } while nextIndex == currentIndex
-        withAnimation {
-            currentIndex = nextIndex
+            randomOffset = Int.random(in: 0..<total)
+            attempts += 1
+        } while randomOffset == currentIndex && attempts < 10
+
+        // 已在本地缓存，直接跳
+        if randomOffset < currentFiles.count {
+            withAnimation { currentIndex = randomOffset }
+            return
+        }
+
+        // 未缓存：向服务端取单条
+        Task {
+            guard let file = await onLoadAtOffset?(randomOffset) else { return }
+            // 若已存在（UUID 或 path 匹配），直接跳到已有索引
+            if let existing = currentFiles.firstIndex(where: {
+                ($0.uuid != nil && $0.uuid == file.uuid) || $0.path == file.path
+            }) {
+                withAnimation { currentIndex = existing }
+            } else {
+                currentFiles.append(file)
+                withAnimation { currentIndex = currentFiles.count - 1 }
+            }
         }
     }
 
@@ -669,6 +700,7 @@ struct FilePreviewView: View {
         autoAdvanceTask?.cancel()
         autoAdvanceTask = nil
     }
+
 
     // MARK: - 视频截图
 

@@ -36,12 +36,14 @@ actor ConfigService {
     ///   - categories: 分类名称列表
     ///   - hiddenFolders: 隐藏文件夹列表
     ///   - ignoredFolders: 忽略文件夹列表（可选）
-    func saveConfig(sourceFolder: String, categories: [String], hiddenFolders: [String], ignoredFolders: [String]? = nil) async throws {
+    func saveConfig(sourceFolder: String, categories: [String], hiddenFolders: [String],
+                    ignoredFolders: [String]? = nil, ignoredFiles: [String]? = nil) async throws {
         let request = SaveConfigRequest(
             sourceFolder: sourceFolder,
             categories: categories,
             hiddenFolders: hiddenFolders,
-            ignoredFolders: ignoredFolders
+            ignoredFolders: ignoredFolders,
+            ignoredFiles: ignoredFiles
         )
         _ = try await networkManager.requestStatus(.configSave, body: request)
     }

@@ -16,10 +16,13 @@ pub fn load_config() -> io::Result<AppState> {
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("数据库连接失败: {}", e)))?;
 
     // 读取 config 表
-    let (hidden_folders_json, use_cookies, ignored_folders_json): (String, i32, String) = conn.query_row(
-        "SELECT hidden_folders, use_cookies, COALESCE(ignored_folders, '[\"@eaDir\",\"#recycle\",\"$RECYCLE.BIN\"]') FROM config WHERE id = 1",
+    let (hidden_folders_json, use_cookies, ignored_folders_json, ignored_files_json): (String, i32, String, String) = conn.query_row(
+        "SELECT hidden_folders, use_cookies,
+         COALESCE(ignored_folders, '[\"@eaDir\",\"#recycle\",\"$RECYCLE.BIN\"]'),
+         COALESCE(ignored_files, '[\".DS_Store\"]')
+         FROM config WHERE id = 1",
         [],
-        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
     ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("读取配置失败: {}", e)))?;
 
     let hidden_folders: Vec<String> = serde_json::from_str(&hidden_folders_json)
@@ -27,6 +30,9 @@ pub fn load_config() -> io::Result<AppState> {
 
     let ignored_folders: Vec<String> = serde_json::from_str(&ignored_folders_json)
         .unwrap_or_else(|_| vec!["@eaDir".to_string(), "#recycle".to_string(), "$RECYCLE.BIN".to_string()]);
+
+    let ignored_files: Vec<String> = serde_json::from_str(&ignored_files_json)
+        .unwrap_or_else(|_| vec![".DS_Store".to_string()]);
 
     // 读取当前选中的源文件夹
     let source_folder: String = conn.query_row(
@@ -51,6 +57,7 @@ pub fn load_config() -> io::Result<AppState> {
         backup_source_folders,
         use_cookies: use_cookies != 0,
         ignored_folders,
+        ignored_files,
     })
 }
 
@@ -64,10 +71,12 @@ pub fn save_config(state: &AppState) -> io::Result<()> {
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
     let ignored_folders_json = serde_json::to_string(&state.ignored_folders)
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    let ignored_files_json = serde_json::to_string(&state.ignored_files)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
     conn.execute(
-        "UPDATE config SET hidden_folders = ?1, use_cookies = ?2, ignored_folders = ?3 WHERE id = 1",
-        rusqlite::params![hidden_folders_json, state.use_cookies as i32, ignored_folders_json],
+        "UPDATE config SET hidden_folders = ?1, use_cookies = ?2, ignored_folders = ?3, ignored_files = ?4 WHERE id = 1",
+        rusqlite::params![hidden_folders_json, state.use_cookies as i32, ignored_folders_json, ignored_files_json],
     ).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("更新配置失败: {}", e)))?;
 
     // 更新源文件夹
@@ -101,6 +110,7 @@ pub fn get_default_state() -> AppState {
             "#recycle".to_string(),
             "$RECYCLE.BIN".to_string(),
         ],
+        ignored_files: vec![".DS_Store".to_string()],
     }
 }
 

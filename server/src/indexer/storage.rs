@@ -121,37 +121,72 @@ pub fn get_files_paginated(
         _ => "modified_at DESC", // 默认按修改时间降序
     };
 
+    // 从配置读取忽略文件名列表，构建 NOT IN 子句
+    let ignored_files = crate::config_api::storage::load_config()
+        .map(|c| c.ignored_files)
+        .unwrap_or_default();
+    let ignore_clause = if ignored_files.is_empty() {
+        String::new()
+    } else {
+        let placeholders: Vec<String> = ignored_files.iter().enumerate()
+            .map(|(i, _)| format!("?{}", i + 10)) // 从 ?10 开始避免与前面参数冲突
+            .collect();
+        format!(" AND file_name NOT IN ({})", placeholders.join(", "))
+    };
+
     let (files, total) = if let Some(ft) = file_type {
-        let total: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM file_index WHERE folder_path = ?1 AND file_type = ?2 AND current_path IS NOT NULL",
-            params![folder_path, ft],
-            |row| row.get(0),
-        )?;
+        let count_query = format!(
+            "SELECT COUNT(*) FROM file_index WHERE folder_path = ?1 AND file_type = ?2 AND current_path IS NOT NULL{}",
+            ignore_clause
+        );
+        let total: i64 = {
+            let mut stmt = conn.prepare(&count_query)?;
+            let mut row_iter = stmt.query(rusqlite::params_from_iter(
+                [folder_path.to_string(), ft.to_string()].iter().chain(ignored_files.iter())
+            ))?;
+            row_iter.next()?.map(|r| r.get(0)).transpose()?.unwrap_or(0)
+        };
 
         let query = format!(
             "SELECT uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at, source_url
-             FROM file_index WHERE folder_path = ?1 AND file_type = ?2 AND current_path IS NOT NULL
-             ORDER BY {} LIMIT ?3 OFFSET ?4", order_clause
+             FROM file_index WHERE folder_path = ?1 AND file_type = ?2 AND current_path IS NOT NULL{}
+             ORDER BY {} LIMIT ?3 OFFSET ?4", ignore_clause, order_clause
         );
         let mut stmt = conn.prepare(&query)?;
-        let files = stmt.query_map(params![folder_path, ft, limit, offset], map_file_row)?
+        let all_params: Vec<String> = vec![folder_path.to_string(), ft.to_string()]
+            .into_iter()
+            .chain(ignored_files.iter().cloned())
+            .chain([limit.to_string(), offset.to_string()])
+            .collect();
+        let files = stmt.query_map(rusqlite::params_from_iter(all_params.iter()), map_file_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         (files, total)
     } else {
-        let total: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM file_index WHERE folder_path = ?1 AND current_path IS NOT NULL",
-            params![folder_path],
-            |row| row.get(0),
-        )?;
+        let count_query = format!(
+            "SELECT COUNT(*) FROM file_index WHERE folder_path = ?1 AND current_path IS NOT NULL{}",
+            ignore_clause
+        );
+        let total: i64 = {
+            let mut stmt = conn.prepare(&count_query)?;
+            let mut row_iter = stmt.query(rusqlite::params_from_iter(
+                [folder_path.to_string()].iter().chain(ignored_files.iter())
+            ))?;
+            row_iter.next()?.map(|r| r.get(0)).transpose()?.unwrap_or(0)
+        };
 
         let query = format!(
             "SELECT uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at, source_url
-             FROM file_index WHERE folder_path = ?1 AND current_path IS NOT NULL
-             ORDER BY {} LIMIT ?2 OFFSET ?3", order_clause
+             FROM file_index WHERE folder_path = ?1 AND current_path IS NOT NULL{}
+             ORDER BY {} LIMIT ?2 OFFSET ?3", ignore_clause, order_clause
         );
         let mut stmt = conn.prepare(&query)?;
-        let files = stmt.query_map(params![folder_path, limit, offset], map_file_row)?
+        let all_params: Vec<String> = [folder_path.to_string()]
+            .into_iter()
+            .chain(ignored_files.iter().cloned())
+            .chain([limit.to_string(), offset.to_string()])
+            .collect();
+        let files = stmt.query_map(rusqlite::params_from_iter(all_params.iter()), map_file_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         (files, total)

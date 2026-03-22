@@ -203,6 +203,12 @@ pub fn init_db() -> SqliteResult<()> {
         [],
     );
 
+    // 迁移：为 config 表添加 ignored_files 列（文件名过滤，移自客户端）
+    let _ = conn.execute(
+        "ALTER TABLE config ADD COLUMN ignored_files TEXT NOT NULL DEFAULT '[\".DS_Store\"]'",
+        [],
+    );
+
     // 确保 config 表有初始行
     conn.execute(
         "INSERT OR IGNORE INTO config (id, hidden_folders, use_cookies) VALUES (1, '[]', 1)",

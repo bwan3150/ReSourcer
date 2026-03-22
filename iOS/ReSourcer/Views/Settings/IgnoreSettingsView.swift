@@ -38,8 +38,7 @@ struct IgnoreSettingsView: View {
         }
         .navigationTitle("忽略配置")
         .task {
-            await loadIgnoredFolders()
-            loadIgnoredFiles()
+            await loadIgnoreConfig()
         }
     }
 
@@ -213,33 +212,54 @@ struct IgnoreSettingsView: View {
         }
     }
 
-    // MARK: - 忽略文件夹方法
+    // MARK: - 加载
 
-    private func loadIgnoredFolders() async {
+    private func loadIgnoreConfig() async {
         do {
             let state = try await apiService.config.getConfigState()
             ignoredFolders = state.ignoredFolders ?? ["@eaDir", "#recycle", "$RECYCLE.BIN"]
+            ignoredFiles = state.ignoredFiles ?? [".DS_Store"]
         } catch {
             ignoredFolders = ["@eaDir", "#recycle", "$RECYCLE.BIN"]
+            ignoredFiles = [".DS_Store"]
         }
     }
+
+    // MARK: - 忽略文件夹方法
 
     private func addIgnoredFolder() {
         let name = newFolderName.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty, !ignoredFolders.contains(name) else { return }
-
         ignoredFolders.append(name)
         newFolderName = ""
         showAddFolder = false
-        saveIgnoredFolders()
+        saveIgnoreConfig()
     }
 
     private func removeIgnoredFolder(_ folder: String) {
         ignoredFolders.removeAll { $0 == folder }
-        saveIgnoredFolders()
+        saveIgnoreConfig()
     }
 
-    private func saveIgnoredFolders() {
+    // MARK: - 忽略文件方法
+
+    private func addIgnoredFile() {
+        let name = newFileName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty, !ignoredFiles.contains(name) else { return }
+        ignoredFiles.append(name)
+        newFileName = ""
+        showAddFile = false
+        saveIgnoreConfig()
+    }
+
+    private func removeIgnoredFile(_ file: String) {
+        ignoredFiles.removeAll { $0 == file }
+        saveIgnoreConfig()
+    }
+
+    // MARK: - 保存（统一提交到服务端）
+
+    private func saveIgnoreConfig() {
         Task {
             do {
                 let state = try await apiService.config.getConfigState()
@@ -247,39 +267,13 @@ struct IgnoreSettingsView: View {
                     sourceFolder: state.sourceFolder,
                     categories: [],
                     hiddenFolders: state.hiddenFolders,
-                    ignoredFolders: ignoredFolders
+                    ignoredFolders: ignoredFolders,
+                    ignoredFiles: ignoredFiles
                 )
             } catch {
                 GlassAlertManager.shared.showError("保存失败", message: error.localizedDescription)
             }
         }
-    }
-
-    // MARK: - 忽略文件方法
-
-    private func loadIgnoredFiles() {
-        ignoredFiles = LocalStorageService.shared.getAppSettings().ignoredFiles
-    }
-
-    private func addIgnoredFile() {
-        let name = newFileName.trimmingCharacters(in: .whitespaces)
-        guard !name.isEmpty, !ignoredFiles.contains(name) else { return }
-
-        ignoredFiles.append(name)
-        newFileName = ""
-        showAddFile = false
-        saveIgnoredFiles()
-    }
-
-    private func removeIgnoredFile(_ file: String) {
-        ignoredFiles.removeAll { $0 == file }
-        saveIgnoredFiles()
-    }
-
-    private func saveIgnoredFiles() {
-        var settings = LocalStorageService.shared.getAppSettings()
-        settings.ignoredFiles = ignoredFiles
-        LocalStorageService.shared.saveAppSettings(settings)
     }
 }
 

@@ -39,6 +39,7 @@ struct ConfigStateResponse: Codable {
     let hiddenFolders: [String]
     let backupSourceFolders: [String]
     let ignoredFolders: [String]?
+    let ignoredFiles: [String]?
     let presets: [Preset]
 }
 
@@ -48,6 +49,7 @@ struct SaveConfigRequest: Codable {
     let categories: [String]
     let hiddenFolders: [String]
     let ignoredFolders: [String]?
+    let ignoredFiles: [String]?
 }
 
 // MARK: - 下载器配置

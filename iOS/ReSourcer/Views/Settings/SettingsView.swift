@@ -39,7 +39,6 @@ struct SettingsView: View {
 
     // 重新索引进度
     @State private var isReindexing = false
-    @State private var reindexStatus: IndexerStatus? = nil
 
     // MARK: - Body
 
@@ -116,22 +115,9 @@ struct SettingsView: View {
                     .scaleEffect(1.4)
                     .tint(.white)
 
-                VStack(spacing: AppTheme.Spacing.sm) {
-                    Text("正在重新索引")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-
-                    if let status = reindexStatus {
-                        Text("已扫描 \(status.scannedFiles) 个文件 · \(status.scannedFolders) 个文件夹")
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.7))
-                            .monospacedDigit()
-                    } else {
-                        Text("准备中…")
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.7))
-                    }
-                }
+                Text("正在重新索引")
+                    .font(.headline)
+                    .foregroundStyle(.white)
             }
             .padding(AppTheme.Spacing.xxxl)
             .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
@@ -700,10 +686,8 @@ struct SettingsView: View {
                 }
                 // 显示进度弹窗，开始轮询
                 isReindexing = true
-                reindexStatus = nil
                 await pollReindexStatus()
                 isReindexing = false
-                reindexStatus = nil
                 GlassAlertManager.shared.showSuccess("重新索引完成")
             } catch {
                 isReindexing = false
@@ -713,12 +697,19 @@ struct SettingsView: View {
     }
 
     private func pollReindexStatus() async {
+        // 等待服务端启动扫描（避免竞态：scan 触发后 isScanning 可能还未置 true）
+        try? await Task.sleep(for: .milliseconds(800))
+
+        var consecutiveNotScanning = 0
         while true {
             do {
                 let status = try await apiService.preview.getIndexerStatus()
-                reindexStatus = status
                 if !status.isScanning {
-                    break
+                    // 连续两次拿到 false 才认为真正结束，防止单次误报
+                    consecutiveNotScanning += 1
+                    if consecutiveNotScanning >= 2 { break }
+                } else {
+                    consecutiveNotScanning = 0
                 }
             } catch {
                 break
