@@ -704,6 +704,9 @@ struct GalleryView: View {
         }
         .padding(AppTheme.Spacing.sm)
         .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
+        // 拦截菜单内所有点击，防止穿透到底部遮罩层导致意外关闭
+        .contentShape(Rectangle())
+        .onTapGesture {}
     }
 
     // MARK: - Content View
@@ -910,28 +913,26 @@ struct GalleryView: View {
     @ViewBuilder
     private func dropdownActionButtons(font: Font) -> some View {
         HStack(spacing: AppTheme.Spacing.sm) {
-            // 返回源文件夹（仅在不在根目录时显示）：关闭下拉菜单并导航画廊到源文件夹
-            if dropdownBrowsingPath != sourceFolder && !dropdownBrowsingPath.isEmpty {
-                Button {
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        isDropdownOpen = false
-                    }
-                    Task { await navigateWithHistory(path: sourceFolder) }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "folder.fill.badge.gearshape")
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                        Text("源文件夹")
-                            .font(font)
-                            .fontWeight(.semibold)
-                    }
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+            // 源文件夹：始终显示，关闭下拉菜单并导航画廊到源文件夹
+            Button {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    isDropdownOpen = false
                 }
-                .buttonStyle(.plain)
+                Task { await navigateWithHistory(path: sourceFolder) }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "folder.fill.badge.gearshape")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                    Text("源文件夹")
+                        .font(font)
+                        .fontWeight(.semibold)
+                }
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
             }
+            .buttonStyle(.plain)
 
             Button {
                 newFolderName = ""
