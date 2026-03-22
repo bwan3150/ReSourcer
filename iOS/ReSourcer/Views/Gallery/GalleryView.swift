@@ -31,6 +31,9 @@ struct GalleryView: View {
     @State private var filesTotalCount = 0
     private let filesPageSize = 100
 
+    // 初始化标记（防止 tab 切回时重复调用 loadInitial）
+    @State private var isInitialized = false
+
     // 下拉菜单状态
     @State private var isDropdownOpen = false
 
@@ -157,6 +160,9 @@ struct GalleryView: View {
             }
         }
         .task {
+            // 只在首次出现时初始化，防止切换 tab 后重置当前路径
+            guard !isInitialized else { return }
+            isInitialized = true
             await loadInitial()
         }
         // 监听源文件夹切换：清空当前状态，重新加载新源文件夹
@@ -904,10 +910,13 @@ struct GalleryView: View {
     @ViewBuilder
     private func dropdownActionButtons(font: Font) -> some View {
         HStack(spacing: AppTheme.Spacing.sm) {
-            // 返回源文件夹（仅在不在根目录时显示）
+            // 返回源文件夹（仅在不在根目录时显示）：关闭下拉菜单并导航画廊到源文件夹
             if dropdownBrowsingPath != sourceFolder && !dropdownBrowsingPath.isEmpty {
                 Button {
-                    Task { await browseInDropdown(path: sourceFolder) }
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        isDropdownOpen = false
+                    }
+                    Task { await navigateWithHistory(path: sourceFolder) }
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "folder.fill.badge.gearshape")
