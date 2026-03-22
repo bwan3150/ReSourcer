@@ -83,6 +83,10 @@ actor PreviewService {
         return try await networkManager.request(.indexerScan, body: body)
     }
 
+    func getIndexerStatus() async throws -> IndexerStatus {
+        return try await networkManager.request(.indexerStatus)
+    }
+
     /// 获取文件缩略图数据
     /// - Parameters:
     ///   - path: 文件路径

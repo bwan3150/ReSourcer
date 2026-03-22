@@ -37,6 +37,10 @@ struct SettingsView: View {
     // 断开连接
     @State private var showDisconnectConfirm = false
 
+    // 重新索引进度
+    @State private var isReindexing = false
+    @State private var reindexStatus: IndexerStatus? = nil
+
     // MARK: - Body
 
     var body: some View {
@@ -89,6 +93,48 @@ struct SettingsView: View {
             message: "将退出当前服务器，可以重新连接"
         ) {
             disconnect()
+        }
+        .overlay {
+            if isReindexing {
+                reindexProgressOverlay
+            }
+        }
+    }
+
+    // MARK: - 重新索引进度弹窗
+
+    private var reindexProgressOverlay: some View {
+        ZStack {
+            // 背景遮罩，拦截所有触摸
+            Color.black.opacity(0.6)
+                .ignoresSafeArea()
+
+            // 弹窗卡片
+            VStack(spacing: AppTheme.Spacing.xl) {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .scaleEffect(1.4)
+                    .tint(.white)
+
+                VStack(spacing: AppTheme.Spacing.sm) {
+                    Text("正在重新索引")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+
+                    if let status = reindexStatus {
+                        Text("已扫描 \(status.scannedFiles) 个文件 · \(status.scannedFolders) 个文件夹")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.7))
+                            .monospacedDigit()
+                    } else {
+                        Text("准备中…")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+                }
+            }
+            .padding(AppTheme.Spacing.xxxl)
+            .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
         }
     }
 
@@ -647,18 +693,37 @@ struct SettingsView: View {
         guard let current = sourceFolders?.current else { return }
         Task {
             do {
-                GlassAlertManager.shared.showQuickLoading()
                 let response = try await apiService.preview.scanIndexer(sourceFolder: current, force: true)
-                GlassAlertManager.shared.hideQuickLoading()
                 if response.status == "already_scanning" {
                     GlassAlertManager.shared.showWarning("正在扫描中")
-                } else {
-                    GlassAlertManager.shared.showSuccess("已开始重新索引")
+                    return
                 }
+                // 显示进度弹窗，开始轮询
+                isReindexing = true
+                reindexStatus = nil
+                await pollReindexStatus()
+                isReindexing = false
+                reindexStatus = nil
+                GlassAlertManager.shared.showSuccess("重新索引完成")
             } catch {
-                GlassAlertManager.shared.hideQuickLoading()
+                isReindexing = false
                 GlassAlertManager.shared.showError("索引失败", message: error.localizedDescription)
             }
+        }
+    }
+
+    private func pollReindexStatus() async {
+        while true {
+            do {
+                let status = try await apiService.preview.getIndexerStatus()
+                reindexStatus = status
+                if !status.isScanning {
+                    break
+                }
+            } catch {
+                break
+            }
+            try? await Task.sleep(for: .seconds(1))
         }
     }
 

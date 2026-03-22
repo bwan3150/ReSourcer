@@ -228,6 +228,13 @@ struct IndexerScanResponse: Codable {
     let scannedFolders: UInt64?
 }
 
+/// 索引状态（轮询用）
+struct IndexerStatus: Codable {
+    let isScanning: Bool
+    let scannedFiles: UInt64
+    let scannedFolders: UInt64
+}
+
 /// IndexedFile → FileInfo 转换
 extension IndexedFile {
     func toFileInfo() -> FileInfo {
