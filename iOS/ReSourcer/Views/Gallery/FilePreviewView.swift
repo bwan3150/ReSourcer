@@ -10,6 +10,7 @@ import AVKit
 import AVFoundation
 import ImageIO
 import Photos
+import MediaPlayer
 import PDFKit
 
 // MARK: - PlaybackMode
@@ -86,6 +87,10 @@ struct FilePreviewView: View {
     @State private var isVideoPlaying = false
     @State private var isVideoMuted = false
     @State private var videoCurrentTime: Double = 0
+    // 系统音量环
+    @State private var systemVolume: Float = AVAudioSession.sharedInstance().outputVolume
+    @State private var isVolumeRingActive = false
+    @State private var volumeAtDragStart: Float = 0.5
 
     // 播放模式
     @State private var playbackMode: PlaybackMode = .repeatCurrent
@@ -378,17 +383,78 @@ struct FilePreviewView: View {
             // 视频/音频控制按钮组
             if currentFile?.isVideo == true || currentFile?.isAudio == true {
                 HStack(spacing: AppTheme.Spacing.md) {
-                    // 静音/解除静音
-                    Button {
-                        isVideoMuted.toggle()
-                    } label: {
+                    // 静音/解除静音 + 长按拖拽调系统音量
+                    ZStack {
+                        // 音量环（长按后出现）
+                        if isVolumeRingActive {
+                            ZStack {
+                                // 背景圆弧
+                                Circle()
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 3.5)
+                                    .frame(width: 64, height: 64)
+                                // 音量进度弧（顺时针从12点开始）
+                                Circle()
+                                    .trim(from: 0, to: CGFloat(systemVolume))
+                                    .stroke(Color.white, style: StrokeStyle(lineWidth: 3.5, lineCap: .round))
+                                    .frame(width: 64, height: 64)
+                                    .rotationEffect(.degrees(-90))
+                            }
+                            .transition(.scale(scale: 0.7).combined(with: .opacity))
+                        }
+
+                        // 静音按钮本体
                         Image(systemName: isVideoMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
                             .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(.black)
                             .frame(width: 44, height: 44)
-                            .background(.white.opacity(0.85))
+                            .background(.white.opacity(isVolumeRingActive ? 1.0 : 0.85))
                             .clipShape(Circle())
+                            // 长按 → 显示音量环；长按不抬起拖动 → 左增右减系统音量
+                            .gesture(
+                                LongPressGesture(minimumDuration: 0.4)
+                                    .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
+                                    .onChanged { value in
+                                        switch value {
+                                        case .first(true):
+                                            // 长按触发：显示音量环，记录起始音量
+                                            if !isVolumeRingActive {
+                                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                                    isVolumeRingActive = true
+                                                }
+                                                volumeAtDragStart = systemVolume
+                                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                            }
+                                        case .second(true, let drag?):
+                                            // 拖拽：向左增加音量，向右减小音量
+                                            let deltaX = Float(drag.translation.width)
+                                            let sensitivity: Float = 160
+                                            let newVol = max(0, min(1, volumeAtDragStart + (-deltaX / sensitivity)))
+                                            systemVolume = newVol
+                                        default:
+                                            break
+                                        }
+                                    }
+                                    .onEnded { _ in
+                                        // 松手立即收起音量环
+                                        withAnimation(.easeOut(duration: 0.2)) {
+                                            isVolumeRingActive = false
+                                        }
+                                    }
+                            )
+                            // 短按：切换静音（音量环未激活时）
+                            .simultaneousGesture(
+                                TapGesture().onEnded {
+                                    guard !isVolumeRingActive else { return }
+                                    isVideoMuted.toggle()
+                                }
+                            )
                     }
+                    // 隐藏的 MPVolumeView，用于读写系统音量
+                    .background(
+                        SystemVolumeControlView(volume: $systemVolume)
+                            .frame(width: 1, height: 1)
+                            .opacity(0.001)
+                    )
 
                     // 播放/暂停
                     Button {
@@ -1781,6 +1847,60 @@ struct AVPlayerView: UIViewRepresentable {
     private class PlayerUIView: UIView {
         override class var layerClass: AnyClass { AVPlayerLayer.self }
         var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
+    }
+}
+
+// MARK: - SystemVolumeControlView
+
+/// 嵌入隐藏的 MPVolumeView，实现系统音量的读写与监听。
+/// 必须添加到视图层级中才能生效（frame 极小，opacity 极低，不影响视觉）。
+private struct SystemVolumeControlView: UIViewRepresentable {
+
+    @Binding var volume: Float
+
+    // MARK: Coordinator - KVO 监听系统音量变化
+
+    final class Coordinator: NSObject {
+        var binding: Binding<Float>
+        var observation: NSKeyValueObservation?
+
+        init(binding: Binding<Float>) {
+            self.binding = binding
+        }
+
+        func startObserving() {
+            observation = AVAudioSession.sharedInstance().observe(
+                \.outputVolume, options: [.new]
+            ) { [weak self] _, change in
+                guard let self, let newValue = change.newValue else { return }
+                DispatchQueue.main.async {
+                    self.binding.wrappedValue = newValue
+                }
+            }
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        let coordinator = Coordinator(binding: $volume)
+        try? AVAudioSession.sharedInstance().setActive(true)
+        coordinator.startObserving()
+        return coordinator
+    }
+
+    func makeUIView(context: Context) -> MPVolumeView {
+        let view = MPVolumeView()
+        view.alpha = 0.001              // 完全透明但仍在层级中
+        view.isUserInteractionEnabled = false
+        return view
+    }
+
+    func updateUIView(_ uiView: MPVolumeView, context: Context) {
+        // 通过内部 UISlider 写入系统音量
+        if let slider = uiView.subviews.compactMap({ $0 as? UISlider }).first {
+            if abs(slider.value - volume) > 0.01 {
+                slider.value = volume
+            }
+        }
     }
 }
 
