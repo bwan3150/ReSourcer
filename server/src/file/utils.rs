@@ -1,46 +1,42 @@
 // 文件操作的工具函数
 use std::path::{Path, PathBuf};
 
-/// 获取唯一文件路径(处理重名情况)
+/// 获取唯一文件路径（处理重名情况）
+/// 若目标文件已存在，自动追加序号：IMG1234(1).PNG、IMG1234(2).PNG…
+/// 使用指数搜索 + 二分搜索，O(log n) 次文件系统检查
 pub fn get_unique_path(dir: &Path, filename: &str) -> PathBuf {
-    let mut target_path = dir.join(filename);
+    let base_path = dir.join(filename);
 
-    // 如果文件不存在,直接返回
-    if !target_path.exists() {
-        return target_path;
+    if !base_path.exists() {
+        return base_path;
     }
 
-    // 分离文件名和扩展名
     let path = Path::new(filename);
     let stem = path.file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or(filename);
-    let extension = path.extension()
+    let ext = path.extension()
         .and_then(|e| e.to_str())
-        .unwrap_or("");
+        .map(|e| format!(".{}", e))
+        .unwrap_or_default();
 
-    // 尝试添加数字后缀
-    let mut counter = 1;
-    loop {
-        let new_filename = if extension.is_empty() {
-            format!("{}_({})", stem, counter)
-        } else {
-            format!("{}_({}).{}", stem, counter, extension)
-        };
+    let candidate = |n: u32| -> PathBuf {
+        dir.join(format!("{}({}){}", stem, n, ext))
+    };
 
-        target_path = dir.join(&new_filename);
-
-        if !target_path.exists() {
-            return target_path;
-        }
-
-        counter += 1;
-
-        // 防止无限循环
-        if counter > 9999 {
-            break;
-        }
+    // 指数搜索找上界
+    let mut hi: u32 = 1;
+    while candidate(hi).exists() {
+        hi = hi.saturating_mul(2);
+        if hi >= 1_000_000 { break; }
     }
 
-    target_path
+    // 二分搜索找最小可用序号
+    let mut lo: u32 = hi / 2 + 1;
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if candidate(mid).exists() { lo = mid + 1; } else { hi = mid; }
+    }
+
+    candidate(lo)
 }

@@ -85,14 +85,40 @@ impl TaskManager {
             return;
         }
 
-        // 构建文件路径
-        let file_path = Path::new(&target_folder).join(&file_name);
-
-        // 检查文件是否已存在
-        if file_path.exists() {
-            Self::update_error(&tasks, &task_id, format!("文件已存在: {}", file_name)).await;
-            return;
-        }
+        // 构建文件路径，若同名文件已存在则用指数+二分搜索找可用序号（O(log n) 次检查）
+        let file_path = {
+            let base_path = Path::new(&target_folder).join(&file_name);
+            if base_path.exists() {
+                let stem = Path::new(&file_name)
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or(&file_name)
+                    .to_string();
+                let ext = Path::new(&file_name)
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map(|e| format!(".{}", e))
+                    .unwrap_or_default();
+                let candidate = |n: u32| -> std::path::PathBuf {
+                    Path::new(&target_folder).join(format!("{}({}){}", stem, n, ext))
+                };
+                // 指数搜索找上界
+                let mut hi: u32 = 1;
+                while candidate(hi).exists() {
+                    hi = hi.saturating_mul(2);
+                    if hi >= 1_000_000 { break; }
+                }
+                // 二分搜索找最小可用序号
+                let mut lo: u32 = hi / 2 + 1;
+                while lo < hi {
+                    let mid = lo + (hi - lo) / 2;
+                    if candidate(mid).exists() { lo = mid + 1; } else { hi = mid; }
+                }
+                candidate(lo)
+            } else {
+                base_path
+            }
+        };
 
         // 创建文件
         let mut file = match tokio::fs::File::create(&file_path).await {
