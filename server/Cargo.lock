@@ -2146,7 +2146,7 @@ dependencies = [
 
 [[package]]
 name = "re-sourcer"
-version = "0.2.24-beta"
+version = "0.2.25-beta"
 dependencies = [
  "actix-files",
  "actix-multipart",

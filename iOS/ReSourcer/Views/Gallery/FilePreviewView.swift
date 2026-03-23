@@ -329,9 +329,9 @@ struct FilePreviewView: View {
 
             // 返回按钮
             Image(systemName: "chevron.left")
-                .font(.system(size: 14, weight: .bold))
+                .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(.black)
-                .frame(width: 34, height: 34)
+                .frame(width: 48, height: 48)
                 .background(.white.opacity(0.85), in: Circle())
                 .onTapGesture { dismiss() }
 
@@ -345,7 +345,7 @@ struct FilePreviewView: View {
                     .padding(.horizontal, AppTheme.Spacing.md)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 34)
+            .frame(height: 48)
             .background(.white.opacity(0.85), in: Capsule())
             .contentShape(Capsule())
             .simultaneousGesture(TapGesture().onEnded {
@@ -357,9 +357,9 @@ struct FilePreviewView: View {
 
             // 播放模式按钮
             Image(systemName: playbackMode.iconName)
-                .font(.system(size: 14, weight: .bold))
+                .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(playbackMode == .repeatCurrent ? .black : .white)
-                .frame(width: 34, height: 34)
+                .frame(width: 48, height: 48)
                 .background(
                     playbackMode == .repeatCurrent
                         ? Color.white.opacity(0.85)
