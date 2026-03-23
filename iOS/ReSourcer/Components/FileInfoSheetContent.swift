@@ -28,6 +28,12 @@ struct FileInfoSheetContent: View {
     var onMove: (() -> Void)? = nil
     var onDownload: (() -> Void)? = nil
 
+    /// 调试日志按钮（nil 则隐藏）
+    var onShowDebugLog: (() -> Void)? = nil
+
+    /// 创建/修改时间切换状态
+    @State private var showCreatedTime = true
+
     var body: some View {
         VStack(spacing: AppTheme.Spacing.lg) {
             infoRow("文件名", value: file.name)
@@ -71,10 +77,29 @@ struct FileInfoSheetContent: View {
                 infoRow("位置", value: position)
             }
 
-            infoRow("类型", value: file.extension.uppercased())
             infoRow("大小", value: file.formattedSize)
-            infoRow("创建时间", value: file.created.toLocalDateTime)
-            infoRow("修改时间", value: file.modified.toLocalDateTime)
+
+            // 创建/修改时间合并为一行，点击切换
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { showCreatedTime.toggle() }
+            } label: {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                    HStack(spacing: 4) {
+                        Text(showCreatedTime ? "创建时间" : "修改时间")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Image(systemName: "arrow.left.arrow.right")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.tertiary)
+                    }
+                    Text(showCreatedTime ? file.created.toLocalDateTime : file.modified.toLocalDateTime)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .contentTransition(.numericText())
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
 
             if let sourceUrl = file.sourceUrl, let url = URL(string: sourceUrl) {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
@@ -103,7 +128,24 @@ struct FileInfoSheetContent: View {
                 infoRow("时长", value: duration)
             }
 
-            // 操作按钮（只显示传入了闭包的按钮）
+            // 调试日志入口（信息行末尾）
+            if let onShowDebugLog {
+                Button(action: onShowDebugLog) {
+                    HStack {
+                        Text("调试日志")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // 操作按钮
             let hasActions = onRename != nil || onMove != nil || onDownload != nil
             if hasActions {
                 HStack(spacing: AppTheme.Spacing.md) {

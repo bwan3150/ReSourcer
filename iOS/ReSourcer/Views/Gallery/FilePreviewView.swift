@@ -83,6 +83,11 @@ struct FilePreviewView: View {
     // 移动
     @State private var showMoveSheet = false
 
+    // 长按快捷编辑
+    @State private var showQuickActions = false
+    @State private var allTagsForPicker: [Tag] = []
+    @State private var quickSelectedTagIds: Set<Int> = []
+
     // 视频播放状态
     @State private var isVideoPlaying = false
     @State private var isVideoMuted = false
@@ -204,38 +209,53 @@ struct FilePreviewView: View {
         .glassBottomSheet(isPresented: $showInfoSheet, title: "文件信息") {
             fileInfoContent
         }
-        // 重命名面板
-        .glassBottomSheet(isPresented: $showRenameAlert, title: "重命名") {
-            VStack(spacing: AppTheme.Spacing.lg) {
-                HStack {
-                    TextField("文件名", text: $renameText)
-                        .textFieldStyle(.plain)
-                    Text(currentFile?.extension ?? "")
-                        .foregroundStyle(.tertiary)
+        // 重命名浮窗（overlay 避免被输入法遮挡）
+        .overlay {
+            if showRenameAlert {
+                ZStack {
+                    Color.black.opacity(0.5)
+                        .ignoresSafeArea()
+                        .onTapGesture { showRenameAlert = false }
+
+                    VStack(spacing: AppTheme.Spacing.lg) {
+                        HStack {
+                            TextField("文件名", text: $renameText)
+                                .textFieldStyle(.plain)
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.never)
+                            Text(currentFile.map { $0.extension.isEmpty ? "" : ".\($0.extension)" } ?? "")
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(AppTheme.Spacing.md)
+                        .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+
+                        HStack(spacing: AppTheme.Spacing.md) {
+                            GlassButton(icon: "trash", style: .secondary, size: .medium) {
+                                renameText = ""
+                            }
+                            .frame(maxWidth: .infinity)
+
+                            GlassButton(icon: "checkmark", style: .primary, size: .medium) {
+                                showRenameAlert = false
+                                Task { await performRename() }
+                            }
+                            .disabled(renameText.isEmpty || renameText == currentFile?.baseName)
+                            .frame(maxWidth: .infinity)
+
+                            GlassButton(icon: "xmark", style: .secondary, size: .medium) {
+                                showRenameAlert = false
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .padding(AppTheme.Spacing.xxl)
+                    .frame(maxWidth: 340)
+                    .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
                 }
-                .padding(AppTheme.Spacing.md)
-                .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
-
-                HStack(spacing: AppTheme.Spacing.md) {
-                    GlassButton(icon: "trash", style: .secondary, size: .medium) {
-                        renameText = ""
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    GlassButton(icon: "checkmark", style: .primary, size: .medium) {
-                        Task { await performRename() }
-                    }
-                    .disabled(renameText.isEmpty || renameText == currentFile?.baseName)
-                    .frame(maxWidth: .infinity)
-
-                    GlassButton(icon: "xmark", style: .secondary, size: .medium) {
-                        showRenameAlert = false
-                    }
-                    .frame(maxWidth: .infinity)
-                }
+                .transition(.opacity.combined(with: .scale(scale: 0.92)))
             }
-            .padding(.vertical, AppTheme.Spacing.md)
         }
+        .animation(AppTheme.Animation.spring, value: showRenameAlert)
         // 移动面板（复用 GalleryView 的 MoveSheetView）
         .sheet(isPresented: $showMoveSheet) {
             MoveSheetView(
@@ -265,11 +285,19 @@ struct FilePreviewView: View {
                 .presentationDetents([.medium, .large])
             }
         }
-        // 调试日志面板（长按标题呼出）
+        // 调试日志面板
         .sheet(isPresented: $showDebugLog) {
             DebugLogSheet(logger: logger, fileName: currentFile?.name ?? "")
                 .presentationDetents([.medium, .large])
         }
+        // 长按快捷编辑浮窗
+        .overlay {
+            if showQuickActions {
+                quickEditPopup
+                    .transition(.opacity.combined(with: .scale(scale: 0.92)))
+            }
+        }
+        .animation(AppTheme.Animation.spring, value: showQuickActions)
         .environmentObject(logger)
     }
 
@@ -353,7 +381,19 @@ struct FilePreviewView: View {
                 showInfoSheet = true
                 Task { await resolveUuidAndLoadTags() }
             })
-            .onLongPressGesture { showDebugLog = true }
+            .onLongPressGesture {
+                if let file = currentFile {
+                    renameText = file.baseName
+                }
+                quickSelectedTagIds = Set(fileInfoTags.map { $0.id })
+                allTagsForPicker = []
+                showQuickActions = true
+                Task {
+                    allTagsForPicker = (try? await apiService.tag.getTags(
+                        sourceFolder: NavigationState.shared.sourceFolder
+                    )) ?? []
+                }
+            }
 
             // 播放模式按钮
             Image(systemName: playbackMode.iconName)
@@ -570,11 +610,107 @@ struct FilePreviewView: View {
                 onDownload: {
                     showInfoSheet = false
                     saveFileToDevice(file)
+                },
+                onShowDebugLog: {
+                    showInfoSheet = false
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        showDebugLog = true
+                    }
                 }
             )
         }
     }
 
+
+    // MARK: - 长按快捷编辑浮窗
+
+    private var quickEditPopup: some View {
+        ZStack {
+            Color.black.opacity(0.5)
+                .ignoresSafeArea()
+                .onTapGesture { showQuickActions = false }
+
+            VStack(spacing: AppTheme.Spacing.lg) {
+                // 文件名输入框
+                HStack {
+                    TextField("", text: $renameText)
+                        .textFieldStyle(.plain)
+                    Text(currentFile.map { $0.extension.isEmpty ? "" : ".\($0.extension)" } ?? "")
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(AppTheme.Spacing.md)
+                .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+
+                // 标签选择
+                if allTagsForPicker.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, AppTheme.Spacing.sm)
+                } else {
+                    ScrollView {
+                        FlowLayout(spacing: 8) {
+                            ForEach(allTagsForPicker) { tag in
+                                let isSelected = quickSelectedTagIds.contains(tag.id)
+                                Button {
+                                    if isSelected { quickSelectedTagIds.remove(tag.id) }
+                                    else { quickSelectedTagIds.insert(tag.id) }
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        if isSelected {
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 11, weight: .bold))
+                                        }
+                                        Text(tag.name)
+                                            .font(.subheadline)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 7)
+                                    .background(
+                                        isSelected
+                                            ? Color(hex: tag.color).opacity(0.85)
+                                            : Color(hex: tag.color).opacity(0.6)
+                                    )
+                                    .foregroundStyle(.white)
+                                    .clipShape(Capsule())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxHeight: 160)
+                }
+
+                // 按钮
+                HStack(spacing: AppTheme.Spacing.md) {
+                    GlassButton("取消", style: .secondary, size: .medium) {
+                        showQuickActions = false
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    GlassButton("确认", style: .primary, size: .medium) {
+                        showQuickActions = false
+                        guard let file = currentFile else { return }
+                        if !renameText.isEmpty && renameText != file.baseName {
+                            Task { await performRename() }
+                        }
+                        if let uuid = file.uuid {
+                            let ids = Array(quickSelectedTagIds)
+                            Task {
+                                try? await apiService.tag.setFileTags(fileUuid: uuid, tagIds: ids)
+                                fileInfoTags = (try? await apiService.tag.getFileTags(fileUuid: uuid)) ?? []
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(AppTheme.Spacing.xxl)
+            .frame(maxWidth: 340)
+            .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
+        }
+    }
 
     // MARK: - UUID 解析 + 标签加载
 
@@ -933,13 +1069,28 @@ struct FilePreviewView: View {
 
     private func performRename() async {
         guard let file = currentFile, let uuid = file.uuid, !renameText.isEmpty else { return }
-        let newName = renameText + file.extension
+        let newName = file.extension.isEmpty ? renameText : renameText + "." + file.extension
 
         isOperating = true
         do {
             _ = try await apiService.file.renameFile(uuid: uuid, to: newName)
+            // 重命名成功后只更新当前文件的名字，不从列表移除
+            let ext = file.extension
+            currentFiles[currentIndex] = FileInfo(
+                uuid: file.uuid,
+                name: newName,
+                path: (file.path as NSString).deletingLastPathComponent + "/" + newName,
+                fileType: file.fileType,
+                extension: ext,
+                size: file.size,
+                created: file.created,
+                modified: file.modified,
+                width: file.width,
+                height: file.height,
+                duration: file.duration,
+                sourceUrl: file.sourceUrl
+            )
             GlassAlertManager.shared.showSuccess("重命名成功")
-            handlePostOperation()
         } catch {
             GlassAlertManager.shared.showError("重命名失败", message: error.localizedDescription)
         }

@@ -63,8 +63,8 @@
 		A1000093233F0001 /* TagEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000093233F0000 /* TagEditorView.swift */; };
 		A1000094233F0001 /* IgnoreSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000094233F0000 /* IgnoreSettingsView.swift */; };
 		A1000095233F0001 /* DownloaderSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000095233F0000 /* DownloaderSettingsView.swift */; };
-		A10000A0233F0001 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000FE233F0000 /* PreferencesView.swift */; };
 		A1000096233F0001 /* PreviewLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000096233F0000 /* PreviewLogger.swift */; };
+		A10000A0233F0001 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000FE233F0000 /* PreferencesView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -127,8 +127,8 @@
 		A1000093233F0000 /* TagEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagEditorView.swift; sourceTree = "<group>"; };
 		A1000094233F0000 /* IgnoreSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IgnoreSettingsView.swift; sourceTree = "<group>"; };
 		A1000095233F0000 /* DownloaderSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloaderSettingsView.swift; sourceTree = "<group>"; };
-		A10000FE233F0000 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		A1000096233F0000 /* PreviewLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewLogger.swift; sourceTree = "<group>"; };
+		A10000FE233F0000 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -612,7 +612,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.13;
+				MARKETING_VERSION = 0.0.14;
 				PRODUCT_BUNDLE_IDENTIFIER = com.resourcer.apple;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -650,7 +650,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.13;
+				MARKETING_VERSION = 0.0.14;
 				PRODUCT_BUNDLE_IDENTIFIER = com.resourcer.apple;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
