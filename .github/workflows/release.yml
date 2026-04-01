@@ -49,6 +49,7 @@ jobs:
 
       - name: Install system dependencies (aarch64)
         if: matrix.target == 'aarch64-unknown-linux-gnu'
+        timeout-minutes: 5
         run: |
           sudo dpkg --add-architecture arm64
 
@@ -68,6 +69,10 @@ jobs:
           deb [arch=arm64] http://ports.ubuntu.com/ ${CODENAME} main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ ${CODENAME}-updates main restricted universe multiverse
           EOF
+
+          # Set apt timeout and retries to avoid hanging on slow mirrors
+          echo 'Acquire::http::Timeout "30";' | sudo tee /etc/apt/apt.conf.d/99timeout
+          echo 'Acquire::Retries "3";' | sudo tee -a /etc/apt/apt.conf.d/99timeout
 
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libfontconfig1-dev:arm64
