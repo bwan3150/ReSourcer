@@ -1,50 +1,23 @@
-use actix_web::{HttpRequest, HttpResponse, Result};
-use rust_embed::RustEmbed;
+use std::path::PathBuf;
 
-// 嵌入static目录中的所有文件
-#[derive(RustEmbed)]
-#[folder = "static/"]
-pub struct Asset;
-
-// 嵌入config目录中的所有文件
-#[derive(RustEmbed)]
-#[folder = "config/"]
-pub struct ConfigAsset;
-
-// 从嵌入的资源中提供静态文件
-pub async fn serve_static(req: HttpRequest) -> Result<HttpResponse> {
-    let raw_path = req.match_info().query("filename");
-
-    // 构建实际路径
-    let path = if raw_path.is_empty() {
-        "index.html".to_string()
-    } else if raw_path.ends_with('/') {
-        format!("{}index.html", raw_path)
-    } else {
-        raw_path.to_string()
-    };
-
-    // 先尝试直接访问
-    let result = Asset::get(&path);
-
-    // 如果找不到，尝试添加 index.html
-    let content = if result.is_none() && !path.ends_with(".html") && !path.ends_with(".js") && !path.ends_with(".css") {
-        let index_path = format!("{}/index.html", path);
-        Asset::get(&index_path)
-    } else {
-        result
-    };
-
-    match content {
-        Some(content) => {
-            let mime_type = mime_guess::from_path(&path)
-                .first_or_octet_stream()
-                .to_string();
-
-            Ok(HttpResponse::Ok()
-                .content_type(mime_type)
-                .body(content.data.into_owned()))
+/// 获取 config 目录路径（可执行文件同级目录下的 config/）
+fn config_dir() -> PathBuf {
+    // 优先使用可执行文件所在目录
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let config_path = exe_dir.join("config");
+            if config_path.exists() {
+                return config_path;
+            }
         }
-        None => Ok(HttpResponse::NotFound().body("404 Not Found")),
     }
+
+    // 回退到当前工作目录
+    PathBuf::from("config")
+}
+
+/// 从 config 目录读取文件内容
+pub fn read_config_file(filename: &str) -> Option<Vec<u8>> {
+    let path = config_dir().join(filename);
+    std::fs::read(&path).ok()
 }

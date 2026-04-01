@@ -18,7 +18,7 @@ mod auth;
 mod logger;
 mod database;
 
-use static_files::serve_static;
+use static_files::read_config_file;
 
 /// 全局配置 API - 所有模块共用
 async fn get_global_config() -> Result<HttpResponse> {
@@ -41,7 +41,6 @@ async fn health_check() -> Result<HttpResponse> {
 
 /// App 配置 API - 读取 app.json（包含 Android/iOS 下载链接）
 async fn get_app_config() -> Result<HttpResponse> {
-    use static_files::ConfigAsset;
     use serde::Deserialize;
 
     #[derive(Deserialize)]
@@ -52,8 +51,8 @@ async fn get_app_config() -> Result<HttpResponse> {
         github_url: String,
     }
 
-    if let Some(config_file) = ConfigAsset::get("app.json") {
-        match serde_json::from_slice::<AppConfig>(&config_file.data) {
+    if let Some(data) = read_config_file("app.json") {
+        match serde_json::from_slice::<AppConfig>(&data) {
             Ok(config) => {
                 Ok(HttpResponse::Ok().json(serde_json::json!({
                     "version": config.version,
@@ -213,9 +212,6 @@ async fn main() -> std::io::Result<()> {
             .service(web::scope("/api/tag").configure(tag::routes))
             // 文件系统浏览 API 路由
             .service(web::scope("/api/browser").configure(browser::routes))
-            // 静态文件服务（嵌入式）
-            .route("/", web::get().to(serve_static))
-            .route("/{filename:.*}", web::get().to(serve_static))
     })
     .bind("0.0.0.0:1234")?
     .run()

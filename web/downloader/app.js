@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // 加载配置
 async function loadConfig() {
     try {
-        const response = await fetch('/api/config/download');
+        const response = await apiFetch('/api/config/download');
         const data = await response.json();
 
         // 显示 yt-dlp 版本
@@ -55,7 +55,7 @@ async function loadConfig() {
 async function loadFolders() {
     try {
         // 获取配置中的source_folder
-        const configResponse = await fetch('/api/config/download');
+        const configResponse = await apiFetch('/api/config/download');
         const config = await configResponse.json();
 
         if (!config.source_folder) {
@@ -112,7 +112,7 @@ function selectFolder(folderName) {
 // 检测 URL
 async function detectURL(url) {
     try {
-        const response = await fetch('/api/transfer/download/detect', {
+        const response = await apiFetch('/api/transfer/download/detect', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url })
@@ -168,7 +168,7 @@ async function startDownload() {
     downloadBtn.disabled = true;
 
     try {
-        const response = await fetch('/api/transfer/download/task', {
+        const response = await apiFetch('/api/transfer/download/task', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -207,7 +207,7 @@ async function startDownload() {
 // 加载任务列表
 async function loadTasks() {
     try {
-        const response = await fetch('/api/transfer/download/tasks');
+        const response = await apiFetch('/api/transfer/download/tasks');
         const data = await response.json();
 
         currentTasks = data.tasks || [];
@@ -383,7 +383,7 @@ async function previewFile(filePath, url) {
 
     // URL 编码文件路径
     const encodedPath = encodeURIComponent(filePath);
-    const apiUrl = `/api/downloader/file/${encodedPath}`;
+    const fileUrl = apiUrl(`/api/downloader/file/${encodedPath}`);
 
     // 判断文件类型
     const ext = filePath.split('.').pop().toLowerCase();
@@ -394,19 +394,19 @@ async function previewFile(filePath, url) {
     console.log('Extension:', ext);
     console.log('Is video:', isVideo);
     console.log('Is image:', isImage);
-    console.log('API URL:', apiUrl);
+    console.log('API URL:', fileUrl);
 
     if (isVideo) {
         previewContainer.innerHTML = `
             <video controls autoplay style="max-width: 100%; max-height: 90vh;">
-                <source src="${apiUrl}" type="video/${ext}">
+                <source src="${fileUrl}" type="video/${ext}">
                 Your browser does not support the video tag.
             </video>
         `;
         previewModal.classList.add('show');
     } else if (isImage) {
         previewContainer.innerHTML = `
-            <img src="${apiUrl}" alt="Preview" style="max-width: 100%; max-height: 90vh; object-fit: contain;">
+            <img src="${fileUrl}" alt="Preview" style="max-width: 100%; max-height: 90vh; object-fit: contain;">
         `;
         previewModal.classList.add('show');
     } else {
@@ -446,7 +446,7 @@ function closePreview() {
 async function openFolder(filePath) {
     try {
         // 调用后端 API 打开文件夹
-        const response = await fetch('/api/folder/open', {
+        const response = await apiFetch('/api/folder/open', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ path: filePath })
@@ -514,7 +514,7 @@ async function clearHistory() {
     }
 
     try {
-        const response = await fetch('/api/transfer/download/history', {
+        const response = await apiFetch('/api/transfer/download/history', {
             method: 'DELETE'
         });
 
@@ -539,7 +539,7 @@ async function createNewFolder() {
     }
 
     try {
-        const response = await fetch('/api/folder/create', {
+        const response = await apiFetch('/api/folder/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ folder_name: folderName.trim() })
@@ -583,7 +583,7 @@ function closeAuthModal() {
 // 加载认证状态
 async function loadAuthStatus() {
     try {
-        const response = await fetch('/api/config/download');
+        const response = await apiFetch('/api/config/download');
         const data = await response.json();
 
         const authList = document.getElementById('authList');

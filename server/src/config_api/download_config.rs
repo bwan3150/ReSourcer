@@ -11,7 +11,7 @@ pub async fn get_download_config() -> Result<HttpResponse> {
     let auth_status = crate::transfer::download::auth::check_all_auth_status();
 
     // 读取 yt-dlp 版本
-    use crate::static_files::ConfigAsset;
+    use crate::static_files::read_config_file;
     use serde::Deserialize;
 
     #[derive(Deserialize)]
@@ -25,8 +25,8 @@ pub async fn get_download_config() -> Result<HttpResponse> {
         yt_dlp: DependencyInfo,
     }
 
-    let ytdlp_version = if let Some(config_file) = ConfigAsset::get("dependencies.json") {
-        match serde_json::from_slice::<Dependencies>(&config_file.data) {
+    let ytdlp_version = if let Some(data) = read_config_file("dependencies.json") {
+        match serde_json::from_slice::<Dependencies>(&data) {
             Ok(deps) => deps.yt_dlp.version,
             Err(_) => "unknown".to_string(),
         }

@@ -58,21 +58,15 @@ where
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let path = req.path();
 
-        // 白名单：不需要验证的路径
+        // 白名单：不需要验证的 API 路径
         let whitelist = [
-            "/login.html",
-            "/auth.js",
             "/api/auth/verify",
             "/api/health",
             "/api/app",
-            "/common-i18n.js",
-            "/material-icons.css",
         ];
 
         // 检查是否在白名单中
-        let is_whitelisted = whitelist.iter().any(|w| path.starts_with(w))
-            || path.starts_with("/fonts/")
-            || path.starts_with("/assets/");
+        let is_whitelisted = whitelist.iter().any(|w| path.starts_with(w));
 
         if is_whitelisted {
             let fut = self.service.call(req);
@@ -124,20 +118,7 @@ where
         let valid = api_key.as_ref().map_or(false, |k| k == &self.api_key);
 
         if !valid {
-            // 如果是 HTML 页面请求，重定向到登录页
-            if path.ends_with('/') || path.ends_with(".html") || !path.contains('.') {
-                let (request, _) = req.into_parts();
-                let response = HttpResponse::Found()
-                    .append_header(("Location", "/login.html"))
-                    .finish()
-                    .map_into_right_body();
-
-                return Box::pin(async move {
-                    Ok(ServiceResponse::new(request, response))
-                });
-            }
-
-            // API 请求返回 401
+            // 未认证请求返回 401
             let (request, _) = req.into_parts();
             let response = HttpResponse::Unauthorized()
                 .json(serde_json::json!({"error": "Unauthorized: Invalid or missing API Key"}))

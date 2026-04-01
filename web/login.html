@@ -234,6 +234,7 @@
         </div>
     </div>
 
+    <script src="/config.js"></script>
     <script src="/auth.js"></script>
     <script src="/common-i18n.js"></script>
     <script>
@@ -290,7 +291,7 @@
         // 加载 GitHub URL
         async function loadGitHubUrl() {
             try {
-                const response = await fetch('/api/app');
+                const response = await apiFetch('/api/app');
                 if (response.ok) {
                     const data = await response.json();
                     if (data.github_url) {
@@ -338,7 +339,7 @@
             errorMessage.classList.remove('show');
 
             try {
-                const response = await fetch('/api/auth/verify', {
+                const response = await apiFetch('/api/auth/verify', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

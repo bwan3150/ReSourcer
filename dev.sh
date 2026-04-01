@@ -92,7 +92,13 @@ main() {
         exit 1
     fi
 
-    print_status "Launching re-sourcer..."
+    print_status "Launching re-sourcer (API server on port 1234)..."
+    print_status "Frontend is in web/ directory. To serve it locally:"
+    print_status "  cd web && python3 -m http.server 8080"
+    print_status "  Then visit http://localhost:8080"
+    print_status "  Set window.__RESOURCER_API_BASE = 'http://localhost:1234' in browser console if needed"
+    echo ""
+
     if [ -f "${SERVER_DIR}/target/release/re-sourcer" ]; then
         "${SERVER_DIR}/target/release/re-sourcer"
     else

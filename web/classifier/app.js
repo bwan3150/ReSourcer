@@ -34,7 +34,7 @@ function setupEventListeners() {
 // 加载应用状态
 async function loadAppState() {
     try {
-        const response = await fetch('/api/config/state');
+        const response = await apiFetch('/api/config/state');
         appState = await response.json();
     } catch (error) {
         console.error('Error loading state:', error);
@@ -126,7 +126,7 @@ async function saveCurrentAsPreset() {
 // 保存预设到服务器
 async function savePresetToServer(name, categories) {
     try {
-        const response = await fetch('/api/config/preset/save', {
+        const response = await apiFetch('/api/config/preset/save', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -163,7 +163,7 @@ async function deleteSelectedPreset() {
     if (!confirm(i18nManager.t('confirmDelete', {name: selectedValue}))) return;
     
     try {
-        const response = await fetch('/api/config/preset/delete', {
+        const response = await apiFetch('/api/config/preset/delete', {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
@@ -221,7 +221,7 @@ async function setSourceFolder() {
         appState.source_folder = folderPath;
 
         try {
-            const response = await fetch('/api/config/save', {
+            const response = await apiFetch('/api/config/save', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -343,7 +343,7 @@ async function undoLastOperation() {
     
     try {
         // 移回原位置
-        const response = await fetch('/api/file/move', {
+        const response = await apiFetch('/api/file/move', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -566,11 +566,11 @@ function showCurrentFile() {
     
     let mediaHtml = '';
     if (file.file_type === 'image') {
-        mediaHtml = `<img src="/api/preview/content/${encodedPath}" alt="${file.name}">`;
+        mediaHtml = `<img src="${apiUrl('/api/preview/content/' + encodedPath)}" alt="${file.name}">`;
     } else if (file.file_type === 'video') {
         mediaHtml = `
             <video controls autoplay muted>
-                <source src="/api/preview/content/${encodedPath}">
+                <source src="${apiUrl('/api/preview/content/' + encodedPath)}">
             </video>
         `;
     }
@@ -646,7 +646,7 @@ async function moveToCategory(category) {
     }
 
     try {
-        const response = await fetch('/api/file/move', {
+        const response = await apiFetch('/api/file/move', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -706,7 +706,7 @@ async function quickAddNewCategory() {
 
     // 直接创建文件夹
     try {
-        const response = await fetch('/api/folder/create', {
+        const response = await apiFetch('/api/folder/create', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -15,7 +15,7 @@ window.addEventListener('load', async () => {
 // 加载文件夹列表
 async function loadFolders() {
     try {
-        const response = await fetch('/api/folder/list');
+        const response = await apiFetch('/api/folder/list');
         const data = await response.json();
 
         allFolders = data.folders; // 保存所有文件夹
@@ -124,19 +124,19 @@ async function loadFiles(folderPath) {
             if (file.file_type === 'image') {
                 // 普通图片使用缩略图
                 item.innerHTML = `
-                    <img src="/api/preview/thumbnail?path=${encodeURIComponent(file.path)}&size=300" alt="${file.name}">
+                    <img src="${apiUrl('/api/preview/thumbnail?path=' + encodeURIComponent(file.path) + '&size=300')}" alt="${file.name}">
                     <div class="file-type-badge">${file.extension}</div>
                 `;
             } else if (file.file_type === 'gif') {
                 // GIF直接加载以显示动画
                 item.innerHTML = `
-                    <img src="/api/preview/content/${encodeURIComponent(file.path)}" alt="${file.name}">
+                    <img src="${apiUrl('/api/preview/content/' + encodeURIComponent(file.path))}" alt="${file.name}">
                     <div class="file-type-badge">${file.extension}</div>
                 `;
             } else if (file.file_type === 'video') {
                 // 视频使用缩略图API获取首帧
                 item.innerHTML = `
-                    <img src="/api/preview/thumbnail?path=${encodeURIComponent(file.path)}&size=300" alt="${file.name}">
+                    <img src="${apiUrl('/api/preview/thumbnail?path=' + encodeURIComponent(file.path) + '&size=300')}" alt="${file.name}">
                     <div class="file-type-badge">${file.extension}</div>
                 `;
             } else {
@@ -200,10 +200,10 @@ function updateInlinePreview() {
     counter.textContent = `${currentFileIndex + 1} / ${currentFiles.length}`;
 
     if (file.file_type === 'image' || file.file_type === 'gif') {
-        media.innerHTML = `<img src="/api/preview/content/${encodeURIComponent(file.path)}" alt="${file.name}">`;
+        media.innerHTML = `<img src="${apiUrl('/api/preview/content/' + encodeURIComponent(file.path))}" alt="${file.name}">`;
         videoControls.style.display = 'none';
     } else if (file.file_type === 'video') {
-        media.innerHTML = `<video id="previewVideoInline" src="/api/preview/content/${encodeURIComponent(file.path)}" autoplay playsinline onclick="togglePlayPauseInline()"></video>`;
+        media.innerHTML = `<video id="previewVideoInline" src="${apiUrl('/api/preview/content/' + encodeURIComponent(file.path))}" autoplay playsinline onclick="togglePlayPauseInline()"></video>`;
         videoElement = document.getElementById('previewVideoInline');
         videoControls.style.display = 'flex';
         setupVideoControlsInline();
@@ -571,7 +571,7 @@ async function uploadFiles(files, targetFolder) {
     }
 
     try {
-        const response = await fetch('/api/transfer/upload/task', {
+        const response = await apiFetch('/api/transfer/upload/task', {
             method: 'POST',
             body: formData
         });
@@ -597,7 +597,7 @@ async function uploadFiles(files, targetFolder) {
 // 加载上传任务列表
 async function loadUploadTasks() {
     try {
-        const response = await fetch('/api/transfer/upload/tasks');
+        const response = await apiFetch('/api/transfer/upload/tasks');
         const data = await response.json();
 
         uploadTasks = data.tasks || [];
@@ -726,7 +726,7 @@ function stopUploadPolling() {
 // 清除所有已完成/失败的任务
 async function clearAllFinishedTasks() {
     try {
-        const response = await fetch('/api/transfer/upload/tasks/clear', {
+        const response = await apiFetch('/api/transfer/upload/tasks/clear', {
             method: 'POST'
         });
 
@@ -782,7 +782,7 @@ async function confirmRename() {
     const newName = newNameWithoutExt + file.extension;
 
     try {
-        const response = await fetch('/api/file/rename', {
+        const response = await apiFetch('/api/file/rename', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -847,7 +847,7 @@ async function confirmMove(targetFolderPath, targetFolderName) {
     const file = currentFiles[currentFileIndex];
 
     try {
-        const response = await fetch('/api/file/move', {
+        const response = await apiFetch('/api/file/move', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

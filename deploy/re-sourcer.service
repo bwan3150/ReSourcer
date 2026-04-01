@@ -1,0 +1,21 @@
+[Unit]
+Description=ReSourcer API Server
+After=network.target
+
+[Service]
+Type=simple
+
+# ====== 按实际环境修改以下路径 ======
+# 二进制文件路径
+ExecStart=/opt/re-sourcer/bin/re-sourcer
+# 工作目录（config/ 目录需在此路径下）
+WorkingDirectory=/opt/re-sourcer
+# 配置文件目录（data.db, secret.json 等）
+Environment=HOME=/opt/re-sourcer
+# ====================================
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
