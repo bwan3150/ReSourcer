@@ -11,8 +11,19 @@ env:
 
 jobs:
   build:
-    name: Build Linux x86_64
+    name: Build ${{ matrix.artifact_name }}
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            artifact_name: re-sourcer-linux-x86_64
+            packages: libfontconfig1-dev
+          - target: aarch64-unknown-linux-gnu
+            artifact_name: re-sourcer-linux-aarch64
+            packages: libfontconfig1-dev gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
     steps:
       - name: Checkout code
@@ -22,6 +33,8 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -30,25 +43,29 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             server/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev
+        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.packages }}
 
       - name: Build release binary
         working-directory: server
-        run: cargo build --release
+        run: cargo build --release --target ${{ matrix.target }}
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
 
       - name: Prepare artifact
         run: |
-          mv server/target/release/re-sourcer re-sourcer-linux-x86_64
-          chmod +x re-sourcer-linux-x86_64
+          mv server/target/${{ matrix.target }}/release/re-sourcer ${{ matrix.artifact_name }}
+          chmod +x ${{ matrix.artifact_name }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: re-sourcer-linux-x86_64
-          path: re-sourcer-linux-x86_64
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}
           retention-days: 7
 
   create-release:
