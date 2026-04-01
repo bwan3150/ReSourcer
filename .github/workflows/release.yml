@@ -20,10 +20,8 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             artifact_name: re-sourcer-linux-x86_64
-            packages: libfontconfig1-dev
           - target: aarch64-unknown-linux-gnu
             artifact_name: re-sourcer-linux-aarch64
-            packages: libfontconfig1-dev gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
     steps:
       - name: Checkout code
@@ -45,8 +43,19 @@ jobs:
             server/target
           key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.packages }}
+      - name: Install system dependencies (x86_64)
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev
+
+      - name: Install system dependencies (aarch64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list.d/*.list || true
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ $(lsb_release -cs) main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ $(lsb_release -cs)-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libfontconfig1-dev:arm64
 
       - name: Build release binary
         working-directory: server
@@ -55,6 +64,8 @@ jobs:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
           CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
           CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
+          PKG_CONFIG_PATH_aarch64_unknown_linux_gnu: /usr/lib/aarch64-linux-gnu/pkgconfig
+          PKG_CONFIG_ALLOW_CROSS: 1
 
       - name: Prepare artifact
         run: |
