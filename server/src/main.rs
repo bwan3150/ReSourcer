@@ -119,9 +119,8 @@ async fn main() -> std::io::Result<()> {
             apikey: String,
         }
 
-        // 构建配置文件路径: ~/.config/re-sourcer/secret.json
-        let home_dir = dirs::home_dir()?;
-        let secret_path = home_dir.join(".config").join("re-sourcer").join("secret.json");
+        // 构建配置文件路径: app_dir()/config/secret.json
+        let secret_path = crate::static_files::app_dir().join("config").join("secret.json");
 
         // 读取文件
         let content = fs::read_to_string(&secret_path).ok()?;

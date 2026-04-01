@@ -4,56 +4,57 @@ use std::fs;
 use actix_web::Result;
 use std::process::Command;
 
-// 在编译时嵌入对应平台的 ffmpeg 二进制文件
-static FFMPEG_BINARY: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/ffmpeg"));
+#[cfg(target_os = "linux")]
+const FFMPEG_DOWNLOAD_URL: &str = "https://resourcer-assets.s3.ap-southeast-2.amazonaws.com/binaries/ffmpeg/ffmpeg-linux";
+#[cfg(target_os = "macos")]
+const FFMPEG_DOWNLOAD_URL: &str = "https://resourcer-assets.s3.ap-southeast-2.amazonaws.com/binaries/ffmpeg/ffmpeg-macos";
+#[cfg(target_os = "windows")]
+const FFMPEG_DOWNLOAD_URL: &str = "https://resourcer-assets.s3.ap-southeast-2.amazonaws.com/binaries/ffmpeg/ffmpeg-windows.exe";
 
-/// 获取 ffmpeg 二进制文件路径（从嵌入的二进制中提取）
+/// 获取 tools/ 目录路径（基于 app_dir，与部署目录一致）
+fn tools_dir() -> PathBuf {
+    crate::static_files::app_dir().join("tools")
+}
+
+/// 获取 ffmpeg 二进制文件路径（从 tools/ 目录查找，不存在则从 S3 下载）
 pub fn get_ffmpeg_path() -> PathBuf {
-    use std::io::Write;
+    let binary_name = if cfg!(target_os = "windows") { "ffmpeg.exe" } else { "ffmpeg" };
+    let ffmpeg_path = tools_dir().join(binary_name);
 
-    // 获取临时目录
-    let temp_dir = std::env::temp_dir();
-
-    // 根据操作系统设置可执行文件名
-    let binary_name = if cfg!(target_os = "windows") {
-        "ffmpeg.exe"
-    } else {
-        "ffmpeg"
-    };
-
-    let ffmpeg_path = temp_dir.join(binary_name);
-
-    // 如果文件不存在或者内容不同，则写入
-    let needs_write = if ffmpeg_path.exists() {
-        // 检查文件大小是否一致
-        match fs::metadata(&ffmpeg_path) {
-            Ok(metadata) => metadata.len() != FFMPEG_BINARY.len() as u64,
-            Err(_) => true,
-        }
-    } else {
-        true
-    };
-
-    if needs_write {
-        // 写入嵌入的二进制文件
-        let mut file = fs::File::create(&ffmpeg_path)
-            .expect("无法创建 ffmpeg 临时文件");
-        file.write_all(FFMPEG_BINARY)
-            .expect("无法写入 ffmpeg 二进制文件");
-
-        // 在 Unix 系统上设置可执行权限
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let mut perms = fs::metadata(&ffmpeg_path)
-                .expect("无法读取文件元数据")
-                .permissions();
-            perms.set_mode(0o755);
-            fs::set_permissions(&ffmpeg_path, perms)
-                .expect("无法设置可执行权限");
-        }
+    if ffmpeg_path.exists() {
+        return ffmpeg_path;
     }
 
+    // 同步下载（preview 调用链是同步的）
+    eprintln!("[ffmpeg] 未找到 ffmpeg，正在从 S3 下载...");
+    eprintln!("[ffmpeg] URL: {}", FFMPEG_DOWNLOAD_URL);
+
+    let dir = ffmpeg_path.parent().unwrap();
+    fs::create_dir_all(dir).expect("无法创建 tools 目录");
+
+    let output = std::process::Command::new("curl")
+        .args(&["-sSL", "-o", ffmpeg_path.to_str().unwrap(), FFMPEG_DOWNLOAD_URL])
+        .output()
+        .expect("无法执行 curl 下载 ffmpeg");
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        panic!("下载 ffmpeg 失败: {}", stderr);
+    }
+
+    // Unix 设置可执行权限
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&ffmpeg_path)
+            .expect("无法读取文件元数据")
+            .permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&ffmpeg_path, perms)
+            .expect("无法设置可执行权限");
+    }
+
+    eprintln!("[ffmpeg] 下载完成: {}", ffmpeg_path.display());
     ffmpeg_path
 }
 

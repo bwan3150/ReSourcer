@@ -7,6 +7,7 @@ set -e
 GITHUB_REPO="bwan3150/ReSourcer"
 INSTALL_DIR="/opt/re-sourcer"
 SERVICE_NAME="re-sourcer"
+S3_BASE="https://resourcer-assets.s3.ap-southeast-2.amazonaws.com/binaries"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -68,36 +69,66 @@ download_binary() {
     local download_url="https://github.com/${GITHUB_REPO}/releases/latest/download/${asset_name}"
 
     info "正在下载 ${asset_name}..."
-    curl -sSL -o "${INSTALL_DIR}/bin/re-sourcer" "$download_url" \
+    curl -sSL -o "${INSTALL_DIR}/re-sourcer" "$download_url" \
         || error "下载失败，请检查 ${download_url} 是否存在"
 
-    chmod +x "${INSTALL_DIR}/bin/re-sourcer"
-    info "二进制文件已下载到 ${INSTALL_DIR}/bin/re-sourcer"
+    chmod +x "${INSTALL_DIR}/re-sourcer"
+    info "二进制文件已下载到 ${INSTALL_DIR}/re-sourcer"
+}
+
+# 下载 ffmpeg 和 ffprobe 到 tools/
+download_tools() {
+    local os=$(detect_os)
+
+    # ffmpeg
+    local ffmpeg_path="${INSTALL_DIR}/tools/ffmpeg"
+    if [ -f "$ffmpeg_path" ]; then
+        info "ffmpeg 已存在，跳过下载"
+    else
+        local ffmpeg_url="${S3_BASE}/ffmpeg/ffmpeg-${os}"
+        info "正在下载 ffmpeg..."
+        curl -sSL -o "$ffmpeg_path" "$ffmpeg_url" \
+            || error "下载 ffmpeg 失败"
+        chmod +x "$ffmpeg_path"
+        info "ffmpeg 已下载"
+    fi
+
+    # ffprobe
+    local ffprobe_path="${INSTALL_DIR}/tools/ffprobe"
+    if [ -f "$ffprobe_path" ]; then
+        info "ffprobe 已存在，跳过下载"
+    else
+        local ffprobe_url="${S3_BASE}/ffprobe/ffprobe-${os}"
+        info "正在下载 ffprobe..."
+        curl -sSL -o "$ffprobe_path" "$ffprobe_url" \
+            || error "下载 ffprobe 失败"
+        chmod +x "$ffprobe_path"
+        info "ffprobe 已下载"
+    fi
 }
 
 # 创建目录结构
 create_dirs() {
     info "创建目录结构..."
-    mkdir -p "${INSTALL_DIR}/bin"
     mkdir -p "${INSTALL_DIR}/config"
     mkdir -p "${INSTALL_DIR}/tools"
     mkdir -p "${INSTALL_DIR}/credentials"
+    mkdir -p "${INSTALL_DIR}/sqlite"
 
     info "目录结构:"
     info "  ${INSTALL_DIR}/"
-    info "  ├── bin/re-sourcer       # 后端二进制"
-    info "  ├── config/              # 配置文件 (app.json 等)"
-    info "  ├── tools/               # yt-dlp, ffmpeg 等工具"
+    info "  ├── re-sourcer           # 后端二进制"
+    info "  ├── config/              # 配置文件 (app.json, secret.json 等)"
+    info "  ├── tools/               # yt-dlp, ffmpeg, ffprobe"
     info "  ├── credentials/         # 下载凭证 (x, pixiv 等)"
-    info "  ├── data.db              # SQLite 数据库 (自动创建)"
-    info "  └── secret.json          # API Key (自动生成)"
+    info "  └── sqlite/              # SQLite 数据库 (data.db, 自动创建)"
 }
 
 # 安装 systemd 服务
 install_service() {
     # macOS 不使用 systemd
     if [ "$(detect_os)" = "macos" ]; then
-        warn "macOS 不支持 systemd，请手动运行: ${INSTALL_DIR}/bin/re-sourcer"
+        warn "macOS 不支持 systemd，请手动运行: ${INSTALL_DIR}/re-sourcer"
         return
     fi
 
@@ -110,7 +141,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=${INSTALL_DIR}/bin/re-sourcer
+ExecStart=${INSTALL_DIR}/re-sourcer
 WorkingDirectory=${INSTALL_DIR}
 Environment=HOME=${INSTALL_DIR}
 Restart=on-failure
@@ -143,7 +174,7 @@ main() {
     check_deps
 
     # 如果已安装，提示更新
-    if [ -f "${INSTALL_DIR}/bin/re-sourcer" ]; then
+    if [ -f "${INSTALL_DIR}/re-sourcer" ]; then
         warn "检测到已有安装，将更新二进制文件"
         if systemctl is-active --quiet "${SERVICE_NAME}" 2>/dev/null; then
             info "停止现有服务..."
@@ -153,6 +184,7 @@ main() {
 
     create_dirs
     download_binary
+    download_tools
     install_service
 
     echo ""

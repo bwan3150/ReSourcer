@@ -3,25 +3,23 @@ use rusqlite::{Connection, Result as SqliteResult};
 use std::path::PathBuf;
 use std::fs;
 
-/// 获取配置目录路径 ~/.config/re-sourcer/
+/// 获取应用根目录（统一使用 app_dir）
 pub fn get_config_dir() -> PathBuf {
-    let home = std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
-        .unwrap_or_else(|_| ".".to_string());
-
-    PathBuf::from(home).join(".config").join("re-sourcer")
+    crate::static_files::app_dir()
 }
 
-/// 获取数据库文件路径
+/// 获取数据库文件路径：app_dir()/sqlite/data.db
 pub fn get_db_path() -> PathBuf {
-    get_config_dir().join("data.db")
+    crate::static_files::app_dir().join("sqlite").join("data.db")
 }
 
-/// 确保配置目录存在
+/// 确保必要的目录存在
 pub fn ensure_config_dir() -> std::io::Result<()> {
-    let config_dir = get_config_dir();
-    if !config_dir.exists() {
-        fs::create_dir_all(&config_dir)?;
+    let app = crate::static_files::app_dir();
+    // 确保 sqlite/ 目录存在
+    let sqlite_dir = app.join("sqlite");
+    if !sqlite_dir.exists() {
+        fs::create_dir_all(&sqlite_dir)?;
     }
     Ok(())
 }

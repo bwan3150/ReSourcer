@@ -1,5 +1,5 @@
 // yt-dlp 下载器实现：支持 YouTube、Bilibili、X、TikTok 等平台
-// yt-dlp 二进制存放在 ~/.resourcer/bin/yt-dlp，运行时管理，不再编译时内嵌
+// yt-dlp 二进制存放在 app_dir()/tools/yt-dlp，运行时管理，不再编译时内嵌
 use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -19,11 +19,10 @@ const YTDLP_DOWNLOAD_URL: &str =
 const YTDLP_DOWNLOAD_URL: &str =
     "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
 
-/// 获取 yt-dlp 安装路径：~/.resourcer/bin/yt-dlp
+/// 获取 yt-dlp 安装路径：app_dir()/tools/yt-dlp
 pub fn get_ytdlp_path() -> PathBuf {
-    let home = dirs::home_dir().expect("无法获取 home 目录");
     let binary_name = if cfg!(target_os = "windows") { "yt-dlp.exe" } else { "yt-dlp" };
-    home.join(".resourcer").join("bin").join(binary_name)
+    crate::static_files::app_dir().join("tools").join(binary_name)
 }
 
 /// 确保 yt-dlp 存在，首次运行时从 GitHub 自动下载

@@ -9,7 +9,12 @@ app_state.json
 
 # Local files
 /local
-config/dependencies.json
+
+# 开发时运行自动生成（server/ 下）
+/server/tools/
+/server/sqlite/
+/server/credentials/
+/server/config/secret.json
 
 # ========================================
 # Flutter / Dart
@@ -115,26 +120,3 @@ E-ink/local.properties
 # IDE
 E-ink/.idea/
 E-ink/**/*.iml
-
-# ========================================
-# Tauri Tray App
-# ========================================
-
-# Node.js
-tray/node_modules/
-tray/package-lock.json
-
-# Tauri Build
-tray/src-tauri/target/
-tray/src-tauri/gen/
-tray/src-tauri/Cargo.lock
-
-# Downloaded binaries (会自动从 GitHub 下载)
-tray/src-tauri/bin/
-
-# Distribution
-tray/dist/
-
-# macOS
-tray/.DS_Store
-tray/src-tauri/.DS_Store
