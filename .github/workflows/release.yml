@@ -1,315 +1,156 @@
 name: Build Release
 
 on:
-  workflow_dispatch:  # GitHub Action页面手动触发
+  workflow_dispatch:
   push:
     tags:
-      - 'v*.*.*'  # TAG时触发, git tag v0.2.1; git push origin v0.2.1
+      - 'v*.*.*'
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
-    name: Build ${{ matrix.platform.target }}
-    runs-on: ${{ matrix.platform.os }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            ffmpeg: bin/ffmpeg-linux
-            ffprobe: bin/ffprobe-linux
-            artifact_name: re-sourcer-linux-x86_64
-
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            ffmpeg: bin/ffmpeg-macos
-            ffprobe: bin/ffprobe-macos
-            artifact_name: re-sourcer-macos-aarch64
-
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            ffmpeg: bin/ffmpeg-windows.exe
-            ffprobe: bin/ffprobe-windows.exe
-            artifact_name: re-sourcer-windows-x86_64.exe
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform.target }}
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo index
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: server/target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Verify required binaries exist
-        shell: bash
-        run: |
-          # 验证 ffmpeg
-          if [ ! -f "${{ matrix.platform.ffmpeg }}" ]; then
-            echo "❌ ffmpeg binary not found: ${{ matrix.platform.ffmpeg }}"
-            exit 1
-          fi
-          echo "✅ Found ffmpeg binary: ${{ matrix.platform.ffmpeg }}"
-
-          # 验证 ffprobe
-          if [ ! -f "${{ matrix.platform.ffprobe }}" ]; then
-            echo "❌ ffprobe binary not found: ${{ matrix.platform.ffprobe }}"
-            exit 1
-          fi
-          echo "✅ Found ffprobe binary: ${{ matrix.platform.ffprobe }}"
-
-      - name: Install system dependencies (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev
-
-      - name: Build release binary
-        working-directory: server
-        run: cargo build --release --target ${{ matrix.platform.target }}
-
-      - name: Rename binary (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          mv server/target/${{ matrix.platform.target }}/release/re-sourcer ${{ matrix.platform.artifact_name }}
-          chmod +x ${{ matrix.platform.artifact_name }}
-
-      - name: Rename binary (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          mv server/target/${{ matrix.platform.target }}/release/re-sourcer.exe ${{ matrix.platform.artifact_name }}
-
-      - name: Upload CLI artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.platform.artifact_name }}
-          path: ${{ matrix.platform.artifact_name }}
-          retention-days: 7
-
-  # build-tauri:
-  #   name: Build Tauri App ${{ matrix.platform.target }}
-  #   needs: build
-  #   runs-on: ${{ matrix.platform.os }}
-  #
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       platform:
-  #         - os: macos-latest
-  #           target: aarch64-apple-darwin
-  #           cli_artifact: re-sourcer-macos-aarch64
-  #           tauri_artifact: resourcer-tray-macos
-  #
-  #         - os: windows-latest
-  #           target: x86_64-pc-windows-msvc
-  #           cli_artifact: re-sourcer-windows-x86_64.exe
-  #           tauri_artifact: resourcer-tray-windows
-  #
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #       with:
-  #         lfs: true
-  #
-  #     - name: Download CLI artifact
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: ${{ matrix.platform.cli_artifact }}
-  #         path: tray/src-tauri/bin/
-  #
-  #     - name: Rename CLI binary for Tauri (Unix)
-  #       if: runner.os != 'Windows'
-  #       shell: bash
-  #       run: |
-  #         cd tray/src-tauri/bin/
-  #         mv ${{ matrix.platform.cli_artifact }} re-sourcer-${{ matrix.platform.target }}
-  #         chmod +x re-sourcer-${{ matrix.platform.target }}
-  #         ls -lh
-  #
-  #     - name: Rename CLI binary for Tauri (Windows)
-  #       if: runner.os == 'Windows'
-  #       shell: bash
-  #       run: |
-  #         cd tray/src-tauri/bin/
-  #         mv ${{ matrix.platform.cli_artifact }} re-sourcer-${{ matrix.platform.target }}.exe
-  #         ls -lh
-  #
-  #     - name: Install Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
-  #
-  #     - name: Install Rust toolchain
-  #       uses: dtolnay/rust-toolchain@stable
-  #       with:
-  #         targets: ${{ matrix.platform.target }}
-  #
-  #     - name: Create dist directory with placeholder
-  #       working-directory: tray
-  #       shell: bash
-  #       run: |
-  #         mkdir -p dist
-  #         cat > dist/index.html << 'EOF'
-  #         <!DOCTYPE html>
-  #         <html>
-  #         <head>
-  #             <meta charset="UTF-8">
-  #             <title>ReSourcer</title>
-  #         </head>
-  #         <body>
-  #             <h1>ReSourcer</h1>
-  #         </body>
-  #         </html>
-  #         EOF
-  #         echo "Created dist/index.html"
-  #         ls -la dist/
-  #
-  #     - name: Install npm dependencies
-  #       working-directory: tray
-  #       run: npm install
-  #
-  #     - name: Build Tauri app
-  #       working-directory: tray
-  #       run: npm run build
-  #
-  #     - name: Upload Tauri artifacts (macOS)
-  #       if: runner.os == 'macOS'
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: ${{ matrix.platform.tauri_artifact }}-dmg
-  #         path: tray/src-tauri/target/release/bundle/dmg/*.dmg
-  #         retention-days: 7
-  #
-  #     - name: Upload Tauri artifacts (Windows)
-  #       if: runner.os == 'Windows'
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: ${{ matrix.platform.tauri_artifact }}-msi
-  #         path: tray/src-tauri/target/release/bundle/msi/*.msi
-  #         retention-days: 7
-
-  build-android:
-    name: Build Android APK
+    name: Build Linux x86_64
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          lfs: true
+          fetch-depth: 0
 
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            server/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.29.2'
-          channel: 'stable'
-          cache: true
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev
 
-      - name: Install Android SDK components
+      - name: Build release binary
+        working-directory: server
+        run: cargo build --release
+
+      - name: Prepare artifact
         run: |
-          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses || true
-          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --install "ndk;27.0.12077973" "platforms;android-36" "build-tools;36.0.0"
+          mv server/target/release/re-sourcer re-sourcer-linux-x86_64
+          chmod +x re-sourcer-linux-x86_64
 
-      - name: Flutter doctor
-        working-directory: app/flutter
-        run: flutter doctor -v
-
-      - name: Get Flutter dependencies
-        working-directory: app/flutter
-        run: flutter pub get
-
-      - name: Build Android APK (Release with debug signing)
-        working-directory: app/flutter
-        run: flutter build apk --release
-
-      - name: Verify and rename APK
-        run: |
-          APK_DIR="app/flutter/build/app/outputs/flutter-apk"
-          TARGET_APK="$APK_DIR/resourcer-android.apk"
-
-          if [ -f "$TARGET_APK" ]; then
-            echo "✅ Found APK: $TARGET_APK"
-          elif [ -f "$APK_DIR/app-release.apk" ]; then
-            echo "✅ Found APK: $APK_DIR/app-release.apk"
-            mv "$APK_DIR/app-release.apk" "$TARGET_APK"
-            echo "✅ Renamed to: $TARGET_APK"
-          else
-            echo "❌ APK not found"
-            ls -la "$APK_DIR" || echo "Directory does not exist"
-            exit 1
-          fi
-
-          echo "APK size: $(du -h $TARGET_APK | cut -f1)"
-
-      - name: Upload APK artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: resourcer-android
-          path: app/flutter/build/app/outputs/flutter-apk/resourcer-android.apk
+          name: re-sourcer-linux-x86_64
+          path: re-sourcer-linux-x86_64
           retention-days: 7
 
-# TAG触发
   create-release:
     name: Create GitHub Release
-    needs: [build, build-android]
+    needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
 
     steps:
-      - name: Download all artifacts
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Collect commits since last tag
+        id: commits
+        run: |
+          PREV_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '2p' || true)
+          if [ -n "$PREV_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD)
+          else
+            COMMITS=$(git log --pretty=format:"- %s")
+          fi
+          echo "$COMMITS" > /tmp/commits.txt
+          echo "--- Commits for release notes ---"
+          cat /tmp/commits.txt
+
+      - name: Generate release notes with AI
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          COMMITS=$(cat /tmp/commits.txt)
+
+          PROMPT="Below is a list of git commits for this release of ReSourcer (a resource management server):
+
+          ${COMMITS}
+
+          Categorize and rewrite these commits into a clear changelog. Important rules:
+          - A single commit may contain MULTIPLE changes — split them into separate items
+          - Each item should be a concise, user-friendly description (not just repeating the commit message)
+          - Write in English
+          - Capitalize the first letter of each description
+
+          Output ONLY valid JSON in this exact format, with no markdown code fences or extra text:
+          {\"features\": [\"desc1\", \"desc2\"], \"updates\": [\"desc1\", \"desc2\"], \"fixes\": [\"desc1\", \"desc2\"]}
+
+          Categories:
+          - features: New capabilities that didn't exist before
+          - updates: Improvements, refactors, configuration or structural changes
+          - fixes: Bug fixes
+
+          If a category has no items, use an empty array []."
+
+          RESPONSE=$(curl -sf https://api.openai.com/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -d "$(jq -n --arg prompt "$PROMPT" '{
+              "model": "gpt-4.1-mini",
+              "messages": [{"role": "user", "content": $prompt}],
+              "max_tokens": 1024,
+              "temperature": 0.3
+            }')")
+
+          # Parse AI response into markdown
+          CHANGELOG=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
+          echo "$CHANGELOG" > /tmp/changelog.json
+          echo "--- Generated changelog ---"
+          cat /tmp/changelog.json
+
+          # Build markdown release body
+          BODY=""
+
+          FEATURES=$(echo "$CHANGELOG" | jq -r '.features // [] | if length > 0 then "### Features\n" + (map("- " + .) | join("\n")) else empty end')
+          UPDATES=$(echo "$CHANGELOG" | jq -r '.updates // [] | if length > 0 then "### Updates\n" + (map("- " + .) | join("\n")) else empty end')
+          FIXES=$(echo "$CHANGELOG" | jq -r '.fixes // [] | if length > 0 then "### Fixes\n" + (map("- " + .) | join("\n")) else empty end')
+
+          BODY="${FEATURES}"
+          [ -n "$UPDATES" ] && BODY="${BODY}\n\n${UPDATES}"
+          [ -n "$FIXES" ] && BODY="${BODY}\n\n${FIXES}"
+
+          # Fallback if AI fails
+          if [ -z "$BODY" ]; then
+            BODY="### Changes\n$(cat /tmp/commits.txt)"
+          fi
+
+          echo -e "$BODY" > /tmp/release_body.md
+          echo "--- Release body ---"
+          cat /tmp/release_body.md
+
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-
-      - name: List all artifacts
-        run: |
-          echo "📦 All artifacts:"
-          find artifacts -type f -exec ls -lh {} \;
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: artifacts/**/*
-          draft: true  # 保存到草稿
+          draft: false
           prerelease: false
-          generate_release_notes: true  # 自动生成
-          body: |
-            ### Server CLI
-            - `re-sourcer-linux-x86_64` - Linux x86_64
-            - `re-sourcer-macos-aarch64` - macOS Apple Silicon
-            - `re-sourcer-windows-x86_64.exe` - Windows x86_64
-
-            ### Android App
-            - `resourcer-android.apk` - Android APK
+          body_path: /tmp/release_body.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
