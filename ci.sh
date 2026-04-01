@@ -47,13 +47,13 @@ echo "  Cargo.toml ✓"
 sed -i '' "s/\"version\":\"${CURRENT_VERSION}\"/\"version\":\"${VERSION}\"/" "$SCRIPT_DIR/server/config/app.json"
 echo "  config/app.json ✓"
 
-# 3. static/login.html: ReSourcer vX.Y.Z
-sed -i '' "s/ReSourcer v[0-9][0-9.a-zA-Z-]*/ReSourcer v${VERSION}/" "$SCRIPT_DIR/server/static/login.html"
-echo "  static/login.html ✓"
+# 3. web/login.html: ReSourcer vX.Y.Z
+sed -i '' "s/ReSourcer v[0-9][0-9.a-zA-Z-]*/ReSourcer v${VERSION}/" "$SCRIPT_DIR/web/login.html"
+echo "  web/login.html ✓"
 
-# 4. static/index.html: ReSourcer vX.Y.Z
-sed -i '' "s/ReSourcer v[0-9][0-9.a-zA-Z-]*/ReSourcer v${VERSION}/" "$SCRIPT_DIR/server/static/index.html"
-echo "  static/index.html ✓"
+# 4. web/index.html: ReSourcer vX.Y.Z
+sed -i '' "s/ReSourcer v[0-9][0-9.a-zA-Z-]*/ReSourcer v${VERSION}/" "$SCRIPT_DIR/web/index.html"
+echo "  web/index.html ✓"
 
 echo ""
 
@@ -78,8 +78,8 @@ echo -e "${GREEN}=== 提交版本更新 ===${NC}"
 git add \
     "$SCRIPT_DIR/server/Cargo.toml" \
     "$SCRIPT_DIR/server/config/app.json" \
-    "$SCRIPT_DIR/server/static/login.html" \
-    "$SCRIPT_DIR/server/static/index.html"
+    "$SCRIPT_DIR/web/login.html" \
+    "$SCRIPT_DIR/web/index.html"
 
 # 如果有其他未暂存的更改也一并提交
 if ! git diff --quiet; then
