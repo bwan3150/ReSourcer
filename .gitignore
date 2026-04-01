@@ -20,90 +20,86 @@ app_state.json
 # Flutter / Dart
 # ========================================
 
-# FVM (Flutter Version Manager)
-app/flutter/.fvm/
-!app/flutter/.fvm/fvm_config.json
-
 # Flutter/Dart Build
-app/flutter/build/
-app/flutter/.dart_tool/
-app/flutter/.packages
+flutter/build/
+flutter/.dart_tool/
+flutter/.packages
 
 # code generated(build_runner / freezed / auto_route)
-app/flutter/**/*.g.dart
-app/flutter/**/*.freezed.dart
-app/flutter/**/*.gr.dart
-app/flutter/**/*.config.dart
+flutter/**/*.g.dart
+flutter/**/*.freezed.dart
+flutter/**/*.gr.dart
+flutter/**/*.config.dart
 
 # plugins
-app/flutter/.flutter-plugins
-app/flutter/.flutter-plugins-dependencies
+flutter/.flutter-plugins
+flutter/.flutter-plugins-dependencies
 
 # Pub cahce
-app/flutter/.pub-cache/
-app/flutter/.pub/
+flutter/.pub-cache/
+flutter/.pub/
 
 # IDE
-app/flutter/.idea/
-app/flutter/*.iml
-app/flutter/*.ipr
-app/flutter/*.iws
+flutter/.idea/
+flutter/*.iml
+flutter/*.ipr
+flutter/*.iws
 
 # VS Code
-app/flutter/.vscode/
+flutter/.vscode/
 
 # Android
-app/flutter/android/app/debug/
-app/flutter/android/app/profile/
-app/flutter/android/app/release/
-app/flutter/android/.gradle/
-app/flutter/android/local.properties
-app/flutter/android/key.properties
-app/flutter/android/app/*.jks
-app/flutter/android/app/*.keystore
-app/flutter/android/app/google-services.json
-app/flutter/android/*.apk
-app/flutter/android/*.aab
-app/flutter/android/captures/
-app/flutter/android/.externalNativeBuild/
-app/flutter/android/.cxx/
+flutter/android/app/debug/
+flutter/android/app/profile/
+flutter/android/app/release/
+flutter/android/.gradle/
+flutter/android/local.properties
+flutter/android/key.properties
+flutter/android/app/*.jks
+flutter/android/app/*.keystore
+flutter/android/app/google-services.json
+flutter/android/*.apk
+flutter/android/*.aab
+flutter/android/captures/
+flutter/android/.externalNativeBuild/
+flutter/android/.cxx/
 
 # iOS
-app/flutter/ios/Pods/
-app/flutter/ios/.symlinks/
-app/flutter/ios/Flutter/.last_build_id
-app/flutter/ios/Flutter/flutter_export_environment.sh
-app/flutter/ios/Flutter/App.framework/
-app/flutter/ios/Flutter/Flutter.framework/
-app/flutter/ios/Flutter/Flutter.podspec
-app/flutter/ios/Runner.xcworkspace/xcshareddata/
-app/flutter/ios/Runner.xcodeproj/xcshareddata/
-app/flutter/ios/ServiceDefinitions.json
-app/flutter/ios/Runner/GoogleService-Info.plist
-app/flutter/ios/*.ipa
-app/flutter/ios/*.dSYM.zip
+flutter/ios/Pods/
+flutter/ios/.symlinks/
+flutter/ios/Flutter/.last_build_id
+flutter/ios/Flutter/flutter_export_environment.sh
+flutter/ios/Flutter/App.framework/
+flutter/ios/Flutter/Flutter.framework/
+flutter/ios/Flutter/Flutter.podspec
+flutter/ios/Runner.xcworkspace/xcshareddata/
+flutter/ios/Runner.xcodeproj/xcshareddata/
+flutter/ios/ServiceDefinitions.json
+flutter/ios/Runner/GoogleService-Info.plist
+flutter/ios/*.ipa
+flutter/ios/*.dSYM.zip
 
 # macOS
-app/flutter/macos/Pods/
-app/flutter/macos/.symlinks/
-app/flutter/macos/Flutter/ephemeral/
+flutter/macos/Pods/
+flutter/macos/.symlinks/
+flutter/macos/Flutter/ephemeral/
 
 # Web
-app/flutter/web/.env
+flutter/web/.env
 
 # temp
-app/flutter/**/*.log
-app/flutter/**/*.swp
-app/flutter/**/*.pyc
-app/flutter/.buildlog/
-app/flutter/.history/
+flutter/**/*.log
+flutter/**/*.swp
+flutter/**/*.pyc
+flutter/.buildlog/
+flutter/.history/
 
 # test?
-app/flutter/coverage/
-app/flutter/test/.test_coverage.dart
+flutter/coverage/
+flutter/test/.test_coverage.dart
 
-app/flutter/flutter_*.png
-app/flutter/flutter_*.json
+flutter/flutter_*.png
+flutter/flutter_*.json
 
 # ========================================
 # E-ink Android App
