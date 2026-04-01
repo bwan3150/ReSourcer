@@ -12,15 +12,17 @@ env:
 jobs:
   build:
     name: Build ${{ matrix.artifact_name }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
 
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
             artifact_name: re-sourcer-linux-x86_64
           - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
             artifact_name: re-sourcer-linux-aarch64
 
     steps:
@@ -31,8 +33,6 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -41,55 +41,18 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             server/target
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install system dependencies (x86_64)
-        if: matrix.target == 'x86_64-unknown-linux-gnu'
+      - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev
-
-      - name: Install system dependencies (aarch64)
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        timeout-minutes: 5
-        run: |
-          sudo dpkg --add-architecture arm64
-
-          # Restrict ALL existing sources to amd64 only
-          # Handle DEB822 format (.sources files) used by Ubuntu 24.04+
-          for f in /etc/apt/sources.list.d/*.sources; do
-            [ -f "$f" ] && sudo sed -i '/^Architectures:/d; /^Types:/a Architectures: amd64' "$f"
-          done
-          # Handle legacy .list format
-          for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list; do
-            [ -f "$f" ] && sudo sed -i 's/^deb \(http\|mirror\|https\)/deb [arch=amd64] \1/' "$f"
-          done
-
-          # Add arm64 sources (only ports.ubuntu.com hosts arm64)
-          CODENAME=$(lsb_release -cs)
-          sudo tee /etc/apt/sources.list.d/arm64-ports.list > /dev/null <<EOF
-          deb [arch=arm64] http://ports.ubuntu.com/ ${CODENAME} main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ ${CODENAME}-updates main restricted universe multiverse
-          EOF
-
-          # Set apt timeout and retries to avoid hanging on slow mirrors
-          echo 'Acquire::http::Timeout "30";' | sudo tee /etc/apt/apt.conf.d/99timeout
-          echo 'Acquire::Retries "3";' | sudo tee -a /etc/apt/apt.conf.d/99timeout
-
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libfontconfig1-dev:arm64
 
       - name: Build release binary
         working-directory: server
-        run: cargo build --release --target ${{ matrix.target }}
-        env:
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
-          CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
-          PKG_CONFIG_PATH_aarch64_unknown_linux_gnu: /usr/lib/aarch64-linux-gnu/pkgconfig
-          PKG_CONFIG_ALLOW_CROSS: 1
+        run: cargo build --release
 
       - name: Prepare artifact
         run: |
-          mv server/target/${{ matrix.target }}/release/re-sourcer ${{ matrix.artifact_name }}
+          mv server/target/release/re-sourcer ${{ matrix.artifact_name }}
           chmod +x ${{ matrix.artifact_name }}
 
       - name: Upload artifact
@@ -116,7 +79,7 @@ jobs:
       - name: Collect commits since last tag
         id: commits
         run: |
-          PREV_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '2p' || true)
+          PREV_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | sed -n '2p' || true)
           if [ -n "$PREV_TAG" ]; then
             COMMITS=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD)
           else
