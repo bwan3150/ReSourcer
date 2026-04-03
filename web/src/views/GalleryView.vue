@@ -123,6 +123,7 @@
             :file-tags="fileTags"
             :all-tags="allTags"
             @update="onUpdateTags"
+            @create="onCreateTag"
           />
         </div>
 
@@ -344,6 +345,14 @@ async function onUpdateTags(tagIds) {
   try {
     await tagApi.setFileTags(previewFile.value.uuid, tagIds)
     await loadFileTags(previewFile.value.uuid)
+  } catch {}
+}
+
+async function onCreateTag({ name, color }) {
+  try {
+    await tagApi.createTag(sourceFolder.value, name, color)
+    const { data: tags } = await tagApi.listTags(sourceFolder.value)
+    allTags.value = tags
   } catch {}
 }
 
