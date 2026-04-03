@@ -146,6 +146,7 @@ jobs:
 
       - name: Build archive
         run: |
+          set -o pipefail
           xcodebuild archive \
             -project iOS/ReSourcer.xcodeproj \
             -scheme ReSourcer \
@@ -155,15 +156,29 @@ jobs:
             CODE_SIGN_IDENTITY="Apple Distribution" \
             DEVELOPMENT_TEAM="925YHK2R4K" \
             PROVISIONING_PROFILE_SPECIFIER="$PP_UUID" \
-            | tail -20
+            2>&1 | tee /tmp/archive.log | tail -30
+
+          # Verify archive was created
+          if [ ! -d "$RUNNER_TEMP/ReSourcer.xcarchive" ]; then
+            echo "Archive failed. Full log:"
+            cat /tmp/archive.log
+            exit 1
+          fi
 
       - name: Export IPA
         run: |
+          set -o pipefail
           xcodebuild -exportArchive \
             -archivePath $RUNNER_TEMP/ReSourcer.xcarchive \
             -exportPath $RUNNER_TEMP/export \
             -exportOptionsPlist iOS/ExportOptions.plist \
-            | tail -10
+            2>&1 | tee /tmp/export.log | tail -20
+
+          if [ ! -d "$RUNNER_TEMP/export" ]; then
+            echo "Export failed. Full log:"
+            cat /tmp/export.log
+            exit 1
+          fi
 
       - name: Prepare IPA artifact
         run: |
