@@ -32,11 +32,8 @@
           </button>
           <span class="text-sm truncate flex-1">{{ previewFile.fileName }}</span>
           <span class="text-xs text-base-content/40">{{ previewIndex + 1 }} / {{ files.length }}</span>
-          <button class="btn btn-ghost btn-xs btn-square" @click="startRename(previewFile)" :title="$t('common.rename')">
-            <Pencil :size="14" />
-          </button>
-          <button class="btn btn-ghost btn-xs btn-square" @click="startMove(previewFile)" :title="$t('common.move')">
-            <FolderInput :size="14" />
+          <button class="btn btn-ghost btn-xs btn-square" @click="fileInfoDialog?.showModal()" :title="$t('gallery.fileInfo')">
+            <Info :size="16" />
           </button>
         </div>
         <!-- Player fills remaining space -->
@@ -88,6 +85,54 @@
       </div>
     </template>
 
+    <!-- File Info Dialog -->
+    <dialog ref="fileInfoDialog" class="modal">
+      <div class="modal-box" v-if="previewFile">
+        <h3 class="font-bold text-lg mb-4">{{ $t('gallery.fileInfo') }}</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-base-content/50">{{ $t('gallery.fileName') }}</span>
+            <span class="truncate ml-4 text-right max-w-[60%]">{{ previewFile.fileName }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/50">{{ $t('gallery.fileType') }}</span>
+            <span>{{ previewFile.extension?.replace('.', '').toUpperCase() }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/50">{{ $t('gallery.fileSize') }}</span>
+            <span>{{ formatSize(previewFile.fileSize) }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/50">{{ $t('gallery.created') }}</span>
+            <span>{{ formatDate(previewFile.createdAt) }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/50">{{ $t('gallery.modified') }}</span>
+            <span>{{ formatDate(previewFile.modifiedAt) }}</span>
+          </div>
+          <div v-if="previewFile.sourceUrl" class="flex justify-between">
+            <span class="text-base-content/50">{{ $t('gallery.sourceUrl') }}</span>
+            <a :href="previewFile.sourceUrl" target="_blank" rel="noopener" class="truncate ml-4 text-right max-w-[60%] underline">{{ previewFile.sourceUrl }}</a>
+          </div>
+        </div>
+        <div class="flex gap-2 mt-6">
+          <button class="btn btn-ghost btn-sm flex-1 gap-1" @click="fileInfoDialog?.close(); startRename(previewFile)">
+            <Pencil :size="14" />
+            {{ $t('common.rename') }}
+          </button>
+          <button class="btn btn-ghost btn-sm flex-1 gap-1" @click="fileInfoDialog?.close(); startMove(previewFile)">
+            <FolderInput :size="14" />
+            {{ $t('common.move') }}
+          </button>
+          <a :href="contentSrc" download class="btn btn-ghost btn-sm flex-1 gap-1">
+            <Download :size="14" />
+            {{ $t('common.download') }}
+          </a>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
     <!-- Rename Dialog -->
     <dialog ref="renameDialog" class="modal">
       <div class="modal-box">
@@ -134,7 +179,7 @@ import FolderSidebar from '../components/gallery/FolderSidebar.vue'
 import FileGrid from '../components/gallery/FileGrid.vue'
 import MediaPlayer from '../components/shared/MediaPlayer.vue'
 import UploadArea from '../components/gallery/UploadArea.vue'
-import { Folder, ChevronRight, X, Pencil, FolderInput, RefreshCw } from 'lucide-vue-next'
+import { Folder, ChevronRight, X, Pencil, FolderInput, RefreshCw, Info, Download } from 'lucide-vue-next'
 import { contentUrl } from '../api/preview'
 import * as indexerApi from '../api/indexer'
 import * as configApi from '../api/config'
@@ -162,6 +207,7 @@ const previewFile = ref(null)
 const previewIndex = ref(0)
 const contentSrc = computed(() => previewFile.value ? contentUrl(previewFile.value) : '')
 
+const fileInfoDialog = ref(null)
 const renameDialog = ref(null)
 const renameValue = ref('')
 const renameTarget = ref(null)
@@ -221,6 +267,18 @@ async function loadMore() {
 }
 
 function refreshFiles() { navigateTo(currentFolder.value) }
+
+function formatSize(bytes) {
+  if (!bytes) return '—'
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+function formatDate(str) {
+  if (!str) return '—'
+  try { return new Date(str).toLocaleString() } catch { return str }
+}
 
 async function onDrop(e) {
   dragOver.value = false
