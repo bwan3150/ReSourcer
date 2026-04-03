@@ -147,8 +147,8 @@ const contentArea = ref(null)
 const playing = ref(false)
 const currentTime = ref(0)
 const duration = ref(0)
-const volume = ref(1)
-const muted = ref(false)
+const volume = ref(parseFloat(localStorage.getItem('player_volume') ?? '1'))
+const muted = ref(localStorage.getItem('player_muted') === 'true')
 const controlsVisible = ref(true) // always visible for now; will be toggled via keyboard shortcut later
 
 // Zoom & pan state
@@ -177,6 +177,11 @@ watch(() => props.src, async () => {
   resetZoom()
   if (hasControls.value && props.autoplay) {
     await nextTick()
+    // Apply persisted volume/mute to new media element
+    if (videoEl.value) {
+      videoEl.value.volume = volume.value
+      videoEl.value.muted = muted.value
+    }
     videoEl.value?.play()?.catch(() => {})
   }
 }, { immediate: true })
@@ -224,11 +229,19 @@ function resetZoom() {
 
 
 
-function onMetadata() { duration.value = videoEl.value?.duration || 0 }
+function onMetadata() {
+  duration.value = videoEl.value?.duration || 0
+  if (videoEl.value) {
+    videoEl.value.volume = volume.value
+    videoEl.value.muted = muted.value
+  }
+}
 function onTimeUpdate() { currentTime.value = videoEl.value?.currentTime || 0 }
 function onVolumeChange() {
   volume.value = videoEl.value?.volume || 0
   muted.value = videoEl.value?.muted || false
+  localStorage.setItem('player_volume', String(volume.value))
+  localStorage.setItem('player_muted', String(muted.value))
 }
 
 function togglePlay() {
