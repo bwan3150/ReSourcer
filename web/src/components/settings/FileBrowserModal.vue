@@ -21,7 +21,7 @@
           v-for="item in items.filter(i => i.isDirectory)"
           :key="item.path"
           class="p-2 hover:bg-base-200 cursor-pointer flex items-center gap-2"
-          :class="{ 'bg-primary/10': selectedPath === item.path }"
+          :class="{ 'bg-base-300': selectedPath === item.path }"
           @click="selectedPath = item.path"
           @dblclick="navigateTo(item.path)"
         >
@@ -46,11 +46,11 @@
       </div>
 
       <!-- Selected path -->
-      <div v-if="selectedPath" class="mt-3 text-sm text-primary truncate">{{ selectedPath }}</div>
+      <div v-if="selectedPath" class="mt-3 text-sm text-base-content truncate">{{ selectedPath }}</div>
 
       <div class="modal-action">
         <button class="btn" @click="close">{{ $t('common.cancel') }}</button>
-        <button class="btn btn-primary" @click="confirmSelect" :disabled="!effectivePath">{{ $t('common.confirm') }}</button>
+        <button class="btn btn-neutral" @click="confirmSelect" :disabled="!effectivePath">{{ $t('common.confirm') }}</button>
       </div>
     </div>
     <form method="dialog" class="modal-backdrop"><button>close</button></form>

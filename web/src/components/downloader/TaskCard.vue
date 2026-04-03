@@ -9,7 +9,7 @@
           <p class="text-sm font-medium truncate">{{ task.fileName || task.url }}</p>
 
           <div v-if="isActive" class="mt-2">
-            <progress class="progress progress-primary w-full" :value="task.progress" max="100"></progress>
+            <progress class="progress progress w-full" :value="task.progress" max="100"></progress>
             <div class="flex justify-between text-xs text-base-content/50 mt-1">
               <span>{{ Math.round(task.progress || 0) }}%</span>
               <span v-if="task.speed">{{ task.speed }}</span>

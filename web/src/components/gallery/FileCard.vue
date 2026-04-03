@@ -57,10 +57,10 @@ const thumb = computed(() => thumbnailUrl(props.file))
 
 const typeBadgeClass = computed(() => {
   switch (props.file.fileType) {
-    case 'image': return 'badge-info'
-    case 'video': return 'badge-warning'
-    case 'gif': return 'badge-success'
-    case 'audio': return 'badge-secondary'
+    case 'image': return 'badge-ghost'
+    case 'video': return 'badge-outline'
+    case 'gif': return 'badge-outline'
+    case 'audio': return 'badge-ghost'
     default: return 'badge-ghost'
   }
 })

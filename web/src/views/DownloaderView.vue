@@ -1,13 +1,35 @@
 <template>
   <AppLayout>
-    <div class="max-w-4xl mx-auto p-6 space-y-6">
-      <!-- URL Input Section -->
-      <div class="card bg-base-100 shadow">
-        <div class="card-body">
-          <h2 class="card-title">{{ $t('downloader.title') }}</h2>
+    <template #header>
+      <div class="flex items-center gap-0.5 flex-1 text-sm">
+        <button class="btn btn-ghost btn-xs" :class="{ 'font-bold': !subPage }" @click="subPage = ''">
+          {{ $t('downloader.title') }}
+        </button>
+        <template v-if="subPage">
+          <ChevronRight :size="14" class="text-base-content/30" />
+          <span class="btn btn-ghost btn-xs font-bold">{{ subPageTitle }}</span>
+        </template>
+      </div>
+      <div class="flex gap-1">
+        <button class="btn btn-ghost btn-sm" @click="subPage = 'tasks'; refreshTasks()" :title="$t('downloader.activeTasks')">
+          <ListTodo :size="16" />
+          <span v-if="activeTasks.length" class="badge badge-sm badge-outline ml-1">{{ activeTasks.length }}</span>
+        </button>
+        <button class="btn btn-ghost btn-sm" @click="subPage = 'history'; loadHistory(true)" :title="$t('downloader.history')">
+          <History :size="16" />
+        </button>
+        <button class="btn btn-ghost btn-sm" @click="settingsDialog?.showModal()" :title="$t('downloader.auth')">
+          <Settings2 :size="16" />
+        </button>
+      </div>
+    </template>
 
-          <!-- URL input -->
-          <div class="flex gap-2">
+    <div class="max-w-xl mx-auto p-6">
+      <!-- Main page — centered form -->
+      <template v-if="!subPage">
+        <div class="flex flex-col items-center justify-center min-h-[60vh] space-y-5">
+          <!-- URL input + paste button -->
+          <div class="flex gap-2 w-full">
             <input
               v-model="url"
               type="text"
@@ -15,127 +37,104 @@
               class="input input-bordered flex-1"
               @input="onUrlInput"
             />
-            <button class="btn btn-outline" @click="detect" :disabled="detecting || !url.trim()">
-              <span v-if="detecting" class="loading loading-spinner loading-xs"></span>
-              {{ detecting ? $t('downloader.detecting') : $t('downloader.detect') }}
+            <button class="btn btn-ghost" @click="pasteFromClipboard" :title="$t('downloader.paste')">
+              <ClipboardPaste :size="18" />
             </button>
           </div>
 
-          <!-- Detection result -->
-          <div v-if="detected" class="flex items-center gap-2 mt-2">
-            <span class="badge badge-info">{{ detected.platformName }}</span>
-            <span v-if="detected.requiresAuth" class="badge badge-warning">{{ $t('downloader.requiresAuth') }}</span>
-          </div>
-
-          <!-- Folder selection -->
-          <div class="mt-3">
-            <label class="label"><span class="label-text">{{ $t('downloader.saveFolder') }}</span></label>
-            <div class="flex flex-wrap gap-2">
+          <!-- Target folder -->
+          <div class="w-full">
+            <label class="text-xs text-base-content/50 mb-1.5 block">{{ $t('downloader.saveFolder') }}</label>
+            <div class="flex flex-wrap gap-1.5">
+              <!-- Current folder (root) — default -->
               <button
-                v-for="f in folders"
-                :key="f.name"
-                class="btn btn-sm"
-                :class="saveFolder === f.name ? 'btn-primary' : 'btn-outline'"
-                @click="saveFolder = f.name"
+                class="btn btn-xs"
+                :class="saveFolder === '.' ? 'btn-neutral' : 'btn-ghost'"
+                @click="saveFolder = '.'"
               >
-                {{ f.name }}
+                {{ $t('downloader.currentFolder') }}
               </button>
-              <!-- New folder -->
+              <button
+                v-for="f in folders" :key="f.name"
+                class="btn btn-xs"
+                :class="saveFolder === f.name ? 'btn-neutral' : 'btn-ghost'"
+                @click="saveFolder = f.name"
+              >{{ f.name }}</button>
               <div class="flex gap-1">
-                <input
-                  v-model="newFolderName"
-                  type="text"
-                  :placeholder="$t('downloader.folderName')"
-                  class="input input-bordered input-sm w-32"
-                  @keyup.enter="createNewFolder"
-                />
-                <button class="btn btn-sm btn-ghost" @click="createNewFolder" :disabled="!newFolderName.trim()">+</button>
+                <input v-model="newFolderName" type="text" :placeholder="$t('downloader.folderName')"
+                  class="input input-bordered input-xs w-24" @keyup.enter="createNewFolder" />
+                <button class="btn btn-xs btn-ghost" @click="createNewFolder" :disabled="!newFolderName.trim()">
+                  <Plus :size="14" />
+                </button>
               </div>
             </div>
           </div>
 
+          <!-- Downloader selection -->
+          <div class="w-full">
+            <label class="text-xs text-base-content/50 mb-1.5 block">
+              {{ $t('downloader.downloaderLabel') }}{{ detected?.platformName ? ' — ' + detected.platformName : '' }}
+            </label>
+            <div class="flex gap-1.5">
+              <button
+                v-for="dl in downloaders" :key="dl.value"
+                class="btn btn-xs"
+                :class="selectedDownloader === dl.value ? 'btn-neutral' : 'btn-ghost'"
+                @click="selectedDownloader = dl.value"
+              >{{ dl.label }}</button>
+            </div>
+          </div>
+
           <!-- Download button -->
-          <div class="card-actions mt-4">
-            <button
-              class="btn btn-primary"
-              @click="startDownload"
-              :disabled="!url.trim() || !saveFolder"
-            >
-              {{ $t('downloader.startDownload') }}
-            </button>
-          </div>
+          <button
+            class="btn btn-neutral w-full"
+            @click="startDownload"
+            :disabled="!url.trim() || !detected"
+          >
+            <Download :size="16" />
+            {{ $t('downloader.startDownload') }}
+          </button>
         </div>
-      </div>
+      </template>
 
-      <!-- Active Tasks -->
-      <div class="card bg-base-100 shadow">
-        <div class="card-body">
-          <h3 class="card-title text-base">{{ $t('downloader.activeTasks') }}</h3>
-          <TaskList
-            :tasks="activeTasks"
-            :empty-text="$t('downloader.noTasks')"
-            @cancel="cancelTask"
-          />
+      <!-- Tasks sub-page -->
+      <template v-if="subPage === 'tasks'">
+        <TaskList :tasks="activeTasks" :empty-text="$t('downloader.noTasks')" @cancel="cancelTask" />
+      </template>
+
+      <!-- History sub-page -->
+      <template v-if="subPage === 'history'">
+        <div class="flex justify-end mb-3">
+          <button v-if="history.length" class="btn btn-ghost btn-xs text-error" @click="doClearHistory">
+            {{ $t('downloader.clearHistory') }}
+          </button>
         </div>
-      </div>
+        <TaskList :tasks="history" :empty-text="$t('downloader.noHistory')" :has-more="historyHasMore"
+          @delete="deleteHistoryTask" @load-more="loadMoreHistory" />
+      </template>
+    </div>
 
-      <!-- History -->
-      <div class="card bg-base-100 shadow">
-        <div class="card-body">
-          <div class="flex justify-between items-center">
-            <h3 class="card-title text-base">{{ $t('downloader.history') }}</h3>
-            <button v-if="history.length" class="btn btn-ghost btn-sm text-error" @click="doClearHistory">
-              {{ $t('downloader.clearHistory') }}
-            </button>
-          </div>
-          <TaskList
-            :tasks="history"
-            :empty-text="$t('downloader.noHistory')"
-            :has-more="historyHasMore"
-            @delete="deleteHistoryTask"
-            @load-more="loadMoreHistory"
-          />
-        </div>
-      </div>
-
-      <!-- Auth & yt-dlp -->
-      <div class="card bg-base-100 shadow">
-        <div class="card-body">
-          <h3 class="card-title text-base">{{ $t('downloader.auth') }}</h3>
-
-          <!-- X auth -->
-          <div class="flex items-center justify-between py-2">
-            <div>
-              <span class="font-medium">X (Twitter)</span>
-              <span class="badge badge-sm ml-2" :class="authStatus.x ? 'badge-success' : 'badge-ghost'">
-                {{ authStatus.x ? $t('downloader.configured') : $t('downloader.notConfigured') }}
+    <!-- Settings dialog -->
+    <dialog ref="settingsDialog" class="modal">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">{{ $t('downloader.auth') }}</h3>
+        <div class="space-y-3">
+          <div v-for="p in ['x', 'pixiv']" :key="p" class="flex items-center justify-between py-2">
+            <div class="flex items-center gap-2">
+              <span class="text-sm">{{ p === 'x' ? 'X (Twitter)' : 'Pixiv' }}</span>
+              <span class="badge badge-sm" :class="authStatus[p] ? 'badge-outline' : 'badge-ghost'">
+                {{ authStatus[p] ? $t('downloader.configured') : $t('downloader.notConfigured') }}
               </span>
             </div>
             <div class="flex gap-1">
-              <button class="btn btn-ghost btn-xs" @click="showAuthInput('x')">{{ $t('downloader.uploadAuth') }}</button>
-              <button v-if="authStatus.x" class="btn btn-ghost btn-xs text-error" @click="deleteAuth('x')">{{ $t('downloader.deleteAuth') }}</button>
+              <button class="btn btn-ghost btn-xs" @click="showAuthInput(p)">{{ $t('downloader.uploadAuth') }}</button>
+              <button v-if="authStatus[p]" class="btn btn-ghost btn-xs text-error" @click="deleteAuth(p)">{{ $t('downloader.deleteAuth') }}</button>
             </div>
           </div>
-
-          <!-- Pixiv auth -->
-          <div class="flex items-center justify-between py-2">
-            <div>
-              <span class="font-medium">Pixiv</span>
-              <span class="badge badge-sm ml-2" :class="authStatus.pixiv ? 'badge-success' : 'badge-ghost'">
-                {{ authStatus.pixiv ? $t('downloader.configured') : $t('downloader.notConfigured') }}
-              </span>
-            </div>
-            <div class="flex gap-1">
-              <button class="btn btn-ghost btn-xs" @click="showAuthInput('pixiv')">{{ $t('downloader.uploadAuth') }}</button>
-              <button v-if="authStatus.pixiv" class="btn btn-ghost btn-xs text-error" @click="deleteAuth('pixiv')">{{ $t('downloader.deleteAuth') }}</button>
-            </div>
-          </div>
-
-          <!-- yt-dlp version -->
-          <div class="flex items-center justify-between py-2 border-t border-base-300 mt-2 pt-3">
-            <div>
-              <span class="font-medium">{{ $t('downloader.ytdlpVersion') }}</span>
-              <span class="text-sm text-base-content/50 ml-2">{{ ytdlpVersion || '—' }}</span>
+          <div class="flex items-center justify-between py-2 border-t border-base-300 pt-3">
+            <div class="flex items-center gap-2">
+              <span class="text-sm">yt-dlp</span>
+              <span class="text-xs text-base-content/40">{{ ytdlpVersion || '---' }}</span>
             </div>
             <button class="btn btn-ghost btn-xs" @click="doUpdateYtdlp" :disabled="ytdlpUpdating">
               <span v-if="ytdlpUpdating" class="loading loading-spinner loading-xs"></span>
@@ -143,31 +142,32 @@
             </button>
           </div>
         </div>
-      </div>
-
-      <!-- Auth input modal -->
-      <dialog ref="authDialog" class="modal">
-        <div class="modal-box">
-          <h3 class="font-bold text-lg mb-4">{{ $t('downloader.uploadAuth') }} — {{ authPlatform }}</h3>
-          <textarea
-            v-model="authContent"
-            :placeholder="$t('downloader.authPlaceholder')"
-            class="textarea textarea-bordered w-full h-32"
-          ></textarea>
-          <div class="modal-action">
-            <button class="btn" @click="authDialog?.close()">{{ $t('common.cancel') }}</button>
-            <button class="btn btn-primary" @click="doUploadAuth" :disabled="!authContent.trim()">{{ $t('common.confirm') }}</button>
-          </div>
+        <div class="modal-action">
+          <button class="btn" @click="settingsDialog?.close()">{{ $t('common.close') }}</button>
         </div>
-        <form method="dialog" class="modal-backdrop"><button>close</button></form>
-      </dialog>
-    </div>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
+    <!-- Auth input -->
+    <dialog ref="authDialog" class="modal">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">{{ authPlatform }}</h3>
+        <textarea v-model="authContent" :placeholder="$t('downloader.authPlaceholder')" class="textarea textarea-bordered w-full h-32"></textarea>
+        <div class="modal-action">
+          <button class="btn" @click="authDialog?.close()">{{ $t('common.cancel') }}</button>
+          <button class="btn btn-neutral" @click="doUploadAuth" :disabled="!authContent.trim()">{{ $t('common.confirm') }}</button>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
   </AppLayout>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Download, ChevronRight, Plus, History, Settings2, ListTodo, ClipboardPaste } from 'lucide-vue-next'
 import AppLayout from '../components/layout/AppLayout.vue'
 import TaskList from '../components/downloader/TaskList.vue'
 import * as downloadApi from '../api/download'
@@ -177,29 +177,40 @@ import { usePolling } from '../composables/usePolling'
 
 const { t } = useI18n()
 
-// Form
+const subPage = ref('')
+const subPageTitle = computed(() => {
+  if (subPage.value === 'tasks') return t('downloader.activeTasks')
+  if (subPage.value === 'history') return t('downloader.history')
+  return ''
+})
+
 const url = ref('')
-const saveFolder = ref('')
+const saveFolder = ref('.')
 const newFolderName = ref('')
 const detected = ref(null)
 const detecting = ref(false)
 const folders = ref([])
+const manualDownloader = ref(false)
+const selectedDownloader = ref('auto')
 
-// Tasks
+const downloaders = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'ytdlp', label: 'yt-dlp' },
+  { value: 'pixiv_toolkit', label: 'Pixiv Toolkit' },
+]
+
 const activeTasks = ref([])
 const history = ref([])
 const historyOffset = ref(0)
 const historyHasMore = ref(false)
 
-// Auth
 const authStatus = ref({ x: false, pixiv: false })
+const settingsDialog = ref(null)
 const authDialog = ref(null)
 const authPlatform = ref('')
 const authContent = ref('')
 const ytdlpVersion = ref('')
 const ytdlpUpdating = ref(false)
-
-// Source folder
 const sourceFolder = ref('')
 
 const polling = usePolling(async () => {
@@ -219,35 +230,49 @@ onMounted(async () => {
     folders.value = folderList
 
     await refreshTasks()
-    await loadHistory(true)
   } catch {}
 })
 
-async function detect() {
-  if (!url.value.trim()) return
-  detecting.value = true
+async function pasteFromClipboard() {
   try {
-    const { data } = await downloadApi.detectUrl(url.value.trim())
-    detected.value = data
-  } catch { detected.value = null }
-  detecting.value = false
+    const text = await navigator.clipboard.readText()
+    if (text) {
+      url.value = text.trim()
+      onUrlInput()
+    }
+  } catch {}
 }
 
 let detectTimer = null
 function onUrlInput() {
   clearTimeout(detectTimer)
   detected.value = null
-  detectTimer = setTimeout(() => {
-    if (url.value.trim()) detect()
-  }, 800)
+  detecting.value = false
+  if (!url.value.trim()) return
+  detecting.value = true
+  detectTimer = setTimeout(async () => {
+    try {
+      const { data } = await downloadApi.detectUrl(url.value.trim())
+      detected.value = data
+      // Auto-select downloader from detection
+      if (!manualDownloader.value && data.downloader) {
+        selectedDownloader.value = data.downloader
+      }
+    } catch {}
+    detecting.value = false
+  }, 600)
 }
 
 async function startDownload() {
-  if (!url.value.trim() || !saveFolder.value) return
+  if (!url.value.trim() || !detected.value) return
+  const dl = selectedDownloader.value === 'auto' ? detected.value?.downloader : selectedDownloader.value
+  const folder = saveFolder.value === '.' ? sourceFolder.value : saveFolder.value
   try {
-    await downloadApi.createTask(url.value.trim(), saveFolder.value, detected.value?.downloader)
+    await downloadApi.createTask(url.value.trim(), folder, dl)
     url.value = ''
     detected.value = null
+    selectedDownloader.value = 'auto'
+    manualDownloader.value = false
     await refreshTasks()
     polling.start()
   } catch {}
@@ -264,18 +289,14 @@ async function refreshTasks() {
 async function cancelTask(id) {
   await downloadApi.cancelTask(id)
   await refreshTasks()
-  await loadHistory(true)
 }
 
 async function loadHistory(reset = false) {
   if (reset) historyOffset.value = 0
   try {
     const { data } = await downloadApi.getHistory(historyOffset.value, 50)
-    if (reset) {
-      history.value = data.items || []
-    } else {
-      history.value.push(...(data.items || []))
-    }
+    if (reset) history.value = data.items || []
+    else history.value.push(...(data.items || []))
     historyHasMore.value = data.hasMore
     historyOffset.value += (data.items?.length || 0)
   } catch {}

@@ -1,114 +1,126 @@
 <template>
   <AppLayout>
-    <div class="max-w-3xl mx-auto p-6 space-y-6">
-      <h1 class="text-2xl font-bold">{{ $t('settings.title') }}</h1>
+    <template #header>
+      <h1 class="text-lg font-semibold flex-1">{{ $t('settings.title') }}</h1>
+    </template>
 
-      <!-- Source Folders -->
-      <div class="card bg-base-100 shadow">
-        <div class="card-body">
-          <h2 class="card-title text-base">{{ $t('settings.sourceFolders') }}</h2>
-          <SourceFolderManager
-            :current="sourceFolder"
-            :backups="backupSources"
-            @switch="onSwitchSource"
-            @remove="onRemoveSource"
-            @browse="fileBrowser?.show()"
-          />
+    <div class="max-w-2xl mx-auto p-6">
+      <div class="join join-vertical w-full">
+        <!-- Source Folders -->
+        <div class="collapse collapse-arrow join-item border border-base-300">
+          <input type="radio" name="settings-accordion" />
+          <div class="collapse-title font-medium text-sm flex items-center gap-2">
+            <FolderCog :size="18" class="text-base-content/50" />
+            {{ $t('settings.sourceFolders') }}
+            <span v-if="sourceFolder" class="text-xs text-base-content/40 ml-auto mr-4 truncate max-w-48">{{ sourceFolder }}</span>
+          </div>
+          <div class="collapse-content">
+            <SourceFolderManager
+              :current="sourceFolder"
+              :backups="backupSources"
+              @switch="onSwitchSource"
+              @remove="onRemoveSource"
+              @browse="fileBrowser?.show()"
+            />
+          </div>
         </div>
-      </div>
 
-      <!-- Category Folders -->
-      <div class="card bg-base-100 shadow">
-        <div class="card-body">
-          <h2 class="card-title text-base">{{ $t('settings.categoryFolders') }}</h2>
-          <CategoryManager :folders="categories" @toggle="toggleCategory" />
+        <!-- Category Folders -->
+        <div class="collapse collapse-arrow join-item border border-base-300">
+          <input type="radio" name="settings-accordion" />
+          <div class="collapse-title font-medium text-sm flex items-center gap-2">
+            <Folders :size="18" class="text-base-content/50" />
+            {{ $t('settings.categoryFolders') }}
+          </div>
+          <div class="collapse-content">
+            <CategoryManager :folders="categories" @toggle="toggleCategory" />
+          </div>
         </div>
-      </div>
 
-      <!-- Ignored Folders -->
-      <div class="card bg-base-100 shadow">
-        <div class="card-body">
-          <h2 class="card-title text-base">{{ $t('settings.ignoredFolders') }}</h2>
-          <IgnoreManager
-            :items="ignoredFolders"
-            :description="$t('settings.ignoredFoldersDesc')"
-            @update="v => { ignoredFolders = v; saveSettings() }"
-          />
+        <!-- Ignore Rules -->
+        <div class="collapse collapse-arrow join-item border border-base-300">
+          <input type="radio" name="settings-accordion" />
+          <div class="collapse-title font-medium text-sm flex items-center gap-2">
+            <EyeOff :size="18" class="text-base-content/50" />
+            {{ $t('settings.ignoreRules') }}
+          </div>
+          <div class="collapse-content space-y-5">
+            <div>
+              <h3 class="text-sm font-medium mb-2">{{ $t('settings.ignoredFolders') }}</h3>
+              <IgnoreManager
+                :items="ignoredFolders"
+                :description="$t('settings.ignoredFoldersDesc')"
+                @update="v => { ignoredFolders = v; saveSettings() }"
+              />
+            </div>
+            <div>
+              <h3 class="text-sm font-medium mb-2">{{ $t('settings.ignoredFiles') }}</h3>
+              <IgnoreManager
+                :items="ignoredFiles"
+                :description="$t('settings.ignoredFilesDesc')"
+                @update="v => { ignoredFiles = v; saveSettings() }"
+              />
+            </div>
+          </div>
         </div>
-      </div>
 
-      <!-- Ignored Files -->
-      <div class="card bg-base-100 shadow">
-        <div class="card-body">
-          <h2 class="card-title text-base">{{ $t('settings.ignoredFiles') }}</h2>
-          <IgnoreManager
-            :items="ignoredFiles"
-            :description="$t('settings.ignoredFilesDesc')"
-            @update="v => { ignoredFiles = v; saveSettings() }"
-          />
-        </div>
-      </div>
-
-      <!-- Tools -->
-      <div class="card bg-base-100 shadow">
-        <div class="card-body">
-          <h2 class="card-title text-base">{{ $t('settings.tools') }}</h2>
-          <p class="text-xs text-base-content/50 mb-3">{{ $t('settings.toolsDesc') }}</p>
-          <div class="space-y-4">
+        <!-- Tools -->
+        <div class="collapse collapse-arrow join-item border border-base-300">
+          <input type="radio" name="settings-accordion" />
+          <div class="collapse-title font-medium text-sm flex items-center gap-2">
+            <Wrench :size="18" class="text-base-content/50" />
+            {{ $t('settings.tools') }}
+          </div>
+          <div class="collapse-content space-y-3">
+            <p class="text-xs text-base-content/40 mb-2">{{ $t('settings.toolsDesc') }}</p>
             <div v-for="tool in tools" :key="tool.name" class="border border-base-300 rounded-lg p-3">
-              <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center justify-between mb-1">
                 <div class="flex items-center gap-2">
                   <span class="font-medium text-sm">{{ tool.name }}</span>
-                  <span class="badge badge-sm" :class="tool.installed ? 'badge-success' : 'badge-ghost'">
+                  <span class="badge badge-sm" :class="tool.installed ? 'badge-outline' : 'badge-ghost'">
                     {{ tool.installed ? $t('settings.installed') : $t('settings.notInstalled') }}
                   </span>
                 </div>
-                <button
-                  v-if="editingTool !== tool.name"
-                  class="btn btn-ghost btn-xs"
-                  @click="startEditTool(tool)"
-                >
+                <button v-if="editingTool !== tool.name" class="btn btn-ghost btn-xs" @click="startEditTool(tool)">
                   <Pencil :size="14" />
                 </button>
               </div>
-              <p class="text-xs text-base-content/50">{{ tool.description }}</p>
-
-              <!-- Edit URLs -->
+              <p class="text-xs text-base-content/40">{{ tool.description }}</p>
               <div v-if="editingTool === tool.name" class="mt-3 space-y-2">
                 <div v-for="platform in ['linux_x86_64', 'linux_aarch64', 'macos', 'windows']" :key="platform">
                   <label class="label py-0"><span class="label-text text-xs">{{ platform }}</span></label>
-                  <input
-                    v-model="editUrls[platform]"
-                    class="input input-bordered input-xs w-full font-mono"
-                  />
+                  <input v-model="editUrls[platform]" class="input input-bordered input-xs w-full font-mono" />
                 </div>
                 <div class="flex gap-2 mt-2">
-                  <button class="btn btn-primary btn-xs" @click="saveToolUrls(tool.name)">{{ $t('common.save') }}</button>
+                  <button class="btn btn-neutral btn-xs" @click="saveToolUrls(tool.name)">{{ $t('common.save') }}</button>
                   <button class="btn btn-ghost btn-xs" @click="editingTool = ''">{{ $t('common.cancel') }}</button>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Reindex -->
-      <div class="card bg-base-100 shadow">
-        <div class="card-body">
-          <div class="flex items-center justify-between">
-            <h2 class="card-title text-base">{{ $t('settings.reindex') }}</h2>
-            <button class="btn btn-outline btn-sm" @click="reindex" :disabled="reindexing">
+        <!-- Reindex -->
+        <div class="collapse collapse-arrow join-item border border-base-300">
+          <input type="radio" name="settings-accordion" />
+          <div class="collapse-title font-medium text-sm flex items-center gap-2">
+            <RefreshCw :size="18" class="text-base-content/50" />
+            {{ $t('settings.reindex') }}
+          </div>
+          <div class="collapse-content">
+            <p class="text-sm text-base-content/50 mb-3">{{ $t('settings.reindexDesc') }}</p>
+            <button class="btn btn-neutral btn-sm" @click="reindex" :disabled="reindexing">
               <span v-if="reindexing" class="loading loading-spinner loading-xs"></span>
               {{ reindexing ? $t('settings.reindexing') : $t('settings.reindex') }}
             </button>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Toast -->
-      <div v-if="toast" class="toast toast-end">
-        <div class="alert alert-success"><span>{{ toast }}</span></div>
-      </div>
+    <!-- Toast -->
+    <div v-if="toast" class="toast toast-end">
+      <div class="alert"><span>{{ toast }}</span></div>
     </div>
 
     <FileBrowserModal ref="fileBrowser" @select="onAddSource" />
@@ -118,7 +130,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Pencil } from 'lucide-vue-next'
+import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil } from 'lucide-vue-next'
 import AppLayout from '../components/layout/AppLayout.vue'
 import SourceFolderManager from '../components/settings/SourceFolderManager.vue'
 import CategoryManager from '../components/settings/CategoryManager.vue'
@@ -139,8 +151,6 @@ const ignoredFiles = ref([])
 const reindexing = ref(false)
 const toast = ref('')
 const fileBrowser = ref(null)
-
-// Tools
 const tools = ref([])
 const editingTool = ref('')
 const editUrls = ref({ linux_x86_64: '', linux_aarch64: '', macos: '', windows: '' })
@@ -211,7 +221,6 @@ async function reindex() {
     await indexerApi.triggerScan(sourceFolder.value, true)
     showToast(t('settings.reindexing'))
   } catch {}
-  // Poll status
   const poll = setInterval(async () => {
     try {
       const { data } = await indexerApi.getScanStatus()

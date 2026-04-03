@@ -1,6 +1,7 @@
-import { ref, watchEffect, onUnmounted } from 'vue'
+import { ref, watchEffect } from 'vue'
 
 const mode = ref(localStorage.getItem('theme') || 'system')
+const effectiveTheme = ref('dark')
 
 const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
 
@@ -12,16 +13,15 @@ function getEffectiveTheme() {
 }
 
 function applyTheme() {
-  document.documentElement.setAttribute('data-theme', getEffectiveTheme())
+  const theme = getEffectiveTheme()
+  effectiveTheme.value = theme
+  document.documentElement.setAttribute('data-theme', theme)
 }
 
-// Listen for system theme changes
-function onSystemChange() {
+mediaQuery.addEventListener('change', () => {
   if (mode.value === 'system') applyTheme()
-}
-mediaQuery.addEventListener('change', onSystemChange)
+})
 
-// Apply on load
 applyTheme()
 
 export function useTheme() {
@@ -38,5 +38,8 @@ export function useTheme() {
     setMode(next[mode.value] || 'system')
   }
 
-  return { mode, cycle, setMode }
+  return { mode, effectiveTheme, cycle, setMode }
 }
+
+// Standalone getter for components that don't need the full composable
+export { effectiveTheme }

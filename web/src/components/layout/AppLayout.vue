@@ -6,11 +6,9 @@
       :class="expanded ? 'w-56' : 'w-16'"
     >
       <!-- Logo / toggle -->
-      <div class="flex items-center h-14 px-3 border-b border-base-300">
-        <button class="btn btn-ghost btn-sm p-1" @click="expanded = !expanded">
-          <Menu :size="20" />
-        </button>
-        <span v-if="expanded" class="ml-2 font-bold text-lg truncate">ReSourcer</span>
+      <div class="flex items-center justify-center h-14 border-b border-base-300 cursor-pointer select-none" @click="toggleSidebar">
+        <span v-if="expanded" class="font-bold text-lg">ReSourcer</span>
+        <span v-else class="font-bold text-lg">Re</span>
       </div>
 
       <!-- Nav items -->
@@ -20,7 +18,7 @@
           :key="item.to"
           :to="item.to"
           class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-base-300"
-          :class="{ 'bg-primary/10 text-primary': isActive(item.to) }"
+          :class="{ 'bg-base-300 font-medium': isActive(item.to) }"
         >
           <component :is="item.icon" :size="20" />
           <span v-if="expanded" class="truncate">{{ $t(item.label) }}</span>
@@ -29,19 +27,14 @@
 
       <!-- Bottom actions -->
       <div class="px-2 py-3 border-t border-base-300 space-y-1">
-        <!-- Language -->
         <button class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full hover:bg-base-300 transition-colors" @click="toggleLang">
           <Languages :size="20" />
-          <span v-if="expanded">{{ locale === 'zh' ? 'English' : '中文' }}</span>
+          <span v-if="expanded">{{ locale === 'zh' ? 'EN' : '中文' }}</span>
         </button>
-
-        <!-- Theme -->
         <button class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full hover:bg-base-300 transition-colors" @click="cycle">
           <component :is="themeIcon" :size="20" />
           <span v-if="expanded">{{ themeLabel }}</span>
         </button>
-
-        <!-- Logout -->
         <button class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full hover:bg-base-300 transition-colors text-error" @click="logout">
           <LogOut :size="20" />
           <span v-if="expanded">{{ $t('nav.logout') }}</span>
@@ -51,10 +44,9 @@
 
     <!-- Main -->
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-      <!-- Top bar -->
-      <header class="flex items-center h-14 px-4 border-b border-base-300 shrink-0 gap-3">
-        <h1 class="text-lg font-semibold">{{ $t(`nav.${currentRouteName}`) }}</h1>
-        <slot name="toolbar" />
+      <!-- Header — each view provides its own content -->
+      <header v-if="$slots.header" class="flex items-center h-14 px-4 border-b border-base-300 shrink-0 gap-3">
+        <slot name="header" />
       </header>
 
       <!-- Content -->
@@ -65,20 +57,31 @@
   </div>
 </template>
 
+<script>
+// Module-level state — survives component re-creation across routes
+import { ref } from 'vue'
+const sidebarExpanded = ref(localStorage.getItem('sidebar') !== 'collapsed')
+</script>
+
 <script setup>
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { clearApiKey } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
 import { setLocale } from '../../i18n'
-import { Image, FolderOpen, Download, Settings, LogOut, Languages, Sun, Moon, Monitor, Menu } from 'lucide-vue-next'
+import { Image, FolderOpen, Download, Settings, LogOut, Languages, Sun, Moon, Monitor } from 'lucide-vue-next'
 
 const { locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const { mode, cycle } = useTheme()
-const expanded = ref(true)
+const expanded = sidebarExpanded
+
+function toggleSidebar() {
+  expanded.value = !expanded.value
+  localStorage.setItem('sidebar', expanded.value ? 'expanded' : 'collapsed')
+}
 
 const navItems = [
   { to: '/gallery', label: 'nav.gallery', icon: Image },
@@ -86,8 +89,6 @@ const navItems = [
   { to: '/downloader', label: 'nav.downloader', icon: Download },
   { to: '/settings', label: 'nav.settings', icon: Settings },
 ]
-
-const currentRouteName = computed(() => route.name || 'gallery')
 
 const themeIcon = computed(() => {
   if (mode.value === 'light') return Sun

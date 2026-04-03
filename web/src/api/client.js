@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { getApiKey, clearApiKey } from '../composables/useAuth'
+import { getServerUrl } from '../composables/useServer'
 
 function toSnake(str) {
   return str.replace(/[A-Z]/g, c => '_' + c.toLowerCase())
@@ -16,11 +17,12 @@ function convertKeys(obj, fn) {
 }
 
 const client = axios.create({
-  baseURL: window.__RESOURCER_API_BASE || '',
   timeout: 30000,
 })
 
 client.interceptors.request.use(config => {
+  // Set baseURL dynamically from stored server URL
+  config.baseURL = getServerUrl()
   const key = getApiKey()
   if (key) config.headers['X-API-Key'] = key
   if (config.data && !(config.data instanceof FormData)) {

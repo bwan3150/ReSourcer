@@ -209,11 +209,19 @@ async fn main() -> std::io::Result<()> {
     let api_key_data = web::Data::new(api_key.clone());
 
     HttpServer::new(move || {
+        // CORS: 允许任意来源访问 API（前端可能部署在不同域/端口）
+        let cors = actix_cors::Cors::default()
+            .allow_any_origin()
+            .allow_any_method()
+            .allow_any_header()
+            .max_age(3600);
+
         App::new()
-            // 彩色日志中间件
-            .wrap(logger::ColorLogger::new())
-            // 全局 API Key 验证中间件
+            // 注意 actix-web wrap 顺序：最后 wrap 的最先执行
+            // 所以 auth 先，logger 次之，CORS 最后（最先拦截 preflight OPTIONS）
             .wrap(auth::middleware::ApiKeyAuth::new(api_key.clone()))
+            .wrap(logger::ColorLogger::new())
+            .wrap(cors)
             // 注入 API Key 和任务管理器
             .app_data(api_key_data.clone())
             .app_data(download_task_manager.clone())

@@ -1,8 +1,8 @@
 <template>
   <div class="space-y-3">
     <!-- Current source -->
-    <div v-if="current" class="flex items-center gap-2 p-3 bg-primary/10 rounded-lg">
-      <span class="badge badge-primary badge-sm">{{ $t('settings.currentSource') }}</span>
+    <div v-if="current" class="flex items-center gap-2 p-3 bg-base-300 rounded-lg">
+      <span class="badge badge-outline badge-sm">{{ $t('settings.currentSource') }}</span>
       <span class="text-sm truncate flex-1">{{ current }}</span>
     </div>
 
