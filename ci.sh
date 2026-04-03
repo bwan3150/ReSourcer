@@ -1,84 +1,111 @@
 #!/bin/bash
 
-# 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+CYAN='\033[0;36m'
+NC='\033[0m'
 
-# 脚本所在目录（项目根目录）
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# 显示现有tags
-echo -e "${GREEN}=== 现有标签 ===${NC}"
-git tag -l | sort -V
+# 选择构建目标
+echo ""
+echo -e "${CYAN}=== ReSourcer CI ===${NC}"
+echo ""
+echo "  1) Server only"
+echo "  2) iOS only (+ Pgyer upload)"
+echo "  3) All (Server + iOS + Pgyer)"
+echo "  4) Tag release (push tag → auto build all)"
+echo ""
+echo -e "${YELLOW}Select [1-4]:${NC}"
+read -e -r choice
+
+case "$choice" in
+  1)
+    echo -e "${GREEN}Triggering server-only build...${NC}"
+    gh workflow run release.yml -f build_ios=false -f upload_pgyer=false
+    echo -e "${GREEN}Done. Check: gh run list --workflow=release.yml${NC}"
+    exit 0
+    ;;
+  2)
+    echo -e "${GREEN}Triggering iOS build + Pgyer upload...${NC}"
+    gh workflow run release.yml -f build_ios=true -f upload_pgyer=true
+    echo -e "${GREEN}Done. Check: gh run list --workflow=release.yml${NC}"
+    exit 0
+    ;;
+  3)
+    echo -e "${GREEN}Triggering full build (Server + iOS + Pgyer)...${NC}"
+    gh workflow run release.yml -f build_ios=true -f upload_pgyer=true
+    echo -e "${GREEN}Done. Check: gh run list --workflow=release.yml${NC}"
+    exit 0
+    ;;
+  4)
+    ;; # continue to tag release flow below
+  *)
+    echo -e "${RED}Invalid choice${NC}"
+    exit 1
+    ;;
+esac
+
+# === Tag release flow ===
+echo ""
+echo -e "${GREEN}=== Existing tags ===${NC}"
+git tag -l | sort -V | tail -10
 echo ""
 
-# 输入新tag
-echo -e "${YELLOW}新版本tag号:${NC}"
+echo -e "${YELLOW}New tag:${NC}"
 read -e -r NEW_TAG
 
 if [ -z "$NEW_TAG" ]; then
-    echo -e "${RED}错误: tag不能为空${NC}"
+    echo -e "${RED}Error: tag cannot be empty${NC}"
     exit 1
 fi
 
-# 检查tag是否已存在
 if git tag -l | grep -q "^${NEW_TAG}$"; then
-    echo -e "${RED}错误: tag ${NEW_TAG} 已存在${NC}"
+    echo -e "${RED}Error: tag ${NEW_TAG} already exists${NC}"
     exit 1
 fi
 
-# 去掉可能的 v 前缀，得到纯版本号
 VERSION="${NEW_TAG#v}"
-
-# 读取当前版本号（从 Cargo.toml）
 CURRENT_VERSION=$(grep -m1 '^version' "$SCRIPT_DIR/server/Cargo.toml" | sed 's/.*"\(.*\)".*/\1/')
-echo -e "${GREEN}当前版本: ${CURRENT_VERSION} → 新版本: ${VERSION}${NC}"
+echo -e "${GREEN}Version: ${CURRENT_VERSION} → ${VERSION}${NC}"
 
-# 更新各文件中的版本号
-echo -e "${GREEN}=== 更新版本号 ===${NC}"
+# Update version numbers
+echo -e "${GREEN}=== Updating versions ===${NC}"
 
-# 1. Cargo.toml: version = "x.y.z"
 sed -i '' "s/^version = \"${CURRENT_VERSION}\"/version = \"${VERSION}\"/" "$SCRIPT_DIR/server/Cargo.toml"
 echo "  server/Cargo.toml ✓"
 
-# 2. config/app.json: "version":"x.y.z"
 sed -i '' "s/\"version\":\"${CURRENT_VERSION}\"/\"version\":\"${VERSION}\"/" "$SCRIPT_DIR/server/config/app.json"
 echo "  server/config/app.json ✓"
 
-# 3. web/package.json: "version": "x.y.z"
 sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"${VERSION}\"/" "$SCRIPT_DIR/web/package.json"
 echo "  web/package.json ✓"
 
 echo ""
 
-# 检查是否有未提交的更改（包括刚才的版本号更新）
 if ! git diff --quiet || ! git diff --cached --quiet; then
-    echo -e "${YELLOW}检测到未提交的更改:${NC}"
+    echo -e "${YELLOW}Pending changes:${NC}"
     git status --short
     echo ""
 fi
 
-# 确认
-echo -e "${YELLOW}确认提交版本更新并创建tag ${NEW_TAG}? (y/n):${NC}"
+echo -e "${YELLOW}Commit and push tag ${NEW_TAG}? (y/n):${NC}"
 read -e -r confirm
 
 if [ "$confirm" != "y" ]; then
-    echo -e "${RED}已取消（版本号已修改，请手动还原）${NC}"
+    echo -e "${RED}Cancelled (version files already modified, revert manually)${NC}"
     exit 0
 fi
 
-# 提交版本号更新
-echo -e "${GREEN}=== 提交版本更新 ===${NC}"
+echo -e "${GREEN}=== Committing ===${NC}"
 git add \
     "$SCRIPT_DIR/server/Cargo.toml" \
     "$SCRIPT_DIR/server/config/app.json" \
     "$SCRIPT_DIR/web/package.json"
 
-# 如果有其他未暂存的更改也一并提交
 if ! git diff --quiet; then
-    echo -e "${YELLOW}还有其他未暂存的更改，是否一并提交? (y/n):${NC}"
+    echo -e "${YELLOW}Include other unstaged changes? (y/n):${NC}"
     read -e -r add_all
     if [ "$add_all" = "y" ]; then
         git add -A
@@ -86,20 +113,11 @@ if ! git diff --quiet; then
 fi
 
 git commit -m "release: v${VERSION}"
-git push
-if [ $? -ne 0 ]; then
-    echo -e "${RED}错误: git push失败${NC}"
-    exit 1
-fi
+git push || { echo -e "${RED}Push failed${NC}"; exit 1; }
 
-# 创建并推送 tag
-echo -e "${GREEN}=== 创建并推送 tag ===${NC}"
+echo -e "${GREEN}=== Creating tag ===${NC}"
 git tag "$NEW_TAG"
-git push origin "$NEW_TAG"
+git push origin "$NEW_TAG" || { echo -e "${RED}Tag push failed${NC}"; exit 1; }
 
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}成功: 版本更新到 v${VERSION}，tag ${NEW_TAG} 已推送${NC}"
-else
-    echo -e "${RED}错误: tag推送失败${NC}"
-    exit 1
-fi
+echo -e "${GREEN}Released v${VERSION} — tag ${NEW_TAG} pushed${NC}"
+echo -e "${CYAN}CI will build: Server + iOS + Pgyer (triggered by tag)${NC}"
