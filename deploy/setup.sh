@@ -204,7 +204,8 @@ main() {
     info "Setup complete!"
     info "=============================="
     info ""
-    info "API Server: http://localhost:1234"
+    local lan_ip=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
+    info "API Server: http://${lan_ip}:1234"
     show_api_key
     info ""
     info "Commands:"
