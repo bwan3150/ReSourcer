@@ -45,10 +45,9 @@
           <!-- Target folder -->
           <div class="w-full">
             <label class="text-xs text-base-content/50 mb-1.5 block">{{ $t('downloader.saveFolder') }}</label>
-            <div class="flex flex-wrap gap-1.5">
-              <!-- Current folder (root) — default -->
+            <div class="flex gap-1.5 overflow-x-auto scrollbar-none">
               <button
-                class="btn btn-xs"
+                class="btn btn-xs shrink-0"
                 :class="saveFolder === '.' ? 'btn-neutral' : 'btn-ghost'"
                 @click="saveFolder = '.'"
               >
@@ -56,17 +55,13 @@
               </button>
               <button
                 v-for="f in folders" :key="f.name"
-                class="btn btn-xs"
+                class="btn btn-xs shrink-0"
                 :class="saveFolder === f.name ? 'btn-neutral' : 'btn-ghost'"
                 @click="saveFolder = f.name"
               >{{ f.name }}</button>
-              <div class="flex gap-1">
-                <input v-model="newFolderName" type="text" :placeholder="$t('downloader.folderName')"
-                  class="input input-bordered input-xs w-24" @keyup.enter="createNewFolder" />
-                <button class="btn btn-xs btn-ghost" @click="createNewFolder" :disabled="!newFolderName.trim()">
-                  <Plus :size="14" />
-                </button>
-              </div>
+              <button class="btn btn-xs btn-ghost shrink-0" @click="newFolderDialog?.showModal()">
+                <Plus :size="14" />
+              </button>
             </div>
           </div>
 
@@ -150,6 +145,20 @@
       <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <!-- New folder dialog -->
+    <dialog ref="newFolderDialog" class="modal">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">{{ $t('downloader.newFolder') }}</h3>
+        <input v-model="newFolderName" type="text" :placeholder="$t('downloader.folderName')"
+          class="input input-bordered w-full" @keyup.enter="createNewFolder" />
+        <div class="modal-action">
+          <button class="btn" @click="newFolderDialog?.close()">{{ $t('common.cancel') }}</button>
+          <button class="btn btn-neutral" @click="createNewFolder" :disabled="!newFolderName.trim()">{{ $t('common.confirm') }}</button>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
     <!-- Auth input -->
     <dialog ref="authDialog" class="modal">
       <div class="modal-box">
@@ -205,6 +214,7 @@ const history = ref([])
 const historyOffset = ref(0)
 const historyHasMore = ref(false)
 
+const newFolderDialog = ref(null)
 const authStatus = ref({ x: false, pixiv: false })
 const settingsDialog = ref(null)
 const authDialog = ref(null)
@@ -327,6 +337,7 @@ async function createNewFolder() {
     await folderApi.createFolder(newFolderName.value.trim())
     saveFolder.value = newFolderName.value.trim()
     newFolderName.value = ''
+    newFolderDialog.value?.close()
     const { data } = await folderApi.listFolders(sourceFolder.value)
     folders.value = data
   } catch {}
