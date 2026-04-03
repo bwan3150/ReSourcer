@@ -9,6 +9,25 @@ NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+dispatch_workflow() {
+    local PAYLOAD="$1"
+    if command -v gh &>/dev/null; then
+        echo "$PAYLOAD" | gh workflow run release.yml --json
+    else
+        REPO=$(git remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/' | sed 's/.*github.com[:/]\(.*\)/\1/')
+        echo -e "${YELLOW}GitHub Personal Access Token (workflow scope):${NC}"
+        read -s -r GH_TOKEN
+        echo ""
+        curl -sf -X POST \
+            "https://api.github.com/repos/${REPO}/actions/workflows/release.yml/dispatches" \
+            -H "Authorization: token ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d "$PAYLOAD" \
+            && echo -e "${GREEN}Triggered.${NC}" \
+            || echo -e "${RED}Failed. Trigger manually on GitHub Actions.${NC}"
+    fi
+}
+
 SERVER_VER=$(grep -m1 '^version' "$SCRIPT_DIR/server/Cargo.toml" | sed 's/.*"\(.*\)".*/\1/')
 IOS_VER=$(grep -m1 'MARKETING_VERSION' "$SCRIPT_DIR/iOS/ReSourcer.xcodeproj/project.pbxproj" | sed 's/.*= \(.*\);/\1/' | tr -d ' ')
 
@@ -125,21 +144,7 @@ if [ "$BUMP_IOS" = true ]; then
     else
         echo -e "${GREEN}Triggering iOS build + Pgyer...${NC}"
         # Use gh if available, otherwise curl GitHub API
-        if command -v gh &>/dev/null; then
-            gh workflow run release.yml -f build_ios=true -f upload_pgyer=true
-        else
-            REPO=$(git remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/' | sed 's/.*github.com[:/]\(.*\)/\1/')
-            echo -e "${YELLOW}GitHub Personal Access Token (need workflow scope):${NC}"
-            read -s -r GH_TOKEN
-            echo ""
-            curl -sf -X POST \
-                "https://api.github.com/repos/${REPO}/actions/workflows/release.yml/dispatches" \
-                -H "Authorization: token ${GH_TOKEN}" \
-                -H "Accept: application/vnd.github.v3+json" \
-                -d '{"ref":"main","inputs":{"build_ios":"true","upload_pgyer":"true"}}' \
-                && echo -e "${GREEN}Triggered.${NC}" \
-                || echo -e "${RED}Failed. Go to GitHub Actions and trigger manually.${NC}"
-        fi
+        dispatch_workflow '{"ref":"main","inputs":{"build_server":"false","build_ios":"true","upload_pgyer":"true"}}'
     fi
 fi
 
