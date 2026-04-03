@@ -1,0 +1,1 @@
+import{c as t}from"./client-Co-gdIUp.js";function a(r){const e=r?{source_folder:r}:{};return t.get("/api/folder/list",{params:e})}function s(r){return t.post("/api/folder/create",{folderName:r})}export{s as c,a as l};

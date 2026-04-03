@@ -135,43 +135,15 @@ async fn main() -> std::io::Result<()> {
         .or_else(|| std::env::var("API_KEY").ok())
         .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
 
-    // 生成登录 URL（带 API Key）
-    let login_url = format!("http://{}:1234/login.html?key={}", local_ip, api_key);
-
-    // 生成 QR Code
-    use qrcode::QrCode;
-    use qrcode::render::unicode;
-    let qr_code = QrCode::new(&login_url).unwrap();
-    let qr_string = qr_code.render::<unicode::Dense1x2>()
-        .dark_color(unicode::Dense1x2::Light)
-        .light_color(unicode::Dense1x2::Dark)
-        .build();
-
-    // 服务信息框
+    // 服务信息
     println!("  ┌──────────────────────────────────────────────┐");
-    let service_line = format!("  │ Service URL:    http://{}:1234   ", local_ip);
+    let service_line = format!("  │ API Server:     http://{}:1234   ", local_ip);
     println!("{:<47}│", service_line);
     println!("  │ API Key:                                     │");
     let key_line = format!("  │ {:<45}│", api_key);
     println!("{}", key_line);
     println!("  └──────────────────────────────────────────────┘");
     println!();
-
-    // 打印 QR Code
-    for line in qr_string.lines() {
-        println!("  {}", line);
-    }
-    println!();
-
-    // 延迟打开浏览器(使用带API Key的登录URL)
-    let browser_url = login_url.clone();
-    tokio::spawn(async move {
-        tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
-        if let Err(e) = open::that(&browser_url) {
-            eprintln!("  Failed to open browser: {}", e);
-            println!("  Please visit manually: {}", browser_url);
-        }
-    });
 
     let api_key_data = web::Data::new(api_key.clone());
 
