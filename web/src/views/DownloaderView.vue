@@ -89,10 +89,10 @@
           <button
             class="btn btn-neutral w-full"
             @click="startDownload"
-            :disabled="!url.trim() || !detected"
+            :disabled="!url.trim() || !detected || !ytdlpInstalled"
           >
             <Download :size="16" />
-            {{ $t('downloader.startDownload') }}
+            {{ !ytdlpInstalled ? $t('downloader.ytdlpRequired') : $t('downloader.startDownload') }}
           </button>
         </div>
       </template>
@@ -134,11 +134,12 @@
           <div class="flex items-center justify-between py-2 border-t border-base-300 pt-3">
             <div class="flex items-center gap-2">
               <span class="text-sm">yt-dlp</span>
-              <span class="text-xs text-base-content/40">{{ ytdlpVersion || '---' }}</span>
+              <span v-if="ytdlpInstalled" class="text-xs text-base-content/40">{{ ytdlpVersion }}</span>
+              <span v-else class="badge badge-ghost badge-xs">{{ $t('downloader.notConfigured') }}</span>
             </div>
             <button class="btn btn-ghost btn-xs" @click="doUpdateYtdlp" :disabled="ytdlpUpdating">
               <span v-if="ytdlpUpdating" class="loading loading-spinner loading-xs"></span>
-              {{ $t('downloader.ytdlpUpdate') }}
+              {{ ytdlpInstalled ? $t('downloader.ytdlpUpdate') : $t('downloader.ytdlpDownload') }}
             </button>
           </div>
         </div>
@@ -210,6 +211,7 @@ const authDialog = ref(null)
 const authPlatform = ref('')
 const authContent = ref('')
 const ytdlpVersion = ref('')
+const ytdlpInstalled = ref(false)
 const ytdlpUpdating = ref(false)
 const sourceFolder = ref('')
 
@@ -225,6 +227,7 @@ onMounted(async () => {
     sourceFolder.value = dlConfig.sourceFolder
     authStatus.value = dlConfig.authStatus || { x: false, pixiv: false }
     ytdlpVersion.value = dlConfig.ytdlpVersion || ''
+    ytdlpInstalled.value = !!ytdlpVersion.value
 
     const { data: folderList } = await folderApi.listFolders(sourceFolder.value)
     folders.value = folderList
@@ -350,8 +353,12 @@ async function doUpdateYtdlp() {
   ytdlpUpdating.value = true
   try {
     await downloadApi.updateYtdlp()
+  } catch {}
+  // Always re-check version after install/update attempt
+  try {
     const { data } = await downloadApi.getYtdlpVersion()
     ytdlpVersion.value = data.version || ''
+    ytdlpInstalled.value = data.installed || !!ytdlpVersion.value
   } catch {}
   ytdlpUpdating.value = false
 }

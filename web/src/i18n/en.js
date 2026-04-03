@@ -147,6 +147,8 @@ export default {
     authPlaceholder: 'Paste Cookies or Token...',
     ytdlpVersion: 'yt-dlp Version',
     ytdlpUpdate: 'Update yt-dlp',
+    ytdlpDownload: 'Download yt-dlp',
+    ytdlpRequired: 'Download yt-dlp first',
     updating: 'Updating...',
     updateSuccess: 'Update complete',
     requiresAuth: 'Auth required',

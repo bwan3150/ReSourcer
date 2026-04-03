@@ -147,6 +147,8 @@ export default {
     authPlaceholder: '粘贴 Cookies 或 Token...',
     ytdlpVersion: 'yt-dlp 版本',
     ytdlpUpdate: '更新 yt-dlp',
+    ytdlpDownload: '下载 yt-dlp',
+    ytdlpRequired: '请先下载 yt-dlp',
     updating: '更新中...',
     updateSuccess: '更新成功',
     requiresAuth: '需要认证',
