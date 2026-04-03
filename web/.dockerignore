@@ -1,0 +1,5 @@
+# Docker 配置文件本身（不需要复制到镜像）
+Dockerfile
+docker-compose.yml
+nginx.conf
+.dockerignore
