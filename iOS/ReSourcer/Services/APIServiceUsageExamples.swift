@@ -293,8 +293,6 @@ enum APIServiceUsageExamples {
             let state = try await apiService.config.getConfigState()
             print("源文件夹: \(state.sourceFolder)")
             print("隐藏文件夹: \(state.hiddenFolders)")
-            print("预设数量: \(state.presets.count)")
-
             // 获取下载器配置
             let downloadConfig = try await apiService.config.getDownloadConfig()
             print("yt-dlp 版本: \(downloadConfig.ytdlpVersion)")
@@ -317,12 +315,6 @@ enum APIServiceUsageExamples {
             try await apiService.config.uploadCredentials(platform: .x, content: cookies)
             print("X cookies 已上传")
 
-            // 加载预设
-            if let preset = state.presets.first {
-                let response = try await apiService.config.loadPreset(name: preset.name)
-                print("已加载预设: \(response.presetName)")
-                print("分类: \(response.categories)")
-            }
         } catch {
             print("配置操作失败: \(error)")
         }

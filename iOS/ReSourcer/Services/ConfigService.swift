@@ -24,7 +24,7 @@ actor ConfigService {
         return try await networkManager.request(.config)
     }
 
-    /// 获取配置状态（包含预设信息）
+    /// 获取配置状态
     /// - Returns: 配置状态响应
     func getConfigState() async throws -> ConfigStateResponse {
         return try await networkManager.request(.configState)
@@ -125,20 +125,4 @@ actor ConfigService {
         ]
     }
 
-    // MARK: - 预设管理
-
-    /// 加载预设
-    /// - Parameter name: 预设名称
-    /// - Returns: 加载预设响应
-    func loadPreset(name: String) async throws -> LoadPresetResponse {
-        let request = LoadPresetRequest(name: name)
-        return try await networkManager.request(.configPresetLoad, body: request)
-    }
-
-    /// 获取所有预设列表
-    /// - Returns: 预设列表
-    func getPresets() async throws -> [Preset] {
-        let state = try await getConfigState()
-        return state.presets
-    }
 }

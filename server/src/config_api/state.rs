@@ -16,7 +16,7 @@ pub async fn get_state() -> Result<HttpResponse> {
         "hidden_folders": state.hidden_folders,
         "backup_source_folders": state.backup_source_folders,
         "ignored_folders": state.ignored_folders,
-        "ignored_files": state.ignored_files
+        "ignored_files": state.ignored_files,
     })))
 }
 

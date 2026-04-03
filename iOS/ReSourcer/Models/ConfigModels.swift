@@ -25,14 +25,6 @@ struct AppConfigResponse: Codable {
 
 // MARK: - 配置状态
 
-/// 预设信息
-struct Preset: Identifiable, Codable, Equatable {
-    let name: String
-    let categories: [String]
-
-    var id: String { name }
-}
-
 /// 配置状态响应
 struct ConfigStateResponse: Codable {
     let sourceFolder: String
@@ -40,7 +32,6 @@ struct ConfigStateResponse: Codable {
     let backupSourceFolders: [String]
     let ignoredFolders: [String]?
     let ignoredFiles: [String]?
-    let presets: [Preset]
 }
 
 /// 保存配置请求
@@ -93,30 +84,6 @@ struct SourceFoldersResponse: Codable {
 /// 添加/移除/切换源文件夹请求
 struct SourceFolderRequest: Codable {
     let folderPath: String
-}
-
-// MARK: - 预设管理
-
-/// 加载预设请求
-struct LoadPresetRequest: Codable {
-    let name: String
-}
-
-/// 加载预设响应
-struct LoadPresetResponse: Codable {
-    let status: String
-    let categories: [String]
-    let presetName: String
-}
-
-/// 保存预设请求
-struct SavePresetRequest: Codable {
-    let name: String
-}
-
-/// 删除预设请求
-struct DeletePresetRequest: Codable {
-    let name: String
 }
 
 // MARK: - 健康检查

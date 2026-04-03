@@ -95,9 +95,6 @@ enum APIEndpoint {
     case configSourcesRemove                 // POST /api/config/sources/remove
     case configSourcesSwitch                 // POST /api/config/sources/switch
     case configCredentials(platform: String) // POST/DELETE /api/config/credentials/{platform}
-    case configPresetLoad                    // POST /api/config/preset/load
-    case configPresetSave                    // POST /api/config/preset/save
-    case configPresetDelete                  // DELETE /api/config/preset/delete
 
     /// 获取端点路径
     var path: String {
@@ -255,12 +252,6 @@ enum APIEndpoint {
             return "/api/config/sources/switch"
         case .configCredentials(let platform):
             return "/api/config/credentials/\(platform)"
-        case .configPresetLoad:
-            return "/api/config/preset/load"
-        case .configPresetSave:
-            return "/api/config/preset/save"
-        case .configPresetDelete:
-            return "/api/config/preset/delete"
         }
     }
 
@@ -284,7 +275,7 @@ enum APIEndpoint {
 
         // DELETE 请求
         case .downloadTaskDelete, .downloadHistoryClear,
-             .uploadTaskDelete, .tagDelete, .configPresetDelete:
+             .uploadTaskDelete, .tagDelete:
             return .DELETE
 
         // POST 请求（默认）
