@@ -41,19 +41,15 @@ echo -e "${GREEN}=== 更新版本号 ===${NC}"
 
 # 1. Cargo.toml: version = "x.y.z"
 sed -i '' "s/^version = \"${CURRENT_VERSION}\"/version = \"${VERSION}\"/" "$SCRIPT_DIR/server/Cargo.toml"
-echo "  Cargo.toml ✓"
+echo "  server/Cargo.toml ✓"
 
 # 2. config/app.json: "version":"x.y.z"
 sed -i '' "s/\"version\":\"${CURRENT_VERSION}\"/\"version\":\"${VERSION}\"/" "$SCRIPT_DIR/server/config/app.json"
-echo "  config/app.json ✓"
+echo "  server/config/app.json ✓"
 
-# 3. web/login.html: ReSourcer vX.Y.Z
-sed -i '' "s/ReSourcer v[0-9][0-9.a-zA-Z-]*/ReSourcer v${VERSION}/" "$SCRIPT_DIR/web/login.html"
-echo "  web/login.html ✓"
-
-# 4. web/index.html: ReSourcer vX.Y.Z
-sed -i '' "s/ReSourcer v[0-9][0-9.a-zA-Z-]*/ReSourcer v${VERSION}/" "$SCRIPT_DIR/web/index.html"
-echo "  web/index.html ✓"
+# 3. web/package.json: "version": "x.y.z"
+sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"${VERSION}\"/" "$SCRIPT_DIR/web/package.json"
+echo "  web/package.json ✓"
 
 echo ""
 
@@ -78,8 +74,7 @@ echo -e "${GREEN}=== 提交版本更新 ===${NC}"
 git add \
     "$SCRIPT_DIR/server/Cargo.toml" \
     "$SCRIPT_DIR/server/config/app.json" \
-    "$SCRIPT_DIR/web/login.html" \
-    "$SCRIPT_DIR/web/index.html"
+    "$SCRIPT_DIR/web/package.json"
 
 # 如果有其他未暂存的更改也一并提交
 if ! git diff --quiet; then
@@ -90,7 +85,7 @@ if ! git diff --quiet; then
     fi
 fi
 
-git commit -m "Update: server side version to v${VERSION}"
+git commit -m "release: v${VERSION}"
 git push
 if [ $? -ne 0 ]; then
     echo -e "${RED}错误: git push失败${NC}"
