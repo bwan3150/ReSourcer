@@ -2,6 +2,15 @@ name: Build Release
 
 on:
   workflow_dispatch:
+    inputs:
+      build_ios:
+        description: 'Build iOS IPA'
+        type: boolean
+        default: false
+      upload_pgyer:
+        description: 'Upload iOS to Pgyer'
+        type: boolean
+        default: false
   push:
     tags:
       - 'v*.*.*'
@@ -10,7 +19,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  # Server binary build
+  build-server:
     name: Build ${{ matrix.artifact_name }}
     runs-on: ${{ matrix.runner }}
 
@@ -63,11 +73,152 @@ jobs:
           path: ${{ matrix.artifact_name }}
           retention-days: 7
 
+  # iOS app build (Ad-Hoc for testing)
+  build-ios:
+    name: Build iOS IPA
+    runs-on: macos-latest
+    if: |
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.build_ios == 'true')
+    environment: iOS-CICD-IPA-Release-Testing-Build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      # Import signing certificate and provisioning profile
+      - name: Import signing credentials
+        env:
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+          IOS_KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+        run: |
+          CERT_PATH=$RUNNER_TEMP/certificate.p12
+          PROVISION_PATH=$RUNNER_TEMP/provision.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          echo -n "$IOS_CERTIFICATE_BASE64" | base64 --decode -o $CERT_PATH
+          echo -n "$IOS_PROVISION_PROFILE_BASE64" | base64 --decode -o $PROVISION_PATH
+
+          security create-keychain -p "$IOS_KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$IOS_KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security import $CERT_PATH -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          PP_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /dev/stdin <<< $(security cms -D -i $PROVISION_PATH))
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PROVISION_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$PP_UUID.mobileprovision
+
+          echo "PP_UUID=$PP_UUID" >> $GITHUB_ENV
+          echo "Provisioning Profile UUID: $PP_UUID"
+
+      - name: Configure manual signing
+        run: |
+          PROJECT_FILE="iOS/ReSourcer.xcodeproj/project.pbxproj"
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PROJECT_FILE"
+          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = "";/PROVISIONING_PROFILE_SPECIFIER = "'"$PP_UUID"'";/g' "$PROJECT_FILE"
+
+      - name: Create ExportOptions.plist
+        run: |
+          cat > iOS/ExportOptions.plist << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>ad-hoc</string>
+              <key>teamID</key>
+              <string>925YHK2R4K</string>
+              <key>compileBitcode</key>
+              <false/>
+              <key>stripSwiftSymbols</key>
+              <true/>
+              <key>thinning</key>
+              <string>&lt;none&gt;</string>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Build archive
+        run: |
+          xcodebuild archive \
+            -project iOS/ReSourcer.xcodeproj \
+            -scheme ReSourcer \
+            -configuration Release \
+            -archivePath $RUNNER_TEMP/ReSourcer.xcarchive \
+            -destination "generic/platform=iOS" \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            DEVELOPMENT_TEAM="925YHK2R4K" \
+            PROVISIONING_PROFILE_SPECIFIER="$PP_UUID" \
+            | tail -20
+
+      - name: Export IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/ReSourcer.xcarchive \
+            -exportPath $RUNNER_TEMP/export \
+            -exportOptionsPlist iOS/ExportOptions.plist \
+            | tail -10
+
+      - name: Prepare IPA artifact
+        run: |
+          IPA_PATH=$(find $RUNNER_TEMP/export -name "*.ipa" -type f | head -n 1)
+          if [ -z "$IPA_PATH" ]; then
+            echo "IPA not found"
+            ls -R $RUNNER_TEMP/export/
+            exit 1
+          fi
+          cp "$IPA_PATH" ReSourcer.ipa
+          echo "IPA size: $(du -h ReSourcer.ipa | cut -f1)"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: ReSourcer.ipa
+          retention-days: 30
+
+      - name: Cleanup keychain
+        if: always()
+        run: security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
+
+  # Upload iOS IPA to Pgyer
+  upload-pgyer:
+    name: Upload to Pgyer
+    needs: build-ios
+    runs-on: ubuntu-latest
+    if: |
+      needs.build-ios.result == 'success' &&
+      (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.upload_pgyer == 'true'))
+    steps:
+      - name: Download IPA
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-ipa
+          path: artifacts
+
+      - name: Upload to Pgyer
+        uses: PGYER/pgyer-upload-app-action@v1.3
+        with:
+          _api_key: ${{ secrets.PGYER_API_KEY }}
+          appFilePath: artifacts/ReSourcer.ipa
+          buildUpdateDescription: |
+            ReSourcer iOS - ${{ github.ref_name || 'manual' }}
+
+  # Create GitHub Release
   create-release:
     name: Create GitHub Release
-    needs: build
+    needs: [build-server, build-ios]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: |
+      always() &&
+      needs.build-server.result == 'success' &&
+      startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
 
@@ -87,8 +238,6 @@ jobs:
             COMMITS=$(git log --pretty=format:"- %s")
           fi
           echo "$COMMITS" > /tmp/commits.txt
-          echo "--- Commits for release notes ---"
-          cat /tmp/commits.txt
 
       - name: Generate release notes with AI
         env:
@@ -96,7 +245,7 @@ jobs:
         run: |
           COMMITS=$(cat /tmp/commits.txt)
 
-          PROMPT="Below is a list of git commits for this release of ReSourcer (a resource management server):
+          PROMPT="Below is a list of git commits for this release of ReSourcer (a resource management server + web + iOS app):
 
           ${COMMITS}
 
@@ -126,15 +275,10 @@ jobs:
               "temperature": 0.3
             }')")
 
-          # Parse AI response into markdown
           CHANGELOG=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
           echo "$CHANGELOG" > /tmp/changelog.json
-          echo "--- Generated changelog ---"
-          cat /tmp/changelog.json
 
-          # Build markdown release body
           BODY=""
-
           FEATURES=$(echo "$CHANGELOG" | jq -r '.features // [] | if length > 0 then "### Features\n" + (map("- " + .) | join("\n")) else empty end')
           UPDATES=$(echo "$CHANGELOG" | jq -r '.updates // [] | if length > 0 then "### Updates\n" + (map("- " + .) | join("\n")) else empty end')
           FIXES=$(echo "$CHANGELOG" | jq -r '.fixes // [] | if length > 0 then "### Fixes\n" + (map("- " + .) | join("\n")) else empty end')
@@ -143,16 +287,13 @@ jobs:
           [ -n "$UPDATES" ] && BODY="${BODY}\n\n${UPDATES}"
           [ -n "$FIXES" ] && BODY="${BODY}\n\n${FIXES}"
 
-          # Fallback if AI fails
           if [ -z "$BODY" ]; then
             BODY="### Changes\n$(cat /tmp/commits.txt)"
           fi
 
           echo -e "$BODY" > /tmp/release_body.md
-          echo "--- Release body ---"
-          cat /tmp/release_body.md
 
-      - name: Download artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
