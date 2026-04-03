@@ -64,6 +64,7 @@
           @go-root="navigateTo(sourceFolder)"
         />
         <div
+          ref="gridScrollContainer"
           class="flex-1 overflow-y-auto relative"
           @dragover.prevent="dragOver = true"
           @dragleave.prevent="dragOver = false"
@@ -184,7 +185,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '../components/layout/AppLayout.vue'
 import FolderSidebar from '../components/gallery/FolderSidebar.vue'
@@ -222,6 +223,8 @@ const previewIndex = ref(0)
 const contentSrc = computed(() => previewFile.value ? contentUrl(previewFile.value) : '')
 
 const fileInfoDialog = ref(null)
+const gridScrollContainer = ref(null)
+let savedScrollTop = 0
 const allTags = ref([])
 const fileTags = ref([])
 const renameDialog = ref(null)
@@ -328,6 +331,7 @@ async function reindexFolder() {
 }
 
 function openPreview(file) {
+  savedScrollTop = gridScrollContainer.value?.scrollTop || 0
   previewFile.value = file
   previewIndex.value = files.value.findIndex(f => f.uuid === file.uuid)
   loadFileTags(file.uuid)
@@ -356,7 +360,14 @@ async function onCreateTag({ name, color }) {
   } catch {}
 }
 
-function closePreview() { previewFile.value = null }
+function closePreview() {
+  previewFile.value = null
+  nextTick(() => {
+    if (gridScrollContainer.value) {
+      gridScrollContainer.value.scrollTop = savedScrollTop
+    }
+  })
+}
 
 function prevFile() {
   if (previewIndex.value > 0) {
