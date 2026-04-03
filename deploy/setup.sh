@@ -24,7 +24,7 @@ detect_arch() {
     case "$arch" in
         x86_64|amd64)  echo "x86_64" ;;
         aarch64|arm64) echo "aarch64" ;;
-        *) error "不支持的架构: $arch" ;;
+        *) error "Unsupported architecture: $arch" ;;
     esac
 }
 
@@ -34,14 +34,14 @@ detect_os() {
     case "$os" in
         Linux)  echo "linux" ;;
         Darwin) echo "macos" ;;
-        *) error "不支持的操作系统: $os" ;;
+        *) error "Unsupported OS: $os" ;;
     esac
 }
 
 # 检查依赖
 check_deps() {
     for cmd in curl; do
-        command -v "$cmd" >/dev/null 2>&1 || error "需要 $cmd，请先安装"
+        command -v "$cmd" >/dev/null 2>&1 || error "$cmd is required"
     done
 }
 
@@ -57,82 +57,81 @@ download_binary() {
     local arch=$(detect_arch)
     local asset_name="re-sourcer-${os}-${arch}"
 
-    info "检测到系统: ${os} ${arch}"
-    info "正在获取最新版本..."
+    info "Platform: ${os} ${arch}"
+    info "Fetching latest version..."
 
     local version=$(get_latest_version)
     if [ -z "$version" ]; then
-        error "无法获取最新版本信息，请检查网络连接"
+        error "Cannot fetch latest version"
     fi
-    info "最新版本: ${version}"
+    info "Latest version: ${version}"
 
     local download_url="https://github.com/${GITHUB_REPO}/releases/latest/download/${asset_name}"
 
-    info "正在下载 ${asset_name}..."
-    curl -sSL -o "${INSTALL_DIR}/re-sourcer" "$download_url" \
-        || error "下载失败，请检查 ${download_url} 是否存在"
+    info "Downloading ${asset_name}..."
+    curl -sSL --fail -o "${INSTALL_DIR}/re-sourcer" "$download_url" \
+        || error "Download failed: ${download_url}"
 
     chmod +x "${INSTALL_DIR}/re-sourcer"
-    info "二进制文件已下载到 ${INSTALL_DIR}/re-sourcer"
+    info "Binary installed: ${INSTALL_DIR}/re-sourcer"
 }
 
 # 下载 ffmpeg 和 ffprobe 到 tools/
 download_tools() {
     local os=$(detect_os)
+    local arch=$(detect_arch)
 
-    # ffmpeg
+    # ffmpeg — URL 格式: ffmpeg-linux-x86_64 / ffmpeg-macos
     local ffmpeg_path="${INSTALL_DIR}/tools/ffmpeg"
     if [ -f "$ffmpeg_path" ]; then
-        info "ffmpeg 已存在，跳过下载"
+        info "ffmpeg already exists, skipping"
     else
-        local ffmpeg_url="${S3_BASE}/ffmpeg/ffmpeg-${os}"
-        info "正在下载 ffmpeg..."
-        curl -sSL -o "$ffmpeg_path" "$ffmpeg_url" \
-            || error "下载 ffmpeg 失败"
-        chmod +x "$ffmpeg_path"
-        info "ffmpeg 已下载"
+        local ffmpeg_suffix="${os}"
+        [ "$os" = "linux" ] && ffmpeg_suffix="${os}-${arch}"
+        local ffmpeg_url="${S3_BASE}/ffmpeg/ffmpeg-${ffmpeg_suffix}"
+        info "Downloading ffmpeg..."
+        curl -sSL --fail -o "$ffmpeg_path" "$ffmpeg_url" \
+            || warn "ffmpeg download failed (will auto-download on first use)"
+        [ -f "$ffmpeg_path" ] && chmod +x "$ffmpeg_path"
     fi
 
     # ffprobe
     local ffprobe_path="${INSTALL_DIR}/tools/ffprobe"
     if [ -f "$ffprobe_path" ]; then
-        info "ffprobe 已存在，跳过下载"
+        info "ffprobe already exists, skipping"
     else
-        local ffprobe_url="${S3_BASE}/ffprobe/ffprobe-${os}"
-        info "正在下载 ffprobe..."
-        curl -sSL -o "$ffprobe_path" "$ffprobe_url" \
-            || error "下载 ffprobe 失败"
-        chmod +x "$ffprobe_path"
-        info "ffprobe 已下载"
+        local ffprobe_suffix="${os}"
+        [ "$os" = "linux" ] && ffprobe_suffix="${os}-${arch}"
+        local ffprobe_url="${S3_BASE}/ffprobe/ffprobe-${ffprobe_suffix}"
+        info "Downloading ffprobe..."
+        curl -sSL --fail -o "$ffprobe_path" "$ffprobe_url" \
+            || warn "ffprobe download failed (will auto-download on first use)"
+        [ -f "$ffprobe_path" ] && chmod +x "$ffprobe_path"
     fi
 }
 
 # 创建目录结构
 create_dirs() {
-    info "创建目录结构..."
+    info "Creating directory structure..."
     mkdir -p "${INSTALL_DIR}/config"
     mkdir -p "${INSTALL_DIR}/tools"
-    mkdir -p "${INSTALL_DIR}/credentials"
     mkdir -p "${INSTALL_DIR}/sqlite"
 
-    info "目录结构:"
     info "  ${INSTALL_DIR}/"
-    info "  ├── re-sourcer           # 后端二进制"
-    info "  ├── config/              # 配置文件 (app.json, secret.json 等)"
-    info "  ├── tools/               # yt-dlp, ffmpeg, ffprobe"
-    info "  ├── credentials/         # 下载凭证 (x, pixiv 等)"
-    info "  └── sqlite/              # SQLite 数据库 (data.db, 自动创建)"
+    info "  ├── re-sourcer           # server binary"
+    info "  ├── config/              # app.json, secret.json, tools.json"
+    info "  ├── tools/               # ffmpeg, ffprobe, yt-dlp"
+    info "  └── sqlite/              # data.db (auto-created)"
 }
 
 # 安装 systemd 服务
 install_service() {
-    # macOS 不使用 systemd
     if [ "$(detect_os)" = "macos" ]; then
-        warn "macOS 不支持 systemd，请手动运行: ${INSTALL_DIR}/re-sourcer"
+        warn "macOS: no systemd, run manually: ${INSTALL_DIR}/re-sourcer"
         return
     fi
 
-    info "安装 systemd 服务..."
+    info "Installing systemd service..."
 
     cat > "/etc/systemd/system/${SERVICE_NAME}.service" << EOF
 [Unit]
@@ -143,7 +142,6 @@ After=network.target
 Type=simple
 ExecStart=${INSTALL_DIR}/re-sourcer
 WorkingDirectory=${INSTALL_DIR}
-Environment=HOME=${INSTALL_DIR}
 Restart=on-failure
 RestartSec=5
 
@@ -153,31 +151,45 @@ EOF
 
     systemctl daemon-reload
     systemctl enable "${SERVICE_NAME}"
-    systemctl start "${SERVICE_NAME}"
+    systemctl restart "${SERVICE_NAME}"
 
-    info "服务已启动并设为开机自启"
+    info "Service started and enabled on boot"
+}
+
+# 显示 API Key
+show_api_key() {
+    local secret_file="${INSTALL_DIR}/config/secret.json"
+    if [ -f "$secret_file" ]; then
+        local key=$(grep -o '"apikey":"[^"]*"' "$secret_file" | cut -d'"' -f4)
+        if [ -n "$key" ]; then
+            info "API Key: ${key}"
+        fi
+    else
+        info "API Key will be auto-generated on first start"
+        info "Check: cat ${INSTALL_DIR}/config/secret.json"
+    fi
 }
 
 # 主流程
 main() {
     echo ""
     echo "  =============================="
-    echo "   ReSourcer 后端部署脚本"
+    echo "   ReSourcer Setup"
     echo "  =============================="
     echo ""
 
     # 检查 root 权限 (Linux)
     if [ "$(detect_os)" = "linux" ] && [ "$(id -u)" -ne 0 ]; then
-        error "请使用 sudo 运行此脚本"
+        error "Please run with sudo"
     fi
 
     check_deps
 
     # 如果已安装，提示更新
     if [ -f "${INSTALL_DIR}/re-sourcer" ]; then
-        warn "检测到已有安装，将更新二进制文件"
+        warn "Existing installation detected, updating..."
         if systemctl is-active --quiet "${SERVICE_NAME}" 2>/dev/null; then
-            info "停止现有服务..."
+            info "Stopping service..."
             systemctl stop "${SERVICE_NAME}"
         fi
     fi
@@ -189,16 +201,16 @@ main() {
 
     echo ""
     info "=============================="
-    info "部署完成！"
+    info "Setup complete!"
     info "=============================="
     info ""
-    info "后端 API: http://localhost:1234"
-    info "查看状态: systemctl status ${SERVICE_NAME}"
-    info "查看日志: journalctl -u ${SERVICE_NAME} -f"
-    info "重新部署: 再次运行此脚本即可更新"
+    info "API Server: http://localhost:1234"
+    show_api_key
     info ""
-    info "下一步: 部署前端 Docker (可选)"
-    info "  cd docker && docker compose up -d"
+    info "Commands:"
+    info "  Status:  systemctl status ${SERVICE_NAME}"
+    info "  Logs:    journalctl -u ${SERVICE_NAME} -f"
+    info "  Update:  re-run this script"
     echo ""
 }
 
