@@ -142,8 +142,8 @@ After=network.target
 Type=simple
 ExecStart=${INSTALL_DIR}/re-sourcer
 WorkingDirectory=${INSTALL_DIR}
-Restart=on-failure
-RestartSec=5
+Restart=always
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target

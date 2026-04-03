@@ -163,18 +163,15 @@ pub async fn do_update() -> Result<HttpResponse> {
 
     eprintln!("[update] Updated from {} to {}. Restarting...", current, latest_tag);
 
-    // 8. Spawn new process and exit current
-    let args: Vec<String> = std::env::args().collect();
+    // 8. Exit process — systemd (Restart=on-failure) or the user will restart it
+    //    Send response first, then exit after a short delay
     tokio::spawn(async move {
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-        let _ = std::process::Command::new(&exe_path)
-            .args(&args[1..])
-            .spawn();
         std::process::exit(0);
     });
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "status": "updating",
-        "message": format!("Updating to {}. Server will restart.", latest_tag)
+        "message": format!("Updated to {}. Server is restarting.", latest_tag)
     })))
 }
