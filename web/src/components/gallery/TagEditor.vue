@@ -8,12 +8,15 @@
         :style="{ backgroundColor: tag.color, color: '#fff' }"
         @click="removeTag(tag.id)"
       >
-        {{ tag.name }} ✕
+        {{ tag.name }}
+        <X :size="12" />
       </span>
       <span v-if="!fileTags.length" class="text-xs text-base-content/40">{{ $t('gallery.tags') }}</span>
     </div>
     <div class="dropdown dropdown-end">
-      <label tabindex="0" class="btn btn-ghost btn-xs">+ {{ $t('gallery.addTag') }}</label>
+      <label tabindex="0" class="btn btn-ghost btn-xs gap-1">
+        <Plus :size="14" /> {{ $t('gallery.addTag') }}
+      </label>
       <ul tabindex="0" class="dropdown-content menu menu-sm bg-base-200 rounded-box shadow w-48 max-h-60 overflow-y-auto z-50">
         <li v-for="tag in availableTags" :key="tag.id">
           <a @click="addTag(tag.id)" class="flex items-center gap-2">
@@ -29,6 +32,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { X, Plus } from 'lucide-vue-next'
 
 const props = defineProps({
   fileTags: { type: Array, default: () => [] },

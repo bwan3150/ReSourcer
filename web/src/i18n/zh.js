@@ -167,6 +167,10 @@ export default {
     reindex: '重新索引',
     reindexing: '索引中...',
     saveSuccess: '设置已保存',
+    tools: '工具管理',
+    toolsDesc: '管理外部工具的下载源，首次使用时会自动下载',
+    installed: '已安装',
+    notInstalled: '未安装',
   },
   upload: {
     tasks: '上传任务',

@@ -4,36 +4,32 @@ use std::fs;
 use actix_web::Result;
 use std::process::Command;
 
-#[cfg(target_os = "linux")]
-const FFMPEG_DOWNLOAD_URL: &str = "https://resourcer-assets.s3.ap-southeast-2.amazonaws.com/binaries/ffmpeg/ffmpeg-linux";
-#[cfg(target_os = "macos")]
-const FFMPEG_DOWNLOAD_URL: &str = "https://resourcer-assets.s3.ap-southeast-2.amazonaws.com/binaries/ffmpeg/ffmpeg-macos";
-#[cfg(target_os = "windows")]
-const FFMPEG_DOWNLOAD_URL: &str = "https://resourcer-assets.s3.ap-southeast-2.amazonaws.com/binaries/ffmpeg/ffmpeg-windows.exe";
-
 /// 获取 tools/ 目录路径（基于 app_dir，与部署目录一致）
 fn tools_dir() -> PathBuf {
     crate::static_files::app_dir().join("tools")
 }
 
-/// 获取 ffmpeg 二进制文件路径（从 tools/ 目录查找，不存在则从 S3 下载）
+/// 获取 ffmpeg 二进制文件路径（从 tools/ 目录查找，不存在则从配置的 URL 下载）
 pub fn get_ffmpeg_path() -> PathBuf {
-    let binary_name = if cfg!(target_os = "windows") { "ffmpeg.exe" } else { "ffmpeg" };
-    let ffmpeg_path = tools_dir().join(binary_name);
+    let binary_name = crate::tools::tool_binary_name("ffmpeg");
+    let ffmpeg_path = tools_dir().join(&binary_name);
 
     if ffmpeg_path.exists() {
         return ffmpeg_path;
     }
 
+    let download_url = crate::tools::get_tool_download_url("ffmpeg")
+        .expect("未找到 ffmpeg 下载源配置");
+
     // 同步下载（preview 调用链是同步的）
-    eprintln!("[ffmpeg] 未找到 ffmpeg，正在从 S3 下载...");
-    eprintln!("[ffmpeg] URL: {}", FFMPEG_DOWNLOAD_URL);
+    eprintln!("[ffmpeg] 未找到 ffmpeg，正在下载...");
+    eprintln!("[ffmpeg] URL: {}", download_url);
 
     let dir = ffmpeg_path.parent().unwrap();
     fs::create_dir_all(dir).expect("无法创建 tools 目录");
 
     let output = std::process::Command::new("curl")
-        .args(&["-sSL", "-o", ffmpeg_path.to_str().unwrap(), FFMPEG_DOWNLOAD_URL])
+        .args(&["-sSL", "-o", ffmpeg_path.to_str().unwrap(), &download_url])
         .output()
         .expect("无法执行 curl 下载 ffmpeg");
 
@@ -52,6 +48,14 @@ pub fn get_ffmpeg_path() -> PathBuf {
         perms.set_mode(0o755);
         fs::set_permissions(&ffmpeg_path, perms)
             .expect("无法设置可执行权限");
+    }
+
+    // macOS: 清除 quarantine 属性
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("xattr")
+            .args(&["-cr", ffmpeg_path.to_str().unwrap()])
+            .output();
     }
 
     eprintln!("[ffmpeg] 下载完成: {}", ffmpeg_path.display());

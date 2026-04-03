@@ -1,11 +1,16 @@
 # Rust
 /server/target
 
+# Web
+/web/node_modules/
+/web/dist/
+
 # macOS
 .DS_Store
 
 # App state
 app_state.json
+/server/config/tools.json
 
 # Local files
 /local

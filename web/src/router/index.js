@@ -3,7 +3,7 @@ import { getApiKey } from '../composables/useAuth'
 
 const routes = [
   { path: '/login', name: 'login', component: () => import('../views/LoginView.vue') },
-  { path: '/', name: 'home', component: () => import('../views/HomeView.vue') },
+  { path: '/', redirect: '/gallery' },
   { path: '/gallery', name: 'gallery', component: () => import('../views/GalleryView.vue') },
   { path: '/classifier', name: 'classifier', component: () => import('../views/ClassifierView.vue') },
   { path: '/downloader', name: 'downloader', component: () => import('../views/DownloaderView.vue') },

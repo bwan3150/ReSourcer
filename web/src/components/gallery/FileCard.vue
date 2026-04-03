@@ -10,7 +10,6 @@
         :alt="file.fileName"
         class="w-full h-full object-cover"
         loading="lazy"
-        @error="imgError = true"
       />
       <div v-else-if="isVideo" class="w-full h-full flex items-center justify-center relative">
         <img
@@ -18,16 +17,15 @@
           :alt="file.fileName"
           class="w-full h-full object-cover"
           loading="lazy"
-          @error="imgError = true"
         />
         <div class="absolute inset-0 flex items-center justify-center">
           <div class="bg-black/50 rounded-full p-3">
-            <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <Play :size="24" class="text-white fill-white" />
           </div>
         </div>
       </div>
-      <div v-else class="w-full h-full flex items-center justify-center text-4xl text-base-content/30">
-        📄
+      <div v-else class="w-full h-full flex items-center justify-center">
+        <FileText :size="32" class="text-base-content/30" />
       </div>
 
       <!-- File type badge -->
@@ -42,15 +40,14 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
+import { Play, FileText } from 'lucide-vue-next'
 import { thumbnailUrl } from '../../api/preview'
 
 const props = defineProps({
   file: { type: Object, required: true },
 })
 defineEmits(['click'])
-
-const imgError = ref(false)
 
 const isImage = computed(() => props.file.fileType === 'image')
 const isGif = computed(() => props.file.fileType === 'gif')

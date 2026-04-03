@@ -1,14 +1,14 @@
 <template>
   <AppLayout>
-    <div class="flex h-[calc(100vh-64px)]">
+    <div class="flex h-full">
       <!-- Main preview area -->
       <div class="flex-1 flex flex-col min-w-0">
         <!-- Progress -->
         <div class="px-4 py-2 border-b border-base-300 flex items-center gap-3 shrink-0">
           <span class="text-sm">{{ $t('classifier.progress') }}: {{ processedCount }} / {{ totalFiles }}</span>
           <progress class="progress progress-primary flex-1" :value="processedCount" :max="totalFiles"></progress>
-          <button class="btn btn-ghost btn-sm" @click="undo" :disabled="!undoStack.length" :title="$t('classifier.undoHint')">
-            ↩ {{ $t('classifier.undo') }}
+          <button class="btn btn-ghost btn-sm gap-1" @click="undo" :disabled="!undoStack.length" :title="$t('classifier.undoHint')">
+            <Undo2 :size="16" /> {{ $t('classifier.undo') }}
           </button>
         </div>
 
@@ -67,7 +67,8 @@
         <!-- Actions -->
         <div class="p-3 border-t border-base-300 space-y-2 shrink-0">
           <button class="btn btn-ghost btn-sm w-full" @click="skipFile" :disabled="!currentFile">
-            {{ $t('classifier.skipFile') }} →
+            {{ $t('classifier.skipFile') }}
+            <ChevronRight :size="16" />
           </button>
 
           <!-- Preset selector -->
@@ -89,6 +90,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '../components/layout/AppLayout.vue'
+import { Undo2, ChevronRight } from 'lucide-vue-next'
 import * as configApi from '../api/config'
 import * as indexerApi from '../api/indexer'
 import * as fileApi from '../api/file'

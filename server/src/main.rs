@@ -17,6 +17,7 @@ mod static_files;
 mod auth;
 mod logger;
 mod database;
+pub mod tools;
 
 use static_files::read_config_file;
 
@@ -74,8 +75,65 @@ async fn get_app_config() -> Result<HttpResponse> {
     }
 }
 
+/// 初始化配置文件：缺失的自动生成默认值
+fn init_config_files() {
+    use std::fs;
+
+    let config_dir = static_files::app_dir().join("config");
+    let _ = fs::create_dir_all(&config_dir);
+
+    // app.json
+    let app_path = config_dir.join("app.json");
+    if !app_path.exists() {
+        let default = serde_json::json!({
+            "version": "0.3.0-beta",
+            "android_url": "",
+            "ios_url": "",
+            "github_url": "https://github.com/bwan3150/ReSourcer"
+        });
+        let _ = fs::write(&app_path, serde_json::to_string_pretty(&default).unwrap());
+        eprintln!("[init] 已生成 config/app.json");
+    }
+
+    // secret.json — 自动生成随机 API Key
+    let secret_path = config_dir.join("secret.json");
+    if !secret_path.exists() {
+        let key = uuid::Uuid::new_v4().to_string();
+        let default = serde_json::json!({ "apikey": key });
+        let _ = fs::write(&secret_path, serde_json::to_string_pretty(&default).unwrap());
+        eprintln!("[init] 已生成 config/secret.json (API Key: {})", key);
+    }
+
+    // presets.json
+    let presets_path = config_dir.join("presets.json");
+    if !presets_path.exists() {
+        let default = serde_json::json!([
+            {
+                "name": "Art Resources",
+                "categories": ["Character Design", "Backgrounds", "Color Reference", "Composition", "Anatomy", "Lighting"]
+            },
+            {
+                "name": "Photography",
+                "categories": ["Portraits", "Landscapes", "Street", "Architecture", "Nature", "Black & White"]
+            },
+            {
+                "name": "Design Assets",
+                "categories": ["UI/UX", "Icons", "Patterns", "Textures", "Mockups", "Fonts"]
+            }
+        ]);
+        let _ = fs::write(&presets_path, serde_json::to_string_pretty(&default).unwrap());
+        eprintln!("[init] 已生成 config/presets.json");
+    }
+
+    // tools.json — 由 tools 模块的 load_tools_config() 自动处理
+    let _ = tools::load_tools_config();
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    // 初始化配置文件（缺失的自动生成）
+    init_config_files();
+
     // 初始化数据库
     if let Err(e) = database::init_db() {
         eprintln!("数据库初始化失败: {}", e);
@@ -99,6 +157,9 @@ async fn main() -> std::io::Result<()> {
     println!(r#" |  _ <  __/ ___) | (_) | |_| | | | (_|  __/ |  "#);
     println!(r#" |_| \_\___|____/ \___/ \__,_|_|  \___\___|_|  "#);
     println!();
+
+    // 系统预检：检查数据库和必要工具，缺失则自动下载
+    tools::preflight_check();
 
     // 初始化下载器任务管理器
     let download_task_manager = web::Data::new(transfer::download::TaskManager::new());
@@ -173,8 +234,11 @@ async fn main() -> std::io::Result<()> {
             .service(web::scope("/api/folder").configure(folder::routes))
             // 传输操作 API 路由（包含 download 和 upload 子模块）
             .service(web::scope("/api/transfer").configure(transfer::routes))
-            // 配置操作 API 路由
-            .service(web::scope("/api/config").configure(config_api::routes))
+            // 配置操作 API 路由（含 tools 子路由）
+            .service(web::scope("/api/config")
+                .configure(config_api::routes)
+                .configure(tools::routes)
+            )
             // 预览操作 API 路由
             .service(web::scope("/api/preview").configure(preview::routes))
             // 文件索引 API 路由

@@ -11,20 +11,22 @@
     <div class="flex-1 overflow-y-auto p-2">
       <!-- Root (source folder itself) -->
       <button
-        class="btn btn-ghost btn-sm w-full justify-start mb-1"
+        class="btn btn-ghost btn-sm w-full justify-start gap-2 mb-1"
         :class="{ 'btn-active': currentFolder === sourceFolder }"
         @click="$emit('select', sourceFolder)"
       >
-        📁 {{ folderName(sourceFolder) }}
+        <FolderOpen :size="16" />
+        {{ folderName(sourceFolder) }}
       </button>
 
       <!-- Subfolders -->
       <div v-for="folder in folders" :key="folder.path" class="ml-3">
         <button
-          class="btn btn-ghost btn-sm w-full justify-start gap-1 text-left"
+          class="btn btn-ghost btn-sm w-full justify-start gap-2 text-left"
           :class="{ 'btn-active': currentFolder === folder.path }"
           @click="$emit('select', folder.path)"
         >
+          <Folder :size="16" class="shrink-0" />
           <span class="truncate">{{ folder.name }}</span>
           <span class="badge badge-sm badge-ghost ml-auto">{{ folder.fileCount }}</span>
         </button>
@@ -41,6 +43,8 @@
 </template>
 
 <script setup>
+import { Folder, FolderOpen } from 'lucide-vue-next'
+
 defineProps({
   sourceFolder: { type: String, default: '' },
   sources: { type: Array, default: () => [] },

@@ -167,6 +167,10 @@ export default {
     reindex: 'Reindex',
     reindexing: 'Indexing...',
     saveSuccess: 'Settings saved',
+    tools: 'Tools',
+    toolsDesc: 'Manage download sources for external tools. Tools are auto-downloaded on first use.',
+    installed: 'Installed',
+    notInstalled: 'Not Installed',
   },
   upload: {
     tasks: 'Upload Tasks',

@@ -8,22 +8,28 @@
           <span class="text-xs text-base-content/50">{{ currentIndex + 1 }} {{ $t('gallery.of') }} {{ total }}</span>
         </div>
         <div class="flex gap-1">
-          <button class="btn btn-ghost btn-sm" @click="$emit('rename', file)" :title="$t('common.rename')">✏️</button>
-          <button class="btn btn-ghost btn-sm" @click="$emit('move', file)" :title="$t('common.move')">📁</button>
-          <button class="btn btn-ghost btn-sm" @click="close">✕</button>
+          <button class="btn btn-ghost btn-sm btn-square" @click="$emit('rename', file)" :title="$t('common.rename')">
+            <Pencil :size="16" />
+          </button>
+          <button class="btn btn-ghost btn-sm btn-square" @click="$emit('move', file)" :title="$t('common.move')">
+            <FolderInput :size="16" />
+          </button>
+          <button class="btn btn-ghost btn-sm btn-square" @click="close">
+            <X :size="16" />
+          </button>
         </div>
       </div>
 
       <!-- Content -->
       <div class="flex-1 flex items-center justify-center relative bg-black min-h-0 overflow-hidden">
-        <!-- Prev button -->
         <button
           v-if="currentIndex > 0"
           class="absolute left-2 z-10 btn btn-circle btn-ghost text-white bg-black/30 hover:bg-black/50"
           @click.stop="$emit('prev')"
-        >❮</button>
+        >
+          <ChevronLeft :size="20" />
+        </button>
 
-        <!-- Media -->
         <img
           v-if="isImage || isGif"
           :src="contentSrc"
@@ -42,19 +48,22 @@
           {{ file?.fileName }}
         </div>
 
-        <!-- Next button -->
         <button
           v-if="currentIndex < total - 1"
           class="absolute right-2 z-10 btn btn-circle btn-ghost text-white bg-black/30 hover:bg-black/50"
           @click.stop="$emit('next')"
-        >❯</button>
+        >
+          <ChevronRight :size="20" />
+        </button>
       </div>
 
       <!-- Info bar -->
       <div class="px-4 py-2 border-t border-base-300 flex flex-wrap gap-4 text-xs text-base-content/60 shrink-0">
         <span>{{ formatSize(file?.fileSize) }}</span>
         <span>{{ file?.extension?.replace('.', '').toUpperCase() }}</span>
-        <span v-if="file?.sourceUrl" class="truncate max-w-xs" :title="file.sourceUrl">🔗 {{ file.sourceUrl }}</span>
+        <span v-if="file?.sourceUrl" class="flex items-center gap-1 truncate max-w-xs" :title="file.sourceUrl">
+          <Link :size="12" /> {{ file.sourceUrl }}
+        </span>
       </div>
     </div>
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
@@ -63,6 +72,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { Pencil, FolderInput, X, ChevronLeft, ChevronRight, Link } from 'lucide-vue-next'
 import { contentUrl } from '../../api/preview'
 
 const props = defineProps({

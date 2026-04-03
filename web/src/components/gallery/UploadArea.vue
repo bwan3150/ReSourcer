@@ -3,6 +3,7 @@
     <input ref="fileInput" type="file" multiple class="hidden" @change="onFileSelect" />
     <button class="btn btn-primary btn-sm gap-1" @click="fileInput?.click()" :disabled="uploading">
       <span v-if="uploading" class="loading loading-spinner loading-xs"></span>
+      <Upload v-else :size="16" />
       {{ $t('gallery.uploadFiles') }}
     </button>
 
@@ -19,7 +20,8 @@
 
 <script setup>
 import { ref } from 'vue'
-import { uploadFiles, getActiveTasks } from '../../api/upload'
+import { Upload } from 'lucide-vue-next'
+import { uploadFiles } from '../../api/upload'
 
 const props = defineProps({
   targetFolder: { type: String, required: true },

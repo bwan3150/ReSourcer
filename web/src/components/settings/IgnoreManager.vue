@@ -4,7 +4,7 @@
     <div class="flex flex-wrap gap-2 mb-2">
       <span v-for="(item, i) in items" :key="i" class="badge badge-outline gap-1">
         {{ item }}
-        <button class="text-error" @click="remove(i)">✕</button>
+        <button class="text-error" @click="remove(i)"><X :size="12" /></button>
       </span>
     </div>
     <div class="flex gap-2">
@@ -14,13 +14,16 @@
         class="input input-bordered input-sm flex-1"
         @keyup.enter="add"
       />
-      <button class="btn btn-sm btn-ghost" @click="add" :disabled="!newItem.trim()">+</button>
+      <button class="btn btn-sm btn-ghost btn-square" @click="add" :disabled="!newItem.trim()">
+        <Plus :size="16" />
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+import { X, Plus } from 'lucide-vue-next'
 
 const props = defineProps({
   items: { type: Array, default: () => [] },

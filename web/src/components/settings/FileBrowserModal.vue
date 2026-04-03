@@ -14,8 +14,8 @@
 
       <!-- Directory list -->
       <div class="max-h-60 overflow-y-auto border border-base-300 rounded-lg">
-        <div v-if="parentPath" class="p-2 hover:bg-base-200 cursor-pointer border-b border-base-300" @click="navigateTo(parentPath)">
-          📁 ..
+        <div v-if="parentPath" class="p-2 hover:bg-base-200 cursor-pointer border-b border-base-300 flex items-center gap-2" @click="navigateTo(parentPath)">
+          <Folder :size="16" /> ..
         </div>
         <div
           v-for="item in items.filter(i => i.isDirectory)"
@@ -25,7 +25,7 @@
           @click="selectedPath = item.path"
           @dblclick="navigateTo(item.path)"
         >
-          📁 {{ item.name }}
+          <Folder :size="16" /> {{ item.name }}
         </div>
         <div v-if="!items.filter(i => i.isDirectory).length" class="p-4 text-center text-base-content/50 text-sm">
           {{ $t('settings.noFolders') }}
@@ -40,7 +40,9 @@
           class="input input-bordered input-sm flex-1"
           @keyup.enter="createDir"
         />
-        <button class="btn btn-sm btn-ghost" @click="createDir" :disabled="!newDirName.trim()">+</button>
+        <button class="btn btn-sm btn-ghost btn-square" @click="createDir" :disabled="!newDirName.trim()">
+          <Plus :size="16" />
+        </button>
       </div>
 
       <!-- Selected path -->
@@ -57,6 +59,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { Folder, Plus } from 'lucide-vue-next'
 import * as browserApi from '../../api/browser'
 
 const emit = defineEmits(['select'])

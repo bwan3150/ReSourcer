@@ -6,10 +6,8 @@
         <div class="badge badge-outline shrink-0">{{ task.platform }}</div>
 
         <div class="flex-1 min-w-0">
-          <!-- File name or URL -->
           <p class="text-sm font-medium truncate">{{ task.fileName || task.url }}</p>
 
-          <!-- Progress bar for active tasks -->
           <div v-if="isActive" class="mt-2">
             <progress class="progress progress-primary w-full" :value="task.progress" max="100"></progress>
             <div class="flex justify-between text-xs text-base-content/50 mt-1">
@@ -19,17 +17,19 @@
             </div>
           </div>
 
-          <!-- Status badge for history -->
           <div v-else class="mt-1">
             <span class="badge badge-sm" :class="statusClass">{{ statusLabel }}</span>
             <span v-if="task.error" class="text-xs text-error ml-2">{{ task.error }}</span>
           </div>
         </div>
 
-        <!-- Actions -->
         <div class="shrink-0">
-          <button v-if="isActive" class="btn btn-ghost btn-xs text-error" @click="$emit('cancel', task.id)">✕</button>
-          <button v-else class="btn btn-ghost btn-xs" @click="$emit('delete', task.id)">🗑</button>
+          <button v-if="isActive" class="btn btn-ghost btn-xs btn-square text-error" @click="$emit('cancel', task.id)">
+            <X :size="16" />
+          </button>
+          <button v-else class="btn btn-ghost btn-xs btn-square" @click="$emit('delete', task.id)">
+            <Trash2 :size="16" />
+          </button>
         </div>
       </div>
     </div>
@@ -39,6 +39,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { X, Trash2 } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const props = defineProps({

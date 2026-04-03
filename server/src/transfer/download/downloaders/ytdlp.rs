@@ -6,41 +6,31 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use super::super::models::Platform;
 
-// 各平台 yt-dlp GitHub releases 下载地址
-#[cfg(target_os = "linux")]
-const YTDLP_DOWNLOAD_URL: &str =
-    "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux";
-
-#[cfg(target_os = "macos")]
-const YTDLP_DOWNLOAD_URL: &str =
-    "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos";
-
-#[cfg(target_os = "windows")]
-const YTDLP_DOWNLOAD_URL: &str =
-    "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
-
 /// 获取 yt-dlp 安装路径：app_dir()/tools/yt-dlp
 pub fn get_ytdlp_path() -> PathBuf {
-    let binary_name = if cfg!(target_os = "windows") { "yt-dlp.exe" } else { "yt-dlp" };
+    let binary_name = crate::tools::tool_binary_name("yt-dlp");
     crate::static_files::app_dir().join("tools").join(binary_name)
 }
 
-/// 确保 yt-dlp 存在，首次运行时从 GitHub 自动下载
+/// 确保 yt-dlp 存在，首次运行时从配置的 URL 自动下载
 pub async fn ensure_ytdlp() -> Result<PathBuf, String> {
     let path = get_ytdlp_path();
     if path.exists() {
         return Ok(path);
     }
 
+    let download_url = crate::tools::get_tool_download_url("yt-dlp")
+        .ok_or("未找到 yt-dlp 下载源配置")?;
+
     // 创建目录
     let bin_dir = path.parent().unwrap();
     std::fs::create_dir_all(bin_dir)
         .map_err(|e| format!("无法创建目录 {}: {}", bin_dir.display(), e))?;
 
-    eprintln!("[yt-dlp] 首次运行，正在从 GitHub 下载 yt-dlp...");
-    eprintln!("[yt-dlp] URL: {}", YTDLP_DOWNLOAD_URL);
+    eprintln!("[yt-dlp] 首次运行，正在下载 yt-dlp...");
+    eprintln!("[yt-dlp] URL: {}", download_url);
 
-    let response = reqwest::get(YTDLP_DOWNLOAD_URL).await
+    let response = reqwest::get(&download_url).await
         .map_err(|e| format!("下载 yt-dlp 失败: {}", e))?;
 
     if !response.status().is_success() {

@@ -38,18 +38,19 @@ pub async fn scan(
     tokio::spawn(async move {
         let result = tokio::task::spawn_blocking(move || {
             // 先全量扫描（upsert 保留已有 UUID，tag 等关联数据不丢失）
-            let scan_result = scanner::scan_source_folder(&source_folder)?;
+            let scan_result = scanner::scan_source_folder(&source_folder);
 
-            // force 模式：扫描完成后，将磁盘上已不存在的文件标记为缺失
-            // 不使用 DELETE，避免销毁 UUID 导致 tag/source_url 等数据丢失
+            // force 模式：无论扫描成功还是失败（文件夹可能不存在），
+            // 都要将磁盘上已不存在的文件标记为缺失
             if force {
                 match storage::mark_missing_for_source(&source_folder) {
-                    Ok(count) => eprintln!("强制重建：已标记 {} 个缺失文件", count),
+                    Ok(count) if count > 0 => eprintln!("强制重建：已标记 {} 个缺失文件", count),
                     Err(e) => eprintln!("标记缺失文件失败: {}", e),
+                    _ => {}
                 }
             }
 
-            Ok::<scanner::ScanResult, Box<dyn std::error::Error + Send + Sync>>(scan_result)
+            scan_result
         }).await;
 
         let mut status = status_clone.write().unwrap();

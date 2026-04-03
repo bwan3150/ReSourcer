@@ -53,3 +53,11 @@ export function deleteCredentials(platform) {
 export function loadPreset(name) {
   return client.post('/api/config/preset/load', { name })
 }
+
+export function getTools() {
+  return client.get('/api/config/tools')
+}
+
+export function updateToolUrls(name, urls) {
+  return client.post('/api/config/tools/update', { name, urls })
+}

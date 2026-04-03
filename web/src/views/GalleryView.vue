@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="flex h-[calc(100vh-64px)]">
+    <div class="flex h-full">
       <!-- Sidebar -->
       <FolderSidebar
         :source-folder="sourceFolder"
@@ -84,7 +84,7 @@
             :class="{ 'btn-active': moveTarget === f.path }"
             @click="moveTarget = f.path"
           >
-            📁 {{ f.name }}
+            <Folder :size="16" class="shrink-0" /> {{ f.name }}
           </button>
         </div>
         <div class="modal-action">
@@ -105,6 +105,7 @@ import FolderSidebar from '../components/gallery/FolderSidebar.vue'
 import FileGrid from '../components/gallery/FileGrid.vue'
 import FilePreviewModal from '../components/gallery/FilePreviewModal.vue'
 import UploadArea from '../components/gallery/UploadArea.vue'
+import { Folder } from 'lucide-vue-next'
 import * as indexerApi from '../api/indexer'
 import * as configApi from '../api/config'
 import * as fileApi from '../api/file'
