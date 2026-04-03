@@ -121,12 +121,25 @@ fi
 # iOS build via manual dispatch (when server is not tagged, or iOS-only)
 if [ "$BUMP_IOS" = true ]; then
     if [ -n "$NEW_SERVER_VER" ]; then
-        # Tag push already triggers iOS build in workflow
         echo -e "${GREEN}iOS build + Pgyer will be triggered by tag${NC}"
     else
-        # iOS-only: trigger manually
         echo -e "${GREEN}Triggering iOS build + Pgyer...${NC}"
-        gh workflow run release.yml -f build_ios=true -f upload_pgyer=true
+        # Use gh if available, otherwise curl GitHub API
+        if command -v gh &>/dev/null; then
+            gh workflow run release.yml -f build_ios=true -f upload_pgyer=true
+        else
+            REPO=$(git remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/' | sed 's/.*github.com[:/]\(.*\)/\1/')
+            echo -e "${YELLOW}GitHub Personal Access Token (need workflow scope):${NC}"
+            read -s -r GH_TOKEN
+            echo ""
+            curl -sf -X POST \
+                "https://api.github.com/repos/${REPO}/actions/workflows/release.yml/dispatches" \
+                -H "Authorization: token ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github.v3+json" \
+                -d '{"ref":"main","inputs":{"build_ios":"true","upload_pgyer":"true"}}' \
+                && echo -e "${GREEN}Triggered.${NC}" \
+                || echo -e "${RED}Failed. Go to GitHub Actions and trigger manually.${NC}"
+        fi
     fi
 fi
 
