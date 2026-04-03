@@ -226,13 +226,17 @@ onMounted(async () => {
     const { data: dlConfig } = await configApi.getDownloadConfig()
     sourceFolder.value = dlConfig.sourceFolder
     authStatus.value = dlConfig.authStatus || { x: false, pixiv: false }
-    ytdlpVersion.value = dlConfig.ytdlpVersion || ''
-    ytdlpInstalled.value = !!ytdlpVersion.value
-
     const { data: folderList } = await folderApi.listFolders(sourceFolder.value)
     folders.value = folderList
 
     await refreshTasks()
+
+    // Get accurate yt-dlp install status
+    try {
+      const { data: ver } = await downloadApi.getYtdlpVersion()
+      ytdlpVersion.value = ver.version || ''
+      ytdlpInstalled.value = ver.installed || false
+    } catch {}
   } catch {}
 })
 
