@@ -57,3 +57,11 @@ export function getTools() {
 export function updateToolUrls(name, urls) {
   return client.post('/api/config/tools/update', { name, urls })
 }
+
+export function checkUpdate() {
+  return client.get('/api/app/check-update')
+}
+
+export function doUpdate() {
+  return client.post('/api/app/update')
+}

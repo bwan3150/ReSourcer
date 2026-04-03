@@ -186,6 +186,9 @@ export default {
     about: '关于',
     webVersion: 'Web 版本',
     serverVersion: '服务端版本',
+    checkUpdate: '检查更新',
+    upToDate: '已是最新版本',
+    updateStarted: '正在更新，服务器将重启',
   },
   upload: {
     tasks: '上传任务',

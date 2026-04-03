@@ -16,10 +16,9 @@ fn get_home_directory() -> PathBuf {
 /// 浏览目录
 pub async fn browse_directory(req: web::Json<BrowseRequest>) -> Result<HttpResponse> {
     // 确定要浏览的路径
-    let target_path = if let Some(path) = &req.path {
-        PathBuf::from(path)
-    } else {
-        get_home_directory()
+    let target_path = match &req.path {
+        Some(path) if !path.is_empty() => PathBuf::from(path),
+        _ => get_home_directory(),
     };
 
     // 安全检查:确保路径存在且是目录

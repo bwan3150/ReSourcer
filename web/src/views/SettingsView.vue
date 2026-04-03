@@ -125,17 +125,34 @@
           </div>
           <div class="collapse-content">
             <div class="space-y-2 text-sm">
-              <div class="flex justify-between">
+              <div class="flex justify-between items-center">
                 <span class="text-base-content/50">{{ $t('settings.webVersion') }}</span>
                 <span>{{ webVersion }}</span>
               </div>
-              <div class="flex justify-between">
+              <div class="flex justify-between items-center">
                 <span class="text-base-content/50">{{ $t('settings.serverVersion') }}</span>
-                <span>{{ serverVersion || '—' }}</span>
+                <div class="flex items-center gap-2">
+                  <span>{{ serverVersion || '—' }}</span>
+                  <span v-if="latestVersion && latestVersion !== serverVersion" class="badge badge-outline badge-xs">{{ latestVersion }}</span>
+                  <button
+                    v-if="latestVersion && latestVersion !== serverVersion"
+                    class="btn btn-ghost btn-xs"
+                    @click="doServerUpdate"
+                    :disabled="updating"
+                  >
+                    <span v-if="updating" class="loading loading-spinner loading-xs"></span>
+                    <Download v-else :size="14" />
+                  </button>
+                </div>
               </div>
-              <div v-if="githubUrl" class="pt-2">
-                <a :href="githubUrl" target="_blank" rel="noopener" class="btn btn-ghost btn-sm gap-2">
-                  <Github :size="18" />
+              <div class="flex justify-between items-center pt-2">
+                <button class="btn btn-ghost btn-xs gap-1" @click="checkForUpdate" :disabled="checking">
+                  <span v-if="checking" class="loading loading-spinner loading-xs"></span>
+                  <RefreshCw v-else :size="14" />
+                  {{ $t('settings.checkUpdate') }}
+                </button>
+                <a v-if="githubUrl" :href="githubUrl" target="_blank" rel="noopener" class="btn btn-ghost btn-xs gap-1">
+                  <Github :size="16" />
                   GitHub
                 </a>
               </div>
@@ -157,7 +174,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, Info, Github } from 'lucide-vue-next'
+import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, Info, Github, Download } from 'lucide-vue-next'
 import AppLayout from '../components/layout/AppLayout.vue'
 import SourceFolderManager from '../components/settings/SourceFolderManager.vue'
 import CategoryManager from '../components/settings/CategoryManager.vue'
@@ -182,10 +199,13 @@ const tools = ref([])
 const editingTool = ref('')
 const editUrls = ref({ linux_x86_64: '', linux_aarch64: '', macos: '', windows: '' })
 
-// About
+// About & Update
 const webVersion = __APP_VERSION__
 const serverVersion = ref('')
 const githubUrl = ref('')
+const latestVersion = ref('')
+const checking = ref(false)
+const updating = ref(false)
 
 onMounted(async () => {
   await loadSettings()
@@ -289,6 +309,25 @@ async function saveToolUrls(name) {
     await loadTools()
     showToast(t('settings.saveSuccess'))
   } catch {}
+}
+
+async function checkForUpdate() {
+  checking.value = true
+  try {
+    const { data } = await configApi.checkUpdate()
+    latestVersion.value = data.latestVersion || ''
+    if (!data.hasUpdate) showToast(t('settings.upToDate'))
+  } catch {}
+  checking.value = false
+}
+
+async function doServerUpdate() {
+  updating.value = true
+  try {
+    await configApi.doUpdate()
+    showToast(t('settings.updateStarted'))
+  } catch {}
+  updating.value = false
 }
 
 function showToast(msg) {

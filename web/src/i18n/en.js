@@ -186,6 +186,9 @@ export default {
     about: 'About',
     webVersion: 'Web Version',
     serverVersion: 'Server Version',
+    checkUpdate: 'Check Update',
+    upToDate: 'Already up to date',
+    updateStarted: 'Updating, server will restart',
   },
   upload: {
     tasks: 'Upload Tasks',

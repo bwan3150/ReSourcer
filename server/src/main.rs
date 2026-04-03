@@ -18,6 +18,7 @@ mod auth;
 mod logger;
 mod database;
 pub mod tools;
+mod updater;
 
 use static_files::read_config_file;
 
@@ -212,8 +213,12 @@ async fn main() -> std::io::Result<()> {
             .service(web::scope("/api/auth").configure(auth::routes))
             // 全局配置 API（所有模块共用）
             .route("/api/config", web::get().to(get_global_config))
-            // App 配置 API（Android/iOS 下载链接）
-            .route("/api/app", web::get().to(get_app_config))
+            // App 配置 API（版本、下载链接、自更新）
+            .service(web::scope("/api/app")
+                .route("", web::get().to(get_app_config))
+                .route("/check-update", web::get().to(updater::check_update))
+                .route("/update", web::post().to(updater::do_update))
+            )
             // === 新的API路由 - 面向开发者的系统操作 ===
             // 文件操作 API 路由
             .service(web::scope("/api/file").configure(file::routes))
