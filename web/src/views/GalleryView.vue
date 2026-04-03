@@ -115,6 +115,17 @@
             <a :href="previewFile.sourceUrl" target="_blank" rel="noopener" class="truncate ml-4 text-right max-w-[60%] underline">{{ previewFile.sourceUrl }}</a>
           </div>
         </div>
+
+        <!-- Tags -->
+        <div class="mt-4 pt-4 border-t border-base-300">
+          <div class="text-xs text-base-content/50 mb-2">{{ $t('gallery.tags') }}</div>
+          <TagEditor
+            :file-tags="fileTags"
+            :all-tags="allTags"
+            @update="onUpdateTags"
+          />
+        </div>
+
         <div class="flex gap-2 mt-6">
           <button class="btn btn-ghost btn-sm flex-1 gap-1" @click="fileInfoDialog?.close(); startRename(previewFile)">
             <Pencil :size="14" />
@@ -179,11 +190,13 @@ import FolderSidebar from '../components/gallery/FolderSidebar.vue'
 import FileGrid from '../components/gallery/FileGrid.vue'
 import MediaPlayer from '../components/shared/MediaPlayer.vue'
 import UploadArea from '../components/gallery/UploadArea.vue'
+import TagEditor from '../components/gallery/TagEditor.vue'
 import { Folder, ChevronRight, X, Pencil, FolderInput, RefreshCw, Info, Download } from 'lucide-vue-next'
 import { contentUrl } from '../api/preview'
 import * as indexerApi from '../api/indexer'
 import * as configApi from '../api/config'
 import * as fileApi from '../api/file'
+import * as tagApi from '../api/tag'
 
 const { t } = useI18n()
 const PAGE_SIZE = 50
@@ -208,6 +221,8 @@ const previewIndex = ref(0)
 const contentSrc = computed(() => previewFile.value ? contentUrl(previewFile.value) : '')
 
 const fileInfoDialog = ref(null)
+const allTags = ref([])
+const fileTags = ref([])
 const renameDialog = ref(null)
 const renameValue = ref('')
 const renameTarget = ref(null)
@@ -220,7 +235,13 @@ const moveTargetFile = ref(null)
 onMounted(async () => {
   const { data } = await configApi.getSources()
   sourceFolder.value = data.current
-  if (sourceFolder.value) await navigateTo(sourceFolder.value)
+  if (sourceFolder.value) {
+    await navigateTo(sourceFolder.value)
+    try {
+      const { data: tags } = await tagApi.listTags(sourceFolder.value)
+      allTags.value = tags
+    } catch {}
+  }
 })
 
 async function navigateTo(path) {
@@ -308,6 +329,22 @@ async function reindexFolder() {
 function openPreview(file) {
   previewFile.value = file
   previewIndex.value = files.value.findIndex(f => f.uuid === file.uuid)
+  loadFileTags(file.uuid)
+}
+
+async function loadFileTags(uuid) {
+  try {
+    const { data } = await tagApi.getFileTags(uuid)
+    fileTags.value = data.tags || []
+  } catch { fileTags.value = [] }
+}
+
+async function onUpdateTags(tagIds) {
+  if (!previewFile.value) return
+  try {
+    await tagApi.setFileTags(previewFile.value.uuid, tagIds)
+    await loadFileTags(previewFile.value.uuid)
+  } catch {}
 }
 
 function closePreview() { previewFile.value = null }
@@ -316,6 +353,7 @@ function prevFile() {
   if (previewIndex.value > 0) {
     previewIndex.value--
     previewFile.value = files.value[previewIndex.value]
+    loadFileTags(previewFile.value.uuid)
   }
 }
 
@@ -323,6 +361,7 @@ function nextFile() {
   if (previewIndex.value < files.value.length - 1) {
     previewIndex.value++
     previewFile.value = files.value[previewIndex.value]
+    loadFileTags(previewFile.value.uuid)
   }
 }
 
