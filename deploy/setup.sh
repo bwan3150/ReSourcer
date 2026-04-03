@@ -116,6 +116,7 @@ create_dirs() {
     mkdir -p "${INSTALL_DIR}/config"
     mkdir -p "${INSTALL_DIR}/tools"
     mkdir -p "${INSTALL_DIR}/sqlite"
+    mkdir -p "${INSTALL_DIR}/tmp"
 
     info "  ${INSTALL_DIR}/"
     info "  ├── re-sourcer           # server binary"
@@ -142,6 +143,10 @@ After=network.target
 Type=simple
 ExecStart=${INSTALL_DIR}/re-sourcer
 WorkingDirectory=${INSTALL_DIR}
+# TMPDIR: PyInstaller (yt-dlp) extracts .so files to TMPDIR at runtime.
+# Many NAS systems mount /tmp with noexec, which blocks .so loading.
+# Point TMPDIR to a writable+exec directory instead.
+Environment=TMPDIR=${INSTALL_DIR}/tmp
 Restart=always
 RestartSec=3
 
