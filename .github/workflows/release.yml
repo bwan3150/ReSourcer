@@ -196,6 +196,56 @@ jobs:
       needs.build-ios.result == 'success' &&
       (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.upload_pgyer == 'true'))
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate update description
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          # Collect recent commits (since last tag or last 20)
+          PREV_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+          if [ -n "$PREV_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD 2>/dev/null | head -20)
+          fi
+          if [ -z "$COMMITS" ]; then
+            COMMITS=$(git log --pretty=format:"- %s" -20)
+          fi
+
+          # Try AI summary, fallback to raw commits
+          DESCRIPTION=""
+          if [ -n "$OPENAI_API_KEY" ]; then
+            PROMPT="Summarize these git commits into a brief Chinese changelog (3-5 bullet points, focus on user-facing changes):
+
+            ${COMMITS}
+
+            Output plain text, no markdown, no headers. Each line starts with •"
+
+            RESPONSE=$(curl -sf https://api.openai.com/v1/chat/completions \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $OPENAI_API_KEY" \
+              -d "$(jq -n --arg prompt "$PROMPT" '{
+                "model": "gpt-4.1-mini",
+                "messages": [{"role": "user", "content": $prompt}],
+                "max_tokens": 512,
+                "temperature": 0.3
+              }')" 2>/dev/null || true)
+
+            if [ -n "$RESPONSE" ]; then
+              DESCRIPTION=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty' 2>/dev/null || true)
+            fi
+          fi
+
+          if [ -z "$DESCRIPTION" ]; then
+            DESCRIPTION="$COMMITS"
+          fi
+
+          echo "$DESCRIPTION" > /tmp/pgyer_desc.txt
+          echo "--- Pgyer description ---"
+          cat /tmp/pgyer_desc.txt
+
       - name: Download IPA
         uses: actions/download-artifact@v4
         with:
@@ -203,12 +253,12 @@ jobs:
           path: artifacts
 
       - name: Upload to Pgyer
-        uses: PGYER/pgyer-upload-app-action@v1.3
-        with:
-          _api_key: ${{ secrets.PGYER_API_KEY }}
-          appFilePath: artifacts/ReSourcer.ipa
-          buildUpdateDescription: |
-            ReSourcer iOS - ${{ github.ref_name || 'manual' }}
+        run: |
+          DESCRIPTION=$(cat /tmp/pgyer_desc.txt)
+          curl -F "_api_key=${{ secrets.PGYER_API_KEY }}" \
+               -F "file=@artifacts/ReSourcer.ipa" \
+               -F "buildUpdateDescription=${DESCRIPTION}" \
+               https://www.pgyer.com/apiv2/app/upload
 
   # Create GitHub Release
   create-release:
