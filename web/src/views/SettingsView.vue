@@ -21,6 +21,7 @@
               @switch="onSwitchSource"
               @remove="onRemoveSource"
               @browse="fileBrowser?.show()"
+              @migrated="loadSettings"
             />
           </div>
         </div>

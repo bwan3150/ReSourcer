@@ -5,6 +5,7 @@ mod state;
 mod sources;
 mod download_config;
 mod credentials;
+mod migrate;
 
 use actix_web::web;
 
@@ -22,6 +23,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(web::resource("/sources/add").route(web::post().to(sources::add_source_folder)))
         .service(web::resource("/sources/remove").route(web::post().to(sources::remove_source_folder)))
         .service(web::resource("/sources/switch").route(web::post().to(sources::switch_source_folder)))
+        .service(web::resource("/sources/migrate").route(web::post().to(migrate::migrate_source)))
         // 认证管理
         .service(
             web::resource("/credentials/{platform}")

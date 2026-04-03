@@ -58,6 +58,10 @@ export function updateToolUrls(name, urls) {
   return client.post('/api/config/tools/update', { name, urls })
 }
 
+export function migrateSource(oldPath, newPath) {
+  return client.post('/api/config/sources/migrate', { oldPath, newPath })
+}
+
 export function checkUpdate() {
   return client.get('/api/app/check-update')
 }
