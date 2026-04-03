@@ -11,16 +11,12 @@ pub async fn get_state() -> Result<HttpResponse> {
         actix_web::error::ErrorInternalServerError(format!("无法加载配置: {}", e))
     })?;
 
-    // 从文件加载预设
-    let presets = crate::config_api::storage::load_presets().unwrap_or_default();
-
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "source_folder": state.source_folder,
         "hidden_folders": state.hidden_folders,
         "backup_source_folders": state.backup_source_folders,
         "ignored_folders": state.ignored_folders,
-        "ignored_files": state.ignored_files,
-        "presets": presets
+        "ignored_files": state.ignored_files
     })))
 }
 

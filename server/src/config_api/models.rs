@@ -33,13 +33,6 @@ fn default_use_cookies() -> bool {
     true
 }
 
-/// 预设信息
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Preset {
-    pub name: String,
-    pub categories: Vec<String>,
-}
-
 /// 保存设置请求
 #[derive(Debug, Deserialize)]
 pub struct SaveSettingsRequest {
@@ -98,20 +91,6 @@ pub struct RemoveSourceFolderRequest {
 #[derive(Debug, Deserialize)]
 pub struct SwitchSourceFolderRequest {
     pub folder_path: String,
-}
-
-/// 预设请求
-#[derive(Debug, Deserialize)]
-pub struct PresetRequest {
-    pub name: String,
-}
-
-/// 预设加载响应
-#[derive(Debug, Serialize)]
-pub struct PresetLoadResponse {
-    pub status: String,
-    pub categories: Vec<String>,
-    pub preset_name: String,
 }
 
 /// 支持的文件扩展名列表

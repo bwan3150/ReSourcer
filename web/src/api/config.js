@@ -50,10 +50,6 @@ export function deleteCredentials(platform) {
   return client.delete(`/api/config/credentials/${platform}`)
 }
 
-export function loadPreset(name) {
-  return client.post('/api/config/preset/load', { name })
-}
-
 export function getTools() {
   return client.get('/api/config/tools')
 }

@@ -99,8 +99,6 @@ export default {
     shortcutHint: 'Press 1-9, A-Z to quickly classify',
     undo: 'Undo',
     undoHint: 'Undo last action (Ctrl+Z)',
-    preset: 'Presets',
-    loadPreset: 'Load Preset',
     skipFile: 'Skip',
     newCategory: 'New Category',
     categoryName: 'Category name',
@@ -185,6 +183,9 @@ export default {
     toolsDesc: 'Manage external tool download sources',
     installed: 'Installed',
     notInstalled: 'Not Installed',
+    about: 'About',
+    webVersion: 'Web Version',
+    serverVersion: 'Server Version',
   },
   upload: {
     tasks: 'Upload Tasks',

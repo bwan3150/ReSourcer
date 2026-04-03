@@ -104,27 +104,6 @@ fn init_config_files() {
         eprintln!("[init] 已生成 config/secret.json (API Key: {})", key);
     }
 
-    // presets.json
-    let presets_path = config_dir.join("presets.json");
-    if !presets_path.exists() {
-        let default = serde_json::json!([
-            {
-                "name": "Art Resources",
-                "categories": ["Character Design", "Backgrounds", "Color Reference", "Composition", "Anatomy", "Lighting"]
-            },
-            {
-                "name": "Photography",
-                "categories": ["Portraits", "Landscapes", "Street", "Architecture", "Nature", "Black & White"]
-            },
-            {
-                "name": "Design Assets",
-                "categories": ["UI/UX", "Icons", "Patterns", "Textures", "Mockups", "Fonts"]
-            }
-        ]);
-        let _ = fs::write(&presets_path, serde_json::to_string_pretty(&default).unwrap());
-        eprintln!("[init] 已生成 config/presets.json");
-    }
-
     // tools.json — 由 tools 模块的 load_tools_config() 自动处理
     let _ = tools::load_tools_config();
 }

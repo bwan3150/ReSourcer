@@ -5,7 +5,6 @@ mod state;
 mod sources;
 mod download_config;
 mod credentials;
-mod presets;
 
 use actix_web::web;
 
@@ -29,8 +28,5 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
                 .route(web::post().to(credentials::upload_credentials))
                 .route(web::delete().to(credentials::delete_credentials))
         )
-        // 预设管理
-        .service(web::resource("/preset/load").route(web::post().to(presets::load_preset)))
-        .service(web::resource("/preset/save").route(web::post().to(presets::save_preset)))
-        .service(web::resource("/preset/delete").route(web::delete().to(presets::delete_preset)));
+;
 }

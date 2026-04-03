@@ -99,8 +99,6 @@ export default {
     shortcutHint: '按快捷键 1-9, A-Z 快速分类',
     undo: '撤销',
     undoHint: '撤销上一步 (Ctrl+Z)',
-    preset: '预设',
-    loadPreset: '加载预设',
     skipFile: '跳过',
     newCategory: '新建分类',
     categoryName: '分类名称',
@@ -185,6 +183,9 @@ export default {
     toolsDesc: '管理外部工具的下载源',
     installed: '已安装',
     notInstalled: '未安装',
+    about: '关于',
+    webVersion: 'Web 版本',
+    serverVersion: '服务端版本',
   },
   upload: {
     tasks: '上传任务',

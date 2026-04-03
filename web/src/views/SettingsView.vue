@@ -115,6 +115,33 @@
             </button>
           </div>
         </div>
+
+        <!-- About -->
+        <div class="collapse collapse-arrow join-item border border-base-300">
+          <input type="radio" name="settings-accordion" />
+          <div class="collapse-title font-medium text-sm flex items-center gap-2">
+            <Info :size="18" class="text-base-content/50" />
+            {{ $t('settings.about') }}
+          </div>
+          <div class="collapse-content">
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-base-content/50">{{ $t('settings.webVersion') }}</span>
+                <span>{{ webVersion }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-base-content/50">{{ $t('settings.serverVersion') }}</span>
+                <span>{{ serverVersion || '—' }}</span>
+              </div>
+              <div v-if="githubUrl" class="pt-2">
+                <a :href="githubUrl" target="_blank" rel="noopener" class="btn btn-ghost btn-sm gap-2">
+                  <Github :size="18" />
+                  GitHub
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -130,7 +157,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil } from 'lucide-vue-next'
+import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, Info, Github } from 'lucide-vue-next'
 import AppLayout from '../components/layout/AppLayout.vue'
 import SourceFolderManager from '../components/settings/SourceFolderManager.vue'
 import CategoryManager from '../components/settings/CategoryManager.vue'
@@ -155,9 +182,19 @@ const tools = ref([])
 const editingTool = ref('')
 const editUrls = ref({ linux_x86_64: '', linux_aarch64: '', macos: '', windows: '' })
 
+// About
+const webVersion = __APP_VERSION__
+const serverVersion = ref('')
+const githubUrl = ref('')
+
 onMounted(async () => {
   await loadSettings()
   await loadTools()
+  try {
+    const { data } = await configApi.getAppInfo()
+    serverVersion.value = data.version || ''
+    githubUrl.value = data.githubUrl || ''
+  } catch {}
 })
 
 async function loadSettings() {

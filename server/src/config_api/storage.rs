@@ -1,5 +1,5 @@
 // 配置存储功能 - 使用 SQLite 数据库
-use super::models::{AppState, Preset};
+use super::models::AppState;
 use crate::database;
 use std::path::PathBuf;
 use std::io;
@@ -272,19 +272,4 @@ pub fn select_source_folder(folder_path: &str) -> io::Result<()> {
     }
 
     Ok(())
-}
-
-/// 加载预设列表 - 从 config/presets.json 读取
-pub fn load_presets() -> io::Result<Vec<Preset>> {
-    use crate::static_files::read_config_file;
-
-    // 从 config 目录读取预设文件
-    if let Some(data) = read_config_file("presets.json") {
-        let presets: Vec<Preset> = serde_json::from_slice(&data)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-        return Ok(presets);
-    }
-
-    // 如果找不到文件，返回空列表
-    Ok(Vec::new())
 }
