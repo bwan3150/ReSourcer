@@ -89,7 +89,7 @@ fn init_config_files() {
         let default = serde_json::json!({
             "version": "0.3.0-beta",
             "android_url": "",
-            "ios_url": "",
+            "ios_url": "https://www.pgyer.com/resourcer-ios",
             "github_url": "https://github.com/bwan3150/ReSourcer"
         });
         let _ = fs::write(&app_path, serde_json::to_string_pretty(&default).unwrap());
