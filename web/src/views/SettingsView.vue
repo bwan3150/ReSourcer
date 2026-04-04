@@ -117,6 +117,43 @@
           </div>
         </div>
 
+        <!-- Cache -->
+        <div class="collapse collapse-arrow join-item border border-base-300">
+          <input type="radio" name="settings-accordion" />
+          <div class="collapse-title font-medium text-sm flex items-center gap-2">
+            <HardDrive :size="18" class="text-base-content/50" />
+            {{ $t('settings.cache') }}
+            <span v-if="cacheSize" class="text-xs text-base-content/40 ml-auto mr-4">{{ cacheSize }}</span>
+          </div>
+          <div class="collapse-content">
+            <div class="space-y-3 text-sm">
+              <p class="text-xs text-base-content/40">{{ $t('settings.cacheDesc') }}</p>
+
+              <!-- Per-server breakdown (if available) -->
+              <div v-if="cacheDetails.length" class="space-y-1">
+                <div v-for="item in cacheDetails" :key="item.name" class="flex justify-between items-center py-1">
+                  <span class="text-xs truncate flex-1">{{ item.name }}</span>
+                  <span class="text-xs text-base-content/40 mr-2">{{ item.size }}</span>
+                  <button class="btn btn-ghost btn-xs text-error" @click="clearCacheByName(item.name)">
+                    <Trash2 :size="12" />
+                  </button>
+                </div>
+              </div>
+
+              <div class="flex gap-2">
+                <button class="btn btn-ghost btn-xs gap-1" @click="refreshCacheInfo">
+                  <RefreshCw :size="14" />
+                  {{ $t('common.refresh') }}
+                </button>
+                <button class="btn btn-ghost btn-xs gap-1 text-error" @click="clearAllCache">
+                  <Trash2 :size="14" />
+                  {{ $t('settings.clearCache') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- About -->
         <div class="collapse collapse-arrow join-item border border-base-300">
           <input type="radio" name="settings-accordion" />
@@ -178,7 +215,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, Info, Github, Download, Smartphone } from 'lucide-vue-next'
+import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, Info, Github, Download, Smartphone, HardDrive, Trash2 } from 'lucide-vue-next'
 import AppLayout from '../components/layout/AppLayout.vue'
 import SourceFolderManager from '../components/settings/SourceFolderManager.vue'
 import CategoryManager from '../components/settings/CategoryManager.vue'
@@ -212,9 +249,14 @@ const latestVersion = ref('')
 const checking = ref(false)
 const updating = ref(false)
 
+// Cache
+const cacheSize = ref('')
+const cacheDetails = ref([])
+
 onMounted(async () => {
   await loadSettings()
   await loadTools()
+  refreshCacheInfo()
   try {
     const { data } = await configApi.getAppInfo()
     serverVersion.value = data.version || ''
@@ -334,6 +376,69 @@ async function doServerUpdate() {
     showToast(t('settings.updateStarted'))
   } catch {}
   updating.value = false
+}
+
+async function refreshCacheInfo() {
+  // Storage estimate
+  if (navigator.storage?.estimate) {
+    const est = await navigator.storage.estimate()
+    cacheSize.value = formatBytes(est.usage || 0)
+  }
+
+  // Cache API breakdown (per cache name = per server or purpose)
+  if (window.caches) {
+    try {
+      const names = await caches.keys()
+      const details = []
+      for (const name of names) {
+        const cache = await caches.open(name)
+        const keys = await cache.keys()
+        // Estimate: count * avg thumbnail size (~30KB)
+        details.push({
+          name,
+          size: `~${keys.length} items`,
+          count: keys.length,
+        })
+      }
+      cacheDetails.value = details
+    } catch {}
+  }
+}
+
+async function clearCacheByName(name) {
+  try {
+    await caches.delete(name)
+    showToast(t('settings.cacheCleared'))
+    refreshCacheInfo()
+  } catch {}
+}
+
+async function clearAllCache() {
+  try {
+    // Clear Cache API
+    if (window.caches) {
+      const names = await caches.keys()
+      await Promise.all(names.map(n => caches.delete(n)))
+    }
+    // Clear localStorage (except auth/theme/sidebar)
+    const keep = ['api_key', 'server_url', 'theme', 'sidebar', 'lang', 'player_volume', 'player_muted']
+    const toRemove = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && !keep.includes(key)) toRemove.push(key)
+    }
+    toRemove.forEach(k => localStorage.removeItem(k))
+
+    showToast(t('settings.cacheCleared'))
+    refreshCacheInfo()
+  } catch {}
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
 }
 
 function showToast(msg) {
