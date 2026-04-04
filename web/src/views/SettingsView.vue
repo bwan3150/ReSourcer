@@ -152,10 +152,16 @@
                   <RefreshCw v-else :size="14" />
                   {{ $t('settings.checkUpdate') }}
                 </button>
-                <a v-if="githubUrl" :href="githubUrl" target="_blank" rel="noopener" class="btn btn-ghost btn-xs gap-1">
-                  <Github :size="16" />
-                  GitHub
-                </a>
+                <div class="flex gap-1">
+                  <a v-if="iosUrl" :href="iosUrl" target="_blank" rel="noopener" class="btn btn-ghost btn-xs gap-1">
+                    <Smartphone :size="16" />
+                    iOS
+                  </a>
+                  <a v-if="githubUrl" :href="githubUrl" target="_blank" rel="noopener" class="btn btn-ghost btn-xs gap-1">
+                    <Github :size="16" />
+                    GitHub
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -175,7 +181,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, Info, Github, Download } from 'lucide-vue-next'
+import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, Info, Github, Download, Smartphone } from 'lucide-vue-next'
 import AppLayout from '../components/layout/AppLayout.vue'
 import SourceFolderManager from '../components/settings/SourceFolderManager.vue'
 import CategoryManager from '../components/settings/CategoryManager.vue'
@@ -204,6 +210,7 @@ const editUrls = ref({ linux_x86_64: '', linux_aarch64: '', macos: '', windows: 
 const webVersion = __APP_VERSION__
 const serverVersion = ref('')
 const githubUrl = ref('')
+const iosUrl = ref('')
 const latestVersion = ref('')
 const checking = ref(false)
 const updating = ref(false)
@@ -215,6 +222,7 @@ onMounted(async () => {
     const { data } = await configApi.getAppInfo()
     serverVersion.value = data.version || ''
     githubUrl.value = data.githubUrl || ''
+    iosUrl.value = data.iosUrl || ''
   } catch {}
 })
 
