@@ -76,6 +76,7 @@ export default {
     sourceUrl: 'Source',
     renameTo: 'Rename to',
     moveTo: 'Move to',
+    moveHere: 'Move here',
     selectFolder: 'Select folder',
     uploadFiles: 'Upload Files',
     dropHere: 'Drop files here to upload',

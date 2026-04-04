@@ -159,21 +159,55 @@
       <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
-    <!-- Move Dialog -->
+    <!-- Move Dialog (folder browser) -->
     <dialog ref="moveDialog" class="modal">
       <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">{{ $t('gallery.moveTo') }}</h3>
-        <div class="space-y-1 max-h-60 overflow-y-auto">
+        <h3 class="font-bold text-lg mb-3">{{ $t('gallery.moveTo') }}</h3>
+
+        <!-- Breadcrumb -->
+        <div class="flex items-center gap-0.5 text-xs mb-3 overflow-hidden">
+          <template v-for="(crumb, i) in moveBreadcrumbs" :key="crumb.path">
+            <ChevronRight v-if="i > 0" :size="12" class="shrink-0 text-base-content/30" />
+            <button class="btn btn-ghost btn-xs shrink-0" @click="browseMoveTo(crumb.path)">
+              {{ crumb.name }}
+            </button>
+          </template>
+        </div>
+
+        <!-- Select current browsed folder -->
+        <div class="mb-2">
+          <button
+            class="btn btn-ghost btn-sm w-full justify-start gap-2 border border-base-300"
+            :class="{ 'bg-base-300': moveTarget === moveBrowsePath }"
+            @click="moveTarget = moveBrowsePath"
+          >
+            <Folder :size="16" class="shrink-0" />
+            {{ $t('gallery.moveHere') }}
+          </button>
+        </div>
+
+        <!-- Subfolder list -->
+        <div class="space-y-0.5 max-h-52 overflow-y-auto">
           <button
             v-for="f in moveFolders"
             :key="f.path"
             class="btn btn-ghost btn-sm w-full justify-start gap-2"
             :class="{ 'bg-base-300': moveTarget === f.path }"
             @click="moveTarget = f.path"
+            @dblclick="browseMoveTo(f.path)"
           >
-            <Folder :size="16" class="shrink-0" /> {{ f.name }}
+            <Folder :size="16" class="shrink-0" />
+            <span class="truncate flex-1 text-left">{{ f.name }}</span>
+            <ChevronRight :size="14" class="shrink-0 text-base-content/30" />
           </button>
+          <div v-if="!moveFolders.length && !moveLoading" class="text-xs text-base-content/40 text-center py-4">
+            {{ $t('gallery.noFolders') }}
+          </div>
+          <div v-if="moveLoading" class="flex justify-center py-4">
+            <span class="loading loading-spinner loading-sm"></span>
+          </div>
         </div>
+
         <div class="modal-action">
           <button class="btn" @click="moveDialog?.close()">{{ $t('common.cancel') }}</button>
           <button class="btn btn-neutral" @click="doMove" :disabled="!moveTarget">{{ $t('common.confirm') }}</button>
@@ -234,6 +268,9 @@ const renameTarget = ref(null)
 const moveDialog = ref(null)
 const moveTarget = ref('')
 const moveFolders = ref([])
+const moveBreadcrumbs = ref([])
+const moveBrowsePath = ref('')
+const moveLoading = ref(false)
 const moveTargetFile = ref(null)
 
 onMounted(async () => {
@@ -414,8 +451,23 @@ async function doRename() {
 async function startMove(file) {
   moveTargetFile.value = file
   moveTarget.value = ''
-  moveFolders.value = subfolders.value.filter(f => f.path !== currentFolder.value)
+  await browseMoveTo(sourceFolder.value)
   moveDialog.value?.showModal()
+}
+
+async function browseMoveTo(path) {
+  moveBrowsePath.value = path
+  moveTarget.value = ''
+  moveLoading.value = true
+  try {
+    const [foldersRes, breadcrumbRes] = await Promise.allSettled([
+      indexerApi.getFolders(path, sourceFolder.value),
+      indexerApi.getBreadcrumb(path),
+    ])
+    moveFolders.value = foldersRes.status === 'fulfilled' ? foldersRes.value.data : []
+    moveBreadcrumbs.value = breadcrumbRes.status === 'fulfilled' ? breadcrumbRes.value.data : []
+  } catch {}
+  moveLoading.value = false
 }
 
 async function doMove() {

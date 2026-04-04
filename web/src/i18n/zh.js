@@ -76,6 +76,7 @@ export default {
     sourceUrl: '来源',
     renameTo: '重命名为',
     moveTo: '移动到',
+    moveHere: '移动到此处',
     selectFolder: '选择文件夹',
     uploadFiles: '上传文件',
     dropHere: '拖拽文件到此处上传',
