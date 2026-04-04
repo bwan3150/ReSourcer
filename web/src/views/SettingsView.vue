@@ -132,8 +132,8 @@
               <!-- Per-server breakdown (if available) -->
               <div v-if="cacheDetails.length" class="space-y-1">
                 <div v-for="item in cacheDetails" :key="item.name" class="flex justify-between items-center py-1">
-                  <span class="text-xs truncate flex-1">{{ item.name }}</span>
-                  <span class="text-xs text-base-content/40 mr-2">{{ item.size }}</span>
+                  <span class="text-xs truncate flex-1">{{ item.server }}</span>
+                  <span class="text-xs text-base-content/40 mr-2">{{ item.count }} items &middot; {{ item.sizeLabel }}</span>
                   <button class="btn btn-ghost btn-xs text-error" @click="clearCacheByName(item.name)">
                     <Trash2 :size="12" />
                   </button>
@@ -221,6 +221,7 @@ import SourceFolderManager from '../components/settings/SourceFolderManager.vue'
 import CategoryManager from '../components/settings/CategoryManager.vue'
 import IgnoreManager from '../components/settings/IgnoreManager.vue'
 import FileBrowserModal from '../components/settings/FileBrowserModal.vue'
+import { getCacheStats, getTotalCacheSize, clearServerCache, clearAllThumbnailCache } from '../composables/useThumbnailCache'
 import * as configApi from '../api/config'
 import * as folderApi from '../api/folder'
 import * as indexerApi from '../api/indexer'
@@ -379,62 +380,26 @@ async function doServerUpdate() {
 }
 
 async function refreshCacheInfo() {
-  // Storage estimate
-  if (navigator.storage?.estimate) {
-    const est = await navigator.storage.estimate()
-    cacheSize.value = formatBytes(est.usage || 0)
-  }
-
-  // Cache API breakdown (per cache name = per server or purpose)
-  if (window.caches) {
-    try {
-      const names = await caches.keys()
-      const details = []
-      for (const name of names) {
-        const cache = await caches.open(name)
-        const keys = await cache.keys()
-        // Estimate: count * avg thumbnail size (~30KB)
-        details.push({
-          name,
-          size: `~${keys.length} items`,
-          count: keys.length,
-        })
-      }
-      cacheDetails.value = details
-    } catch {}
-  }
+  const stats = await getCacheStats()
+  cacheDetails.value = stats
+  const total = stats.reduce((sum, s) => sum + s.size, 0)
+  cacheSize.value = formatBytes(total)
 }
 
 async function clearCacheByName(name) {
-  try {
-    await caches.delete(name)
-    showToast(t('settings.cacheCleared'))
-    refreshCacheInfo()
-  } catch {}
+  await clearServerCache(name)
+  showToast(t('settings.cacheCleared'))
+  await refreshCacheInfo()
 }
 
 async function clearAllCache() {
-  try {
-    // Clear Cache API
-    if (window.caches) {
-      const names = await caches.keys()
-      await Promise.all(names.map(n => caches.delete(n)))
-    }
-    // Clear localStorage (except auth/theme/sidebar)
-    const keep = ['api_key', 'server_url', 'theme', 'sidebar', 'lang', 'player_volume', 'player_muted']
-    const toRemove = []
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (key && !keep.includes(key)) toRemove.push(key)
-    }
-    toRemove.forEach(k => localStorage.removeItem(k))
-
-    showToast(t('settings.cacheCleared'))
-    refreshCacheInfo()
-  } catch {}
+  await clearAllThumbnailCache()
+  showToast(t('settings.cacheCleared'))
+  await refreshCacheInfo()
 }
 
 function formatBytes(bytes) {
+  if (!bytes) return '0 B'
   if (bytes < 1024) return bytes + ' B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
   if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB'

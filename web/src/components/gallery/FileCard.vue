@@ -5,26 +5,21 @@
   >
     <figure class="relative aspect-square bg-base-200 overflow-hidden">
       <img
-        v-if="isImage || isGif"
-        :src="thumb"
+        v-if="(isImage || isGif || isVideo) && cachedThumb"
+        :src="cachedThumb"
         :alt="file.fileName"
         class="w-full h-full object-cover"
         loading="lazy"
       />
-      <div v-else-if="isVideo" class="w-full h-full flex items-center justify-center relative">
-        <img
-          :src="thumb"
-          :alt="file.fileName"
-          class="w-full h-full object-cover"
-          loading="lazy"
-        />
-        <div class="absolute inset-0 flex items-center justify-center">
-          <div class="bg-black/50 rounded-full p-3">
-            <Play :size="24" class="text-white fill-white" />
-          </div>
+      <div v-if="isVideo && cachedThumb" class="absolute inset-0 flex items-center justify-center">
+        <div class="bg-black/50 rounded-full p-3">
+          <Play :size="24" class="text-white fill-white" />
         </div>
       </div>
-      <div v-else class="w-full h-full flex items-center justify-center">
+      <div v-if="!cachedThumb && (isImage || isGif || isVideo)" class="w-full h-full flex items-center justify-center">
+        <span class="loading loading-spinner loading-sm text-base-content/20"></span>
+      </div>
+      <div v-if="!isImage && !isGif && !isVideo" class="w-full h-full flex items-center justify-center">
         <FileText :size="32" class="text-base-content/30" />
       </div>
 
@@ -40,9 +35,10 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { Play, FileText } from 'lucide-vue-next'
 import { thumbnailUrl } from '../../api/preview'
+import { getCachedThumbnail } from '../../composables/useThumbnailCache'
 
 const props = defineProps({
   file: { type: Object, required: true },
@@ -53,7 +49,31 @@ const isImage = computed(() => props.file.fileType === 'image')
 const isGif = computed(() => props.file.fileType === 'gif')
 const isVideo = computed(() => props.file.fileType === 'video')
 
-const thumb = computed(() => thumbnailUrl(props.file))
+const cachedThumb = ref(null)
+let currentObjectUrl = null
+
+async function loadThumb() {
+  // Revoke previous object URL to free memory
+  if (currentObjectUrl) {
+    URL.revokeObjectURL(currentObjectUrl)
+    currentObjectUrl = null
+  }
+  cachedThumb.value = null
+
+  const url = thumbnailUrl(props.file)
+  if (!url) return
+
+  const result = await getCachedThumbnail(url)
+  cachedThumb.value = result
+  // Track if it's an object URL (blob:) so we can revoke it
+  if (result.startsWith('blob:')) currentObjectUrl = result
+}
+
+watch(() => props.file.uuid, loadThumb, { immediate: true })
+
+onUnmounted(() => {
+  if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl)
+})
 
 const typeBadgeClass = computed(() => {
   switch (props.file.fileType) {
