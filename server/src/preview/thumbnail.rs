@@ -83,5 +83,8 @@ pub async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, S
 
     Ok(HttpResponse::Ok()
         .content_type("image/jpeg")
+        // UUID-based thumbnails are immutable — cache aggressively
+        // Browser won't re-request the same UUID+size combination
+        .insert_header(("Cache-Control", "public, max-age=31536000, immutable"))
         .body(buffer.into_inner()))
 }
