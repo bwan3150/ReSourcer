@@ -146,22 +146,22 @@
                   </button>
                 </div>
               </div>
-              <div class="flex justify-between items-center pt-2">
+              <div class="pt-3 mt-3 border-t border-base-300">
                 <button class="btn btn-ghost btn-xs gap-1" @click="checkForUpdate" :disabled="checking">
                   <span v-if="checking" class="loading loading-spinner loading-xs"></span>
                   <RefreshCw v-else :size="14" />
                   {{ $t('settings.checkUpdate') }}
                 </button>
-                <div class="flex gap-1">
-                  <a v-if="iosUrl" :href="iosUrl" target="_blank" rel="noopener" class="btn btn-ghost btn-xs gap-1">
-                    <Smartphone :size="16" />
-                    iOS
-                  </a>
-                  <a v-if="githubUrl" :href="githubUrl" target="_blank" rel="noopener" class="btn btn-ghost btn-xs gap-1">
-                    <Github :size="16" />
-                    GitHub
-                  </a>
-                </div>
+              </div>
+              <div class="flex gap-2 pt-3 mt-3 border-t border-base-300">
+                <a v-if="iosUrl" :href="iosUrl" target="_blank" rel="noopener" class="btn btn-ghost btn-xs gap-1">
+                  <Smartphone :size="16" />
+                  iOS App
+                </a>
+                <a v-if="githubUrl" :href="githubUrl" target="_blank" rel="noopener" class="btn btn-ghost btn-xs gap-1">
+                  <Github :size="16" />
+                  GitHub
+                </a>
               </div>
             </div>
           </div>
