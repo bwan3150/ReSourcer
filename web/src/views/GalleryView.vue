@@ -56,12 +56,11 @@
     <template v-else>
       <div class="flex h-full">
         <FolderSidebar
-          :folders="subfolders"
+          :root-folders="rootFolders"
+          :source-folder="sourceFolder"
+          :active-path="currentFolder"
           :loading="loadingFolders"
-          :show-nav-buttons="currentFolder !== sourceFolder"
-          @select="navigateTo"
-          @go-up="goUp"
-          @go-root="navigateTo(sourceFolder)"
+          @navigate="navigateTo"
         />
         <div
           ref="gridScrollContainer"
@@ -240,7 +239,7 @@ const PAGE_SIZE = 50
 const sourceFolder = ref('')
 const currentFolder = ref('')
 const breadcrumbs = ref([])
-const subfolders = ref([])
+const rootFolders = ref([])
 const files = ref([])
 const total = ref(0)
 const offset = ref(0)
@@ -277,6 +276,14 @@ onMounted(async () => {
   const { data } = await configApi.getSources()
   sourceFolder.value = data.current
   if (sourceFolder.value) {
+    // Load root folders for sidebar tree
+    loadingFolders.value = true
+    try {
+      const { data } = await indexerApi.getFolders(sourceFolder.value, sourceFolder.value)
+      rootFolders.value = data
+    } catch {}
+    loadingFolders.value = false
+
     await navigateTo(sourceFolder.value)
     try {
       const { data: tags } = await tagApi.listTags(sourceFolder.value)
@@ -288,18 +295,13 @@ onMounted(async () => {
 async function navigateTo(path) {
   closePreview()
   currentFolder.value = path
-  loadingFolders.value = true
   switchingFolder.value = true
   offset.value = 0
 
-  const [foldersRes, filesRes, breadcrumbRes] = await Promise.allSettled([
-    indexerApi.getFolders(path, sourceFolder.value),
+  const [filesRes, breadcrumbRes] = await Promise.allSettled([
     indexerApi.getFiles(path, { offset: 0, limit: PAGE_SIZE }),
     indexerApi.getBreadcrumb(path),
   ])
-
-  subfolders.value = foldersRes.status === 'fulfilled' ? foldersRes.value.data : []
-  loadingFolders.value = false
 
   if (filesRes.status === 'fulfilled') {
     const d = filesRes.value.data
@@ -310,10 +312,6 @@ async function navigateTo(path) {
   }
   switchingFolder.value = false
   breadcrumbs.value = breadcrumbRes.status === 'fulfilled' ? breadcrumbRes.value.data : []
-}
-
-function goUp() {
-  if (breadcrumbs.value.length >= 2) navigateTo(breadcrumbs.value[breadcrumbs.value.length - 2].path)
 }
 
 async function loadMore() {
