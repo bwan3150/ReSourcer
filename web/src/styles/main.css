@@ -6,6 +6,14 @@ html, body, #app {
   height: 100%;
 }
 
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
 .scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
