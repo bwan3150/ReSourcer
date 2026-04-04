@@ -228,6 +228,7 @@ import UploadArea from '../components/gallery/UploadArea.vue'
 import TagEditor from '../components/gallery/TagEditor.vue'
 import { Folder, ChevronRight, X, Pencil, FolderInput, RefreshCw, Info, Download } from 'lucide-vue-next'
 import { contentUrl } from '../api/preview'
+import { useCurrentFolder } from '../composables/useCurrentFolder'
 import * as indexerApi from '../api/indexer'
 import * as configApi from '../api/config'
 import * as fileApi from '../api/file'
@@ -236,8 +237,7 @@ import * as tagApi from '../api/tag'
 const { t } = useI18n()
 const PAGE_SIZE = 50
 
-const sourceFolder = ref('')
-const currentFolder = ref('')
+const { sourceFolder, currentFolder, setSourceFolder, setCurrentFolder } = useCurrentFolder()
 const breadcrumbs = ref([])
 const rootFolders = ref([])
 const files = ref([])
@@ -274,7 +274,7 @@ const moveTargetFile = ref(null)
 
 onMounted(async () => {
   const { data } = await configApi.getSources()
-  sourceFolder.value = data.current
+  setSourceFolder(data.current)
   if (sourceFolder.value) {
     // Load root folders for sidebar tree
     loadingFolders.value = true
@@ -284,7 +284,8 @@ onMounted(async () => {
     } catch {}
     loadingFolders.value = false
 
-    await navigateTo(sourceFolder.value)
+    // Navigate to current folder (preserved across page switches) or source root
+    await navigateTo(currentFolder.value || sourceFolder.value)
     try {
       const { data: tags } = await tagApi.listTags(sourceFolder.value)
       allTags.value = tags
@@ -294,7 +295,7 @@ onMounted(async () => {
 
 async function navigateTo(path) {
   closePreview()
-  currentFolder.value = path
+  setCurrentFolder(path)
   switchingFolder.value = true
   offset.value = 0
 

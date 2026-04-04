@@ -184,8 +184,10 @@ import * as downloadApi from '../api/download'
 import * as configApi from '../api/config'
 import * as folderApi from '../api/folder'
 import { usePolling } from '../composables/usePolling'
+import { useCurrentFolder } from '../composables/useCurrentFolder'
 
 const { t } = useI18n()
+const { sourceFolder, currentFolder } = useCurrentFolder()
 
 const subPage = ref('')
 const subPageTitle = computed(() => {
@@ -223,7 +225,6 @@ const authContent = ref('')
 const ytdlpVersion = ref('')
 const ytdlpInstalled = ref(false)
 const ytdlpUpdating = ref(false)
-const sourceFolder = ref('')
 
 const polling = usePolling(async () => {
   const { data } = await downloadApi.getActiveTasks()
@@ -234,9 +235,10 @@ const polling = usePolling(async () => {
 onMounted(async () => {
   try {
     const { data: dlConfig } = await configApi.getDownloadConfig()
-    sourceFolder.value = dlConfig.sourceFolder
+    if (!sourceFolder.value) sourceFolder.value = dlConfig.sourceFolder
     authStatus.value = dlConfig.authStatus || { x: false, pixiv: false }
-    const { data: folderList } = await folderApi.listFolders(sourceFolder.value)
+    const listFrom = currentFolder.value || sourceFolder.value
+    const { data: folderList } = await folderApi.listFolders(listFrom)
     folders.value = folderList
 
     await refreshTasks()
@@ -283,7 +285,7 @@ function onUrlInput() {
 async function startDownload() {
   if (!url.value.trim() || !detected.value) return
   const dl = selectedDownloader.value === 'auto' ? detected.value?.downloader : selectedDownloader.value
-  const folder = saveFolder.value === '.' ? sourceFolder.value : saveFolder.value
+  const folder = saveFolder.value === '.' ? (currentFolder.value || sourceFolder.value) : saveFolder.value
   try {
     await downloadApi.createTask(url.value.trim(), folder, dl)
     url.value = ''
@@ -338,7 +340,7 @@ async function createNewFolder() {
     saveFolder.value = newFolderName.value.trim()
     newFolderName.value = ''
     newFolderDialog.value?.close()
-    const { data } = await folderApi.listFolders(sourceFolder.value)
+    const { data } = await folderApi.listFolders(currentFolder.value || sourceFolder.value)
     folders.value = data
   } catch {}
 }

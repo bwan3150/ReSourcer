@@ -83,10 +83,11 @@ import * as indexerApi from '../api/indexer'
 import * as fileApi from '../api/file'
 import * as folderApi from '../api/folder'
 import { contentUrl, thumbnailUrl } from '../api/preview'
+import { useCurrentFolder } from '../composables/useCurrentFolder'
 
 const { t } = useI18n()
+const { sourceFolder, currentFolder } = useCurrentFolder()
 
-const sourceFolder = ref('')
 const categories = ref([])
 const files = ref([])
 const currentIndex = ref(0)
@@ -118,12 +119,15 @@ function shortcutLabel(i) {
 onMounted(async () => {
   loading.value = true
   try {
-    const { data: state } = await configApi.getConfigState()
-    sourceFolder.value = state.sourceFolder
-    const { data: folderList } = await folderApi.listFolders(sourceFolder.value)
+    if (!sourceFolder.value) {
+      const { data: state } = await configApi.getConfigState()
+      sourceFolder.value = state.sourceFolder
+    }
+    const classifyFrom = currentFolder.value || sourceFolder.value
+    const { data: folderList } = await folderApi.listFolders(classifyFrom)
     categories.value = folderList.filter(f => !f.hidden)
 
-    const { data: fileData } = await indexerApi.getFiles(sourceFolder.value, { offset: 0, limit: 500 })
+    const { data: fileData } = await indexerApi.getFiles(classifyFrom, { offset: 0, limit: 500 })
     files.value = fileData.files
     totalFiles.value = fileData.total
   } catch (err) {
@@ -135,11 +139,12 @@ onMounted(async () => {
 async function classify(category) {
   if (!currentFile.value) return
   const file = currentFile.value
-  const targetPath = `${sourceFolder.value}/${category.name}`
+  const classifyFrom = currentFolder.value || sourceFolder.value
+  const targetPath = `${classifyFrom}/${category.name}`
 
   try {
     await fileApi.moveFile(file.uuid, targetPath)
-    undoStack.value.push({ uuid: file.uuid, fromFolder: sourceFolder.value, fileName: file.fileName, categoryName: category.name })
+    undoStack.value.push({ uuid: file.uuid, fromFolder: classifyFrom, fileName: file.fileName, categoryName: category.name })
     if (undoStack.value.length > 20) undoStack.value.shift()
     files.value.splice(currentIndex.value, 1)
     processedCount.value++
@@ -158,7 +163,7 @@ async function undo() {
   if (!last) return
   try {
     await fileApi.moveFile(last.uuid, last.fromFolder)
-    const { data } = await indexerApi.getFiles(sourceFolder.value, { offset: 0, limit: 500 })
+    const { data } = await indexerApi.getFiles(currentFolder.value || sourceFolder.value, { offset: 0, limit: 500 })
     files.value = data.files
     processedCount.value = Math.max(0, processedCount.value - 1)
 
