@@ -161,11 +161,11 @@
 
     <!-- Move Dialog (folder browser) -->
     <dialog ref="moveDialog" class="modal">
-      <div class="modal-box">
+      <div class="modal-box max-w-sm overflow-hidden">
         <h3 class="font-bold text-lg mb-3">{{ $t('gallery.moveTo') }}</h3>
 
         <!-- Breadcrumb -->
-        <div class="flex items-center gap-0.5 text-xs mb-3 overflow-hidden">
+        <div class="flex items-center gap-0.5 text-xs mb-3 overflow-x-auto scrollbar-none">
           <template v-for="(crumb, i) in moveBreadcrumbs" :key="crumb.path">
             <ChevronRight v-if="i > 0" :size="12" class="shrink-0 text-base-content/30" />
             <button class="btn btn-ghost btn-xs shrink-0" @click="browseMoveTo(crumb.path)">
@@ -191,13 +191,13 @@
           <button
             v-for="f in moveFolders"
             :key="f.path"
-            class="btn btn-ghost btn-sm w-full justify-start gap-2"
+            class="btn btn-ghost btn-sm w-full justify-start gap-2 min-w-0"
             :class="{ 'bg-base-300': moveTarget === f.path }"
             @click="moveTarget = f.path"
             @dblclick="browseMoveTo(f.path)"
           >
             <Folder :size="16" class="shrink-0" />
-            <span class="truncate flex-1 text-left">{{ f.name }}</span>
+            <span class="truncate flex-1 text-left min-w-0">{{ f.name }}</span>
             <ChevronRight :size="14" class="shrink-0 text-base-content/30" />
           </button>
           <div v-if="!moveFolders.length && !moveLoading" class="text-xs text-base-content/40 text-center py-4">
