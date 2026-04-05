@@ -9,26 +9,6 @@ NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-dispatch_workflow() {
-    local WORKFLOW="$1"
-    local PAYLOAD='{"ref":"main"}'
-    if command -v gh &>/dev/null; then
-        gh workflow run "$WORKFLOW"
-    else
-        REPO=$(git remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/' | sed 's/.*github.com[:/]\(.*\)/\1/')
-        echo -e "${YELLOW}GitHub Personal Access Token (workflow scope):${NC}"
-        read -s -r GH_TOKEN
-        echo ""
-        curl -sf -X POST \
-            "https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW}/dispatches" \
-            -H "Authorization: token ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            -d "$PAYLOAD" \
-            && echo -e "${GREEN}Triggered.${NC}" \
-            || echo -e "${RED}Failed. Trigger manually on GitHub Actions.${NC}"
-    fi
-}
-
 SERVER_VER=$(grep -m1 '^version' "$SCRIPT_DIR/server/Cargo.toml" | sed 's/.*"\(.*\)".*/\1/')
 IOS_VER=$(grep -m1 'MARKETING_VERSION' "$SCRIPT_DIR/iOS/ReSourcer.xcodeproj/project.pbxproj" | sed 's/.*= \(.*\);/\1/' | tr -d ' ')
 
@@ -138,10 +118,12 @@ if [ -n "$NEW_SERVER_VER" ]; then
     echo -e "${GREEN}Tag ${NEW_TAG} pushed → CI: server build + GitHub Release${NC}"
 fi
 
-# iOS build via manual dispatch (always separate workflow)
+# iOS build via tag push
 if [ "$BUMP_IOS" = true ]; then
-    echo -e "${GREEN}Triggering iOS build + Pgyer...${NC}"
-    dispatch_workflow "ios.yml"
+    IOS_TAG="ios-v${NEW_IOS_VER}"
+    git tag "$IOS_TAG"
+    git push origin "$IOS_TAG" || { echo -e "${RED}iOS tag push failed${NC}"; exit 1; }
+    echo -e "${GREEN}Tag ${IOS_TAG} pushed → CI: iOS build + Pgyer${NC}"
 fi
 
 echo ""

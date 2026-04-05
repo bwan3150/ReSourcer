@@ -2,6 +2,9 @@ name: iOS Release
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'ios-v*.*.*'
 
 jobs:
   build:
