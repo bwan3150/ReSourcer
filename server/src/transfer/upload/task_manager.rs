@@ -268,19 +268,23 @@ impl TaskManager {
         // 移除任务
         tasks.lock().await.remove(task_id);
 
-        // 先索引文件获取 UUID，再写入历史记录
+        // Pre-register then complete — same pattern as download
         let file_path_clone = file_path.clone();
+        let file_name_clone = file_name.clone();
+        let target_folder_clone = target_folder.clone();
         let file_uuid = tokio::task::spawn_blocking(move || {
-            if let Some(source_folder) = crate::indexer::storage::find_source_folder(&file_path_clone) {
-                match crate::indexer::scanner::index_single_file(&file_path_clone, &source_folder, None) {
-                    Ok(indexed_file) => Some(indexed_file.uuid),
-                    Err(e) => {
-                        eprintln!("上传后索引文件失败: {} - {}", file_path_clone, e);
-                        None
-                    }
+            // Create pending entry
+            let uuid = crate::indexer::storage::create_pending_file(&target_folder_clone, None).ok()?;
+            // Complete it with actual file info
+            let path = std::path::Path::new(&file_path_clone);
+            let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+            let file_type = crate::indexer::scanner::classify_extension(&ext);
+            match crate::indexer::storage::complete_pending_file(&uuid, &file_path_clone, &file_name_clone, &file_type, &ext, uploaded_size as i64) {
+                Ok(()) => Some(uuid),
+                Err(e) => {
+                    eprintln!("[upload] index failed: {} - {}", file_path_clone, e);
+                    None
                 }
-            } else {
-                None
             }
         }).await.unwrap_or(None);
 
