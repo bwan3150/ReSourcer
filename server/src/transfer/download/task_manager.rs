@@ -265,6 +265,12 @@ impl TaskManager {
                         .unwrap_or("unknown")
                         .to_string();
 
+                    // 标准化文件路径（去掉 /./ 等，解析为绝对路径）
+                    let file_path = std::path::Path::new(&file_path)
+                        .canonicalize()
+                        .map(|p| p.to_string_lossy().to_string())
+                        .unwrap_or(file_path);
+
                     // 先索引文件获取 UUID，再写入历史记录
                     let file_path_clone = file_path.clone();
                     let source_url_clone = task.url.clone();

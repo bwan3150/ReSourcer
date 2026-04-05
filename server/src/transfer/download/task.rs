@@ -63,12 +63,20 @@ pub async fn create_task(
 
     let save_path = if req.save_folder.is_empty() {
         config.source_folder.clone()
+    } else if Path::new(&req.save_folder).is_absolute() {
+        // Frontend sent full path (e.g. currentFolder)
+        req.save_folder.clone()
     } else {
         Path::new(&config.source_folder)
             .join(&req.save_folder)
             .to_string_lossy()
             .to_string()
     };
+    // Canonicalize to resolve /./  /../ etc.
+    let save_path = Path::new(&save_path)
+        .canonicalize()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or(save_path);
 
     // 5. 创建下载任务
     let task_id = task_manager
