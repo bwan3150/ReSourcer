@@ -48,6 +48,11 @@ actor ConfigService {
         _ = try await networkManager.requestStatus(.configSave, body: request)
     }
 
+    /// 检查服务器更新
+    func checkUpdate() async throws -> CheckUpdateResponse {
+        return try await networkManager.request(.appCheckUpdate)
+    }
+
     // MARK: - 下载器配置
 
     /// 获取下载器配置和认证状态

@@ -26,6 +26,7 @@ enum APIEndpoint {
     case health                              // GET  /api/health
     case config                              // GET  /api/config
     case appConfig                           // GET  /api/app
+    case appCheckUpdate                      // GET  /api/app/check-update
 
     // MARK: - File 文件操作
     case fileInfo(folder: String)            // GET  /api/file/info?folder=
@@ -112,6 +113,8 @@ enum APIEndpoint {
             return "/api/config"
         case .appConfig:
             return "/api/app"
+        case .appCheckUpdate:
+            return "/api/app/check-update"
 
         // File
         case .fileInfo(let folder):
@@ -259,7 +262,7 @@ enum APIEndpoint {
     var method: HTTPMethod {
         switch self {
         // GET 请求
-        case .authCheck, .health, .config, .appConfig,
+        case .authCheck, .health, .config, .appConfig, .appCheckUpdate,
              .fileInfo, .folderList,
              .downloadTasks, .downloadTaskStatus, .downloadHistory, .downloaderYtdlpVersion,
              .uploadTasks, .uploadTaskStatus, .uploadHistory,
@@ -287,7 +290,7 @@ enum APIEndpoint {
     /// 是否需要认证（通过 API Key）
     var requiresAuth: Bool {
         switch self {
-        case .health, .authVerify, .appConfig:
+        case .health, .authVerify, .appConfig, .appCheckUpdate:
             return false
         default:
             return true

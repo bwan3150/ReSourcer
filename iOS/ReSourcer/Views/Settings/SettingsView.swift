@@ -40,6 +40,10 @@ struct SettingsView: View {
     // 重新索引进度
     @State private var isReindexing = false
 
+    // 检查更新
+    @State private var isCheckingUpdate = false
+    @State private var latestServerVersion: String?
+
     // MARK: - Body
 
     var body: some View {
@@ -70,8 +74,8 @@ struct SettingsView: View {
                     // 8. 缓存管理
                     cacheSection
 
-                    // 8. GitHub
-                    githubSection
+                    // 8. 关于
+                    aboutSection
 
                     // 9. 断开连接
                     disconnectSection
@@ -549,35 +553,102 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - 7. GitHub
+    // MARK: - 7. 关于
 
-    private var githubSection: some View {
-        SettingsSection(title: "") {
-            Button {
-                openGitHub()
-            } label: {
-                HStack(spacing: AppTheme.Spacing.md) {
-                    Image("GithubIcon")
-                        .renderingMode(.template)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 20, height: 20)
-                        .foregroundStyle(.primary)
-                        .frame(width: 28)
-
-                    Text("在 GitHub 上查看")
+    private var aboutSection: some View {
+        SettingsSection(title: "关于") {
+            VStack(spacing: AppTheme.Spacing.md) {
+                // iOS App 版本
+                let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+                HStack {
+                    Text("iOS 版本")
                         .font(.body)
                         .foregroundStyle(.primary)
+                    Spacer()
+                    Text(appVersion)
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                }
+
+                Divider()
+
+                // 服务器版本 + 检查更新
+                HStack {
+                    Text("服务器版本")
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    if isCheckingUpdate {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        HStack(spacing: AppTheme.Spacing.sm) {
+                            Text(appConfig?.version ?? "...")
+                                .font(.body)
+                                .foregroundStyle(.secondary)
+                            if let latest = latestServerVersion, latest != appConfig?.version {
+                                Text(latest)
+                                    .font(.caption)
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Capsule().fill(.blue))
+                            }
+                            Button {
+                                Task { await checkServerUpdate() }
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+
+                Divider()
+
+                // 链接按钮
+                HStack(spacing: AppTheme.Spacing.md) {
+                    if let iosUrl = appConfig?.iosUrl, let url = URL(string: iosUrl) {
+                        Button {
+                            UIApplication.shared.open(url)
+                        } label: {
+                            HStack(spacing: AppTheme.Spacing.xs) {
+                                Image(systemName: "iphone")
+                                    .font(.caption)
+                                Text("iOS 下载")
+                                    .font(.caption)
+                            }
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .clearGlassBackground(in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Button {
+                        openGitHub()
+                    } label: {
+                        HStack(spacing: AppTheme.Spacing.xs) {
+                            Image("GithubIcon")
+                                .renderingMode(.template)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 14, height: 14)
+                            Text("GitHub")
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .clearGlassBackground(in: Capsule())
+                    }
+                    .buttonStyle(.plain)
 
                     Spacer()
-
-                    Image(systemName: "arrow.up.right")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
                 }
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
         }
     }
 
@@ -606,7 +677,7 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - 8. 版本信息
+    // MARK: - 版本信息
 
     private var versionFooter: some View {
         VStack(spacing: 4) {
@@ -733,6 +804,22 @@ struct SettingsView: View {
                 GlassAlertManager.shared.showError("切换失败", message: error.localizedDescription)
             }
         }
+    }
+
+    private func checkServerUpdate() async {
+        isCheckingUpdate = true
+        do {
+            let result = try await apiService.config.checkUpdate()
+            latestServerVersion = result.latestVersion
+            if result.hasUpdate, let latest = result.latestVersion {
+                GlassAlertManager.shared.showSuccess("发现新版本 \(latest)")
+            } else {
+                GlassAlertManager.shared.showSuccess("已是最新版本")
+            }
+        } catch {
+            GlassAlertManager.shared.showError("检查失败", message: error.localizedDescription)
+        }
+        isCheckingUpdate = false
     }
 
     private func openGitHub() {

@@ -23,6 +23,14 @@ struct AppConfigResponse: Codable {
     let githubUrl: String?
 }
 
+/// 检查更新响应
+struct CheckUpdateResponse: Codable {
+    let currentVersion: String
+    let latestVersion: String?
+    let hasUpdate: Bool
+    let downloadUrl: String?
+}
+
 // MARK: - 配置状态
 
 /// 配置状态响应
