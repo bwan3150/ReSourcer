@@ -199,7 +199,6 @@ actor NetworkManager {
                 .cannotConnectToHost,
                 .cannotFindHost,
                 .networkConnectionLost,
-                .timedOut
             ]
             if connectivityCodes.contains(error.code) {
                 NotificationCenter.default.post(name: .networkConnectivityError, object: nil)

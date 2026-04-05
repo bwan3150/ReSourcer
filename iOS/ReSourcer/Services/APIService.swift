@@ -131,7 +131,10 @@ final class APIService: ObservableObject {
             failedURL: activeBaseURL.absoluteString,
             alternateURLs: alternateURLs,
             onSwitchURL: { [weak self] url in
-                Task { await self?.switchToURL(url) }
+                guard let self else { return }
+                // 持久化新地址后，通过 serverDidSwitch 重建整个 APIService
+                LocalStorageService.shared.saveActiveURL(url.absoluteString, forServerId: self.server.id)
+                NotificationCenter.default.post(name: .serverDidSwitch, object: self.server)
             },
             onReturnToList: {
                 NotificationCenter.default.post(name: .userDidLogout, object: nil)
