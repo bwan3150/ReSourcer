@@ -48,8 +48,15 @@ if [ "$BUMP_SERVER" = true ]; then
     fi
     SERVER_TAG="server-v${NEW_SERVER_VER}"
     if git tag -l | grep -q "^${SERVER_TAG}$"; then
-        echo -e "${RED}Error: tag ${SERVER_TAG} already exists${NC}"
-        exit 1
+        echo -e "${YELLOW}Tag ${SERVER_TAG} already exists. Re-tag and rebuild? (y/n):${NC}"
+        read -e -r retag
+        if [ "$retag" = "y" ]; then
+            git tag -d "$SERVER_TAG" 2>/dev/null
+            git push origin --delete "$SERVER_TAG" 2>/dev/null
+            echo -e "${GREEN}Old tag deleted${NC}"
+        else
+            exit 0
+        fi
     fi
 fi
 
@@ -63,8 +70,15 @@ if [ "$BUMP_IOS" = true ]; then
     fi
     IOS_TAG="ios-v${NEW_IOS_VER}"
     if git tag -l | grep -q "^${IOS_TAG}$"; then
-        echo -e "${RED}Error: tag ${IOS_TAG} already exists${NC}"
-        exit 1
+        echo -e "${YELLOW}Tag ${IOS_TAG} already exists. Re-tag and rebuild? (y/n):${NC}"
+        read -e -r retag
+        if [ "$retag" = "y" ]; then
+            git tag -d "$IOS_TAG" 2>/dev/null
+            git push origin --delete "$IOS_TAG" 2>/dev/null
+            echo -e "${GREEN}Old tag deleted${NC}"
+        else
+            exit 0
+        fi
     fi
 fi
 
@@ -94,11 +108,12 @@ if [ -n "$NEW_IOS_VER" ]; then
     echo ""
     echo -e "${GREEN}=== iOS v${NEW_IOS_VER} ===${NC}"
 
-    sed -i '' "s/MARKETING_VERSION = ${IOS_VER};/MARKETING_VERSION = ${NEW_IOS_VER};/g" "$SCRIPT_DIR/iOS/ReSourcer.xcodeproj/project.pbxproj"
-
-    git add "$SCRIPT_DIR/iOS/ReSourcer.xcodeproj/project.pbxproj"
-    git commit -m "release: iOS v${NEW_IOS_VER}"
-    git push || { echo -e "${RED}Push failed${NC}"; exit 1; }
+    if [ "$NEW_IOS_VER" != "$IOS_VER" ]; then
+        sed -i '' "s/MARKETING_VERSION = ${IOS_VER};/MARKETING_VERSION = ${NEW_IOS_VER};/g" "$SCRIPT_DIR/iOS/ReSourcer.xcodeproj/project.pbxproj"
+        git add "$SCRIPT_DIR/iOS/ReSourcer.xcodeproj/project.pbxproj"
+        git commit -m "release: iOS v${NEW_IOS_VER}"
+        git push || { echo -e "${RED}Push failed${NC}"; exit 1; }
+    fi
 
     git tag "$IOS_TAG"
     git push origin "$IOS_TAG" || { echo -e "${RED}iOS tag push failed${NC}"; exit 1; }
@@ -110,12 +125,13 @@ if [ -n "$NEW_SERVER_VER" ]; then
     echo ""
     echo -e "${GREEN}=== Server v${NEW_SERVER_VER} ===${NC}"
 
-    sed -i '' "s/^version = \"${SERVER_VER}\"/version = \"${NEW_SERVER_VER}\"/" "$SCRIPT_DIR/server/Cargo.toml"
-    sed -i '' "s/\"version\":\"${SERVER_VER}\"/\"version\":\"${NEW_SERVER_VER}\"/" "$SCRIPT_DIR/server/config/app.json"
-
-    git add "$SCRIPT_DIR/server/Cargo.toml" "$SCRIPT_DIR/server/config/app.json"
-    git commit -m "release: server v${NEW_SERVER_VER}"
-    git push || { echo -e "${RED}Push failed${NC}"; exit 1; }
+    if [ "$NEW_SERVER_VER" != "$SERVER_VER" ]; then
+        sed -i '' "s/^version = \"${SERVER_VER}\"/version = \"${NEW_SERVER_VER}\"/" "$SCRIPT_DIR/server/Cargo.toml"
+        sed -i '' "s/\"version\":\"${SERVER_VER}\"/\"version\":\"${NEW_SERVER_VER}\"/" "$SCRIPT_DIR/server/config/app.json"
+        git add "$SCRIPT_DIR/server/Cargo.toml" "$SCRIPT_DIR/server/config/app.json"
+        git commit -m "release: server v${NEW_SERVER_VER}"
+        git push || { echo -e "${RED}Push failed${NC}"; exit 1; }
+    fi
 
     git tag "$SERVER_TAG"
     git push origin "$SERVER_TAG" || { echo -e "${RED}Server tag push failed${NC}"; exit 1; }
