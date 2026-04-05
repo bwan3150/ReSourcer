@@ -93,9 +93,13 @@ jobs:
         run: |
           COMMITS=$(cat /tmp/commits.txt)
 
-          PROMPT="Below is a list of git commits for this release of ReSourcer (a resource management server):
-
-          ${COMMITS}
+          # Build prompt in a file to avoid shell escaping issues
+          cat > /tmp/prompt.txt << 'PROMPT_END'
+          Below is a list of git commits for this release of ReSourcer (a resource management server):
+          PROMPT_END
+          echo "" >> /tmp/prompt.txt
+          cat /tmp/commits.txt >> /tmp/prompt.txt
+          cat >> /tmp/prompt.txt << 'PROMPT_END'
 
           Categorize and rewrite these commits into a clear changelog. Important rules:
           - A single commit may contain MULTIPLE changes — split them into separate items
@@ -104,33 +108,37 @@ jobs:
           - Capitalize the first letter of each description
 
           Output ONLY valid JSON in this exact format, with no markdown code fences or extra text:
-          {\"features\": [\"desc1\"], \"updates\": [\"desc1\"], \"fixes\": [\"desc1\"]}
+          {"features": ["desc1"], "updates": ["desc1"], "fixes": ["desc1"]}
 
           Categories: features (new capabilities), updates (improvements/refactors), fixes (bug fixes)
-          If a category has no items, use an empty array []."
+          If a category has no items, use an empty array [].
+          PROMPT_END
 
+          # Use jq --rawfile to safely embed the prompt (handles all special chars)
           RESPONSE=$(curl -sf https://api.openai.com/v1/chat/completions \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $OPENAI_API_KEY" \
-            -d "$(jq -n --arg prompt "$PROMPT" '{
+            -d "$(jq -n --rawfile prompt /tmp/prompt.txt '{
               "model": "gpt-4.1-mini",
               "messages": [{"role": "user", "content": $prompt}],
               "max_tokens": 1024,
               "temperature": 0.3
-            }')")
+            }')" || echo '{}')
 
-          CHANGELOG=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
-          echo "$CHANGELOG" > /tmp/changelog.json
+          CHANGELOG=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty' 2>/dev/null || true)
 
           BODY=""
-          FEATURES=$(echo "$CHANGELOG" | jq -r '.features // [] | if length > 0 then "### Features\n" + (map("- " + .) | join("\n")) else empty end')
-          UPDATES=$(echo "$CHANGELOG" | jq -r '.updates // [] | if length > 0 then "### Updates\n" + (map("- " + .) | join("\n")) else empty end')
-          FIXES=$(echo "$CHANGELOG" | jq -r '.fixes // [] | if length > 0 then "### Fixes\n" + (map("- " + .) | join("\n")) else empty end')
+          if [ -n "$CHANGELOG" ]; then
+            FEATURES=$(echo "$CHANGELOG" | jq -r '.features // [] | if length > 0 then "### Features\n" + (map("- " + .) | join("\n")) else empty end' 2>/dev/null || true)
+            UPDATES=$(echo "$CHANGELOG" | jq -r '.updates // [] | if length > 0 then "### Updates\n" + (map("- " + .) | join("\n")) else empty end' 2>/dev/null || true)
+            FIXES=$(echo "$CHANGELOG" | jq -r '.fixes // [] | if length > 0 then "### Fixes\n" + (map("- " + .) | join("\n")) else empty end' 2>/dev/null || true)
 
-          BODY="${FEATURES}"
-          [ -n "$UPDATES" ] && BODY="${BODY}\n\n${UPDATES}"
-          [ -n "$FIXES" ] && BODY="${BODY}\n\n${FIXES}"
+            BODY="${FEATURES}"
+            [ -n "$UPDATES" ] && BODY="${BODY}\n\n${UPDATES}"
+            [ -n "$FIXES" ] && BODY="${BODY}\n\n${FIXES}"
+          fi
 
+          # Fallback to raw commits if AI failed
           if [ -z "$BODY" ]; then
             BODY="### Changes\n$(cat /tmp/commits.txt)"
           fi
