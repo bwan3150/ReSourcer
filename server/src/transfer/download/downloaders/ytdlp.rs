@@ -131,18 +131,18 @@ where
     // 获取 ffmpeg 路径，告知 yt-dlp 合并音视频流（Bilibili 等 DASH 格式必须）
     let ffmpeg_path = crate::preview::utils::get_ffmpeg_path();
 
+    // 用视频 ID 做文件名下载（避免 HLS 临时文件 .part-FragN.part 超过 255 字节限制）
+    // 下载完成后自动重命名为截断的标题
     cmd.arg(&url)
        .arg("-o")
-       .arg(format!("{}/%(title).50s.%(ext)s", output_dir)) // 限制标题最长 50 字符
-       .arg("--trim-filenames").arg("100") // 最终文件名不超过 100 字节（留余量给 .part-FragN.part 后缀）
-       .arg("--windows-filenames") // 过滤非法字符（兼容性更好）
+       .arg(format!("{}/%(id)s.%(ext)s", output_dir))
        .arg("--newline")       // 每行输出进度信息
        .arg("--progress")      // 强制显示进度条
        .arg("--no-playlist")   // 不下载播放列表
        .arg("--no-update")     // 禁止自动检查更新（由接口管理）
        .arg("--ffmpeg-location").arg(&ffmpeg_path) // 指定 ffmpeg 路径，用于合并音视频
-       .arg("--print")
-       .arg("after_move:filepath"); // 打印下载完成后的文件路径
+       .arg("--print").arg("after_move:filepath")  // 打印下载完成后的文件路径
+       .arg("--print").arg("after_move:title");   // 打印视频标题（用于重命名）
 
     // 格式参数：只在用户明确指定时添加，否则让 yt-dlp 自动选择最佳格式
     if let Some(fmt) = format {
@@ -175,11 +175,11 @@ where
     let stdout_reader = BufReader::new(stdout);
     let stderr_reader = BufReader::new(stderr);
 
-    // 用于存储最终的文件路径
-    let final_filepath = std::sync::Arc::new(tokio::sync::Mutex::new(None::<String>));
-    let final_filepath_clone = final_filepath.clone();
+    // 存储 yt-dlp 的 --print 输出（filepath 和 title 交替输出）
+    let print_outputs = std::sync::Arc::new(tokio::sync::Mutex::new(Vec::<String>::new()));
+    let print_outputs_clone = print_outputs.clone();
 
-    // 异步读取 stdout（进度信息和文件路径）
+    // 异步读取 stdout（进度信息和 --print 输出）
     let stdout_handle = tokio::spawn(async move {
         let mut lines = stdout_reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
@@ -189,11 +189,11 @@ where
                 eprintln!("[yt-dlp] {}", line);
             }
 
-            // 如果是文件路径（不包含 [download] 标记且不是空行），则保存
-            if !line.contains("[download]") && !line.is_empty() {
-                *final_filepath_clone.lock().await = Some(line.to_string());
-            } else if let Some((progress, speed, eta)) = parse_progress(line) {
+            if let Some((progress, speed, eta)) = parse_progress(line) {
                 progress_callback(progress, speed, eta);
+            } else if !line.is_empty() && !line.contains('[') {
+                // --print outputs: lines without [] brackets
+                print_outputs_clone.lock().await.push(line.to_string());
             }
         }
     });
@@ -215,9 +215,36 @@ where
         .map_err(|e| format!("读取 stdout 失败: {}", e))?;
 
     if status.success() {
-        let filepath = final_filepath.lock().await;
-        if let Some(path) = filepath.as_ref() {
-            Ok(path.clone())
+        let outputs = print_outputs.lock().await;
+        // --print outputs: filepath and title alternate (filepath first, then title)
+        let filepath = outputs.first().cloned();
+        let title = outputs.get(1).cloned();
+
+        if let Some(path) = filepath {
+            // Rename from ID-based filename to truncated title
+            if let Some(title) = title {
+                let src = std::path::Path::new(&path);
+                if src.exists() {
+                    let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("mp4");
+                    // Truncate title to ~60 chars, sanitize for filesystem
+                    let safe_title: String = title.chars()
+                        .filter(|c| !['/', '\\', ':', '*', '?', '"', '<', '>', '|', '\0'].contains(c))
+                        .take(60)
+                        .collect();
+                    let safe_title = safe_title.trim().trim_end_matches('.');
+                    if !safe_title.is_empty() {
+                        let new_name = format!("{}.{}", safe_title, ext);
+                        let new_path = src.parent().unwrap_or(src).join(&new_name);
+                        if !new_path.exists() {
+                            if let Ok(()) = std::fs::rename(&src, &new_path) {
+                                eprintln!("[yt-dlp] renamed: {} → {}", path, new_path.display());
+                                return Ok(new_path.to_string_lossy().to_string());
+                            }
+                        }
+                    }
+                }
+            }
+            Ok(path)
         } else {
             Err("下载成功但无法获取文件路径".to_string())
         }
