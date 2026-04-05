@@ -37,7 +37,7 @@ case "$choice" in
   *) echo -e "${RED}Invalid choice${NC}"; exit 1 ;;
 esac
 
-# Bump server version
+# Collect version numbers
 if [ "$BUMP_SERVER" = true ]; then
     echo ""
     echo -e "${YELLOW}New server version (current: ${SERVER_VER}):${NC}"
@@ -46,14 +46,13 @@ if [ "$BUMP_SERVER" = true ]; then
         echo -e "${RED}Error: version cannot be empty${NC}"
         exit 1
     fi
-    NEW_TAG="server-v${NEW_SERVER_VER}"
-    if git tag -l | grep -q "^${NEW_TAG}$"; then
-        echo -e "${RED}Error: tag ${NEW_TAG} already exists${NC}"
+    SERVER_TAG="server-v${NEW_SERVER_VER}"
+    if git tag -l | grep -q "^${SERVER_TAG}$"; then
+        echo -e "${RED}Error: tag ${SERVER_TAG} already exists${NC}"
         exit 1
     fi
 fi
 
-# Bump iOS version
 if [ "$BUMP_IOS" = true ]; then
     echo ""
     echo -e "${YELLOW}New iOS version (current: ${IOS_VER}):${NC}"
@@ -62,68 +61,65 @@ if [ "$BUMP_IOS" = true ]; then
         echo -e "${RED}Error: version cannot be empty${NC}"
         exit 1
     fi
+    IOS_TAG="ios-v${NEW_IOS_VER}"
+    if git tag -l | grep -q "^${IOS_TAG}$"; then
+        echo -e "${RED}Error: tag ${IOS_TAG} already exists${NC}"
+        exit 1
+    fi
 fi
 
-# Apply changes
+# Confirm
 echo ""
-echo -e "${GREEN}=== Updating ===${NC}"
-
-if [ -n "$NEW_SERVER_VER" ]; then
-    sed -i '' "s/^version = \"${SERVER_VER}\"/version = \"${NEW_SERVER_VER}\"/" "$SCRIPT_DIR/server/Cargo.toml"
-    sed -i '' "s/\"version\":\"${SERVER_VER}\"/\"version\":\"${NEW_SERVER_VER}\"/" "$SCRIPT_DIR/server/config/app.json"
-    echo -e "  Server  ${SERVER_VER} → ${GREEN}${NEW_SERVER_VER}${NC}"
-fi
-
-if [ -n "$NEW_IOS_VER" ]; then
-    sed -i '' "s/MARKETING_VERSION = ${IOS_VER};/MARKETING_VERSION = ${NEW_IOS_VER};/g" "$SCRIPT_DIR/iOS/ReSourcer.xcodeproj/project.pbxproj"
-    echo -e "  iOS     ${IOS_VER} → ${GREEN}${NEW_IOS_VER}${NC}"
-fi
-
+echo -e "${GREEN}=== Plan ===${NC}"
+[ -n "$NEW_SERVER_VER" ] && echo -e "  Server  ${SERVER_VER} → ${GREEN}${NEW_SERVER_VER}${NC}  (tag: ${SERVER_TAG})"
+[ -n "$NEW_IOS_VER" ] && echo -e "  iOS     ${IOS_VER} → ${GREEN}${NEW_IOS_VER}${NC}  (tag: ${IOS_TAG})"
 echo ""
-git status --short
-echo ""
-
-# Build commit message
-MSG="release:"
-[ -n "$NEW_SERVER_VER" ] && MSG="${MSG} server v${NEW_SERVER_VER}"
-[ -n "$NEW_IOS_VER" ] && MSG="${MSG} iOS v${NEW_IOS_VER}"
-
-echo -e "${YELLOW}Commit: ${MSG}${NC}"
 echo -e "${YELLOW}Proceed? (y/n):${NC}"
 read -e -r confirm
 
 if [ "$confirm" != "y" ]; then
-    echo -e "${RED}Cancelled (revert modified files manually)${NC}"
+    echo -e "${RED}Cancelled${NC}"
     exit 0
 fi
 
-# Stage version files
-[ -n "$NEW_SERVER_VER" ] && git add "$SCRIPT_DIR/server/Cargo.toml" "$SCRIPT_DIR/server/config/app.json"
-[ -n "$NEW_IOS_VER" ] && git add "$SCRIPT_DIR/iOS/ReSourcer.xcodeproj/project.pbxproj"
-
-# Other unstaged changes
+# Include other unstaged changes in the first commit
 if ! git diff --quiet; then
     echo -e "${YELLOW}Include other unstaged changes? (y/n):${NC}"
     read -e -r add_all
-    [ "$add_all" = "y" ] && git add -A
+    [ "$add_all" = "y" ] && git add -A && git commit -m "chore: pending changes" && git push
 fi
 
-git commit -m "$MSG" || true
-git push || { echo -e "${RED}Push failed${NC}"; exit 1; }
+# === iOS release (first, so server commit is latest for server tag) ===
+if [ -n "$NEW_IOS_VER" ]; then
+    echo ""
+    echo -e "${GREEN}=== iOS v${NEW_IOS_VER} ===${NC}"
 
-# Tag + trigger full CI (only when server is bumped)
-if [ -n "$NEW_SERVER_VER" ]; then
-    git tag "$NEW_TAG"
-    git push origin "$NEW_TAG" || { echo -e "${RED}Tag push failed${NC}"; exit 1; }
-    echo -e "${GREEN}Tag ${NEW_TAG} pushed → CI: server build + GitHub Release${NC}"
-fi
+    sed -i '' "s/MARKETING_VERSION = ${IOS_VER};/MARKETING_VERSION = ${NEW_IOS_VER};/g" "$SCRIPT_DIR/iOS/ReSourcer.xcodeproj/project.pbxproj"
 
-# iOS build via tag push
-if [ "$BUMP_IOS" = true ]; then
-    IOS_TAG="ios-v${NEW_IOS_VER}"
+    git add "$SCRIPT_DIR/iOS/ReSourcer.xcodeproj/project.pbxproj"
+    git commit -m "release: iOS v${NEW_IOS_VER}"
+    git push || { echo -e "${RED}Push failed${NC}"; exit 1; }
+
     git tag "$IOS_TAG"
     git push origin "$IOS_TAG" || { echo -e "${RED}iOS tag push failed${NC}"; exit 1; }
     echo -e "${GREEN}Tag ${IOS_TAG} pushed → CI: iOS build + Pgyer${NC}"
+fi
+
+# === Server release ===
+if [ -n "$NEW_SERVER_VER" ]; then
+    echo ""
+    echo -e "${GREEN}=== Server v${NEW_SERVER_VER} ===${NC}"
+
+    sed -i '' "s/^version = \"${SERVER_VER}\"/version = \"${NEW_SERVER_VER}\"/" "$SCRIPT_DIR/server/Cargo.toml"
+    sed -i '' "s/\"version\":\"${SERVER_VER}\"/\"version\":\"${NEW_SERVER_VER}\"/" "$SCRIPT_DIR/server/config/app.json"
+
+    git add "$SCRIPT_DIR/server/Cargo.toml" "$SCRIPT_DIR/server/config/app.json"
+    git commit -m "release: server v${NEW_SERVER_VER}"
+    git push || { echo -e "${RED}Push failed${NC}"; exit 1; }
+
+    git tag "$SERVER_TAG"
+    git push origin "$SERVER_TAG" || { echo -e "${RED}Server tag push failed${NC}"; exit 1; }
+    echo -e "${GREEN}Tag ${SERVER_TAG} pushed → CI: server build + GitHub Release${NC}"
 fi
 
 echo ""
