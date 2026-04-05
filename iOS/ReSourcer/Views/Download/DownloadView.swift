@@ -473,8 +473,7 @@ struct DownloadTaskListView: View {
             // 分段控制器
             GlassSegmentedControl(selection: $selectedSegment, items: [
                 (.active, "进行中"),
-                (.completed, "已完成"),
-                (.failed, "失败")
+                (.history, "历史")
             ])
             .padding(.horizontal, AppTheme.Spacing.lg)
             .padding(.vertical, AppTheme.Spacing.md)
@@ -526,8 +525,7 @@ struct DownloadTaskListView: View {
     private var filteredTasks: [DownloadTask] {
         switch selectedSegment {
         case .active: return activeTasks
-        case .completed: return historyTasks
-        case .failed: return historyTasks
+        case .history: return historyTasks
         }
     }
 
@@ -538,6 +536,8 @@ struct DownloadTaskListView: View {
                     DownloadTaskRow(task: task, apiService: apiService, onPreview: { fileInfo in
                         previewFileInfo = fileInfo
                         showFilePreview = true
+                    }, onRetry: {
+                        retryTask(task)
                     }) {
                         deleteTask(task)
                     }
@@ -579,16 +579,14 @@ struct DownloadTaskListView: View {
     private var emptyIcon: String {
         switch selectedSegment {
         case .active: return "arrow.down.circle"
-        case .completed: return "checkmark.circle"
-        case .failed: return "xmark.circle"
+        case .history: return "clock"
         }
     }
 
     private var emptyTitle: String {
         switch selectedSegment {
         case .active: return "没有进行中的任务"
-        case .completed: return "没有已完成的任务"
-        case .failed: return "没有失败的任务"
+        case .history: return "没有历史记录"
         }
     }
 
@@ -618,12 +616,10 @@ struct DownloadTaskListView: View {
             hasMoreHistory = true
         }
 
-        let status = selectedSegment == .completed ? "completed" : "failed"
-
         isLoading = true
         do {
             let response = try await apiService.download.getHistory(
-                offset: historyOffset, limit: 50, status: status
+                offset: historyOffset, limit: 50, status: nil
             )
             if reset {
                 historyTasks = response.items
@@ -646,6 +642,24 @@ struct DownloadTaskListView: View {
         Task {
             await loadHistory(reset: false)
             isLoadingMore = false
+        }
+    }
+
+    private func retryTask(_ task: DownloadTask) {
+        Task {
+            do {
+                _ = try await apiService.download.createTask(
+                    url: task.url,
+                    saveFolder: task.saveFolder,
+                    downloader: task.downloader
+                )
+                GlassAlertManager.shared.showSuccess("已重新提交下载")
+                // 切到活跃 tab 查看新任务
+                withAnimation { selectedSegment = .active }
+                await loadActiveTasks()
+            } catch {
+                GlassAlertManager.shared.showError("重试失败", message: error.localizedDescription)
+            }
         }
     }
 
@@ -695,8 +709,7 @@ struct DownloadTaskListView: View {
 
 enum DownloadSegment: Hashable {
     case active
-    case completed
-    case failed
+    case history
 }
 
 // MARK: - Download Task Row
@@ -705,6 +718,7 @@ struct DownloadTaskRow: View {
     let task: DownloadTask
     let apiService: APIService
     let onPreview: (FileInfo) -> Void
+    let onRetry: () -> Void
     let onDelete: () -> Void
 
     @State private var isExpanded = false
@@ -838,6 +852,13 @@ struct DownloadTaskRow: View {
                     // 操作按钮
                     HStack {
                         Spacer()
+                        if task.status == .failed {
+                            Button { onRetry() } label: {
+                                Label("重试", systemImage: "arrow.clockwise")
+                                    .font(.caption)
+                                    .foregroundStyle(.blue)
+                            }
+                        }
                         if task.status == .completed, let fileInfo = task.previewFileInfo {
                             Button { onPreview(fileInfo) } label: {
                                 Label("查看", systemImage: "eye")

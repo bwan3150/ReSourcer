@@ -35,8 +35,7 @@ struct UploadTaskListView: View {
             // 分段控制器
             GlassSegmentedControl(selection: $selectedSegment, items: [
                 (.active, "进行中"),
-                (.completed, "已完成"),
-                (.failed, "失败")
+                (.history, "历史")
             ])
             .padding(.horizontal, AppTheme.Spacing.lg)
             .padding(.vertical, AppTheme.Spacing.md)
@@ -90,8 +89,7 @@ struct UploadTaskListView: View {
     private var filteredTasks: [UploadTask] {
         switch selectedSegment {
         case .active: return activeTasks
-        case .completed: return historyTasks
-        case .failed: return historyTasks
+        case .history: return historyTasks
         }
     }
 
@@ -145,16 +143,14 @@ struct UploadTaskListView: View {
     private var emptyIcon: String {
         switch selectedSegment {
         case .active: return "arrow.up.circle"
-        case .completed: return "checkmark.circle"
-        case .failed: return "xmark.circle"
+        case .history: return "clock"
         }
     }
 
     private var emptyTitle: String {
         switch selectedSegment {
         case .active: return "没有进行中的任务"
-        case .completed: return "没有已完成的任务"
-        case .failed: return "没有失败的任务"
+        case .history: return "没有历史记录"
         }
     }
 
@@ -184,12 +180,10 @@ struct UploadTaskListView: View {
             hasMoreHistory = true
         }
 
-        let status = selectedSegment == .completed ? "completed" : "failed"
-
         isLoading = true
         do {
             let response = try await apiService.upload.getHistory(
-                offset: historyOffset, limit: 50, status: status
+                offset: historyOffset, limit: 50, status: nil
             )
             if reset {
                 historyTasks = response.items
@@ -261,8 +255,7 @@ struct UploadTaskListView: View {
 
 enum UploadSegment: Hashable {
     case active
-    case completed
-    case failed
+    case history
 }
 
 // MARK: - Upload Task Row
