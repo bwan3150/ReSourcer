@@ -15,7 +15,7 @@ pub struct ScanResult {
 }
 
 /// 判断扩展名对应的文件类型（未知扩展名归为 "other"，确保所有文件都被索引）
-fn classify_extension(ext: &str) -> String {
+pub fn classify_extension(ext: &str) -> String {
     let ext_lower = ext.to_lowercase();
     if IMAGE_EXTENSIONS.contains(&ext_lower.as_str()) {
         "image".to_string()

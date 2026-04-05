@@ -38,6 +38,46 @@ pub fn upsert_file(file: &IndexedFile) -> Result<(), rusqlite::Error> {
     Ok(())
 }
 
+/// 预注册文件：下载/上传前创建占位记录，current_path=NULL
+/// 返回生成的 UUID，用于命名文件
+pub fn create_pending_file(folder_path: &str, source_url: Option<&str>) -> Result<String, rusqlite::Error> {
+    let conn = get_connection()?;
+    let uuid = uuid::Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().to_rfc3339();
+    conn.execute(
+        "INSERT INTO file_index (uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at, source_url)
+         VALUES (?1, '', NULL, ?2, '', 'other', '', 0, ?3, ?3, ?3, ?4)",
+        params![uuid, folder_path, now, source_url],
+    )?;
+    Ok(uuid)
+}
+
+/// 下载/上传完成后更新文件信息（填入实际路径和元数据）
+pub fn complete_pending_file(uuid: &str, file_path: &str, file_name: &str, file_type: &str, extension: &str, file_size: i64) -> Result<(), rusqlite::Error> {
+    let conn = get_connection()?;
+    let now = chrono::Utc::now().to_rfc3339();
+    let folder_path = std::path::Path::new(file_path)
+        .parent()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_default();
+    conn.execute(
+        "UPDATE file_index SET current_path = ?1, folder_path = ?2, file_name = ?3, file_type = ?4, extension = ?5, file_size = ?6, modified_at = ?7, indexed_at = ?7
+         WHERE uuid = ?8",
+        params![file_path, folder_path, file_name, file_type, extension, file_size, now, uuid],
+    )?;
+    Ok(())
+}
+
+/// 删除预注册的占位记录（下载失败时清理）
+pub fn delete_pending_file(uuid: &str) -> Result<(), rusqlite::Error> {
+    let conn = get_connection()?;
+    conn.execute(
+        "DELETE FROM file_index WHERE uuid = ?1 AND current_path IS NULL",
+        params![uuid],
+    )?;
+    Ok(())
+}
+
 /// 快速 upsert 文件索引（基于 current_path 冲突处理）
 /// - 新文件：直接插入（uuid 由调用方生成）
 /// - 已有文件（路径已存在）：更新元数据，保留已有的 uuid、fingerprint、source_url

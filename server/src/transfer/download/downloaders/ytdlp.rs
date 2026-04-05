@@ -117,6 +117,7 @@ pub async fn download<F>(
     platform: Platform,
     output_dir: String,
     format: Option<String>,
+    file_uuid: Option<String>,
     mut progress_callback: F,
 ) -> Result<String, String>
 where
@@ -131,8 +132,7 @@ where
     // 获取 ffmpeg 路径，告知 yt-dlp 合并音视频流（Bilibili 等 DASH 格式必须）
     let ffmpeg_path = crate::preview::utils::get_ffmpeg_path();
 
-    // 用 平台_ID 做文件名下载（避免 HLS 临时文件超过 255 字节限制）
-    // 下载完成后自动重命名为截断的标题
+    // 文件名策略：UUID_平台_平台ID.ext（下载安全 + 可追溯）
     let platform_prefix = match platform {
         Platform::YouTube => "youtube",
         Platform::Bilibili => "bilibili",
@@ -142,9 +142,14 @@ where
         Platform::Xiaohongshu => "xiaohongshu",
         Platform::Unknown => "unknown",
     };
+    let output_template = if let Some(ref uuid) = file_uuid {
+        format!("{}/{}_{}_{}.%(ext)s", output_dir, uuid, platform_prefix, "%(id)s")
+    } else {
+        format!("{}/{}_%(id)s.%(ext)s", output_dir, platform_prefix)
+    };
     cmd.arg(&url)
        .arg("-o")
-       .arg(format!("{}/{}_%(id)s.%(ext)s", output_dir, platform_prefix))
+       .arg(&output_template)
        .arg("--newline")       // 每行输出进度信息
        .arg("--progress")      // 强制显示进度条
        .arg("--no-playlist")   // 不下载播放列表

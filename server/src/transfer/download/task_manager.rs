@@ -130,10 +130,25 @@ impl TaskManager {
             task.status = TaskStatus::Downloading;
         }
 
-        // 2. 根据下载器类型调用对应的下载器
+        // 2. Pre-register file in database → get UUID + save source_url
+        let file_uuid = tokio::task::spawn_blocking({
+            let save_folder = save_folder.clone();
+            let url = url.clone();
+            move || {
+                crate::indexer::storage::create_pending_file(&save_folder, Some(&url)).ok()
+            }
+        }).await.unwrap_or(None);
+
+        // Store UUID in task
+        if let Some(ref uuid) = file_uuid {
+            if let Some(task) = tasks.lock().await.get_mut(&task_id) {
+                task.file_uuid = Some(uuid.clone());
+            }
+        }
+
+        // 3. 根据下载器类型调用对应的下载器
         let result = match downloader {
             DownloaderType::YtDlp => {
-                // 创建进度回调
                 let task_id_clone = task_id.clone();
                 let tasks_clone = tasks.clone();
 
@@ -142,6 +157,7 @@ impl TaskManager {
                     platform,
                     save_folder.clone(),
                     format,
+                    file_uuid.clone(),
                     move |progress, speed, eta| {
                         let task_id = task_id_clone.clone();
                         let tasks = tasks_clone.clone();
@@ -265,32 +281,28 @@ impl TaskManager {
                         .unwrap_or("unknown")
                         .to_string();
 
-                    // 标准化文件路径（去掉 /./ 等，解析为绝对路径）
+                    // 标准化文件路径
                     let file_path = std::path::Path::new(&file_path)
                         .canonicalize()
                         .map(|p| p.to_string_lossy().to_string())
                         .unwrap_or(file_path);
 
-                    // 先索引文件获取 UUID，再写入历史记录
+                    // 更新预注册的文件记录（填入实际路径和元数据）
                     let file_path_clone = file_path.clone();
-                    let source_url_clone = task.url.clone();
-                    let file_uuid = tokio::task::spawn_blocking(move || {
-                        if let Some(source_folder) = crate::indexer::storage::find_source_folder(&file_path_clone) {
-                            match crate::indexer::scanner::index_single_file(&file_path_clone, &source_folder, Some(&source_url_clone)) {
-                                Ok(indexed_file) => {
-                                    eprintln!("[download] indexed: {} uuid={} source_url={}", file_path_clone, indexed_file.uuid, source_url_clone);
-                                    Some(indexed_file.uuid)
-                                },
-                                Err(e) => {
-                                    eprintln!("[download] index failed: {} - {}", file_path_clone, e);
-                                    None
-                                }
+                    let file_name_clone = file_name.clone();
+                    let file_uuid_clone = file_uuid.clone();
+                    tokio::task::spawn_blocking(move || {
+                        if let Some(ref uuid) = file_uuid_clone {
+                            let path = std::path::Path::new(&file_path_clone);
+                            let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+                            let file_type = crate::indexer::scanner::classify_extension(&ext);
+                            let file_size = std::fs::metadata(&file_path_clone).map(|m| m.len() as i64).unwrap_or(0);
+                            match crate::indexer::storage::complete_pending_file(uuid, &file_path_clone, &file_name_clone, &file_type, &ext, file_size) {
+                                Ok(()) => eprintln!("[download] completed: {} uuid={}", file_path_clone, uuid),
+                                Err(e) => eprintln!("[download] complete_pending failed: {} - {}", uuid, e),
                             }
-                        } else {
-                            eprintln!("[download] no source folder matched for: {}", file_path_clone);
-                            None
                         }
-                    }).await.unwrap_or(None);
+                    }).await.ok();
 
                     // 添加到历史记录（携带 file_uuid）
                     let history_item = storage::HistoryItem {
@@ -310,7 +322,16 @@ impl TaskManager {
                     }
                 }
                 Err(error) => {
-                    // 下载失败
+                    // 下载失败 — 删除预注册的占位记录
+                    if let Some(ref uuid) = file_uuid {
+                        let uuid_clone = uuid.clone();
+                        let _ = tokio::task::spawn_blocking(move || {
+                            if let Err(e) = crate::indexer::storage::delete_pending_file(&uuid_clone) {
+                                eprintln!("[download] cleanup pending failed: {}", e);
+                            }
+                        }).await;
+                    }
+
                     let history_item = storage::HistoryItem {
                         id: task.id.clone(),
                         url: task.url.clone(),
