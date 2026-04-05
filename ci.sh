@@ -10,16 +10,17 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 dispatch_workflow() {
-    local PAYLOAD="$1"
+    local WORKFLOW="$1"
+    local PAYLOAD='{"ref":"main"}'
     if command -v gh &>/dev/null; then
-        echo "$PAYLOAD" | gh workflow run release.yml --json
+        gh workflow run "$WORKFLOW"
     else
         REPO=$(git remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/' | sed 's/.*github.com[:/]\(.*\)/\1/')
         echo -e "${YELLOW}GitHub Personal Access Token (workflow scope):${NC}"
         read -s -r GH_TOKEN
         echo ""
         curl -sf -X POST \
-            "https://api.github.com/repos/${REPO}/actions/workflows/release.yml/dispatches" \
+            "https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW}/dispatches" \
             -H "Authorization: token ${GH_TOKEN}" \
             -H "Accept: application/vnd.github.v3+json" \
             -d "$PAYLOAD" \
@@ -137,15 +138,10 @@ if [ -n "$NEW_SERVER_VER" ]; then
     echo -e "${GREEN}Tag ${NEW_TAG} pushed → CI: server build + GitHub Release${NC}"
 fi
 
-# iOS build via manual dispatch (when server is not tagged, or iOS-only)
+# iOS build via manual dispatch (always separate workflow)
 if [ "$BUMP_IOS" = true ]; then
-    if [ -n "$NEW_SERVER_VER" ]; then
-        echo -e "${GREEN}iOS build + Pgyer will be triggered by tag${NC}"
-    else
-        echo -e "${GREEN}Triggering iOS build + Pgyer...${NC}"
-        # Use gh if available, otherwise curl GitHub API
-        dispatch_workflow '{"ref":"main","inputs":{"build_server":"false","build_ios":"true","upload_pgyer":"true"}}'
-    fi
+    echo -e "${GREEN}Triggering iOS build + Pgyer...${NC}"
+    dispatch_workflow "ios.yml"
 fi
 
 echo ""

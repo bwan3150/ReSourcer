@@ -1,92 +1,12 @@
-name: Build Release
+name: iOS Release
 
 on:
   workflow_dispatch:
-    inputs:
-      build_server:
-        description: 'Build Server'
-        type: boolean
-        default: true
-      build_ios:
-        description: 'Build iOS IPA'
-        type: boolean
-        default: false
-      upload_pgyer:
-        description: 'Upload iOS to Pgyer'
-        type: boolean
-        default: false
-  push:
-    tags:
-      - 'v*.*.*'
-
-env:
-  CARGO_TERM_COLOR: always
 
 jobs:
-  # Server binary build
-  build-server:
-    name: Build ${{ matrix.artifact_name }}
-    runs-on: ${{ matrix.runner }}
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.build_server == 'true')
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: x86_64-unknown-linux-gnu
-            runner: ubuntu-22.04
-            artifact_name: re-sourcer-linux-x86_64
-          # TODO: re-enable when aarch64 iteration stabilizes
-          # - target: aarch64-unknown-linux-gnu
-          #   runner: ubuntu-24.04-arm
-          #   artifact_name: re-sourcer-linux-aarch64
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            server/target
-          key: ${{ runner.os }}-${{ runner.arch }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev
-
-      - name: Build release binary
-        working-directory: server
-        run: cargo build --release
-
-      - name: Prepare artifact
-        run: |
-          mv server/target/release/re-sourcer ${{ matrix.artifact_name }}
-          chmod +x ${{ matrix.artifact_name }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.artifact_name }}
-          retention-days: 7
-
-  # iOS app build (Ad-Hoc for testing)
-  build-ios:
+  build:
     name: Build iOS IPA
     runs-on: macos-26
-    if: |
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.build_ios == 'true')
     environment: iOS-CICD-IPA-Release-Testing-Build
 
     steps:
@@ -96,7 +16,6 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
-      # Import signing certificate and provisioning profile
       - name: Import signing credentials
         env:
           IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
@@ -122,7 +41,6 @@ jobs:
           cp $PROVISION_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$PP_UUID.mobileprovision
 
           echo "PP_UUID=$PP_UUID" >> $GITHUB_ENV
-          echo "Provisioning Profile UUID: $PP_UUID"
 
       - name: Configure manual signing
         run: |
@@ -166,7 +84,6 @@ jobs:
             PROVISIONING_PROFILE_SPECIFIER="$PP_UUID" \
             2>&1 | tee /tmp/archive.log | tail -30
 
-          # Verify archive was created
           if [ ! -d "$RUNNER_TEMP/ReSourcer.xcarchive" ]; then
             echo "Archive failed. Full log:"
             cat /tmp/archive.log
@@ -188,7 +105,7 @@ jobs:
             exit 1
           fi
 
-      - name: Prepare IPA artifact
+      - name: Prepare IPA
         run: |
           IPA_PATH=$(find $RUNNER_TEMP/export -name "*.ipa" -type f | head -n 1)
           if [ -z "$IPA_PATH" ]; then
@@ -210,14 +127,12 @@ jobs:
         if: always()
         run: security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
 
-  # Upload iOS IPA to Pgyer
   upload-pgyer:
     name: Upload to Pgyer
-    needs: build-ios
+    needs: build
     runs-on: ubuntu-latest
-    if: |
-      needs.build-ios.result == 'success' &&
-      (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.upload_pgyer == 'true'))
+    if: needs.build.result == 'success'
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -228,7 +143,6 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          # Collect recent commits (since last tag or last 20)
           PREV_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
           if [ -n "$PREV_TAG" ]; then
             COMMITS=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD 2>/dev/null | head -20)
@@ -237,7 +151,6 @@ jobs:
             COMMITS=$(git log --pretty=format:"- %s" -20)
           fi
 
-          # Try AI summary, fallback to raw commits
           DESCRIPTION=""
           if [ -n "$OPENAI_API_KEY" ]; then
             PROMPT="Summarize these git commits into a brief Chinese changelog (3-5 bullet points, focus on user-facing changes):
@@ -266,8 +179,6 @@ jobs:
           fi
 
           echo "$DESCRIPTION" > /tmp/pgyer_desc.txt
-          echo "--- Pgyer description ---"
-          cat /tmp/pgyer_desc.txt
 
       - name: Download IPA
         uses: actions/download-artifact@v4
@@ -282,101 +193,3 @@ jobs:
                -F "file=@artifacts/ReSourcer.ipa" \
                -F "buildUpdateDescription=${DESCRIPTION}" \
                https://www.pgyer.com/apiv2/app/upload
-
-  # Create GitHub Release
-  create-release:
-    name: Create GitHub Release
-    needs: [build-server, build-ios]
-    runs-on: ubuntu-latest
-    if: |
-      always() &&
-      needs.build-server.result == 'success' &&
-      startsWith(github.ref, 'refs/tags/')
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Collect commits since last tag
-        id: commits
-        run: |
-          PREV_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | sed -n '2p' || true)
-          if [ -n "$PREV_TAG" ]; then
-            COMMITS=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD)
-          else
-            COMMITS=$(git log --pretty=format:"- %s")
-          fi
-          echo "$COMMITS" > /tmp/commits.txt
-
-      - name: Generate release notes with AI
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          COMMITS=$(cat /tmp/commits.txt)
-
-          PROMPT="Below is a list of git commits for this release of ReSourcer (a resource management server + web + iOS app):
-
-          ${COMMITS}
-
-          Categorize and rewrite these commits into a clear changelog. Important rules:
-          - A single commit may contain MULTIPLE changes — split them into separate items
-          - Each item should be a concise, user-friendly description (not just repeating the commit message)
-          - Write in English
-          - Capitalize the first letter of each description
-
-          Output ONLY valid JSON in this exact format, with no markdown code fences or extra text:
-          {\"features\": [\"desc1\", \"desc2\"], \"updates\": [\"desc1\", \"desc2\"], \"fixes\": [\"desc1\", \"desc2\"]}
-
-          Categories:
-          - features: New capabilities that didn't exist before
-          - updates: Improvements, refactors, configuration or structural changes
-          - fixes: Bug fixes
-
-          If a category has no items, use an empty array []."
-
-          RESPONSE=$(curl -sf https://api.openai.com/v1/chat/completions \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $OPENAI_API_KEY" \
-            -d "$(jq -n --arg prompt "$PROMPT" '{
-              "model": "gpt-4.1-mini",
-              "messages": [{"role": "user", "content": $prompt}],
-              "max_tokens": 1024,
-              "temperature": 0.3
-            }')")
-
-          CHANGELOG=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
-          echo "$CHANGELOG" > /tmp/changelog.json
-
-          BODY=""
-          FEATURES=$(echo "$CHANGELOG" | jq -r '.features // [] | if length > 0 then "### Features\n" + (map("- " + .) | join("\n")) else empty end')
-          UPDATES=$(echo "$CHANGELOG" | jq -r '.updates // [] | if length > 0 then "### Updates\n" + (map("- " + .) | join("\n")) else empty end')
-          FIXES=$(echo "$CHANGELOG" | jq -r '.fixes // [] | if length > 0 then "### Fixes\n" + (map("- " + .) | join("\n")) else empty end')
-
-          BODY="${FEATURES}"
-          [ -n "$UPDATES" ] && BODY="${BODY}\n\n${UPDATES}"
-          [ -n "$FIXES" ] && BODY="${BODY}\n\n${FIXES}"
-
-          if [ -z "$BODY" ]; then
-            BODY="### Changes\n$(cat /tmp/commits.txt)"
-          fi
-
-          echo -e "$BODY" > /tmp/release_body.md
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: artifacts/**/*
-          draft: false
-          prerelease: false
-          body_path: /tmp/release_body.md
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
