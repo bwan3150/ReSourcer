@@ -133,8 +133,8 @@ where
 
     cmd.arg(&url)
        .arg("-o")
-       .arg(format!("{}/%(title).80s.%(ext)s", output_dir)) // 限制标题最长 80 字符
-       .arg("--trim-filenames").arg("160") // 最终文件名不超过 160 字节
+       .arg(format!("{}/%(title).50s.%(ext)s", output_dir)) // 限制标题最长 50 字符
+       .arg("--trim-filenames").arg("100") // 最终文件名不超过 100 字节（留余量给 .part-FragN.part 后缀）
        .arg("--windows-filenames") // 过滤非法字符（兼容性更好）
        .arg("--newline")       // 每行输出进度信息
        .arg("--progress")      // 强制显示进度条
