@@ -131,11 +131,17 @@ async fn main() -> std::io::Result<()> {
 
     // 打印启动信息
     println!();
-    println!(r#"  ____       ____                              "#);
-    println!(r#" |  _ \ ___ / ___|  ___  _   _ _ __ ___ ___ _ __"#);
-    println!(r#" | |_) / _ \\___ \ / _ \| | | | '__/ __/ _ \ '__|"#);
-    println!(r#" |  _ <  __/ ___) | (_) | |_| | | | (_|  __/ |  "#);
-    println!(r#" |_| \_\___|____/ \___/ \__,_|_|  \___\___|_|  "#);
+    println!(r#"╔══════════════════════════════════════════════════════════════════════════════╗"#);
+    println!(r#"║                                                                              ║"#);
+    println!(r#"║  ██████╗ ███████╗███████╗ ██████╗ ██╗   ██╗██████╗  ██████╗███████╗██████╗   ║"#);
+    println!(r#"║  ██╔══██╗██╔════╝██╔════╝██╔═══██╗██║   ██║██╔══██╗██╔════╝██╔════╝██╔══██╗  ║"#);
+    println!(r#"║  ██████╔╝█████╗  ███████╗██║   ██║██║   ██║██████╔╝██║     █████╗  ██████╔╝  ║"#);
+    println!(r#"║  ██╔══██╗██╔══╝  ╚════██║██║   ██║██║   ██║██╔══██╗██║     ██╔══╝  ██╔══██╗  ║"#);
+    println!(r#"║  ██║  ██║███████╗███████║╚██████╔╝╚██████╔╝██║  ██║╚██████╗███████╗██║  ██║  ║"#);
+    println!(r#"║  ╚═╝  ╚═╝╚══════╝╚══════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝ ╚═════╝╚══════╝╚═╝  ╚═╝  ║"#);
+    println!(r#"║                                                                              ║"#);
+    println!(r#"║                                 S E R V E R                                  ║"#);
+    println!(r#"╚══════════════════════════════════════════════════════════════════════════════╝"#);
     println!();
 
     // 系统预检：检查数据库和必要工具，缺失则自动下载
@@ -160,15 +166,9 @@ async fn main() -> std::io::Result<()> {
             apikey: String,
         }
 
-        // 构建配置文件路径: app_dir()/config/secret.json
         let secret_path = crate::static_files::app_dir().join("config").join("secret.json");
-
-        // 读取文件
         let content = fs::read_to_string(&secret_path).ok()?;
-
-        // 解析 JSON
         let config: SecretConfig = serde_json::from_str(&content).ok()?;
-
         Some(config.apikey)
     }
 
@@ -177,13 +177,11 @@ async fn main() -> std::io::Result<()> {
         .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
 
     // 服务信息
-    println!("  ┌──────────────────────────────────────────────┐");
-    let service_line = format!("  │ API Server:     http://{}:1234   ", local_ip);
-    println!("{:<47}│", service_line);
-    println!("  │ API Key:                                     │");
-    let key_line = format!("  │ {:<45}│", api_key);
-    println!("{}", key_line);
-    println!("  └──────────────────────────────────────────────┘");
+    let url = format!("http://{}:1234", local_ip);
+    println!("┌──────────────────────────────────────────────────────────────────────────────┐");
+    println!("│  API:  {:<69}│", url);
+    println!("│  Key:  {:<69}│", api_key);
+    println!("└──────────────────────────────────────────────────────────────────────────────┘");
     println!();
 
     let api_key_data = web::Data::new(api_key.clone());

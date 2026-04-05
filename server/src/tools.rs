@@ -231,65 +231,54 @@ pub fn preflight_check() {
     let db_path = crate::database::get_db_path();
     let tools_to_check = ["ffmpeg", "ffprobe"]; // 启动时检查的基础工具
 
-    println!("  System Check");
-    println!("  {}", "-".repeat(44));
-
     // 1. Database
     let db_ok = db_path.exists();
-    println!("  {} Database       {}",
-        if db_ok { "\x1b[32m[ok]\x1b[0m" } else { "\x1b[33m[--]\x1b[0m" },
-        if db_ok {
-            let size = fs::metadata(&db_path).map(|m| m.len()).unwrap_or(0);
-            format!("{}", format_bytes(size))
-        } else {
-            "will be created on first run".to_string()
-        }
-    );
+    let db_status = if db_ok {
+        let size = fs::metadata(&db_path).map(|m| m.len()).unwrap_or(0);
+        format!("\x1b[32m✓\x1b[0m db: {}", format_bytes(size))
+    } else {
+        "\x1b[33m-\x1b[0m db: pending".to_string()
+    };
 
     // 2. Required tools (ffmpeg, ffprobe)
+    let mut tool_statuses = Vec::new();
     for name in &tools_to_check {
-        check_and_ensure_tool(name, true);
+        tool_statuses.push(check_and_ensure_tool_quiet(name, true));
     }
 
-    println!("  {}", "-".repeat(44));
+    // 输出状态行
+    print!("  {}", db_status);
+    for s in &tool_statuses {
+        print!("  {}", s);
+    }
     println!();
 }
 
-fn check_and_ensure_tool(name: &str, required: bool) {
-    let label = format!("{:<14}", name);
 
-    // 已存在？验证是否可用
-    if let Some(version) = verify_tool(name) {
-        // 截断版本信息
-        let short = if version.len() > 28 { &version[..28] } else { &version };
-        println!("  \x1b[32m[ok]\x1b[0m {}  {}", label, short);
-        return;
+/// 静默版本：返回状态字符串而非直接打印
+fn check_and_ensure_tool_quiet(name: &str, required: bool) -> String {
+    if let Some(_) = verify_tool(name) {
+        return format!("\x1b[32m✓\x1b[0m {}", name);
     }
 
-    // 文件存在但不可用 → 损坏，删除后重下
     let binary_path = tools_dir().join(tool_binary_name(name));
     if binary_path.exists() {
-        print!("  \x1b[33m[!!]\x1b[0m {}  corrupted, re-downloading...", label);
         let _ = fs::remove_file(&binary_path);
-    } else {
-        print!("  \x1b[33m[..]\x1b[0m {}  downloading...", label);
     }
 
-    // 尝试下载
     match download_tool(name) {
         Ok(()) => {
-            if let Some(version) = verify_tool(name) {
-                let short = if version.len() > 28 { &version[..28] } else { &version };
-                println!("\r  \x1b[32m[ok]\x1b[0m {}  {}", label, short);
+            if verify_tool(name).is_some() {
+                format!("\x1b[32m✓\x1b[0m {}", name)
             } else {
-                println!("\r  \x1b[31m[!!]\x1b[0m {}  downloaded but not working", label);
+                format!("\x1b[31m✗\x1b[0m {}", name)
             }
         }
-        Err(e) => {
+        Err(_) => {
             if required {
-                println!("\r  \x1b[31m[xx]\x1b[0m {}  {}", label, e);
+                format!("\x1b[31m✗\x1b[0m {}", name)
             } else {
-                println!("\r  \x1b[33m[--]\x1b[0m {}  not available (optional)", label);
+                format!("\x1b[33m-\x1b[0m {}", name)
             }
         }
     }
