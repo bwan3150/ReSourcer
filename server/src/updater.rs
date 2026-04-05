@@ -56,8 +56,9 @@ pub async fn check_update() -> Result<HttpResponse> {
     let release: serde_json::Value = resp.json().await
         .map_err(|e| actix_web::error::ErrorInternalServerError(format!("parse error: {}", e)))?;
 
-    let latest = release["tag_name"].as_str().unwrap_or("").trim_start_matches('v').to_string();
-    let current_clean = current.trim_start_matches('v').to_string();
+    let latest = release["tag_name"].as_str().unwrap_or("")
+        .trim_start_matches("server-v").trim_start_matches('v').to_string();
+    let current_clean = current.trim_start_matches("server-v").trim_start_matches('v').to_string();
     let has_update = !latest.is_empty() && latest != current_clean;
 
     // Find download URL for this platform's artifact
@@ -155,7 +156,9 @@ pub async fn do_update() -> Result<HttpResponse> {
     // 7. Update version in app.json
     if let Some(data) = crate::static_files::read_config_file("app.json") {
         if let Ok(mut config) = serde_json::from_slice::<serde_json::Value>(&data) {
-            config["version"] = serde_json::Value::String(latest_tag.trim_start_matches('v').to_string());
+            config["version"] = serde_json::Value::String(
+                latest_tag.trim_start_matches("server-v").trim_start_matches('v').to_string()
+            );
             let app_json_path = crate::static_files::app_dir().join("config").join("app.json");
             let _ = std::fs::write(&app_json_path, serde_json::to_string_pretty(&config).unwrap());
         }

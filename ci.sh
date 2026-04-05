@@ -46,7 +46,7 @@ if [ "$BUMP_SERVER" = true ]; then
         echo -e "${RED}Error: version cannot be empty${NC}"
         exit 1
     fi
-    NEW_TAG="v${NEW_SERVER_VER}"
+    NEW_TAG="server-v${NEW_SERVER_VER}"
     if git tag -l | grep -q "^${NEW_TAG}$"; then
         echo -e "${RED}Error: tag ${NEW_TAG} already exists${NC}"
         exit 1
