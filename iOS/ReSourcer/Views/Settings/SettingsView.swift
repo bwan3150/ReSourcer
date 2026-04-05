@@ -43,6 +43,7 @@ struct SettingsView: View {
     // 检查更新
     @State private var isCheckingUpdate = false
     @State private var latestServerVersion: String?
+    @State private var latestIOSVersion: String?
 
     // MARK: - Body
 
@@ -565,9 +566,19 @@ struct SettingsView: View {
                         .font(.body)
                         .foregroundStyle(.primary)
                     Spacer()
-                    Text(appVersion)
-                        .font(.body)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        Text(appVersion)
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                        if let latest = latestIOSVersion, latest != appVersion {
+                            Text(latest)
+                                .font(.caption)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(.blue))
+                        }
+                    }
                 }
 
                 Divider()
@@ -578,29 +589,17 @@ struct SettingsView: View {
                         .font(.body)
                         .foregroundStyle(.primary)
                     Spacer()
-                    if isCheckingUpdate {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        HStack(spacing: AppTheme.Spacing.sm) {
-                            Text(appConfig?.version ?? "...")
-                                .font(.body)
-                                .foregroundStyle(.secondary)
-                            if let latest = latestServerVersion, latest != appConfig?.version {
-                                Text(latest)
-                                    .font(.caption)
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Capsule().fill(.blue))
-                            }
-                            Button {
-                                Task { await checkServerUpdate() }
-                            } label: {
-                                Image(systemName: "arrow.clockwise")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        Text(appConfig?.version ?? "...")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                        if let latest = latestServerVersion, latest != appConfig?.version {
+                            Text(latest)
+                                .font(.caption)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(.blue))
                         }
                     }
                 }
@@ -647,6 +646,29 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
 
                     Spacer()
+
+                    // 检查更新按钮
+                    Button {
+                        Task { await checkAllUpdates() }
+                    } label: {
+                        HStack(spacing: AppTheme.Spacing.xs) {
+                            if isCheckingUpdate {
+                                ProgressView()
+                                    .controlSize(.mini)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.caption)
+                            }
+                            Text("检查更新")
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .clearGlassBackground(in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isCheckingUpdate)
                 }
             }
         }
@@ -806,20 +828,56 @@ struct SettingsView: View {
         }
     }
 
-    private func checkServerUpdate() async {
+    private func checkAllUpdates() async {
         isCheckingUpdate = true
-        do {
-            let result = try await apiService.config.checkUpdate()
-            latestServerVersion = result.latestVersion
-            if result.hasUpdate, let latest = result.latestVersion {
-                GlassAlertManager.shared.showSuccess("发现新版本 \(latest)")
-            } else {
-                GlassAlertManager.shared.showSuccess("已是最新版本")
+
+        // 并行检查服务器和 iOS 版本
+        async let serverCheck: Void = {
+            do {
+                let result = try await apiService.config.checkUpdate()
+                await MainActor.run { latestServerVersion = result.latestVersion }
+            } catch {}
+        }()
+
+        async let iosCheck: Void = {
+            if let version = await Self.fetchPgyerVersion() {
+                await MainActor.run { latestIOSVersion = version }
             }
-        } catch {
-            GlassAlertManager.shared.showError("检查失败", message: error.localizedDescription)
+        }()
+
+        _ = await (serverCheck, iosCheck)
+
+        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        let hasServerUpdate = latestServerVersion != nil && latestServerVersion != appConfig?.version
+        let hasIOSUpdate = latestIOSVersion != nil && latestIOSVersion != appVersion
+
+        if hasServerUpdate || hasIOSUpdate {
+            var parts: [String] = []
+            if hasIOSUpdate, let v = latestIOSVersion { parts.append("iOS \(v)") }
+            if hasServerUpdate, let v = latestServerVersion { parts.append("Server \(v)") }
+            GlassAlertManager.shared.showSuccess("发现新版本: \(parts.joined(separator: ", "))")
+        } else {
+            GlassAlertManager.shared.showSuccess("已是最新版本")
         }
+
         isCheckingUpdate = false
+    }
+
+    /// 从蒲公英公开页面抓取最新 iOS 版本号
+    private static func fetchPgyerVersion() async -> String? {
+        guard let url = URL(string: "https://www.pgyer.com/resourcer-ios") else { return nil }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            guard let html = String(data: data, encoding: .utf8) else { return nil }
+            // 匹配页面中的 aVersion = '0.0.16' 变量
+            let pattern = #"aVersion\s*=\s*'([^']+)'"#
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+                  let range = Range(match.range(at: 1), in: html) else { return nil }
+            return String(html[range])
+        } catch {
+            return nil
+        }
     }
 
     private func openGitHub() {
