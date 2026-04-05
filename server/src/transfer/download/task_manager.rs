@@ -271,13 +271,17 @@ impl TaskManager {
                     let file_uuid = tokio::task::spawn_blocking(move || {
                         if let Some(source_folder) = crate::indexer::storage::find_source_folder(&file_path_clone) {
                             match crate::indexer::scanner::index_single_file(&file_path_clone, &source_folder, Some(&source_url_clone)) {
-                                Ok(indexed_file) => Some(indexed_file.uuid),
+                                Ok(indexed_file) => {
+                                    eprintln!("[download] indexed: {} uuid={} source_url={}", file_path_clone, indexed_file.uuid, source_url_clone);
+                                    Some(indexed_file.uuid)
+                                },
                                 Err(e) => {
-                                    eprintln!("下载后索引文件失败: {} - {}", file_path_clone, e);
+                                    eprintln!("[download] index failed: {} - {}", file_path_clone, e);
                                     None
                                 }
                             }
                         } else {
+                            eprintln!("[download] no source folder matched for: {}", file_path_clone);
                             None
                         }
                     }).await.unwrap_or(None);
