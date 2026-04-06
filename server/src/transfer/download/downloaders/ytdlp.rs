@@ -115,21 +115,33 @@ fn rename_to_title(path: &str, title: Option<&str>, index: usize, total: usize) 
     let safe_title = safe_title.trim().trim_end_matches('.');
     if safe_title.is_empty() { return path.to_string() }
 
-    // 多文件时加序号: title(1).mp4, title(2).mp4
-    let new_name = if total > 1 {
-        format!("{}({}).{}", safe_title, index + 1, ext)
-    } else {
-        format!("{}.{}", safe_title, ext)
-    };
+    // Build target name, add (N) suffix if same name exists
+    let parent = src.parent().unwrap_or(src);
+    let base_name = format!("{}.{}", safe_title, ext);
+    let mut new_path = parent.join(&base_name);
 
-    let new_path = src.parent().unwrap_or(src).join(&new_name);
-    if !new_path.exists() {
-        if let Ok(()) = std::fs::rename(src, &new_path) {
-            eprintln!("[yt-dlp] renamed: {} → {}", path, new_path.display());
-            return new_path.to_string_lossy().to_string();
+    if new_path.exists() {
+        // Find available name: title(1).mp4, title(2).mp4, ...
+        let mut n = 1u32;
+        loop {
+            let numbered = format!("{}({}).{}", safe_title, n, ext);
+            new_path = parent.join(&numbered);
+            if !new_path.exists() { break; }
+            n += 1;
+            if n > 9999 { return path.to_string(); }
         }
     }
-    path.to_string()
+
+    match std::fs::rename(src, &new_path) {
+        Ok(()) => {
+            eprintln!("[yt-dlp] renamed: {} → {}", path, new_path.display());
+            new_path.to_string_lossy().to_string()
+        }
+        Err(e) => {
+            eprintln!("[yt-dlp] rename failed: {} → {} error={}", path, new_path.display(), e);
+            path.to_string()
+        }
+    }
 }
 
 /// 下载视频/音频（核心函数）
