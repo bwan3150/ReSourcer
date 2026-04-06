@@ -135,7 +135,16 @@ impl TaskManager {
             let save_folder = save_folder.clone();
             let url = url.clone();
             move || {
-                crate::indexer::storage::create_pending_file(&save_folder, Some(&url)).ok()
+                match crate::indexer::storage::create_pending_file(&save_folder, Some(&url)) {
+                    Ok(uuid) => {
+                        eprintln!("[download] pre-registered: uuid={} folder={} url={}", uuid, save_folder, url);
+                        Some(uuid)
+                    }
+                    Err(e) => {
+                        eprintln!("[download] pre-register failed: folder={} error={}", save_folder, e);
+                        None
+                    }
+                }
             }
         }).await.unwrap_or(None);
 
