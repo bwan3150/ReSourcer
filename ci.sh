@@ -14,7 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Usage: menu_select result_var "prompt" "option1" "option2" ...
 # Returns selected index (0-based) in the named variable
 menu_select() {
-    local -n _result=$1
+    local _var_name=$1
     local prompt="$2"
     shift 2
     local options=("$@")
@@ -74,14 +74,14 @@ menu_select() {
 
     # Show cursor
     tput cnorm 2>/dev/null
-    _result=$selected
+    eval "$_var_name=\$selected"
 }
 
 # ── Yes/No selector ──────────────────────────────────────────
 # Usage: confirm_select result_var "prompt"
 # Sets result_var to "y" or "n"
 confirm_select() {
-    local -n _cresult=$1
+    local _var_name=$1
     local prompt="$2"
     local sel=0  # 0=Yes, 1=No
 
@@ -128,7 +128,7 @@ confirm_select() {
     done
 
     tput cnorm 2>/dev/null
-    [[ $sel -eq 0 ]] && _cresult="y" || _cresult="n"
+    [[ $sel -eq 0 ]] && eval "$_var_name=y" || eval "$_var_name=n"
 }
 
 # ── Auto-bump: increment last numeric segment ────────────────
