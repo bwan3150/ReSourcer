@@ -100,6 +100,38 @@ pub async fn update_ytdlp() -> Result<String, String> {
     Ok(combined)
 }
 
+/// 将 ID 文件名重命名为截断的标题
+/// index: 当前文件序号, total: 总文件数（多文件时加序号后缀）
+fn rename_to_title(path: &str, title: Option<&str>, index: usize, total: usize) -> String {
+    let Some(title) = title else { return path.to_string() };
+    let src = std::path::Path::new(path);
+    if !src.exists() { return path.to_string() }
+
+    let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("mp4");
+    let safe_title: String = title.chars()
+        .filter(|c| !['/', '\\', ':', '*', '?', '"', '<', '>', '|', '\0'].contains(c))
+        .take(60)
+        .collect();
+    let safe_title = safe_title.trim().trim_end_matches('.');
+    if safe_title.is_empty() { return path.to_string() }
+
+    // 多文件时加序号: title(1).mp4, title(2).mp4
+    let new_name = if total > 1 {
+        format!("{}({}).{}", safe_title, index + 1, ext)
+    } else {
+        format!("{}.{}", safe_title, ext)
+    };
+
+    let new_path = src.parent().unwrap_or(src).join(&new_name);
+    if !new_path.exists() {
+        if let Ok(()) = std::fs::rename(src, &new_path) {
+            eprintln!("[yt-dlp] renamed: {} → {}", path, new_path.display());
+            return new_path.to_string_lossy().to_string();
+        }
+    }
+    path.to_string()
+}
+
 /// 下载视频/音频（核心函数）
 ///
 /// # 参数
@@ -230,38 +262,26 @@ where
 
     if status.success() {
         let outputs = print_outputs.lock().await;
-        // --print outputs: filepath and title alternate (filepath first, then title)
-        let filepath = outputs.first().cloned();
-        let title = outputs.get(1).cloned();
+        // --print outputs: filepath and title alternate for each file
+        // [filepath1, title1, filepath2, title2, ...]
+        let pairs: Vec<(String, Option<String>)> = outputs.chunks(2)
+            .map(|chunk| (chunk[0].clone(), chunk.get(1).cloned()))
+            .collect();
 
-        if let Some(path) = filepath {
-            // Rename from ID-based filename to truncated title
-            if let Some(title) = title {
-                let src = std::path::Path::new(&path);
-                if src.exists() {
-                    let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("mp4");
-                    // Truncate title to ~60 chars, sanitize for filesystem
-                    let safe_title: String = title.chars()
-                        .filter(|c| !['/', '\\', ':', '*', '?', '"', '<', '>', '|', '\0'].contains(c))
-                        .take(60)
-                        .collect();
-                    let safe_title = safe_title.trim().trim_end_matches('.');
-                    if !safe_title.is_empty() {
-                        let new_name = format!("{}.{}", safe_title, ext);
-                        let new_path = src.parent().unwrap_or(src).join(&new_name);
-                        if !new_path.exists() {
-                            if let Ok(()) = std::fs::rename(&src, &new_path) {
-                                eprintln!("[yt-dlp] renamed: {} → {}", path, new_path.display());
-                                return Ok(new_path.to_string_lossy().to_string());
-                            }
-                        }
-                    }
-                }
-            }
-            Ok(path)
-        } else {
-            Err("下载成功但无法获取文件路径".to_string())
+        if pairs.is_empty() {
+            return Err("下载成功但无法获取文件路径".to_string());
         }
+
+        // Rename all files from ID-based to truncated title
+        let mut first_result: Option<String> = None;
+        for (i, (path, title)) in pairs.iter().enumerate() {
+            let renamed = rename_to_title(path, title.as_deref(), i, pairs.len());
+            if first_result.is_none() {
+                first_result = Some(renamed);
+            }
+        }
+
+        Ok(first_result.unwrap())
     } else {
         Err(format!("下载失败: {}", error_msg))
     }
