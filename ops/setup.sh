@@ -2,7 +2,7 @@
 set -e
 
 # ReSourcer 后端一键部署脚本
-# 用法: curl -sSL https://raw.githubusercontent.com/bwan3150/ReSourcer/main/deploy/setup.sh | sudo bash
+# 用法: curl -sSL https://raw.githubusercontent.com/bwan3150/ReSourcer/main/ops/setup.sh | sudo bash
 
 GITHUB_REPO="bwan3150/ReSourcer"
 INSTALL_DIR="/opt/re-sourcer"
