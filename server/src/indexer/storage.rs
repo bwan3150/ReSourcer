@@ -4,6 +4,7 @@ use super::models::{IndexedFile, IndexedFolder, BreadcrumbItem};
 use crate::database::get_connection;
 
 /// 插入或更新文件索引
+#[allow(dead_code)]
 pub fn upsert_file(file: &IndexedFile) -> Result<(), rusqlite::Error> {
     let conn = get_connection()?;
     conn.execute(
@@ -113,6 +114,7 @@ pub fn fast_upsert_file_with_conn(conn: &Connection, file: &IndexedFile) -> Resu
 }
 
 /// 插入或更新文件夹索引（标记 files_scanned=1，表示文件已扫描过）
+#[allow(dead_code)]
 pub fn upsert_folder(folder: &IndexedFolder) -> Result<(), rusqlite::Error> {
     let conn = get_connection()?;
     conn.execute(
@@ -254,6 +256,7 @@ pub fn get_file_by_uuid(uuid: &str) -> Result<Option<IndexedFile>, rusqlite::Err
 }
 
 /// 通过路径查询文件
+#[allow(dead_code)]
 pub fn get_file_by_path(path: &str) -> Result<Option<IndexedFile>, rusqlite::Error> {
     let conn = get_connection()?;
     let mut stmt = conn.prepare(

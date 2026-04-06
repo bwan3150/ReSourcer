@@ -381,6 +381,7 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
 
 /// 单文件索引：上传/下载完成后立即将文件编入索引，避免扫描整个目录
 /// source_url: 下载来源 URL（仅下载任务传入，上传和扫描传 None）
+#[allow(dead_code)]
 pub fn index_single_file(file_path: &str, source_folder: &str, source_url: Option<&str>) -> Result<IndexedFile, Box<dyn std::error::Error + Send + Sync>> {
     let entry_path = Path::new(file_path);
     if !entry_path.is_file() {

@@ -102,7 +102,7 @@ pub async fn update_ytdlp() -> Result<String, String> {
 
 /// 将 ID 文件名重命名为截断的标题
 /// index: 当前文件序号, total: 总文件数（多文件时加序号后缀）
-fn rename_to_title(path: &str, title: Option<&str>, index: usize, total: usize) -> String {
+fn rename_to_title(path: &str, title: Option<&str>, _index: usize, _total: usize) -> String {
     let Some(title) = title else { return path.to_string() };
     let src = std::path::Path::new(path);
     if !src.exists() { return path.to_string() }
