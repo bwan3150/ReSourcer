@@ -81,7 +81,6 @@ pub fn delete_pending_file(uuid: &str) -> Result<(), rusqlite::Error> {
 /// 快速 upsert 文件索引（基于 current_path 冲突处理）
 /// - 新文件：直接插入（uuid 由调用方生成）
 /// - 已有文件（路径已存在）：更新元数据，保留已有的 uuid、fingerprint、source_url
-/// 用于不计算指纹的快速扫描场景
 pub fn fast_upsert_file_with_conn(conn: &Connection, file: &IndexedFile) -> Result<(), rusqlite::Error> {
     conn.execute(
         "INSERT INTO file_index (uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at, source_url)
