@@ -44,6 +44,7 @@ struct SettingsView: View {
     @State private var isCheckingUpdate = false
     @State private var latestServerVersion: String?
     @State private var latestIOSVersion: String?
+    @State private var isUpdatingServer = false
 
     // MARK: - Body
 
@@ -600,6 +601,14 @@ struct SettingsView: View {
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(Capsule().fill(.blue))
+                            Button {
+                                Task { await triggerServerUpdate() }
+                            } label: {
+                                Image(systemName: isUpdatingServer ? "arrow.trianglehead.2.clockwise" : "arrow.down.circle")
+                                    .font(.caption)
+                                    .foregroundStyle(.blue)
+                            }
+                            .disabled(isUpdatingServer)
                         }
                     }
                 }
@@ -861,6 +870,17 @@ struct SettingsView: View {
         }
 
         isCheckingUpdate = false
+    }
+
+    private func triggerServerUpdate() async {
+        isUpdatingServer = true
+        do {
+            let result = try await apiService.config.updateServer()
+            GlassAlertManager.shared.showSuccess(result.message)
+        } catch {
+            GlassAlertManager.shared.showError("更新失败: \(error.localizedDescription)")
+        }
+        isUpdatingServer = false
     }
 
     /// 从蒲公英公开页面抓取最新 iOS 版本号

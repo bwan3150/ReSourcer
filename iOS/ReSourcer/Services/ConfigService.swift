@@ -53,6 +53,11 @@ actor ConfigService {
         return try await networkManager.request(.appCheckUpdate)
     }
 
+    /// 触发服务器自更新
+    func updateServer() async throws -> UpdateResponse {
+        return try await networkManager.request(.appUpdate)
+    }
+
     // MARK: - 下载器配置
 
     /// 获取下载器配置和认证状态

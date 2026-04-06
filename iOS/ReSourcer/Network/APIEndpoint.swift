@@ -27,6 +27,7 @@ enum APIEndpoint {
     case config                              // GET  /api/config
     case appConfig                           // GET  /api/app
     case appCheckUpdate                      // GET  /api/app/check-update
+    case appUpdate                           // POST /api/app/update
 
     // MARK: - File 文件操作
     case fileInfo(folder: String)            // GET  /api/file/info?folder=
@@ -115,6 +116,8 @@ enum APIEndpoint {
             return "/api/app"
         case .appCheckUpdate:
             return "/api/app/check-update"
+        case .appUpdate:
+            return "/api/app/update"
 
         // File
         case .fileInfo(let folder):

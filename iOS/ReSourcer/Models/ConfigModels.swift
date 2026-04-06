@@ -31,6 +31,12 @@ struct CheckUpdateResponse: Codable {
     let downloadUrl: String?
 }
 
+/// 服务器更新响应
+struct UpdateResponse: Codable {
+    let status: String
+    let message: String
+}
+
 // MARK: - 配置状态
 
 /// 配置状态响应
