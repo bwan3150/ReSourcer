@@ -171,9 +171,9 @@
                 <span class="text-base-content/50">{{ $t('settings.serverVersion') }}</span>
                 <div class="flex items-center gap-2">
                   <span>{{ serverVersion || '—' }}</span>
-                  <span v-if="latestVersion && latestVersion !== serverVersion" class="badge badge-outline badge-xs">{{ latestVersion }}</span>
+                  <span v-if="hasServerUpdate" class="badge badge-outline badge-xs">{{ latestVersion }}</span>
                   <button
-                    v-if="latestVersion && latestVersion !== serverVersion"
+                    v-if="hasServerUpdate"
                     class="btn btn-ghost btn-xs"
                     @click="doServerUpdate"
                     :disabled="updating"
@@ -247,6 +247,7 @@ const serverVersion = ref('')
 const githubUrl = ref('')
 const iosUrl = ref('')
 const latestVersion = ref('')
+const hasServerUpdate = ref(false)
 const checking = ref(false)
 const updating = ref(false)
 
@@ -365,6 +366,7 @@ async function checkForUpdate() {
   try {
     const { data } = await configApi.checkUpdate()
     latestVersion.value = data.latestVersion || ''
+    hasServerUpdate.value = data.hasUpdate || false
     if (!data.hasUpdate) showToast(t('settings.upToDate'))
   } catch {}
   checking.value = false
