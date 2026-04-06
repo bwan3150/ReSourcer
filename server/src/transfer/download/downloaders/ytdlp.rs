@@ -272,16 +272,37 @@ where
             return Err("下载成功但无法获取文件路径".to_string());
         }
 
-        // Rename all files from ID-based to truncated title
-        let mut first_result: Option<String> = None;
-        for (i, (path, title)) in pairs.iter().enumerate() {
-            let renamed = rename_to_title(path, title.as_deref(), i, pairs.len());
-            if first_result.is_none() {
-                first_result = Some(renamed);
+        eprintln!("[yt-dlp] {} filepath/title pairs", pairs.len());
+
+        // Filter to only files that actually exist on disk
+        // (HLS downloads produce temp files that get merged/deleted)
+        let existing_pairs: Vec<_> = pairs.iter()
+            .filter(|(path, _)| std::path::Path::new(path).exists())
+            .collect();
+
+        eprintln!("[yt-dlp] {} existing files to rename", existing_pairs.len());
+
+        // Rename existing files from ID-based to truncated title
+        let total_existing = existing_pairs.len();
+        let mut final_path: Option<String> = None;
+        for (i, (path, title)) in existing_pairs.iter().enumerate() {
+            let renamed = rename_to_title(path, title.as_deref(), i, total_existing);
+            if final_path.is_none() {
+                final_path = Some(renamed);
             }
         }
 
-        Ok(first_result.unwrap())
+        // If no existing files found from pairs, find the actual file on disk
+        if final_path.is_none() {
+            // Last resort: the last filepath in outputs might be the merged result
+            if let Some((last_path, _)) = pairs.last() {
+                if std::path::Path::new(last_path).exists() {
+                    final_path = Some(last_path.clone());
+                }
+            }
+        }
+
+        final_path.ok_or_else(|| "下载成功但无法获取文件路径".to_string())
     } else {
         Err(format!("下载失败: {}", error_msg))
     }
