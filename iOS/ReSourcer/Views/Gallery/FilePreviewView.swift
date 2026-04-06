@@ -96,6 +96,7 @@ struct FilePreviewView: View {
     @State private var systemVolume: Float = AVAudioSession.sharedInstance().outputVolume
     @State private var isVolumeRingActive = false
     @State private var volumeAtDragStart: Float = 0.5
+    @State private var volumeActivationTask: Task<Void, Never>?
 
     // 播放模式
     @State private var playbackMode: PlaybackMode = .repeatCurrent
@@ -477,44 +478,42 @@ struct FilePreviewView: View {
                             .frame(width: 44, height: 44)
                             .background(.white.opacity(isVolumeRingActive ? 1.0 : 0.85))
                             .clipShape(Circle())
-                            // 长按 → 显示音量环；长按不抬起拖动 → 左增右减系统音量
+                            // 长按 → 显示音量环；长按不抬起拖动 → 左增右减系统音量；短按 → 切换静音
                             .gesture(
-                                LongPressGesture(minimumDuration: 0.4)
-                                    .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
-                                    .onChanged { value in
-                                        switch value {
-                                        case .first(true):
-                                            // 长按触发：显示音量环，记录起始音量
-                                            if !isVolumeRingActive {
+                                DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                                    .onChanged { drag in
+                                        // 首次触碰：记录起始音量，启动 0.4s 延时激活音量环
+                                        if volumeActivationTask == nil && !isVolumeRingActive {
+                                            volumeAtDragStart = systemVolume
+                                            volumeActivationTask = Task { @MainActor in
+                                                try? await Task.sleep(for: .milliseconds(400))
+                                                guard !Task.isCancelled else { return }
                                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                                     isVolumeRingActive = true
                                                 }
-                                                volumeAtDragStart = systemVolume
                                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                             }
-                                        case .second(true, let drag?):
-                                            // 拖拽：向左增加音量，向右减小音量
+                                        }
+                                        // 音量环已激活：拖拽调整音量
+                                        if isVolumeRingActive {
                                             let deltaX = Float(drag.translation.width)
                                             let sensitivity: Float = 160
                                             let newVol = max(0, min(1, volumeAtDragStart + (-deltaX / sensitivity)))
                                             systemVolume = newVol
-                                        default:
-                                            break
                                         }
                                     }
                                     .onEnded { _ in
-                                        // 松手立即收起音量环
+                                        volumeActivationTask?.cancel()
+                                        volumeActivationTask = nil
+                                        // 未激活音量环 = 短按 → 切换静音
+                                        if !isVolumeRingActive {
+                                            isVideoMuted.toggle()
+                                        }
+                                        // 松手收起音量环
                                         withAnimation(.easeOut(duration: 0.2)) {
                                             isVolumeRingActive = false
                                         }
                                     }
-                            )
-                            // 短按：切换静音（音量环未激活时）
-                            .simultaneousGesture(
-                                TapGesture().onEnded {
-                                    guard !isVolumeRingActive else { return }
-                                    isVideoMuted.toggle()
-                                }
                             )
                     }
                     // 隐藏的 MPVolumeView，用于读写系统音量
