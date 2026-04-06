@@ -128,7 +128,7 @@ if [ -n "$NEW_SERVER_VER" ]; then
     if [ "$NEW_SERVER_VER" != "$SERVER_VER" ]; then
         sed -i '' "s/^version = \"${SERVER_VER}\"/version = \"${NEW_SERVER_VER}\"/" "$SCRIPT_DIR/server/Cargo.toml"
         sed -i '' "s/\"version\":\"${SERVER_VER}\"/\"version\":\"${NEW_SERVER_VER}\"/" "$SCRIPT_DIR/server/config/app.json"
-        git add "$SCRIPT_DIR/server/Cargo.toml" "$SCRIPT_DIR/server/config/app.json"
+        git add "$SCRIPT_DIR/server/Cargo.toml" "$SCRIPT_DIR/server/Cargo.lock" "$SCRIPT_DIR/server/config/app.json"
         git commit -m "release: server v${NEW_SERVER_VER}"
         git push || { echo -e "${RED}Push failed${NC}"; exit 1; }
     fi
