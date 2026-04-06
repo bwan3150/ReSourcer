@@ -578,6 +578,15 @@ struct SettingsView: View {
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(Capsule().fill(.blue))
+                            if let iosUrl = appConfig?.iosUrl, let url = URL(string: iosUrl) {
+                                Button {
+                                    UIApplication.shared.open(url)
+                                } label: {
+                                    Image(systemName: "arrow.down.circle")
+                                        .font(.caption)
+                                        .foregroundStyle(.blue)
+                                }
+                            }
                         }
                     }
                 }
