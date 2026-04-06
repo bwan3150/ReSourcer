@@ -60,7 +60,19 @@ pub fn needs_rescan(folder_path: &str) -> bool {
 /// - 不构建返回值（handler 直接查 DB，Vec<IndexedFile> 从未被使用）
 /// - skip_mark_missing: 后台增量扫描时为 true，避免竞态
 pub fn scan_folder(folder_path: &str, source_folder: &str, skip_mark_missing: bool) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Canonicalize paths to resolve /./ /../
+    let folder_path_canon = Path::new(folder_path)
+        .canonicalize()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|_| folder_path.to_string());
+    let source_folder_canon = Path::new(source_folder)
+        .canonicalize()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|_| source_folder.to_string());
+    let folder_path = folder_path_canon.as_str();
+    let source_folder = source_folder_canon.as_str();
     let dir_path = Path::new(folder_path);
+
     if !dir_path.is_dir() {
         return Err(format!("路径不是目录: {}", folder_path).into());
     }
@@ -211,7 +223,14 @@ pub fn scan_folder(folder_path: &str, source_folder: &str, skip_mark_missing: bo
 pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std::error::Error + Send + Sync>> {
     use walkdir::WalkDir;
 
+    // Canonicalize source folder path to resolve /./ /../ etc.
+    let source_folder_canon = Path::new(source_folder)
+        .canonicalize()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|_| source_folder.to_string());
+    let source_folder = source_folder_canon.as_str();
     let source_path = Path::new(source_folder);
+
     if !source_path.is_dir() {
         return Err(format!("源文件夹不存在: {}", source_folder).into());
     }
