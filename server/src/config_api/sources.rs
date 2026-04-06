@@ -34,9 +34,12 @@ pub async fn list_source_folders() -> Result<HttpResponse> {
 /// POST /api/config/sources/add
 /// 添加备用源文件夹
 pub async fn add_source_folder(req: web::Json<AddSourceFolderRequest>) -> Result<HttpResponse> {
-    let folder_path = req.folder_path.trim();
+    let folder_path = Path::new(req.folder_path.trim())
+        .canonicalize()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|_| req.folder_path.trim().to_string());
+    let folder_path = folder_path.as_str();
 
-    // 验证路径存在
     if !Path::new(folder_path).exists() {
         return Ok(HttpResponse::BadRequest().json(serde_json::json!({
             "error": "文件夹不存在"
@@ -94,9 +97,11 @@ pub async fn switch_source_folder(
     req: web::Json<SwitchSourceFolderRequest>,
     scan_status: web::Data<Arc<RwLock<ScanStatus>>>,
 ) -> Result<HttpResponse> {
-    let folder_path = req.folder_path.trim().to_string();
+    let folder_path = Path::new(req.folder_path.trim())
+        .canonicalize()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|_| req.folder_path.trim().to_string());
 
-    // 验证路径存在
     if !Path::new(&folder_path).exists() {
         return Ok(HttpResponse::BadRequest().json(serde_json::json!({
             "error": "文件夹不存在"

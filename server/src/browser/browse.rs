@@ -15,11 +15,12 @@ fn get_home_directory() -> PathBuf {
 /// POST /api/browser/browse
 /// 浏览目录
 pub async fn browse_directory(req: web::Json<BrowseRequest>) -> Result<HttpResponse> {
-    // 确定要浏览的路径
-    let target_path = match &req.path {
+    // 确定要浏览的路径，canonicalize 去掉 /./ 等
+    let raw_path = match &req.path {
         Some(path) if !path.is_empty() => PathBuf::from(path),
         _ => get_home_directory(),
     };
+    let target_path = raw_path.canonicalize().unwrap_or(raw_path);
 
     // 安全检查:确保路径存在且是目录
     if !target_path.exists() {
@@ -48,7 +49,9 @@ pub async fn browse_directory(req: web::Json<BrowseRequest>) -> Result<HttpRespo
                         continue;
                     }
 
-                    let path = entry.path().to_string_lossy().to_string();
+                    let path = entry.path().canonicalize()
+                        .unwrap_or_else(|_| entry.path())
+                        .to_string_lossy().to_string();
                     let is_directory = metadata.is_dir();
 
                     items.push(DirectoryItem {

@@ -216,6 +216,58 @@ pub fn init_db() -> SqliteResult<()> {
     // 执行数据迁移（从旧 JSON 文件）
     migrate_from_json(&conn)?;
 
+    // 清理所有路径中的 /./ 前缀（一次性迁移）
+    cleanup_dot_paths(&conn)?;
+
+    Ok(())
+}
+
+/// 清理数据库中所有 /./ 路径前缀 → 替换为 /
+/// 防止 /./volume1/... 和 /volume1/... 产生重复记录
+fn cleanup_dot_paths(conn: &Connection) -> SqliteResult<()> {
+    let tables_cols = [
+        ("source_folders", "folder_path"),
+        ("subfolder_order", "folder_path"),
+        ("file_index", "current_path"),
+        ("file_index", "folder_path"),
+        ("folder_index", "path"),
+        ("folder_index", "parent_path"),
+        ("folder_index", "source_folder"),
+        ("tags", "source_folder"),
+        ("download_history", "file_path"),
+        ("upload_history", "target_folder"),
+    ];
+
+    let mut total = 0usize;
+    for (table, col) in &tables_cols {
+        // 先删除重复：如果清理后的路径已存在，删掉带 /./ 的那条（保留干净的）
+        let delete_sql = format!(
+            "DELETE FROM {} WHERE {} LIKE '/./%' AND replace({}, '/./', '/') IN (SELECT {} FROM {} WHERE {} NOT LIKE '/./%')",
+            table, col, col, col, table, col
+        );
+        let _ = conn.execute(&delete_sql, []);
+
+        // 清理剩余的 /./ 路径
+        let update_sql = format!(
+            "UPDATE {} SET {} = replace({}, '/./', '/') WHERE {} LIKE '/./%'",
+            table, col, col, col
+        );
+        let count = conn.execute(&update_sql, []).unwrap_or(0);
+        if count > 0 {
+            eprintln!("[init] cleaned {}.{}: {} rows", table, col, count);
+            total += count;
+        }
+    }
+
+    // 同步清理 config.hidden_folders JSON
+    let _ = conn.execute(
+        "UPDATE config SET hidden_folders = replace(hidden_folders, '/./', '/') WHERE hidden_folders LIKE '%/./%'",
+        [],
+    );
+
+    if total > 0 {
+        eprintln!("[init] total /./ paths cleaned: {}", total);
+    }
     Ok(())
 }
 
