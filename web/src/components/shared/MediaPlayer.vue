@@ -4,8 +4,17 @@
     :class="bgClass"
     tabindex="0"
   >
-    <!-- Zoomable content container -->
+    <!-- PDF viewer (own scroll, no zoom transform) -->
+    <PdfViewer
+      v-if="type === 'pdf'"
+      ref="pdfViewer"
+      :src="src"
+      class="absolute inset-0"
+    />
+
+    <!-- Zoomable content container (non-PDF) -->
     <div
+      v-else
       ref="contentArea"
       class="absolute inset-0 flex items-center justify-center overflow-hidden"
       @wheel.prevent="onWheel"
@@ -25,14 +34,6 @@
           :alt="fileName"
           class="max-w-[100vw] max-h-[100vh] object-contain select-none"
           draggable="false"
-        />
-
-        <!-- PDF -->
-        <iframe
-          v-else-if="type === 'pdf'"
-          :src="src"
-          class="border-0"
-          :style="{ width: '100vw', height: '100vh' }"
         />
 
         <!-- Video -->
@@ -128,6 +129,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { Play, Pause, SkipBack, SkipForward, Volume2, Volume1, VolumeX, Music } from 'lucide-vue-next'
 import { effectiveTheme } from '../../composables/useTheme'
+import PdfViewer from './PdfViewer.vue'
 
 const props = defineProps({
   src: { type: String, default: '' },
@@ -143,6 +145,7 @@ const emit = defineEmits(['prev', 'next'])
 
 const videoEl = ref(null)
 const contentArea = ref(null)
+const pdfViewer = ref(null)
 const playing = ref(false)
 const currentTime = ref(0)
 const duration = ref(0)
@@ -158,7 +161,7 @@ const dragging = ref(false)
 let dragStartX = 0, dragStartY = 0, panStartX = 0, panStartY = 0
 
 const hasControls = computed(() => ['video', 'audio'].includes(props.type))
-const zoomable = computed(() => ['image', 'gif', 'video', 'pdf'].includes(props.type))
+const zoomable = computed(() => ['image', 'gif', 'video'].includes(props.type))
 
 const bgClass = computed(() => effectiveTheme.value === 'dark' ? 'bg-black' : 'bg-white')
 
@@ -291,6 +294,8 @@ function panBy(dx, dy) {
   panY.value += dy
 }
 
+function pdfToggleFitMode() { pdfViewer.value?.toggleFitMode() }
+
 function formatTime(s) {
   if (!s || !isFinite(s)) return '0:00'
   const m = Math.floor(s / 60)
@@ -300,6 +305,7 @@ function formatTime(s) {
 
 defineExpose({
   togglePlay, seekBy, changeVolume, toggleMute, zoomBy, panBy, resetZoom,
+  pdfToggleFitMode,
   playing, muted, volume, controlsVisible,
 })
 </script>

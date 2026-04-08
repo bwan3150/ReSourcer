@@ -299,6 +299,7 @@ useKeyboardShortcuts({
   exitPreview: () => { closePreview() },
   zoomIn: () => { mediaPlayer.value?.zoomBy(0.2); osd.value?.show('ZoomIn') },
   zoomOut: () => { mediaPlayer.value?.zoomBy(-0.2); osd.value?.show('ZoomOut') },
+  pdfFitMode: () => { mediaPlayer.value?.pdfToggleFitMode(); osd.value?.show('Columns') },
   panUp: () => { mediaPlayer.value?.panBy(0, 50) },
   panDown: () => { mediaPlayer.value?.panBy(0, -50) },
   panLeft: () => { mediaPlayer.value?.panBy(50, 0) },
