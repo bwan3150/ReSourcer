@@ -164,11 +164,11 @@
           <div class="collapse-content">
             <div class="space-y-1">
               <div
-                v-for="(label, action) in shortcutLabels"
+                v-for="action in shortcutActions"
                 :key="action"
                 class="flex justify-between items-center py-1.5"
               >
-                <span class="text-xs">{{ label }}</span>
+                <span class="text-xs">{{ $t('settings.shortcut_' + action) }}</span>
                 <button
                   class="btn btn-ghost btn-xs font-mono min-w-16"
                   :class="{ 'btn-outline': listeningAction === action }"
@@ -256,7 +256,7 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, Info, Github, Download, Smartphone, HardDrive, Trash2, Keyboard } from 'lucide-vue-next'
-import { SHORTCUT_LABELS, getShortcuts, setShortcut, resetShortcuts, formatShortcut, encodeKey } from '../composables/useKeyboardShortcuts'
+import { DEFAULTS as SHORTCUT_ACTIONS, getShortcuts, setShortcut, resetShortcuts, formatShortcut, encodeKey } from '../composables/useKeyboardShortcuts'
 import AppLayout from '../components/layout/AppLayout.vue'
 import SourceFolderManager from '../components/settings/SourceFolderManager.vue'
 import CategoryManager from '../components/settings/CategoryManager.vue'
@@ -297,7 +297,7 @@ const checking = ref(false)
 const updating = ref(false)
 
 // Shortcuts
-const shortcutLabels = SHORTCUT_LABELS
+const shortcutActions = Object.keys(SHORTCUT_ACTIONS)
 const currentShortcuts = ref(getShortcuts())
 const listeningAction = ref('')
 
