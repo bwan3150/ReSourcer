@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   re-sourcer-web:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/bwan3150/resourcer-web:latest
     container_name: re-sourcer-web
     restart: unless-stopped
     ports:

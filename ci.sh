@@ -156,6 +156,7 @@ trap 'tput cnorm 2>/dev/null' EXIT
 
 # ── Read versions ─────────────────────────────────────────────
 SERVER_VER=$(grep -m1 '^version' "$SCRIPT_DIR/server/Cargo.toml" | sed 's/.*"\(.*\)".*/\1/')
+WEB_VER=$(grep '"version"' "$SCRIPT_DIR/web/package.json" | head -1 | sed 's/.*: "\(.*\)".*/\1/')
 IOS_VER=$(grep -m1 'MARKETING_VERSION' "$SCRIPT_DIR/iOS/ReSourcer.xcodeproj/project.pbxproj" | sed 's/.*= \(.*\);/\1/' | tr -d ' ')
 
 echo ""
@@ -164,6 +165,7 @@ echo -e "${CYAN}║${NC}      ${BOLD}ReSourcer CI${NC}            ${CYAN}║${NC
 echo -e "${CYAN}╚══════════════════════════════╝${NC}"
 echo ""
 echo -e "  Server  ${DIM}v${SERVER_VER}${NC}"
+echo -e "  Web     ${DIM}v${WEB_VER}${NC}"
 echo -e "  iOS     ${DIM}v${IOS_VER}${NC}"
 echo ""
 
@@ -172,18 +174,22 @@ choice=0
 menu_select choice \
     "${YELLOW}Select release target:${NC}" \
     "Server release     (bump version + tag + build)" \
+    "Web release        (bump version + tag + Docker image)" \
     "iOS release        (bump version + build + Pgyer)" \
-    "All                (bump both + tag + build all)"
+    "All                (bump all + tag + build all)"
 
 BUMP_SERVER=false
+BUMP_WEB=false
 BUMP_IOS=false
 NEW_SERVER_VER=""
+NEW_WEB_VER=""
 NEW_IOS_VER=""
 
 case "$choice" in
     0) BUMP_SERVER=true ;;
-    1) BUMP_IOS=true ;;
-    2) BUMP_SERVER=true; BUMP_IOS=true ;;
+    1) BUMP_WEB=true ;;
+    2) BUMP_IOS=true ;;
+    3) BUMP_SERVER=true; BUMP_WEB=true; BUMP_IOS=true ;;
 esac
 
 echo ""
@@ -202,6 +208,27 @@ if [ "$BUMP_SERVER" = true ]; then
         if [ "$retag" = "y" ]; then
             git tag -d "$SERVER_TAG" 2>/dev/null
             git push origin --delete "$SERVER_TAG" 2>/dev/null
+            echo -e "${GREEN}Old tag deleted${NC}"
+        else
+            exit 0
+        fi
+    fi
+fi
+
+if [ "$BUMP_WEB" = true ]; then
+    echo ""
+    DEFAULT_WEB_VER=$(bump_version "$WEB_VER")
+    echo -ne "${YELLOW}New web version ${DIM}(current: ${WEB_VER}, enter=${DEFAULT_WEB_VER})${NC}${YELLOW}:${NC} "
+    read -e -r NEW_WEB_VER
+    [ -z "$NEW_WEB_VER" ] && NEW_WEB_VER="$DEFAULT_WEB_VER"
+    echo -e "  → ${GREEN}${NEW_WEB_VER}${NC}"
+    WEB_TAG="web-v${NEW_WEB_VER}"
+    if git tag -l | grep -q "^${WEB_TAG}$"; then
+        retag=""
+        confirm_select retag "${YELLOW}Tag ${WEB_TAG} already exists. Re-tag and rebuild?${NC}"
+        if [ "$retag" = "y" ]; then
+            git tag -d "$WEB_TAG" 2>/dev/null
+            git push origin --delete "$WEB_TAG" 2>/dev/null
             echo -e "${GREEN}Old tag deleted${NC}"
         else
             exit 0
@@ -236,6 +263,7 @@ echo -e "${GREEN}╔════════════════════
 echo -e "${GREEN}║${NC}         ${BOLD}Plan${NC}                 ${GREEN}║${NC}"
 echo -e "${GREEN}╚══════════════════════════════╝${NC}"
 [ -n "$NEW_SERVER_VER" ] && echo -e "  Server  ${SERVER_VER} → ${GREEN}${NEW_SERVER_VER}${NC}  (tag: ${SERVER_TAG})"
+[ -n "$NEW_WEB_VER" ] && echo -e "  Web     ${WEB_VER} → ${GREEN}${NEW_WEB_VER}${NC}  (tag: ${WEB_TAG})"
 [ -n "$NEW_IOS_VER" ] && echo -e "  iOS     ${IOS_VER} → ${GREEN}${NEW_IOS_VER}${NC}  (tag: ${IOS_TAG})"
 echo ""
 
@@ -254,7 +282,24 @@ if ! git diff --quiet; then
     [ "$add_all" = "y" ] && git add -A && git commit -m "chore: pending changes" && git push
 fi
 
-# === iOS release (first, so server commit is latest for server tag) ===
+# === Web release ===
+if [ -n "$NEW_WEB_VER" ]; then
+    echo ""
+    echo -e "${GREEN}=== Web v${NEW_WEB_VER} ===${NC}"
+
+    if [ "$NEW_WEB_VER" != "$WEB_VER" ]; then
+        sed -i '' "s/\"version\": \"${WEB_VER}\"/\"version\": \"${NEW_WEB_VER}\"/" "$SCRIPT_DIR/web/package.json"
+        git add "$SCRIPT_DIR/web/package.json"
+        git commit -m "release: web v${NEW_WEB_VER}"
+        git push || { echo -e "${RED}Push failed${NC}"; exit 1; }
+    fi
+
+    git tag "$WEB_TAG"
+    git push origin "$WEB_TAG" || { echo -e "${RED}Web tag push failed${NC}"; exit 1; }
+    echo -e "${GREEN}Tag ${WEB_TAG} pushed → CI: Docker image ghcr.io${NC}"
+fi
+
+# === iOS release ===
 if [ -n "$NEW_IOS_VER" ]; then
     echo ""
     echo -e "${GREEN}=== iOS v${NEW_IOS_VER} ===${NC}"
