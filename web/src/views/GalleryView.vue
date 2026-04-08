@@ -335,6 +335,26 @@ useKeyboardShortcuts({
   },
 }, () => !!previewFile.value)
 
+// Alt+Arrow pan for video/audio (separate listener since shortcut system already consumed plain arrows)
+function onAltArrowPan(e) {
+  if (!previewFile.value || !isMediaType()) return
+  if (!e.altKey) return
+  const step = 50
+  const map = {
+    ArrowUp: [0, step],
+    ArrowDown: [0, -step],
+    ArrowLeft: [step, 0],
+    ArrowRight: [-step, 0],
+  }
+  const dir = map[e.key]
+  if (dir) {
+    e.preventDefault()
+    mediaPlayer.value?.panBy(dir[0], dir[1])
+  }
+}
+onMounted(() => window.addEventListener('keydown', onAltArrowPan))
+onUnmounted(() => window.removeEventListener('keydown', onAltArrowPan))
+
 const fileInfoDialog = ref(null)
 const gridScrollContainer = ref(null)
 let savedScrollTop = 0
