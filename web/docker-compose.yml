@@ -6,7 +6,7 @@ services:
     container_name: re-sourcer-web
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "5678:80"
     # Docker Desktop (Mac/Win) 自动支持 host.docker.internal
     # Linux 需要添加以下配置:
     extra_hosts:
