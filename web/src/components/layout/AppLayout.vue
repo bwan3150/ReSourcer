@@ -70,7 +70,7 @@ import { useI18n } from 'vue-i18n'
 import { clearApiKey } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
 import { setLocale } from '../../i18n'
-import { Image, FolderOpen, Download, Settings, LogOut, Languages, Sun, Moon, Monitor } from 'lucide-vue-next'
+import { Image, FolderOpen, Download, BarChart3, Settings, LogOut, Languages, Sun, Moon, Monitor } from 'lucide-vue-next'
 
 const { locale, t } = useI18n()
 const route = useRoute()
@@ -87,6 +87,7 @@ const navItems = [
   { to: '/gallery', label: 'nav.gallery', icon: Image },
   { to: '/classifier', label: 'nav.classifier', icon: FolderOpen },
   { to: '/downloader', label: 'nav.downloader', icon: Download },
+  { to: '/metrics', label: 'nav.metrics', icon: BarChart3 },
   { to: '/settings', label: 'nav.settings', icon: Settings },
 ]
 

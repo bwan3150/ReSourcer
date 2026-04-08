@@ -11,6 +11,7 @@ mod preview;
 mod browser;
 mod indexer;
 mod tag;
+mod metrics;
 
 // 工具模块
 mod static_files;
@@ -156,6 +157,10 @@ async fn main() -> std::io::Result<()> {
     // 初始化扫描状态（索引模块共享）
     let scan_status = web::Data::new(Arc::new(RwLock::new(indexer::models::ScanStatus::default())));
 
+    // 初始化性能指标采集
+    let metrics_state = web::Data::new(Arc::new(RwLock::new(metrics::models::MetricsState::default())));
+    metrics::collector::start_collector(metrics_state.get_ref().clone());
+
     // 读取 API Key (优先级: secret.json > 环境变量 > 随机生成)
     fn load_api_key_from_secret() -> Option<String> {
         use std::fs;
@@ -205,6 +210,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(download_task_manager.clone())
             .app_data(upload_task_manager.clone())
             .app_data(scan_status.clone())
+            .app_data(metrics_state.clone())
             // 健康检查 API（不需要认证）
             .route("/api/health", web::get().to(health_check))
             // 认证 API 路由
@@ -237,6 +243,8 @@ async fn main() -> std::io::Result<()> {
             .service(web::scope("/api/tag").configure(tag::routes))
             // 文件系统浏览 API 路由
             .service(web::scope("/api/browser").configure(browser::routes))
+            // 性能指标 API 路由
+            .service(web::scope("/api/metrics").configure(metrics::routes))
     })
     .bind("0.0.0.0:1234")?
     .run()

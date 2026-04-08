@@ -213,6 +213,28 @@ pub fn init_db() -> SqliteResult<()> {
         [],
     )?;
 
+    // 创建性能指标历史表
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS metrics_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            cpu_usage_percent REAL NOT NULL,
+            memory_total_bytes INTEGER NOT NULL,
+            memory_used_bytes INTEGER NOT NULL,
+            memory_available_bytes INTEGER NOT NULL,
+            disk_total_bytes INTEGER NOT NULL,
+            disk_used_bytes INTEGER NOT NULL,
+            disk_available_bytes INTEGER NOT NULL,
+            load_avg_1m REAL NOT NULL,
+            load_avg_5m REAL NOT NULL,
+            load_avg_15m REAL NOT NULL,
+            process_memory_bytes INTEGER NOT NULL,
+            uptime_seconds INTEGER NOT NULL
+        )",
+        [],
+    )?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics_history(timestamp)", [])?;
+
     // 执行数据迁移（从旧 JSON 文件）
     migrate_from_json(&conn)?;
 
