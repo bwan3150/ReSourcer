@@ -319,6 +319,10 @@ useKeyboardShortcuts({
   zoomIn: () => { mediaPlayer.value?.zoomBy(0.2); osd.value?.show('ZoomIn') },
   zoomOut: () => { mediaPlayer.value?.zoomBy(-0.2); osd.value?.show('ZoomOut') },
   pdfFitMode: () => { mediaPlayer.value?.pdfToggleFitMode(); osd.value?.show('Columns') },
+  panUp: () => { if (isMediaType()) mediaPlayer.value?.panBy(0, 50) },
+  panDown: () => { if (isMediaType()) mediaPlayer.value?.panBy(0, -50) },
+  panLeft: () => { if (isMediaType()) mediaPlayer.value?.panBy(50, 0) },
+  panRight: () => { if (isMediaType()) mediaPlayer.value?.panBy(-50, 0) },
   toggleUI: () => {
     previewUIHidden.value = !previewUIHidden.value
     if (mediaPlayer.value) {
@@ -334,26 +338,6 @@ useKeyboardShortcuts({
     osd.value?.show(icons[themeMode.value] || 'Monitor')
   },
 }, () => !!previewFile.value)
-
-// Alt+Arrow pan for video/audio (separate listener since shortcut system already consumed plain arrows)
-function onAltArrowPan(e) {
-  if (!previewFile.value || !isMediaType()) return
-  if (!e.altKey) return
-  const step = 50
-  const map = {
-    ArrowUp: [0, step],
-    ArrowDown: [0, -step],
-    ArrowLeft: [step, 0],
-    ArrowRight: [-step, 0],
-  }
-  const dir = map[e.key]
-  if (dir) {
-    e.preventDefault()
-    mediaPlayer.value?.panBy(dir[0], dir[1])
-  }
-}
-onMounted(() => window.addEventListener('keydown', onAltArrowPan))
-onUnmounted(() => window.removeEventListener('keydown', onAltArrowPan))
 
 const fileInfoDialog = ref(null)
 const gridScrollContainer = ref(null)

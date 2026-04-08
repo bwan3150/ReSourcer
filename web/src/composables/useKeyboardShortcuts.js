@@ -15,6 +15,10 @@ const DEFAULTS = {
   zoomIn: '=',
   zoomOut: '-',
   pdfFitMode: 'p',
+  panUp: 'Alt+ArrowUp',
+  panDown: 'Alt+ArrowDown',
+  panLeft: 'Alt+ArrowLeft',
+  panRight: 'Alt+ArrowRight',
   toggleUI: 'h',
   cycleTheme: 'Tab',
 }
@@ -34,6 +38,10 @@ export const SHORTCUT_LABELS = {
   zoomIn: 'Zoom in',
   zoomOut: 'Zoom out',
   pdfFitMode: 'PDF fit width / height',
+  panUp: 'Video pan up',
+  panDown: 'Video pan down',
+  panLeft: 'Video pan left',
+  panRight: 'Video pan right',
   toggleUI: 'Hide / Show UI',
   cycleTheme: 'Cycle theme',
 }
@@ -53,6 +61,10 @@ export const SHORTCUT_ICONS = {
   zoomIn: 'ZoomIn',
   zoomOut: 'ZoomOut',
   pdfFitMode: 'Columns',
+  panUp: 'MoveVertical',
+  panDown: 'MoveVertical',
+  panLeft: 'MoveHorizontal',
+  panRight: 'MoveHorizontal',
   toggleUI: 'Eye',
   cycleTheme: 'Monitor',
 }
