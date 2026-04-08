@@ -2,8 +2,8 @@ import { ref, onMounted, onUnmounted } from 'vue'
 
 // Default shortcuts
 const DEFAULTS = {
-  prevFile: 'Alt+ArrowLeft',
-  nextFile: 'Alt+ArrowRight',
+  prevFile: 'Ctrl+ArrowLeft',
+  nextFile: 'Ctrl+ArrowRight',
   seekForward: 'ArrowRight',
   seekBackward: 'ArrowLeft',
   playPause: ' ',           // Space
