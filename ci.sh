@@ -173,10 +173,10 @@ echo ""
 choice=0
 menu_select choice \
     "${YELLOW}Select release target:${NC}" \
-    "Server release     (bump version + tag + build)" \
-    "Web release        (bump version + tag + Docker image)" \
-    "iOS release        (bump version + build + Pgyer)" \
-    "All                (bump all + tag + build all)"
+    "Server     → GitHub Release" \
+    "Web        → Docker Image" \
+    "iOS        → Pgyer" \
+    "All        → All of the above"
 
 BUMP_SERVER=false
 BUMP_WEB=false
