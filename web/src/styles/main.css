@@ -10,6 +10,10 @@ html, body, #app {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+*:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
 *::-webkit-scrollbar {
   display: none;
 }
