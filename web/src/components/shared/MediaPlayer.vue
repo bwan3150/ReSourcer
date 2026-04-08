@@ -285,6 +285,12 @@ function zoomBy(delta) {
   if (Math.abs(newScale - 1) < 0.05) { scale.value = 1; panX.value = 0; panY.value = 0 }
 }
 
+function panBy(dx, dy) {
+  if (!zoomable.value) return
+  panX.value += dx
+  panY.value += dy
+}
+
 function formatTime(s) {
   if (!s || !isFinite(s)) return '0:00'
   const m = Math.floor(s / 60)
@@ -293,7 +299,7 @@ function formatTime(s) {
 }
 
 defineExpose({
-  togglePlay, seekBy, changeVolume, toggleMute, zoomBy, resetZoom,
+  togglePlay, seekBy, changeVolume, toggleMute, zoomBy, panBy, resetZoom,
   playing, muted, volume, controlsVisible,
 })
 </script>

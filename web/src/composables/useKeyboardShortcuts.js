@@ -16,6 +16,10 @@ const DEFAULTS = {
   zoomOut: '-',
   pdfNextPage: 'Alt+ArrowDown',
   pdfPrevPage: 'Alt+ArrowUp',
+  panUp: 'Alt+ArrowUp',
+  panDown: 'Alt+ArrowDown',
+  panLeft: 'Alt+ArrowLeft',
+  panRight: 'Alt+ArrowRight',
   toggleUI: 'h',
   cycleTheme: 'Tab',
 }
