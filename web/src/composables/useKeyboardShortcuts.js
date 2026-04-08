@@ -129,9 +129,12 @@ function matchEvent(e, code) {
   const needShift = parts.includes('Shift')
 
   let eventKey = e.key
+  // Normalize space
   if (eventKey === ' ') eventKey = 'Space'
+  let matchKey = key
+  if (matchKey === ' ') matchKey = 'Space'
 
-  return eventKey === key
+  return eventKey === matchKey
     && e.altKey === needAlt
     && (e.ctrlKey || e.metaKey) === needCtrl
     && e.shiftKey === needShift

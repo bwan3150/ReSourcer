@@ -270,16 +270,26 @@ useKeyboardShortcuts({
   seekForward: () => { mediaPlayer.value?.seekBy(1); osd.value?.show('FastForward') },
   seekBackward: () => { mediaPlayer.value?.seekBy(-1); osd.value?.show('Rewind') },
   playPause: () => {
+    const wasPlaying = mediaPlayer.value?.playing?.value ?? mediaPlayer.value?.playing
     mediaPlayer.value?.togglePlay()
-    osd.value?.show(mediaPlayer.value?.playing ? 'Pause' : 'Play')
+    osd.value?.show(wasPlaying ? 'Play' : 'Pause')
   },
   volumeUp: () => { mediaPlayer.value?.changeVolume(0.05); osd.value?.show('Volume2') },
   volumeDown: () => { mediaPlayer.value?.changeVolume(-0.05); osd.value?.show('Volume1') },
   toggleMute: () => {
+    const wasMuted = mediaPlayer.value?.muted?.value ?? mediaPlayer.value?.muted
     mediaPlayer.value?.toggleMute()
-    osd.value?.show(mediaPlayer.value?.muted ? 'VolumeX' : 'Volume2')
+    osd.value?.show(wasMuted ? 'Volume2' : 'VolumeX')
   },
-  fileInfo: () => { fileInfoDialog.value?.showModal(); osd.value?.show('Info') },
+  fileInfo: () => {
+    const dialog = fileInfoDialog.value
+    if (dialog?.open) {
+      dialog.close()
+    } else {
+      dialog?.showModal()
+      osd.value?.show('Info')
+    }
+  },
   exitPreview: () => { closePreview() },
   zoomIn: () => { mediaPlayer.value?.zoomBy(0.2); osd.value?.show('ZoomIn') },
   zoomOut: () => { mediaPlayer.value?.zoomBy(-0.2); osd.value?.show('ZoomOut') },
