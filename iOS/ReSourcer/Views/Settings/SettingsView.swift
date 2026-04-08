@@ -40,11 +40,6 @@ struct SettingsView: View {
     // 重新索引进度
     @State private var isReindexing = false
 
-    // 检查更新
-    @State private var isCheckingUpdate = false
-    @State private var latestServerVersion: String?
-    @State private var latestIOSVersion: String?
-    @State private var isUpdatingServer = false
 
     // MARK: - Body
 
@@ -73,7 +68,10 @@ struct SettingsView: View {
                     // 7. 下载器
                     downloaderSection
 
-                    // 8. 缓存管理
+                    // 8. 服务器性能
+                    metricsSection
+
+                    // 9. 缓存管理
                     cacheSection
 
                     // 8. 关于
@@ -439,7 +437,7 @@ struct SettingsView: View {
     // MARK: - 5. 偏好设置
 
     private var preferencesSection: some View {
-        SettingsSection(title: "偏好") {
+        SettingsSection(title: "") {
             NavigationLink {
                 PreferencesView(apiService: apiService)
             } label: {
@@ -465,7 +463,7 @@ struct SettingsView: View {
     // MARK: - 6. 认证
 
     private var authSection: some View {
-        SettingsSection(title: "认证") {
+        SettingsSection(title: "") {
             NavigationLink {
                 AuthSettingsView(apiService: apiService)
             } label: {
@@ -494,7 +492,7 @@ struct SettingsView: View {
     // MARK: - 7. 下载器
 
     private var downloaderSection: some View {
-        SettingsSection(title: "下载器") {
+        SettingsSection(title: "") {
             NavigationLink {
                 DownloaderSettingsView(apiService: apiService)
             } label: {
@@ -520,10 +518,39 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - 8. 缓存管理
+    // MARK: - 8. 服务器性能
+
+    private var metricsSection: some View {
+        SettingsSection(title: "") {
+            NavigationLink {
+                ServerMetricsView(apiService: apiService)
+            } label: {
+                HStack(spacing: AppTheme.Spacing.md) {
+                    Image(systemName: "chart.xyaxis.line")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.green)
+                        .frame(width: 28)
+
+                    Text("服务器性能")
+                        .font(.body)
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - 9. 缓存管理
 
     private var cacheSection: some View {
-        SettingsSection(title: "缓存") {
+        SettingsSection(title: "") {
             NavigationLink {
                 CacheSettingsView()
             } label: {
@@ -555,140 +582,32 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - 7. 关于
+    // MARK: - 10. 关于
 
     private var aboutSection: some View {
-        SettingsSection(title: "关于") {
-            VStack(spacing: AppTheme.Spacing.md) {
-                // iOS App 版本
-                let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-                HStack {
-                    Text("iOS 版本")
-                        .font(.body)
-                        .foregroundStyle(.primary)
-                    Spacer()
-                    HStack(spacing: AppTheme.Spacing.sm) {
-                        Text(appVersion)
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-                        if let latest = latestIOSVersion, latest != appVersion {
-                            Text(latest)
-                                .font(.caption)
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Capsule().fill(.blue))
-                            if let iosUrl = appConfig?.iosUrl, let url = URL(string: iosUrl) {
-                                Button {
-                                    UIApplication.shared.open(url)
-                                } label: {
-                                    Image(systemName: "arrow.down.circle")
-                                        .font(.caption)
-                                        .foregroundStyle(.blue)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Divider()
-
-                // 服务器版本 + 检查更新
-                HStack {
-                    Text("服务器版本")
-                        .font(.body)
-                        .foregroundStyle(.primary)
-                    Spacer()
-                    HStack(spacing: AppTheme.Spacing.sm) {
-                        Text(appConfig?.version ?? "...")
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-                        if let latest = latestServerVersion, latest != appConfig?.version {
-                            Text(latest)
-                                .font(.caption)
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Capsule().fill(.blue))
-                            Button {
-                                Task { await triggerServerUpdate() }
-                            } label: {
-                                Image(systemName: isUpdatingServer ? "arrow.trianglehead.2.clockwise" : "arrow.down.circle")
-                                    .font(.caption)
-                                    .foregroundStyle(.blue)
-                            }
-                            .disabled(isUpdatingServer)
-                        }
-                    }
-                }
-
-                Divider()
-
-                // 链接按钮
+        SettingsSection(title: "") {
+            NavigationLink {
+                AboutView(apiService: apiService, appConfig: appConfig)
+            } label: {
                 HStack(spacing: AppTheme.Spacing.md) {
-                    if let iosUrl = appConfig?.iosUrl, let url = URL(string: iosUrl) {
-                        Button {
-                            UIApplication.shared.open(url)
-                        } label: {
-                            HStack(spacing: AppTheme.Spacing.xs) {
-                                Image(systemName: "iphone")
-                                    .font(.caption)
-                                Text("iOS 下载")
-                                    .font(.caption)
-                            }
-                            .foregroundStyle(.primary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .clearGlassBackground(in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    }
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.blue)
+                        .frame(width: 28)
 
-                    Button {
-                        openGitHub()
-                    } label: {
-                        HStack(spacing: AppTheme.Spacing.xs) {
-                            Image("GithubIcon")
-                                .renderingMode(.template)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 14, height: 14)
-                            Text("GitHub")
-                                .font(.caption)
-                        }
+                    Text("关于 ReSourcer")
+                        .font(.body)
                         .foregroundStyle(.primary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .clearGlassBackground(in: Capsule())
-                    }
-                    .buttonStyle(.plain)
 
                     Spacer()
 
-                    // 检查更新按钮
-                    Button {
-                        Task { await checkAllUpdates() }
-                    } label: {
-                        HStack(spacing: AppTheme.Spacing.xs) {
-                            if isCheckingUpdate {
-                                ProgressView()
-                                    .controlSize(.mini)
-                            } else {
-                                Image(systemName: "arrow.clockwise")
-                                    .font(.caption)
-                            }
-                            Text("检查更新")
-                                .font(.caption)
-                        }
-                        .foregroundStyle(.primary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .clearGlassBackground(in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isCheckingUpdate)
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
         }
     }
 
@@ -846,75 +765,6 @@ struct SettingsView: View {
         }
     }
 
-    private func checkAllUpdates() async {
-        isCheckingUpdate = true
-
-        // 并行检查服务器和 iOS 版本
-        async let serverCheck: Void = {
-            do {
-                let result = try await apiService.config.checkUpdate()
-                await MainActor.run { latestServerVersion = result.latestVersion }
-            } catch {}
-        }()
-
-        async let iosCheck: Void = {
-            if let version = await Self.fetchPgyerVersion() {
-                await MainActor.run { latestIOSVersion = version }
-            }
-        }()
-
-        _ = await (serverCheck, iosCheck)
-
-        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-        let hasServerUpdate = latestServerVersion != nil && latestServerVersion != appConfig?.version
-        let hasIOSUpdate = latestIOSVersion != nil && latestIOSVersion != appVersion
-
-        if hasServerUpdate || hasIOSUpdate {
-            var parts: [String] = []
-            if hasIOSUpdate, let v = latestIOSVersion { parts.append("iOS \(v)") }
-            if hasServerUpdate, let v = latestServerVersion { parts.append("Server \(v)") }
-            GlassAlertManager.shared.showSuccess("发现新版本: \(parts.joined(separator: ", "))")
-        } else {
-            GlassAlertManager.shared.showSuccess("已是最新版本")
-        }
-
-        isCheckingUpdate = false
-    }
-
-    private func triggerServerUpdate() async {
-        isUpdatingServer = true
-        do {
-            let result = try await apiService.config.updateServer()
-            GlassAlertManager.shared.showSuccess(result.message)
-        } catch {
-            GlassAlertManager.shared.showError("更新失败: \(error.localizedDescription)")
-        }
-        isUpdatingServer = false
-    }
-
-    /// 从蒲公英公开页面抓取最新 iOS 版本号
-    private static func fetchPgyerVersion() async -> String? {
-        guard let url = URL(string: "https://www.pgyer.com/resourcer-ios") else { return nil }
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            guard let html = String(data: data, encoding: .utf8) else { return nil }
-            // 匹配页面中的 aVersion = '0.0.16' 变量
-            let pattern = #"aVersion\s*=\s*'([^']+)'"#
-            guard let regex = try? NSRegularExpression(pattern: pattern),
-                  let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
-                  let range = Range(match.range(at: 1), in: html) else { return nil }
-            return String(html[range])
-        } catch {
-            return nil
-        }
-    }
-
-    private func openGitHub() {
-        let urlString = appConfig?.githubUrl ?? "https://github.com"
-        if let url = URL(string: urlString) {
-            UIApplication.shared.open(url)
-        }
-    }
 
     private func disconnect() {
         LocalStorageService.shared.logout()

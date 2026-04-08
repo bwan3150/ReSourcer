@@ -51,6 +51,9 @@ final class APIService: ObservableObject {
     /// 标签服务
     let tag: TagService
 
+    /// 性能指标服务
+    let metrics: MetricsService
+
     // MARK: - Initialization
 
     /// 初始化 API 服务
@@ -82,6 +85,7 @@ final class APIService: ObservableObject {
         self.browser = BrowserService(networkManager: networkManager)
         self.config = ConfigService(networkManager: networkManager)
         self.tag = TagService(networkManager: networkManager)
+        self.metrics = MetricsService(networkManager: networkManager)
 
         // 监听连接错误通知，触发地址切换对话框（带并行探测）
         NotificationCenter.default.addObserver(

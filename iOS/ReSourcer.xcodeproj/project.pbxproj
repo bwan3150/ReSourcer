@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4C1D717EE8BDFF4B003707D2 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E698E88935756D992DB0E55 /* AboutView.swift */; };
+		5BA764DFEB45D4ADAE38CC6A /* MetricsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF085BEB183121E3B39A0477 /* MetricsService.swift */; };
+		8B6571A01BF18BCAF39FCD63 /* ServerMetricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C09E79295A8E45EF0CDF20D /* ServerMetricsView.swift */; };
 		A1000001233F0001 /* ReSourcerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001233F0000 /* ReSourcerApp.swift */; };
 		A1000002233F0001 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002233F0000 /* MainTabView.swift */; };
 		A1000003233F0001 /* ServerConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000003233F0000 /* ServerConnectView.swift */; };
@@ -65,9 +68,13 @@
 		A1000095233F0001 /* DownloaderSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000095233F0000 /* DownloaderSettingsView.swift */; };
 		A1000096233F0001 /* PreviewLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000096233F0000 /* PreviewLogger.swift */; };
 		A10000A0233F0001 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000FE233F0000 /* PreferencesView.swift */; };
+		E0F10391981E71D1AB05829E /* MetricsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 649E6184143302EFD3D570DE /* MetricsModels.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		4C09E79295A8E45EF0CDF20D /* ServerMetricsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ServerMetricsView.swift; sourceTree = "<group>"; };
+		649E6184143302EFD3D570DE /* MetricsModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MetricsModels.swift; sourceTree = "<group>"; };
+		7E698E88935756D992DB0E55 /* AboutView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		A1000000233F0000 /* ReSourcer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReSourcer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1000001233F0000 /* ReSourcerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReSourcerApp.swift; sourceTree = "<group>"; };
 		A1000002233F0000 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
@@ -129,6 +136,7 @@
 		A1000095233F0000 /* DownloaderSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloaderSettingsView.swift; sourceTree = "<group>"; };
 		A1000096233F0000 /* PreviewLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewLogger.swift; sourceTree = "<group>"; };
 		A10000FE233F0000 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
+		EF085BEB183121E3B39A0477 /* MetricsService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MetricsService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -223,6 +231,7 @@
 				A1000035233F0000 /* Server.swift */,
 				A1000036233F0000 /* UploadModels.swift */,
 				A1000037233F0000 /* TagModels.swift */,
+				649E6184143302EFD3D570DE /* MetricsModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -257,6 +266,7 @@
 				A1000096233F0000 /* PreviewLogger.swift */,
 				A100008C233F0000 /* PhotoExporter.h */,
 				A100008D233F0000 /* PhotoExporter.m */,
+				EF085BEB183121E3B39A0477 /* MetricsService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -325,6 +335,8 @@
 				A1000095233F0000 /* DownloaderSettingsView.swift */,
 				A10000FE233F0000 /* PreferencesView.swift */,
 				A1000091233F0000 /* ThumbnailCacheDetailView.swift */,
+				4C09E79295A8E45EF0CDF20D /* ServerMetricsView.swift */,
+				7E698E88935756D992DB0E55 /* AboutView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -456,6 +468,10 @@
 				A100008B233F0001 /* UploadTaskListView.swift in Sources */,
 				A100008D233F0001 /* PhotoExporter.m in Sources */,
 				A1000090233F0001 /* FileInfoSheetContent.swift in Sources */,
+				5BA764DFEB45D4ADAE38CC6A /* MetricsService.swift in Sources */,
+				E0F10391981E71D1AB05829E /* MetricsModels.swift in Sources */,
+				8B6571A01BF18BCAF39FCD63 /* ServerMetricsView.swift in Sources */,
+				4C1D717EE8BDFF4B003707D2 /* AboutView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -87,6 +87,12 @@ enum APIEndpoint {
     case tagSetFileTags                          // POST /api/tag/file
     case tagGetFilesTags                         // POST /api/tag/files
 
+    // MARK: - Metrics 性能指标
+    case metricsCurrent                      // GET  /api/metrics/current
+    case metricsHistory(minutes: Int)        // GET  /api/metrics/history?minutes=
+    case metricsDisk                         // GET  /api/metrics/disk
+    case metricsSystem                       // GET  /api/metrics/system
+
     // MARK: - Config 配置管理
     case configState                         // GET  /api/config/state
     case configSave                          // POST /api/config/save
@@ -239,6 +245,16 @@ enum APIEndpoint {
         case .tagGetFilesTags:
             return "/api/tag/files"
 
+        // Metrics
+        case .metricsCurrent:
+            return "/api/metrics/current"
+        case .metricsHistory(let minutes):
+            return "/api/metrics/history?minutes=\(minutes)"
+        case .metricsDisk:
+            return "/api/metrics/disk"
+        case .metricsSystem:
+            return "/api/metrics/system"
+
         // Config
         case .configState:
             return "/api/config/state"
@@ -272,6 +288,7 @@ enum APIEndpoint {
              .previewFiles, .previewThumbnail, .previewThumbnailByUuid, .previewContent, .previewContentByUuid,
              .indexerFiles, .indexerFile, .indexerFolders, .indexerStatus, .indexerBreadcrumb,
              .tagList, .tagGetFileTags,
+             .metricsCurrent, .metricsHistory, .metricsDisk, .metricsSystem,
              .configState, .configDownload, .configSources:
             return .GET
 
