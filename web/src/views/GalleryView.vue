@@ -265,7 +265,7 @@ function isMediaType() {
 }
 const osd = ref(null)
 const previewUIHidden = ref(false)
-const { cycle: cycleTheme } = useTheme()
+const { mode: themeMode, cycle: cycleTheme } = useTheme()
 
 // Preview keyboard shortcuts
 useKeyboardShortcuts({
@@ -308,7 +308,11 @@ useKeyboardShortcuts({
     }
     osd.value?.show(previewUIHidden.value ? 'EyeOff' : 'Eye')
   },
-  cycleTheme: () => { cycleTheme(); osd.value?.show('Monitor') },
+  cycleTheme: () => {
+    cycleTheme()
+    const icons = { system: 'Monitor', light: 'Sun', dark: 'Moon' }
+    osd.value?.show(icons[themeMode.value] || 'Monitor')
+  },
 }, () => !!previewFile.value)
 
 const fileInfoDialog = ref(null)
