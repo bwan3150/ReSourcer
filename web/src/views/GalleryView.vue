@@ -273,7 +273,7 @@ useKeyboardShortcuts({
   playPause: () => {
     const wasPlaying = mediaPlayer.value?.playing?.value ?? mediaPlayer.value?.playing
     mediaPlayer.value?.togglePlay()
-    osd.value?.show(wasPlaying ? 'Play' : 'Pause')
+    osd.value?.show(wasPlaying ? 'Pause' : 'Play')
   },
   volumeUp: () => { mediaPlayer.value?.changeVolume(0.05); osd.value?.show('Volume2') },
   volumeDown: () => { mediaPlayer.value?.changeVolume(-0.05); osd.value?.show('Volume1') },
