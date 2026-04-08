@@ -165,7 +165,11 @@
             <div class="space-y-2 text-sm">
               <div class="flex justify-between items-center">
                 <span class="text-base-content/50">{{ $t('settings.webVersion') }}</span>
-                <span>{{ webVersion }}</span>
+                <div class="flex items-center gap-2">
+                  <span>{{ webVersion }}</span>
+                  <span v-if="hasWebUpdate" class="badge badge-outline badge-xs">{{ latestWebVersion }}</span>
+                  <span v-if="hasWebUpdate" class="text-xs text-base-content/40">docker compose pull</span>
+                </div>
               </div>
               <div class="flex justify-between items-center">
                 <span class="text-base-content/50">{{ $t('settings.serverVersion') }}</span>
@@ -248,6 +252,8 @@ const githubUrl = ref('')
 const iosUrl = ref('')
 const latestVersion = ref('')
 const hasServerUpdate = ref(false)
+const latestWebVersion = ref('')
+const hasWebUpdate = ref(false)
 const checking = ref(false)
 const updating = ref(false)
 
@@ -364,12 +370,33 @@ async function saveToolUrls(name) {
 async function checkForUpdate() {
   checking.value = true
   try {
+    // Check server update
     const { data } = await configApi.checkUpdate()
     latestVersion.value = data.latestVersion || ''
     hasServerUpdate.value = data.hasUpdate || false
-    if (!data.hasUpdate) showToast(t('settings.upToDate'))
+
+    // Check web update from GitHub tags
+    await checkWebUpdate()
+
+    if (!data.hasUpdate && !hasWebUpdate.value) showToast(t('settings.upToDate'))
   } catch {}
   checking.value = false
+}
+
+async function checkWebUpdate() {
+  try {
+    const resp = await fetch('https://api.github.com/repos/bwan3150/ReSourcer/tags?per_page=20', {
+      headers: { 'Accept': 'application/vnd.github.v3+json' }
+    })
+    if (!resp.ok) return
+    const tags = await resp.json()
+    const webTag = tags.find(t => t.name.startsWith('web-v'))
+    if (webTag) {
+      const latest = webTag.name.replace('web-v', '')
+      latestWebVersion.value = latest
+      hasWebUpdate.value = latest !== webVersion
+    }
+  } catch {}
 }
 
 async function doServerUpdate() {
