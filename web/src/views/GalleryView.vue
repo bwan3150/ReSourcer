@@ -25,8 +25,8 @@
     <!-- Full-screen preview (covers header + sidebar content area) -->
     <template v-if="previewFile">
       <div class="flex flex-col h-full overflow-hidden">
-        <!-- Preview header bar -->
-        <div class="flex items-center gap-2 px-4 py-2 border-b border-base-300 shrink-0">
+        <!-- Preview header bar (hidden when UI is hidden via H key) -->
+        <div v-show="!previewUIHidden" class="flex items-center gap-2 px-4 py-2 border-b border-base-300 shrink-0">
           <button class="btn btn-ghost btn-sm btn-square" @click="closePreview">
             <X :size="18" />
           </button>
@@ -261,6 +261,7 @@ const previewIndex = ref(0)
 const contentSrc = computed(() => previewFile.value ? contentUrl(previewFile.value) : '')
 const mediaPlayer = ref(null)
 const osd = ref(null)
+const previewUIHidden = ref(false)
 const { cycle: cycleTheme } = useTheme()
 
 // Preview keyboard shortcuts
@@ -294,8 +295,13 @@ useKeyboardShortcuts({
   zoomIn: () => { mediaPlayer.value?.zoomBy(0.2); osd.value?.show('ZoomIn') },
   zoomOut: () => { mediaPlayer.value?.zoomBy(-0.2); osd.value?.show('ZoomOut') },
   toggleUI: () => {
-    if (mediaPlayer.value) mediaPlayer.value.controlsVisible = !mediaPlayer.value.controlsVisible
-    osd.value?.show(mediaPlayer.value?.controlsVisible ? 'Eye' : 'EyeOff')
+    previewUIHidden.value = !previewUIHidden.value
+    if (mediaPlayer.value) {
+      const cv = mediaPlayer.value.controlsVisible
+      if (cv && typeof cv === 'object') cv.value = !previewUIHidden.value
+      else mediaPlayer.value.controlsVisible = !previewUIHidden.value
+    }
+    osd.value?.show(previewUIHidden.value ? 'EyeOff' : 'Eye')
   },
   cycleTheme: () => { cycleTheme(); osd.value?.show('Monitor') },
 }, () => !!previewFile.value)
@@ -443,6 +449,7 @@ async function onCreateTag({ name, color }) {
 
 function closePreview() {
   previewFile.value = null
+  previewUIHidden.value = false
   nextTick(() => {
     if (gridScrollContainer.value) {
       gridScrollContainer.value.scrollTop = savedScrollTop

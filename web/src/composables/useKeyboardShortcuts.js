@@ -12,7 +12,7 @@ const DEFAULTS = {
   toggleMute: 'm',
   fileInfo: 'i',
   exitPreview: 'Escape',
-  zoomIn: '+',
+  zoomIn: '=',
   zoomOut: '-',
   pdfNextPage: 'Alt+ArrowDown',
   pdfPrevPage: 'Alt+ArrowUp',
@@ -134,10 +134,15 @@ function matchEvent(e, code) {
   let matchKey = key
   if (matchKey === ' ') matchKey = 'Space'
 
+  // For single-char keys like '+', '-', '=', don't enforce shift matching
+  // because '+' requires Shift on most keyboards
+  const isSingleChar = parts.length === 1 && key.length === 1
+  const shiftOk = isSingleChar || (e.shiftKey === needShift)
+
   return eventKey === matchKey
     && e.altKey === needAlt
     && (e.ctrlKey || e.metaKey) === needCtrl
-    && e.shiftKey === needShift
+    && shiftOk
 }
 
 /**
