@@ -263,6 +263,9 @@ const mediaPlayer = ref(null)
 function isMediaType() {
   return ['video', 'audio'].includes(previewFile.value?.fileType)
 }
+function isPdfType() {
+  return previewFile.value?.fileType === 'pdf'
+}
 const osd = ref(null)
 const previewUIHidden = ref(false)
 const { mode: themeMode, cycle: cycleTheme } = useTheme()
@@ -271,16 +274,32 @@ const { mode: themeMode, cycle: cycleTheme } = useTheme()
 useKeyboardShortcuts({
   prevFile: () => { prevFile(); osd.value?.show('SkipBack') },
   nextFile: () => { nextFile(); osd.value?.show('SkipForward') },
-  seekForward: () => { if (!isMediaType()) return; mediaPlayer.value?.seekBy(1); osd.value?.show('FastForward') },
-  seekBackward: () => { if (!isMediaType()) return; mediaPlayer.value?.seekBy(-1); osd.value?.show('Rewind') },
+  seekForward: () => {
+    if (isMediaType()) { mediaPlayer.value?.seekBy(1); osd.value?.show('FastForward') }
+    else if (isPdfType()) { mediaPlayer.value?.pdfScrollBy(80, 0) }
+    else { mediaPlayer.value?.panBy(-50, 0) }
+  },
+  seekBackward: () => {
+    if (isMediaType()) { mediaPlayer.value?.seekBy(-1); osd.value?.show('Rewind') }
+    else if (isPdfType()) { mediaPlayer.value?.pdfScrollBy(-80, 0) }
+    else { mediaPlayer.value?.panBy(50, 0) }
+  },
   playPause: () => {
     if (!isMediaType()) return
     const wasPlaying = mediaPlayer.value?.playing?.value ?? mediaPlayer.value?.playing
     mediaPlayer.value?.togglePlay()
     osd.value?.show(wasPlaying ? 'Pause' : 'Play')
   },
-  volumeUp: () => { if (!isMediaType()) return; mediaPlayer.value?.changeVolume(0.05); osd.value?.show('Volume2') },
-  volumeDown: () => { if (!isMediaType()) return; mediaPlayer.value?.changeVolume(-0.05); osd.value?.show('Volume1') },
+  volumeUp: () => {
+    if (isMediaType()) { mediaPlayer.value?.changeVolume(0.05); osd.value?.show('Volume2') }
+    else if (isPdfType()) { mediaPlayer.value?.pdfScrollBy(0, -120) }
+    else { mediaPlayer.value?.panBy(0, 50) }
+  },
+  volumeDown: () => {
+    if (isMediaType()) { mediaPlayer.value?.changeVolume(-0.05); osd.value?.show('Volume1') }
+    else if (isPdfType()) { mediaPlayer.value?.pdfScrollBy(0, 120) }
+    else { mediaPlayer.value?.panBy(0, -50) }
+  },
   toggleMute: () => {
     if (!isMediaType()) return
     const wasMuted = mediaPlayer.value?.muted?.value ?? mediaPlayer.value?.muted
@@ -300,10 +319,6 @@ useKeyboardShortcuts({
   zoomIn: () => { mediaPlayer.value?.zoomBy(0.2); osd.value?.show('ZoomIn') },
   zoomOut: () => { mediaPlayer.value?.zoomBy(-0.2); osd.value?.show('ZoomOut') },
   pdfFitMode: () => { mediaPlayer.value?.pdfToggleFitMode(); osd.value?.show('Columns') },
-  panUp: () => { mediaPlayer.value?.panBy(0, 50) },
-  panDown: () => { mediaPlayer.value?.panBy(0, -50) },
-  panLeft: () => { mediaPlayer.value?.panBy(50, 0) },
-  panRight: () => { mediaPlayer.value?.panBy(-50, 0) },
   toggleUI: () => {
     previewUIHidden.value = !previewUIHidden.value
     if (mediaPlayer.value) {

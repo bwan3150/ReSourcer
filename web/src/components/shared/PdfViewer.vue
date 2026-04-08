@@ -133,5 +133,10 @@ function cleanup() {
 
 onUnmounted(cleanup)
 
-defineExpose({ toggleFitMode, fitMode, currentPage, totalPages })
+function scrollBy(dx, dy) {
+  if (!container.value) return
+  container.value.scrollBy({ left: dx, top: dy, behavior: 'smooth' })
+}
+
+defineExpose({ toggleFitMode, scrollBy, fitMode, currentPage, totalPages })
 </script>

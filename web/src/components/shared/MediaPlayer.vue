@@ -295,6 +295,7 @@ function panBy(dx, dy) {
 }
 
 function pdfToggleFitMode() { pdfViewer.value?.toggleFitMode() }
+function pdfScrollBy(dx, dy) { pdfViewer.value?.scrollBy(dx, dy) }
 
 function formatTime(s) {
   if (!s || !isFinite(s)) return '0:00'
@@ -305,7 +306,7 @@ function formatTime(s) {
 
 defineExpose({
   togglePlay, seekBy, changeVolume, toggleMute, zoomBy, panBy, resetZoom,
-  pdfToggleFitMode,
+  pdfToggleFitMode, pdfScrollBy,
   playing, muted, volume, controlsVisible,
 })
 </script>
