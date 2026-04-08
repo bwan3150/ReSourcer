@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  re-sourcer-web:
+  resourcer-web:
     image: ghcr.io/bwan3150/resourcer-web:latest
-    container_name: re-sourcer-web
+    container_name: resourcer-web
     restart: unless-stopped
     ports:
       - "5678:5678"
