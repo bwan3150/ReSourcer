@@ -33,6 +33,9 @@ export default {
     downloader: '下载器',
     settings: '设置',
     logout: '登出',
+    theme_system: '跟随系统',
+    theme_light: '浅色',
+    theme_dark: '深色',
   },
   login: {
     title: '登录 ReSourcer',

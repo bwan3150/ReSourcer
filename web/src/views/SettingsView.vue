@@ -101,6 +101,38 @@
           </div>
         </div>
 
+        <!-- Shortcuts -->
+        <div class="collapse collapse-arrow join-item border border-base-300">
+          <input type="radio" name="settings-accordion" />
+          <div class="collapse-title font-medium text-sm flex items-center gap-2">
+            <Keyboard :size="18" class="text-base-content/50" />
+            {{ $t('settings.shortcuts') }}
+          </div>
+          <div class="collapse-content">
+            <div class="space-y-1">
+              <div
+                v-for="action in shortcutActions"
+                :key="action"
+                class="flex justify-between items-center py-1.5"
+              >
+                <span class="text-xs">{{ $t('settings.shortcut_' + action) }}</span>
+                <button
+                  class="btn btn-ghost btn-xs font-mono min-w-16"
+                  :class="{ 'btn-outline': listeningAction === action }"
+                  @click="startListening(action)"
+                >
+                  {{ listeningAction === action ? '...' : formatShortcut(currentShortcuts[action]) }}
+                </button>
+              </div>
+            </div>
+            <div class="mt-3">
+              <button class="btn btn-ghost btn-xs" @click="doResetShortcuts">
+                {{ $t('settings.resetShortcuts') }}
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Reindex -->
         <div class="collapse collapse-arrow join-item border border-base-300">
           <input type="radio" name="settings-accordion" />
@@ -150,38 +182,6 @@
                   {{ $t('settings.clearCache') }}
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Shortcuts -->
-        <div class="collapse collapse-arrow join-item border border-base-300">
-          <input type="radio" name="settings-accordion" />
-          <div class="collapse-title font-medium text-sm flex items-center gap-2">
-            <Keyboard :size="18" class="text-base-content/50" />
-            {{ $t('settings.shortcuts') }}
-          </div>
-          <div class="collapse-content">
-            <div class="space-y-1">
-              <div
-                v-for="action in shortcutActions"
-                :key="action"
-                class="flex justify-between items-center py-1.5"
-              >
-                <span class="text-xs">{{ $t('settings.shortcut_' + action) }}</span>
-                <button
-                  class="btn btn-ghost btn-xs font-mono min-w-16"
-                  :class="{ 'btn-outline': listeningAction === action }"
-                  @click="startListening(action)"
-                >
-                  {{ listeningAction === action ? '...' : formatShortcut(currentShortcuts[action]) }}
-                </button>
-              </div>
-            </div>
-            <div class="mt-3">
-              <button class="btn btn-ghost btn-xs" @click="doResetShortcuts">
-                {{ $t('settings.resetShortcuts') }}
-              </button>
             </div>
           </div>
         </div>

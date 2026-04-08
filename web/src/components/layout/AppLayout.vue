@@ -72,7 +72,7 @@ import { useTheme } from '../../composables/useTheme'
 import { setLocale } from '../../i18n'
 import { Image, FolderOpen, Download, Settings, LogOut, Languages, Sun, Moon, Monitor } from 'lucide-vue-next'
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const { mode, cycle } = useTheme()
@@ -96,10 +96,7 @@ const themeIcon = computed(() => {
   return Monitor
 })
 
-const themeLabel = computed(() => {
-  const labels = { system: 'System', light: 'Light', dark: 'Dark' }
-  return labels[mode.value]
-})
+const themeLabel = computed(() => t(`nav.theme_${mode.value}`))
 
 function isActive(path) {
   return route.path.startsWith(path)

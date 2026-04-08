@@ -33,6 +33,9 @@ export default {
     downloader: 'Downloader',
     settings: 'Settings',
     logout: 'Logout',
+    theme_system: 'System',
+    theme_light: 'Light',
+    theme_dark: 'Dark',
   },
   login: {
     title: 'Login to ReSourcer',
