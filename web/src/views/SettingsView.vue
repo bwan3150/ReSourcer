@@ -169,6 +169,10 @@
                   <span>{{ webVersion }}</span>
                   <span v-if="hasWebUpdate" class="badge badge-outline badge-xs">{{ latestWebVersion }}</span>
                   <span v-if="hasWebUpdate" class="text-xs text-base-content/40">docker compose pull</span>
+                  <button v-if="!hasWebUpdate" class="btn btn-ghost btn-xs" @click="checkWebUpdateOnly" :disabled="checkingWeb">
+                    <span v-if="checkingWeb" class="loading loading-spinner loading-xs"></span>
+                    <RefreshCw v-else :size="14" />
+                  </button>
                 </div>
               </div>
               <div class="flex justify-between items-center">
@@ -185,8 +189,8 @@
                     <span v-if="updating" class="loading loading-spinner loading-xs"></span>
                     <Download v-else :size="14" />
                   </button>
-                  <button v-else class="btn btn-ghost btn-xs" @click="checkForUpdate" :disabled="checking">
-                    <span v-if="checking" class="loading loading-spinner loading-xs"></span>
+                  <button v-else class="btn btn-ghost btn-xs" @click="checkServerUpdateOnly" :disabled="checkingServer">
+                    <span v-if="checkingServer" class="loading loading-spinner loading-xs"></span>
                     <RefreshCw v-else :size="14" />
                   </button>
                 </div>
@@ -254,6 +258,8 @@ const latestVersion = ref('')
 const hasServerUpdate = ref(false)
 const latestWebVersion = ref('')
 const hasWebUpdate = ref(false)
+const checkingWeb = ref(false)
+const checkingServer = ref(false)
 const checking = ref(false)
 const updating = ref(false)
 
@@ -367,36 +373,35 @@ async function saveToolUrls(name) {
   } catch {}
 }
 
-async function checkForUpdate() {
-  checking.value = true
-  try {
-    // Check server update
-    const { data } = await configApi.checkUpdate()
-    latestVersion.value = data.latestVersion || ''
-    hasServerUpdate.value = data.hasUpdate || false
-
-    // Check web update from GitHub tags
-    await checkWebUpdate()
-
-    if (!data.hasUpdate && !hasWebUpdate.value) showToast(t('settings.upToDate'))
-  } catch {}
-  checking.value = false
-}
-
-async function checkWebUpdate() {
+async function checkWebUpdateOnly() {
+  checkingWeb.value = true
   try {
     const resp = await fetch('https://api.github.com/repos/bwan3150/ReSourcer/tags?per_page=20', {
       headers: { 'Accept': 'application/vnd.github.v3+json' }
     })
-    if (!resp.ok) return
-    const tags = await resp.json()
-    const webTag = tags.find(t => t.name.startsWith('web-v'))
-    if (webTag) {
-      const latest = webTag.name.replace('web-v', '')
-      latestWebVersion.value = latest
-      hasWebUpdate.value = latest !== webVersion
+    if (resp.ok) {
+      const tags = await resp.json()
+      const webTag = tags.find(t => t.name.startsWith('web-v'))
+      if (webTag) {
+        const latest = webTag.name.replace('web-v', '')
+        latestWebVersion.value = latest
+        hasWebUpdate.value = latest !== webVersion
+      }
     }
+    if (!hasWebUpdate.value) showToast(t('settings.upToDate'))
   } catch {}
+  checkingWeb.value = false
+}
+
+async function checkServerUpdateOnly() {
+  checkingServer.value = true
+  try {
+    const { data } = await configApi.checkUpdate()
+    latestVersion.value = data.latestVersion || ''
+    hasServerUpdate.value = data.hasUpdate || false
+    if (!data.hasUpdate) showToast(t('settings.upToDate'))
+  } catch {}
+  checkingServer.value = false
 }
 
 async function doServerUpdate() {
