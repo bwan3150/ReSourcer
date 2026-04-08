@@ -190,6 +190,8 @@ export default {
     toolsDesc: '管理外部工具的下载源',
     installed: '已安装',
     notInstalled: '未安装',
+    shortcuts: '快捷键',
+    resetShortcuts: '恢复默认',
     cache: '缓存',
     cacheDesc: '浏览器缓存的缩略图和其他数据',
     clearCache: '清除全部',

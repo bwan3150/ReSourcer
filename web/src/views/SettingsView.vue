@@ -154,6 +154,38 @@
           </div>
         </div>
 
+        <!-- Shortcuts -->
+        <div class="collapse collapse-arrow join-item border border-base-300">
+          <input type="radio" name="settings-accordion" />
+          <div class="collapse-title font-medium text-sm flex items-center gap-2">
+            <Keyboard :size="18" class="text-base-content/50" />
+            {{ $t('settings.shortcuts') }}
+          </div>
+          <div class="collapse-content">
+            <div class="space-y-1">
+              <div
+                v-for="(label, action) in shortcutLabels"
+                :key="action"
+                class="flex justify-between items-center py-1.5"
+              >
+                <span class="text-xs">{{ label }}</span>
+                <button
+                  class="btn btn-ghost btn-xs font-mono min-w-16"
+                  :class="{ 'btn-outline': listeningAction === action }"
+                  @click="startListening(action)"
+                >
+                  {{ listeningAction === action ? '...' : formatShortcut(currentShortcuts[action]) }}
+                </button>
+              </div>
+            </div>
+            <div class="mt-3">
+              <button class="btn btn-ghost btn-xs" @click="doResetShortcuts">
+                {{ $t('settings.resetShortcuts') }}
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- About -->
         <div class="collapse collapse-arrow join-item border border-base-300">
           <input type="radio" name="settings-accordion" />
@@ -223,7 +255,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, Info, Github, Download, Smartphone, HardDrive, Trash2 } from 'lucide-vue-next'
+import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, Info, Github, Download, Smartphone, HardDrive, Trash2, Keyboard } from 'lucide-vue-next'
+import { SHORTCUT_LABELS, getShortcuts, setShortcut, resetShortcuts, formatShortcut, encodeKey } from '../composables/useKeyboardShortcuts'
 import AppLayout from '../components/layout/AppLayout.vue'
 import SourceFolderManager from '../components/settings/SourceFolderManager.vue'
 import CategoryManager from '../components/settings/CategoryManager.vue'
@@ -262,6 +295,33 @@ const checkingWeb = ref(false)
 const checkingServer = ref(false)
 const checking = ref(false)
 const updating = ref(false)
+
+// Shortcuts
+const shortcutLabels = SHORTCUT_LABELS
+const currentShortcuts = ref(getShortcuts())
+const listeningAction = ref('')
+
+function startListening(action) {
+  listeningAction.value = action
+  const handler = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const code = encodeKey(e)
+    if (code && !['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) {
+      setShortcut(action, code)
+      currentShortcuts.value = getShortcuts()
+      listeningAction.value = ''
+      window.removeEventListener('keydown', handler, true)
+    }
+  }
+  window.addEventListener('keydown', handler, true)
+}
+
+function doResetShortcuts() {
+  resetShortcuts()
+  currentShortcuts.value = getShortcuts()
+  showToast(t('settings.saveSuccess'))
+}
 
 // Cache
 const cacheSize = ref('')

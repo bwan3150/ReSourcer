@@ -39,6 +39,7 @@
         <!-- Player fills remaining space -->
         <div class="flex-1 min-h-0">
           <MediaPlayer
+            ref="mediaPlayer"
             :src="contentSrc"
             :type="previewFile.fileType"
             :file-name="previewFile.fileName"
@@ -48,6 +49,7 @@
             @prev="prevFile"
             @next="nextFile"
           />
+          <OsdFeedback ref="osd" />
         </div>
       </div>
     </template>
@@ -224,6 +226,9 @@ import AppLayout from '../components/layout/AppLayout.vue'
 import FolderSidebar from '../components/gallery/FolderSidebar.vue'
 import FileGrid from '../components/gallery/FileGrid.vue'
 import MediaPlayer from '../components/shared/MediaPlayer.vue'
+import OsdFeedback from '../components/shared/OsdFeedback.vue'
+import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
+import { useTheme } from '../composables/useTheme'
 import UploadArea from '../components/gallery/UploadArea.vue'
 import TagEditor from '../components/gallery/TagEditor.vue'
 import { Folder, ChevronRight, X, Pencil, FolderInput, RefreshCw, Info, Download } from 'lucide-vue-next'
@@ -254,6 +259,36 @@ const uploadArea = ref(null)
 const previewFile = ref(null)
 const previewIndex = ref(0)
 const contentSrc = computed(() => previewFile.value ? contentUrl(previewFile.value) : '')
+const mediaPlayer = ref(null)
+const osd = ref(null)
+const { cycle: cycleTheme } = useTheme()
+
+// Preview keyboard shortcuts
+useKeyboardShortcuts({
+  prevFile: () => { prevFile(); osd.value?.show('SkipBack') },
+  nextFile: () => { nextFile(); osd.value?.show('SkipForward') },
+  seekForward: () => { mediaPlayer.value?.seekBy(1); osd.value?.show('FastForward') },
+  seekBackward: () => { mediaPlayer.value?.seekBy(-1); osd.value?.show('Rewind') },
+  playPause: () => {
+    mediaPlayer.value?.togglePlay()
+    osd.value?.show(mediaPlayer.value?.playing ? 'Pause' : 'Play')
+  },
+  volumeUp: () => { mediaPlayer.value?.changeVolume(0.05); osd.value?.show('Volume2') },
+  volumeDown: () => { mediaPlayer.value?.changeVolume(-0.05); osd.value?.show('Volume1') },
+  toggleMute: () => {
+    mediaPlayer.value?.toggleMute()
+    osd.value?.show(mediaPlayer.value?.muted ? 'VolumeX' : 'Volume2')
+  },
+  fileInfo: () => { fileInfoDialog.value?.showModal(); osd.value?.show('Info') },
+  exitPreview: () => { closePreview() },
+  zoomIn: () => { mediaPlayer.value?.zoomBy(0.2); osd.value?.show('ZoomIn') },
+  zoomOut: () => { mediaPlayer.value?.zoomBy(-0.2); osd.value?.show('ZoomOut') },
+  toggleUI: () => {
+    if (mediaPlayer.value) mediaPlayer.value.controlsVisible = !mediaPlayer.value.controlsVisible
+    osd.value?.show(mediaPlayer.value?.controlsVisible ? 'Eye' : 'EyeOff')
+  },
+  cycleTheme: () => { cycleTheme(); osd.value?.show('Monitor') },
+}, () => !!previewFile.value)
 
 const fileInfoDialog = ref(null)
 const gridScrollContainer = ref(null)
@@ -421,15 +456,7 @@ function nextFile() {
   }
 }
 
-function onKeydown(e) {
-  if (!previewFile.value) return
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
-  if (e.key === 'Escape') closePreview()
-  else if (e.key === 'ArrowLeft') prevFile()
-  else if (e.key === 'ArrowRight') nextFile()
-}
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+// Keyboard shortcuts handled by useKeyboardShortcuts above
 
 function startRename(file) {
   renameTarget.value = file

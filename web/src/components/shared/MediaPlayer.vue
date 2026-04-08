@@ -2,7 +2,6 @@
   <div
     class="relative h-full w-full overflow-hidden"
     :class="bgClass"
-    @keydown="onKeydown"
     tabindex="0"
   >
     <!-- Zoomable content container -->
@@ -267,9 +266,23 @@ function toggleMute() {
   videoEl.value.muted = !videoEl.value.muted
 }
 
-function onKeydown(e) {
-  if (e.key === ' ' && hasControls.value) { e.preventDefault(); togglePlay() }
-  if (e.key === '0') resetZoom()
+function seekBy(seconds) {
+  if (!videoEl.value) return
+  videoEl.value.currentTime = Math.max(0, Math.min(videoEl.value.duration || 0, videoEl.value.currentTime + seconds))
+}
+
+function changeVolume(delta) {
+  if (!videoEl.value) return
+  const v = Math.max(0, Math.min(1, videoEl.value.volume + delta))
+  videoEl.value.volume = v
+  videoEl.value.muted = v === 0
+}
+
+function zoomBy(delta) {
+  if (!zoomable.value) return
+  const newScale = Math.min(10, Math.max(0.1, scale.value + delta))
+  scale.value = newScale
+  if (Math.abs(newScale - 1) < 0.05) { scale.value = 1; panX.value = 0; panY.value = 0 }
 }
 
 function formatTime(s) {
@@ -278,6 +291,11 @@ function formatTime(s) {
   const sec = Math.floor(s % 60)
   return `${m}:${sec.toString().padStart(2, '0')}`
 }
+
+defineExpose({
+  togglePlay, seekBy, changeVolume, toggleMute, zoomBy, resetZoom,
+  playing, muted, volume, controlsVisible,
+})
 </script>
 
 <style scoped>

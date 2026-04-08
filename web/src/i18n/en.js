@@ -190,6 +190,8 @@ export default {
     toolsDesc: 'Manage external tool download sources',
     installed: 'Installed',
     notInstalled: 'Not Installed',
+    shortcuts: 'Shortcuts',
+    resetShortcuts: 'Reset to defaults',
     cache: 'Cache',
     cacheDesc: 'Cached thumbnails and other browser data',
     clearCache: 'Clear All',
