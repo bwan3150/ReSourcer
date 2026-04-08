@@ -1,96 +1,150 @@
-// Thumbnail cache using Cache API — per-server isolation, inspectable, clearable
+// Thumbnail cache using IndexedDB — works on HTTP, per-server isolation
 import { getServerUrl } from './useServer'
 
-function getCacheName() {
+const DB_NAME = 'resourcer-thumbnails'
+const DB_VERSION = 1
+
+function getStoreName() {
   const server = getServerUrl() || 'local'
-  // Sanitize server URL to use as cache name
-  return `thumbnails-${server.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+  return server.replace(/[^a-zA-Z0-9.-]/g, '_')
+}
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION)
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result
+      if (!db.objectStoreNames.contains('cache')) {
+        db.createObjectStore('cache')
+      }
+    }
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+
+async function dbGet(key) {
+  const db = await openDB()
+  return new Promise((resolve) => {
+    const tx = db.transaction('cache', 'readonly')
+    const req = tx.objectStore('cache').get(key)
+    req.onsuccess = () => resolve(req.result || null)
+    req.onerror = () => resolve(null)
+  })
+}
+
+async function dbPut(key, value) {
+  const db = await openDB()
+  return new Promise((resolve) => {
+    const tx = db.transaction('cache', 'readwrite')
+    tx.objectStore('cache').put(value, key)
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => resolve()
+  })
+}
+
+async function dbDelete(key) {
+  const db = await openDB()
+  return new Promise((resolve) => {
+    const tx = db.transaction('cache', 'readwrite')
+    tx.objectStore('cache').delete(key)
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => resolve()
+  })
+}
+
+async function dbGetAllKeys() {
+  const db = await openDB()
+  return new Promise((resolve) => {
+    const tx = db.transaction('cache', 'readonly')
+    const req = tx.objectStore('cache').getAllKeys()
+    req.onsuccess = () => resolve(req.result || [])
+    req.onerror = () => resolve([])
+  })
+}
+
+// Cache key = storeName:url
+function cacheKey(url) {
+  return `${getStoreName()}:${url}`
 }
 
 /**
- * Get a thumbnail URL that goes through Cache API.
- * Returns an object URL from cache if available, otherwise fetches and caches.
+ * Get a thumbnail through IndexedDB cache.
+ * Returns blob URL from cache or fetches and caches.
  */
 export async function getCachedThumbnail(url) {
-  if (!url || !window.caches) return url
+  if (!url) return url
 
-  const cacheName = getCacheName()
+  const key = cacheKey(url)
 
   try {
-    const cache = await caches.open(cacheName)
-
-    // Check cache first
-    const cached = await cache.match(url)
+    // Check cache
+    const cached = await dbGet(key)
     if (cached) {
-      const blob = await cached.blob()
-      return URL.createObjectURL(blob)
+      return URL.createObjectURL(cached)
     }
 
     // Fetch and cache
     const response = await fetch(url)
     if (response.ok) {
-      // Clone before consuming — one for cache, one for display
-      await cache.put(url, response.clone())
       const blob = await response.blob()
+      await dbPut(key, blob)
       return URL.createObjectURL(blob)
     }
   } catch {
-    // Fallback to direct URL on any error
+    // Fallback to direct URL
   }
 
   return url
 }
 
 /**
- * Get cache statistics for all servers
+ * Get cache statistics per server
  */
 export async function getCacheStats() {
-  if (!window.caches) return []
-
-  const stats = []
   try {
-    const names = await caches.keys()
-    for (const name of names) {
-      if (!name.startsWith('thumbnails-')) continue
+    const allKeys = await dbGetAllKeys()
 
-      const cache = await caches.open(name)
-      const keys = await cache.keys()
+    // Group by server (store name prefix)
+    const serverMap = {}
+    for (const key of allKeys) {
+      const sep = key.indexOf(':')
+      const server = sep > 0 ? key.substring(0, sep) : 'unknown'
+      if (!serverMap[server]) serverMap[server] = 0
+      serverMap[server]++
+    }
 
-      // Estimate size by sampling
-      let totalSize = 0
-      const sampleCount = Math.min(keys.length, 10)
+    // Estimate sizes by sampling
+    const stats = []
+    for (const [server, count] of Object.entries(serverMap)) {
+      // Sample up to 5 items to estimate average size
+      const serverKeys = allKeys.filter(k => k.startsWith(server + ':'))
+      let sampleSize = 0
+      const sampleCount = Math.min(serverKeys.length, 5)
       for (let i = 0; i < sampleCount; i++) {
-        try {
-          const res = await cache.match(keys[i])
-          if (res) {
-            const blob = await res.blob()
-            totalSize += blob.size
-          }
-        } catch {}
+        const blob = await dbGet(serverKeys[i])
+        if (blob) sampleSize += blob.size
       }
-
-      // Extrapolate from sample
-      const avgSize = sampleCount > 0 ? totalSize / sampleCount : 0
-      const estimatedTotal = Math.round(avgSize * keys.length)
-
-      // Extract server name from cache name
-      const serverLabel = name.replace('thumbnails-', '').replace(/_/g, '/')
+      const avgSize = sampleCount > 0 ? sampleSize / sampleCount : 0
+      const estimatedTotal = Math.round(avgSize * count)
 
       stats.push({
-        name,
-        server: serverLabel,
-        count: keys.length,
+        name: server,
+        server: server.replace(/_/g, '/'),
+        count,
         size: estimatedTotal,
         sizeLabel: formatBytes(estimatedTotal),
       })
     }
-  } catch {}
 
-  return stats
+    return stats
+  } catch {
+    return []
+  }
 }
 
 /**
- * Get total cache size across all servers
+ * Get total cache size
  */
 export async function getTotalCacheSize() {
   const stats = await getCacheStats()
@@ -100,21 +154,29 @@ export async function getTotalCacheSize() {
 /**
  * Clear cache for a specific server
  */
-export async function clearServerCache(cacheName) {
-  if (window.caches) {
-    await caches.delete(cacheName)
-  }
+export async function clearServerCache(serverName) {
+  try {
+    const allKeys = await dbGetAllKeys()
+    const toDelete = allKeys.filter(k => k.startsWith(serverName + ':'))
+    for (const key of toDelete) {
+      await dbDelete(key)
+    }
+  } catch {}
 }
 
 /**
  * Clear all thumbnail caches
  */
 export async function clearAllThumbnailCache() {
-  if (!window.caches) return
-  const names = await caches.keys()
-  await Promise.all(
-    names.filter(n => n.startsWith('thumbnails-')).map(n => caches.delete(n))
-  )
+  try {
+    const db = await openDB()
+    return new Promise((resolve) => {
+      const tx = db.transaction('cache', 'readwrite')
+      tx.objectStore('cache').clear()
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => resolve()
+    })
+  } catch {}
 }
 
 function formatBytes(bytes) {
