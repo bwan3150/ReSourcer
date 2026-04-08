@@ -260,6 +260,9 @@ const previewFile = ref(null)
 const previewIndex = ref(0)
 const contentSrc = computed(() => previewFile.value ? contentUrl(previewFile.value) : '')
 const mediaPlayer = ref(null)
+function isMediaType() {
+  return ['video', 'audio'].includes(previewFile.value?.fileType)
+}
 const osd = ref(null)
 const previewUIHidden = ref(false)
 const { cycle: cycleTheme } = useTheme()
@@ -268,16 +271,18 @@ const { cycle: cycleTheme } = useTheme()
 useKeyboardShortcuts({
   prevFile: () => { prevFile(); osd.value?.show('SkipBack') },
   nextFile: () => { nextFile(); osd.value?.show('SkipForward') },
-  seekForward: () => { mediaPlayer.value?.seekBy(1); osd.value?.show('FastForward') },
-  seekBackward: () => { mediaPlayer.value?.seekBy(-1); osd.value?.show('Rewind') },
+  seekForward: () => { if (!isMediaType()) return; mediaPlayer.value?.seekBy(1); osd.value?.show('FastForward') },
+  seekBackward: () => { if (!isMediaType()) return; mediaPlayer.value?.seekBy(-1); osd.value?.show('Rewind') },
   playPause: () => {
+    if (!isMediaType()) return
     const wasPlaying = mediaPlayer.value?.playing?.value ?? mediaPlayer.value?.playing
     mediaPlayer.value?.togglePlay()
     osd.value?.show(wasPlaying ? 'Pause' : 'Play')
   },
-  volumeUp: () => { mediaPlayer.value?.changeVolume(0.05); osd.value?.show('Volume2') },
-  volumeDown: () => { mediaPlayer.value?.changeVolume(-0.05); osd.value?.show('Volume1') },
+  volumeUp: () => { if (!isMediaType()) return; mediaPlayer.value?.changeVolume(0.05); osd.value?.show('Volume2') },
+  volumeDown: () => { if (!isMediaType()) return; mediaPlayer.value?.changeVolume(-0.05); osd.value?.show('Volume1') },
   toggleMute: () => {
+    if (!isMediaType()) return
     const wasMuted = mediaPlayer.value?.muted?.value ?? mediaPlayer.value?.muted
     mediaPlayer.value?.toggleMute()
     osd.value?.show(wasMuted ? 'Volume2' : 'VolumeX')
