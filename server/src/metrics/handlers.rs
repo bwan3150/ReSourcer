@@ -9,12 +9,30 @@ pub async fn current(
 ) -> Result<HttpResponse> {
     let s = state.read().unwrap();
     match &s.latest {
-        Some(snapshot) => Ok(HttpResponse::Ok().json(snapshot)),
+        Some(snapshot) => {
+            let mut json = serde_json::to_value(snapshot).unwrap();
+            // Add indexed file count + db size
+            if let Ok(count) = tokio::task::spawn_blocking(storage::get_indexed_file_count).await {
+                json["indexed_files"] = serde_json::json!(count.unwrap_or(0));
+            }
+            if let Ok(Ok((db_size, wal_size))) = tokio::task::spawn_blocking(storage::get_db_size).await {
+                json["db_size_bytes"] = serde_json::json!(db_size);
+                json["db_wal_size_bytes"] = serde_json::json!(wal_size);
+            }
+            Ok(HttpResponse::Ok().json(json))
+        },
         None => Ok(HttpResponse::Ok().json(serde_json::json!({
             "status": "collecting",
             "message": "First snapshot not yet available"
         }))),
     }
+}
+
+pub async fn system_info(
+    state: web::Data<Arc<RwLock<MetricsState>>>,
+) -> Result<HttpResponse> {
+    let s = state.read().unwrap();
+    Ok(HttpResponse::Ok().json(&s.system_info))
 }
 
 pub async fn history(query: web::Query<HistoryQuery>) -> Result<HttpResponse> {

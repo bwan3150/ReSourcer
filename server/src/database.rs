@@ -235,6 +235,9 @@ pub fn init_db() -> SqliteResult<()> {
     )?;
     conn.execute("CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics_history(timestamp)", [])?;
 
+    // 迁移：为 metrics_history 添加 system_uptime_seconds 列
+    let _ = conn.execute("ALTER TABLE metrics_history ADD COLUMN system_uptime_seconds INTEGER NOT NULL DEFAULT 0", []);
+
     // 执行数据迁移（从旧 JSON 文件）
     migrate_from_json(&conn)?;
 

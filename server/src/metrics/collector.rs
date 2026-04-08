@@ -5,7 +5,7 @@ use super::storage;
 
 /// Spawns the background metrics collection loop.
 pub fn start_collector(state: Arc<RwLock<MetricsState>>) {
-    // Collection task: every 30 seconds
+    // Collection task: every 30 seconds (first tick is immediate)
     tokio::spawn(async move {
         let mut sys = System::new();
         let pid = Pid::from_u32(std::process::id());
@@ -30,7 +30,13 @@ pub fn start_collector(state: Arc<RwLock<MetricsState>>) {
             // Update cached latest
             {
                 let mut s = state.write().unwrap();
+                let is_first = s.latest.is_none();
                 s.latest = Some(snapshot.clone());
+                if is_first {
+                    eprintln!("[metrics] first snapshot: CPU {:.1}%, Mem {:.1} GB",
+                        snapshot.cpu_usage_percent,
+                        snapshot.memory_used_bytes as f64 / 1024.0 / 1024.0 / 1024.0);
+                }
             }
 
             // Persist to SQLite
@@ -101,5 +107,6 @@ fn build_snapshot(sys: &System, disks: &Disks, pid: Pid, state: &Arc<RwLock<Metr
         load_avg_15m: load.fifteen,
         process_memory_bytes: process_mem,
         uptime_seconds: uptime,
+        system_uptime_seconds: System::uptime(),
     }
 }

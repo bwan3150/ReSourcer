@@ -11,3 +11,7 @@ export function getHistory(minutes = 60) {
 export function getDiskDetails() {
   return client.get('/api/metrics/disk')
 }
+
+export function getSystemInfo() {
+  return client.get('/api/metrics/system')
+}

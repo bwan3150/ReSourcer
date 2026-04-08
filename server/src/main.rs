@@ -158,7 +158,7 @@ async fn main() -> std::io::Result<()> {
     let scan_status = web::Data::new(Arc::new(RwLock::new(indexer::models::ScanStatus::default())));
 
     // 初始化性能指标采集
-    let metrics_state = web::Data::new(Arc::new(RwLock::new(metrics::models::MetricsState::default())));
+    let metrics_state = web::Data::new(Arc::new(RwLock::new(metrics::models::MetricsState::new())));
     metrics::collector::start_collector(metrics_state.get_ref().clone());
 
     // 读取 API Key (优先级: secret.json > 环境变量 > 随机生成)
