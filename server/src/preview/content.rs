@@ -1,13 +1,13 @@
 // 文件内容服务功能（从classifier/handlers.rs迁移serve_file）
 use actix_files::NamedFile;
-use actix_web::{web, Result};
+use actix_web::{web, Result, http::header::{ContentDisposition, DispositionType}};
 use std::path::Path;
 
 use super::models::CLIP_EXTENSION;
 use super::utils::{get_ffmpeg_path, extract_clip_thumbnail};
 
-/// 不被 AVPlayer 原生支持、需要转码的视频格式
-const TRANSCODE_VIDEO_EXTENSIONS: &[&str] = &["wmv", "flv", "avi"];
+/// 不被浏览器/AVPlayer 原生支持、需要转码为 MP4 的视频格式
+const TRANSCODE_VIDEO_EXTENSIONS: &[&str] = &["wmv", "flv", "avi", "mkv", "webm"];
 
 /// 需要检查 faststart 的容器格式
 const FASTSTART_CHECK_EXTENSIONS: &[&str] = &["mp4", "mov", "m4v"];
@@ -128,7 +128,7 @@ pub async fn serve_file(
                 .and_then(|m| m.modified()).ok();
             if let (Some(src_t), Some(cache_t)) = (src_modified, cache_modified) {
                 if cache_t >= src_t {
-                    return Ok(NamedFile::open_async(&cache_path).await?);
+                    return Ok(safe_named_file(&cache_path.to_string_lossy()).await?);
                 }
             }
         }
@@ -145,7 +145,7 @@ pub async fn serve_file(
                 format!("无法保存 CLIP 预览图: {}", e)
             ))?;
 
-        return Ok(NamedFile::open_async(&cache_path).await?);
+        return Ok(safe_named_file(&cache_path.to_string_lossy()).await?);
     }
 
     // 检测 MP4 是否缺少 faststart（moov atom 在 mdat 之后）
@@ -163,7 +163,7 @@ pub async fn serve_file(
             let cache_modified = std::fs::metadata(&cache_path).and_then(|m| m.modified()).ok();
             if let (Some(src_t), Some(cache_t)) = (src_modified, cache_modified) {
                 if cache_t >= src_t {
-                    return Ok(NamedFile::open_async(&cache_path).await?);
+                    return Ok(safe_named_file(&cache_path.to_string_lossy()).await?);
                 }
             }
         }
@@ -183,7 +183,7 @@ pub async fn serve_file(
             .map_err(|e| actix_web::error::ErrorInternalServerError(format!("ffmpeg faststart 失败: {}", e)))?;
 
         if output.status.success() {
-            return Ok(NamedFile::open_async(&cache_path).await?);
+            return Ok(safe_named_file(&cache_path.to_string_lossy()).await?);
         } else {
             let _ = std::fs::remove_file(&cache_path);
             // Fallback to original file
@@ -207,7 +207,7 @@ pub async fn serve_file(
             let cache_modified = std::fs::metadata(&cache_path).and_then(|m| m.modified()).ok();
             if let (Some(src_t), Some(cache_t)) = (src_modified, cache_modified) {
                 if cache_t >= src_t {
-                    return Ok(NamedFile::open_async(&cache_path).await?);
+                    return Ok(safe_named_file(&cache_path.to_string_lossy()).await?);
                 }
             }
         }
@@ -218,7 +218,7 @@ pub async fn serve_file(
             if let (Some(src_t), Some(marker_t)) = (src_modified, marker_modified) {
                 if marker_t >= src_t {
                     // 不是 hev1，直接走下面的正常流程
-                    return Ok(NamedFile::open_async(&file_path).await?);
+                    return Ok(safe_named_file(&file_path).await?);
                 }
             }
         }
@@ -249,7 +249,7 @@ pub async fn serve_file(
                 ))?;
 
             if output.status.success() {
-                return Ok(NamedFile::open_async(&cache_path).await?);
+                return Ok(safe_named_file(&cache_path.to_string_lossy()).await?);
             } else {
                 // 重封装失败，降级直接返回原文件
                 let _ = std::fs::remove_file(&cache_path);
@@ -287,7 +287,7 @@ pub async fn serve_file(
 
             if let (Some(src_t), Some(cache_t)) = (src_modified, cache_modified) {
                 if cache_t >= src_t {
-                    return Ok(NamedFile::open_async(&cache_path).await?);
+                    return Ok(safe_named_file(&cache_path.to_string_lossy()).await?);
                 }
             }
         }
@@ -299,36 +299,70 @@ pub async fn serve_file(
             ))?;
 
         // 使用 ffmpeg 转码为 MP4
+        // 先尝试 -c copy（只换容器，不重编码，秒级完成）
+        // 如果源编码不兼容 MP4 容器，再 fallback 到重编码
         let ffmpeg_path = get_ffmpeg_path();
         let cache_path_str = cache_path.to_str()
             .ok_or_else(|| actix_web::error::ErrorInternalServerError("缓存路径含非 UTF-8 字符"))?;
-        let output = std::process::Command::new(&ffmpeg_path)
+
+        eprintln!("[transcode] trying remux (copy) for: {}", source_path.display());
+        let remux = std::process::Command::new(&ffmpeg_path)
             .args(&[
                 "-i", &file_path,
-                "-c:v", "libx264",
-                "-preset", "fast",
-                "-crf", "23",
-                "-c:a", "aac",
-                "-b:a", "128k",
-                "-movflags", "+faststart",  // 将 moov atom 移到文件头部，支持流式播放
+                "-c", "copy",
+                "-movflags", "+faststart",
                 "-y",
                 cache_path_str,
             ])
-            .output()
-            .map_err(|e| {
-                actix_web::error::ErrorInternalServerError(format!("FFmpeg 转码失败: {}", e))
-            })?;
+            .output();
 
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
+        let remux_ok = remux.as_ref().map(|o| o.status.success()).unwrap_or(false);
+
+        if !remux_ok {
+            // Remux failed — fallback to re-encode
             let _ = std::fs::remove_file(&cache_path);
-            return Err(actix_web::error::ErrorInternalServerError(
-                format!("视频转码失败: {}", stderr)
-            ));
+            eprintln!("[transcode] remux failed, re-encoding: {}", source_path.display());
+            let output = std::process::Command::new(&ffmpeg_path)
+                .args(&[
+                    "-i", &file_path,
+                    "-c:v", "libx264",
+                    "-preset", "fast",
+                    "-crf", "23",
+                    "-c:a", "aac",
+                    "-b:a", "128k",
+                    "-movflags", "+faststart",
+                    "-y",
+                    cache_path_str,
+                ])
+                .output()
+                .map_err(|e| {
+                    actix_web::error::ErrorInternalServerError(format!("FFmpeg 转码失败: {}", e))
+                })?;
+
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                let _ = std::fs::remove_file(&cache_path);
+                return Err(actix_web::error::ErrorInternalServerError(
+                    format!("视频转码失败: {}", stderr)
+                ));
+            }
+        } else {
+            eprintln!("[transcode] remux succeeded: {}", cache_path.display());
         }
 
-        return Ok(NamedFile::open_async(&cache_path).await?);
+        return Ok(safe_named_file(&cache_path.to_string_lossy()).await?);
     }
 
-    Ok(NamedFile::open_async(file_path).await?)
+    Ok(safe_named_file(&file_path).await?)
+}
+
+/// Open a NamedFile with a safe content-disposition header.
+/// Avoids issues with long/unicode/emoji filenames breaking browser header parsing.
+async fn safe_named_file(path: &str) -> std::io::Result<NamedFile> {
+    let mut f = NamedFile::open_async(path).await?;
+    f = f.set_content_disposition(ContentDisposition {
+        disposition: DispositionType::Inline,
+        parameters: vec![],
+    });
+    Ok(f)
 }

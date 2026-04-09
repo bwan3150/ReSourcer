@@ -4,7 +4,7 @@ use std::path::Path;
 use std::io::Cursor;
 use image::ImageFormat;
 use super::models::*;
-use super::utils::{extract_video_first_frame, extract_clip_thumbnail, extract_image_thumbnail_ffmpeg, extract_pdf_thumbnail};
+use super::utils::{extract_video_first_frame, extract_audio_cover, extract_clip_thumbnail, extract_image_thumbnail_ffmpeg, extract_pdf_thumbnail};
 
 /// GET /api/preview/thumbnail?path=<file_path>&size=<size>
 /// GET /api/preview/thumbnail?uuid=<uuid>&size=<size>
@@ -44,20 +44,33 @@ pub async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, S
     let is_image = extension == GIF_EXTENSION || IMAGE_EXTENSIONS.contains(&extension.as_str());
     let is_clip = extension == CLIP_EXTENSION;
     let is_pdf = extension == PDF_EXTENSION;
+    let is_audio = AUDIO_EXTENSIONS.contains(&extension.as_str());
 
-    if !is_video && !is_image && !is_clip && !is_pdf {
+    if !is_video && !is_image && !is_clip && !is_pdf && !is_audio {
         return Err(actix_web::error::ErrorBadRequest("不支持的媒体格式"));
     }
 
     // 根据文件类型读取图片或提取视频首帧
-    let img = if is_video {
+    let img = if is_audio {
+        // 音频：尝试提取嵌入的专辑封面
+        match extract_audio_cover(path) {
+            Some(img) => img,
+            None => return Err(actix_web::error::ErrorNotFound("音频文件没有嵌入封面")),
+        }
+    } else if is_video {
         extract_video_first_frame(path)?
     } else if is_clip {
         // CLIP 文件：从内嵌 SQLite 提取缩略图
         extract_clip_thumbnail(path)?
     } else if is_pdf {
         // PDF 文件：用 MuPDF 渲染第一页
-        extract_pdf_thumbnail(path)?
+        match extract_pdf_thumbnail(path) {
+            Ok(img) => img,
+            Err(e) => {
+                eprintln!("[thumbnail] PDF 渲染失败 ({:?}): {}", path, e);
+                return Err(actix_web::error::ErrorBadRequest("PDF 缩略图生成失败"));
+            }
+        }
     } else {
         // 先尝试 image 库直接打开，失败则 fallback 到 ffmpeg
         // （用于 HEIC/AVIF 等格式，以及超大图内存超限的情况）

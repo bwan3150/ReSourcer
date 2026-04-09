@@ -113,6 +113,35 @@ pub fn extract_video_first_frame(video_path: &Path) -> Result<image::DynamicImag
     Ok(img)
 }
 
+/// 使用 ffmpeg 提取音频文件的嵌入封面图（专辑封面）
+/// 如果音频文件没有嵌入封面，返回 None
+pub fn extract_audio_cover(audio_path: &Path) -> Option<image::DynamicImage> {
+    let ffmpeg_path = get_ffmpeg_path();
+    let temp_output = std::env::temp_dir().join(format!("cover_{}.jpg", uuid::Uuid::new_v4()));
+
+    // ffmpeg -i input.mp3 -an -vcodec mjpeg -vframes 1 output.jpg
+    let output = Command::new(&ffmpeg_path)
+        .args(&[
+            "-i", audio_path.to_str()?,
+            "-an",
+            "-vcodec", "mjpeg",
+            "-vframes", "1",
+            "-y",
+            temp_output.to_str()?,
+        ])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        let _ = fs::remove_file(&temp_output);
+        return None;
+    }
+
+    let img = image::open(&temp_output).ok();
+    let _ = fs::remove_file(&temp_output);
+    img
+}
+
 /// 使用 ffmpeg 将图片（HEIC/AVIF 等 image 库不支持的格式）转为 JPEG 后读取
 #[allow(dead_code)]
 pub fn extract_image_frame_ffmpeg(image_path: &Path) -> Result<image::DynamicImage> {

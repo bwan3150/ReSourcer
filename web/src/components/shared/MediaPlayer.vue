@@ -73,14 +73,17 @@
             @playing="buffering = false"
             @canplay="buffering = false"
           />
-          <div class="flex flex-col items-center gap-2 text-base-content/20">
-            <Music :size="48" />
-            <span class="text-sm">{{ fileName }}</span>
+          <div class="flex flex-col items-center gap-3">
+            <component :is="fileIconData.icon" :size="56" :style="{ color: fileIconData.color }" />
+            <span class="text-sm text-base-content/30">{{ fileName }}</span>
           </div>
         </template>
 
         <!-- Other -->
-        <div v-else class="text-base-content/20 text-sm">{{ fileName }}</div>
+        <div v-else class="flex flex-col items-center gap-3">
+          <component :is="fileIconData.icon" :size="56" :style="{ color: fileIconData.color }" />
+          <span class="text-sm text-base-content/30">{{ fileName }}</span>
+        </div>
       </div>
     </div>
 
@@ -151,6 +154,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { Play, Pause, SkipBack, SkipForward, Volume2, Volume1, VolumeX, Music } from 'lucide-vue-next'
 import { effectiveTheme } from '../../composables/useTheme'
+import { getFileIcon } from '../../composables/useFileIcon'
 import PdfViewer from './PdfViewer.vue'
 
 const props = defineProps({
@@ -188,6 +192,7 @@ const hasControls = computed(() => ['video', 'audio'].includes(props.type))
 const zoomable = computed(() => ['image', 'gif', 'video'].includes(props.type))
 
 const bgClass = computed(() => effectiveTheme.value === 'dark' ? 'bg-black' : 'bg-white')
+const fileIconData = computed(() => getFileIcon(props.type, props.fileName?.split('.').pop() || ''))
 
 const contentTransform = computed(() => ({
   transform: `translate(${panX.value}px, ${panY.value}px) scale(${scale.value})`,

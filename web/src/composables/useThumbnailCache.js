@@ -91,11 +91,11 @@ export async function getCachedThumbnail(url) {
       await dbPut(key, blob)
       return URL.createObjectURL(blob)
     }
-  } catch {
-    // Fallback to direct URL
+    // Server returned error (400/404/500) — no thumbnail available
+    throw new Error(`Thumbnail failed: ${response.status}`)
+  } catch (e) {
+    throw e
   }
-
-  return url
 }
 
 /**
