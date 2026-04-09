@@ -49,7 +49,7 @@
           @progress="onProgress"
           @play="playing = true"
           @pause="playing = false"
-          @ended="playing = false"
+          @ended="playing = false; emit('ended')"
           @volumechange="onVolumeChange"
           @waiting="buffering = true"
           @playing="buffering = false"
@@ -67,7 +67,7 @@
             @progress="onProgress"
             @play="playing = true"
             @pause="playing = false"
-            @ended="playing = false"
+            @ended="playing = false; emit('ended')"
             @volumechange="onVolumeChange"
             @waiting="buffering = true"
             @playing="buffering = false"
@@ -130,6 +130,14 @@
             <span class="text-xs text-white/60 tabular-nums ml-1">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
           </template>
           <div class="flex-1"></div>
+          <!-- Playback mode toggle -->
+          <button v-if="showNav" class="btn btn-ghost btn-xs btn-square text-white" @click="emit('cycle-mode')">
+            <component :is="modeIcon" :size="16" />
+          </button>
+          <!-- Playlist toggle -->
+          <button v-if="showNav" class="btn btn-ghost btn-xs btn-square text-white" @click="emit('toggle-playlist')">
+            <ListMusic :size="16" />
+          </button>
           <!-- Reset zoom -->
           <button v-if="scale !== 1" class="btn btn-ghost btn-xs text-white" @click="resetZoom">
             {{ Math.round(scale * 100) }}%
@@ -153,7 +161,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-import { Play, Pause, SkipBack, SkipForward, Volume2, Volume1, VolumeX, Music } from 'lucide-vue-next'
+import { Play, Pause, SkipBack, SkipForward, Volume2, Volume1, VolumeX, Music, ListMusic, Repeat, Repeat1, Shuffle } from 'lucide-vue-next'
 import { effectiveTheme } from '../../composables/useTheme'
 import { getFileIcon } from '../../composables/useFileIcon'
 import PdfViewer from './PdfViewer.vue'
@@ -167,9 +175,10 @@ const props = defineProps({
   hasNext: { type: Boolean, default: false },
   autoplay: { type: Boolean, default: true },
   coverUrl: { type: String, default: '' },
+  playbackMode: { type: String, default: 'sequential' },
 })
 
-const emit = defineEmits(['prev', 'next'])
+const emit = defineEmits(['prev', 'next', 'ended', 'toggle-playlist', 'cycle-mode'])
 
 const videoEl = ref(null)
 const contentArea = ref(null)
@@ -195,6 +204,11 @@ const hasControls = computed(() => ['video', 'audio'].includes(props.type))
 const zoomable = computed(() => ['image', 'gif', 'video'].includes(props.type))
 
 const bgClass = computed(() => effectiveTheme.value === 'dark' ? 'bg-black' : 'bg-white')
+const modeIcon = computed(() => {
+  if (props.playbackMode === 'repeat') return Repeat1
+  if (props.playbackMode === 'shuffle') return Shuffle
+  return Repeat
+})
 const fileIconData = computed(() => getFileIcon(props.type, props.fileName?.split('.').pop() || ''))
 
 const contentTransform = computed(() => ({

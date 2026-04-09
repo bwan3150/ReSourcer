@@ -31,7 +31,7 @@
             <X :size="18" />
           </button>
           <span class="text-sm truncate flex-1">{{ previewFile.fileName }}</span>
-          <span class="text-xs text-base-content/40">{{ previewIndex + 1 }} / {{ files.length }}</span>
+          <span class="text-xs text-base-content/40">{{ playlistIndex + 1 }} / {{ playlist.length }}</span>
           <button class="btn btn-ghost btn-xs btn-square" @click="fileInfoDialog?.showModal()" :title="$t('gallery.fileInfo')">
             <Info :size="16" />
           </button>
@@ -44,13 +44,35 @@
             :type="previewFile.fileType"
             :file-name="previewFile.fileName"
             :cover-url="coverSrc"
+            :playback-mode="playbackMode"
             :show-nav="true"
-            :has-prev="previewIndex > 0"
-            :has-next="previewIndex < files.length - 1"
+            :has-prev="playlistIndex > 0"
+            :has-next="playlistIndex < playlist.length - 1"
             @prev="prevFile"
             @next="nextFile"
+            @ended="onMediaEnded"
+            @cycle-mode="cyclePlaybackMode"
+            @toggle-playlist="showPlaylistPanel = !showPlaylistPanel"
           />
           <OsdFeedback ref="osd" />
+          <!-- Playlist popup -->
+          <transition name="slide-up">
+            <div v-if="showPlaylistPanel && !previewUIHidden" class="absolute bottom-16 right-4 w-72 bg-black/60 backdrop-blur-md rounded-xl shadow-xl z-20 overflow-hidden">
+              <div class="py-1 max-h-64 overflow-y-auto">
+                <button
+                  v-for="(item, i) in playlist"
+                  :key="item.uuid"
+                  class="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left transition-colors"
+                  :class="i === playlistIndex ? 'bg-white/15 text-white font-medium' : 'text-white/70 hover:bg-white/10'"
+                  @click="jumpToPlaylistItem(item.uuid)"
+                >
+                  <span class="text-white/30 w-3 text-right shrink-0">{{ i + 1 }}</span>
+                  <span class="truncate flex-1">{{ item.fileName }}</span>
+                  <span class="text-white/30 uppercase shrink-0">{{ item.extension }}</span>
+                </button>
+              </div>
+            </div>
+          </transition>
         </div>
       </div>
     </template>
@@ -236,6 +258,7 @@ import { Folder, ChevronRight, X, Pencil, FolderInput, RefreshCw, Info, Download
 import { contentUrl, thumbnailUrl } from '../api/preview'
 import { useCurrentFolder } from '../composables/useCurrentFolder'
 import * as indexerApi from '../api/indexer'
+import * as playlistApi from '../api/playlist'
 import * as configApi from '../api/config'
 import * as fileApi from '../api/file'
 import * as tagApi from '../api/tag'
@@ -258,7 +281,12 @@ const dragOver = ref(false)
 const uploadArea = ref(null)
 
 const previewFile = ref(null)
-const previewIndex = ref(0)
+const playlist = ref([])
+const playlistIndex = ref(0)
+const playbackMode = ref('repeat') // repeat | sequential | shuffle
+const filterByType = ref(false)
+const showPlaylistPanel = ref(false)
+let autoAdvanceTimer = null
 const contentSrc = computed(() => previewFile.value ? contentUrl(previewFile.value) : '')
 const coverSrc = computed(() => previewFile.value ? thumbnailUrl(previewFile.value, 600) : '')
 const mediaPlayer = ref(null)
@@ -455,11 +483,11 @@ async function reindexFolder() {
   }, 2000)
 }
 
-function openPreview(file) {
+async function openPreview(file) {
   savedScrollTop = gridScrollContainer.value?.scrollTop || 0
   previewFile.value = file
-  previewIndex.value = files.value.findIndex(f => f.uuid === file.uuid)
   loadFileTags(file.uuid)
+  await fetchPlaylist(file.uuid)
 }
 
 async function loadFileTags(uuid) {
@@ -488,6 +516,8 @@ async function onCreateTag({ name, color }) {
 function closePreview() {
   previewFile.value = null
   previewUIHidden.value = false
+  showPlaylistPanel.value = false
+  clearAutoAdvance()
   nextTick(() => {
     if (gridScrollContainer.value) {
       gridScrollContainer.value.scrollTop = savedScrollTop
@@ -496,18 +526,111 @@ function closePreview() {
 }
 
 function prevFile() {
-  if (previewIndex.value > 0) {
-    previewIndex.value--
-    previewFile.value = files.value[previewIndex.value]
-    loadFileTags(previewFile.value.uuid)
+  if (playlistIndex.value > 0) {
+    navigatePlaylist(playlistIndex.value - 1)
   }
 }
 
 function nextFile() {
-  if (previewIndex.value < files.value.length - 1) {
-    previewIndex.value++
-    previewFile.value = files.value[previewIndex.value]
-    loadFileTags(previewFile.value.uuid)
+  if (playlistIndex.value < playlist.value.length - 1) {
+    navigatePlaylist(playlistIndex.value + 1)
+  }
+}
+
+function navigatePlaylist(index) {
+  const file = playlist.value[index]
+  if (!file) return
+  const direction = index > playlistIndex.value ? 'forward' : 'backward'
+  const oldIndex = playlistIndex.value
+
+  // Compute keep UUIDs before updating state
+  let keepUuids = null
+  if (playbackMode.value === 'shuffle' && playlist.value.length > 1) {
+    let keepItems
+    if (direction === 'forward') {
+      keepItems = playlist.value.slice(oldIndex + 1)
+    } else {
+      keepItems = playlist.value.slice(0, oldIndex)
+    }
+    keepUuids = keepItems.filter(f => f.uuid !== file.uuid).map(f => f.uuid)
+  }
+
+  playlistIndex.value = index
+  previewFile.value = file
+  loadFileTags(file.uuid)
+  fetchPlaylist(file.uuid, direction, keepUuids)
+}
+
+function jumpToPlaylistItem(uuid) {
+  // Jump = no keep, full re-fetch
+  const file = playlist.value.find(f => f.uuid === uuid)
+  if (file) {
+    previewFile.value = file
+    loadFileTags(file.uuid)
+  }
+  fetchPlaylist(uuid, 'jump')
+}
+
+async function fetchPlaylist(uuid, direction = 'jump', precomputedKeepUuids = null) {
+  clearAutoAdvance()
+  const mode = playbackMode.value === 'repeat' ? 'sequential' : playbackMode.value
+  const opts = { sort: undefined }
+  if (filterByType.value && previewFile.value) {
+    opts.fileType = previewFile.value.fileType
+  }
+  if (mode === 'shuffle' && precomputedKeepUuids) {
+    opts.keepUuids = precomputedKeepUuids
+  }
+  try {
+    const { data } = await playlistApi.getPlaylist(uuid, currentFolder.value, mode, opts)
+    playlist.value = data.items
+    playlistIndex.value = data.currentIndex
+    if (data.items[data.currentIndex]) {
+      previewFile.value = data.items[data.currentIndex]
+    }
+    startAutoAdvance()
+  } catch {}
+}
+
+function switchPlaybackMode(mode) {
+  playbackMode.value = mode
+  if (previewFile.value) {
+    fetchPlaylist(previewFile.value.uuid)
+  }
+}
+
+function cyclePlaybackMode() {
+  const modes = ['sequential', 'shuffle', 'repeat']
+  const next = modes[(modes.indexOf(playbackMode.value) + 1) % modes.length]
+  switchPlaybackMode(next)
+}
+
+// Auto-advance for sequential/shuffle modes
+function startAutoAdvance() {
+  clearAutoAdvance()
+  if (playbackMode.value === 'repeat') return
+  // For non-media types, auto-advance after a delay
+  const type = previewFile.value?.fileType
+  if (['video', 'audio'].includes(type)) return // media auto-advances via onEnded
+  autoAdvanceTimer = setTimeout(() => {
+    nextFile()
+  }, 5000) // 5 seconds for images/pdf/other
+}
+
+function clearAutoAdvance() {
+  if (autoAdvanceTimer) {
+    clearTimeout(autoAdvanceTimer)
+    autoAdvanceTimer = null
+  }
+}
+
+function onMediaEnded() {
+  if (playbackMode.value === 'repeat') {
+    // Loop current
+    mediaPlayer.value?.seekBy(-999999)
+    nextTick(() => mediaPlayer.value?.togglePlay())
+  } else {
+    nextFile()
   }
 }
 
@@ -561,3 +684,8 @@ async function doMove() {
   } catch { alert(t('common.error')) }
 }
 </script>
+
+<style scoped>
+.slide-up-enter-active, .slide-up-leave-active { transition: transform 0.25s ease; }
+.slide-up-enter-from, .slide-up-leave-to { transform: translateY(100%); }
+</style>

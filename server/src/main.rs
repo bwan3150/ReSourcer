@@ -12,6 +12,7 @@ mod browser;
 mod indexer;
 mod tag;
 mod metrics;
+mod playlist;
 
 // 工具模块
 mod static_files;
@@ -243,6 +244,8 @@ async fn main() -> std::io::Result<()> {
             .service(web::scope("/api/tag").configure(tag::routes))
             // 文件系统浏览 API 路由
             .service(web::scope("/api/browser").configure(browser::routes))
+            // 播放队列 API 路由
+            .service(web::scope("/api/playlist").configure(playlist::routes))
             // 性能指标 API 路由
             .service(web::scope("/api/metrics").configure(metrics::routes))
     })

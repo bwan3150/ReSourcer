@@ -511,7 +511,7 @@ pub fn find_source_folder(path: &str) -> Option<String> {
 }
 
 /// 行映射函数
-fn map_file_row(row: &rusqlite::Row) -> Result<IndexedFile, rusqlite::Error> {
+pub fn map_file_row(row: &rusqlite::Row) -> Result<IndexedFile, rusqlite::Error> {
     Ok(IndexedFile {
         uuid: row.get(0)?,
         fingerprint: row.get(1)?,
