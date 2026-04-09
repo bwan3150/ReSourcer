@@ -9,6 +9,9 @@ use super::utils::{get_ffmpeg_path, extract_clip_thumbnail};
 /// 不被 AVPlayer 原生支持、需要转码的视频格式
 const TRANSCODE_VIDEO_EXTENSIONS: &[&str] = &["wmv", "flv", "avi"];
 
+/// 需要检查 faststart 的容器格式
+const FASTSTART_CHECK_EXTENSIONS: &[&str] = &["mp4", "mov", "m4v"];
+
 /// 可能包含 HEVC hev1 编码的容器格式（iOS AVPlayer 要求 hvc1 tag）
 const HEVC_CHECK_EXTENSIONS: &[&str] = &["mp4", "mov", "m4v"];
 
@@ -29,6 +32,42 @@ fn is_hevc_hev1(file_path: &str, ffmpeg_path: &std::path::PathBuf) -> bool {
         }
         Err(_) => false,
     }
+}
+
+/// Check if an MP4 file has moov atom before mdat (faststart).
+/// Reads the file's top-level atoms sequentially. If mdat comes before moov, it's not faststart.
+fn is_faststart(file_path: &Path) -> bool {
+    use std::io::{Read, Seek, SeekFrom};
+    let Ok(mut f) = std::fs::File::open(file_path) else { return true };
+    let Ok(file_size) = f.seek(SeekFrom::End(0)) else { return true };
+    let _ = f.seek(SeekFrom::Start(0));
+
+    let mut pos: u64 = 0;
+    let mut buf = [0u8; 8];
+    while pos < file_size {
+        if f.read_exact(&mut buf).is_err() { break }
+        let size = u32::from_be_bytes([buf[0], buf[1], buf[2], buf[3]]) as u64;
+        let atom_type = &buf[4..8];
+
+        let atom_size = if size == 1 {
+            // 64-bit extended size
+            let mut ext = [0u8; 8];
+            if f.read_exact(&mut ext).is_err() { break }
+            u64::from_be_bytes(ext)
+        } else if size == 0 {
+            file_size - pos // atom extends to end of file
+        } else {
+            size
+        };
+
+        if atom_type == b"moov" { return true }  // moov found first → faststart
+        if atom_type == b"mdat" { return false }  // mdat found first → not faststart
+
+        if atom_size < 8 { break }
+        pos += atom_size;
+        let _ = f.seek(SeekFrom::Start(pos));
+    }
+    true // edge case: no mdat found, assume OK
 }
 
 /// GET /api/preview/content/{path:.*}
@@ -107,6 +146,48 @@ pub async fn serve_file(
             ))?;
 
         return Ok(NamedFile::open_async(&cache_path).await?);
+    }
+
+    // 检测 MP4 是否缺少 faststart（moov atom 在 mdat 之后）
+    // 缺少 faststart 会导致浏览器无法边下边播，必须下载完整文件才能开始
+    if FASTSTART_CHECK_EXTENSIONS.contains(&extension.as_str()) && source_path.exists() && !is_faststart(source_path) {
+        let parent = source_path.parent()
+            .ok_or_else(|| actix_web::error::ErrorInternalServerError("无法获取文件所在目录"))?;
+        let transcode_dir = parent.join(".transcoded");
+        let stem = source_path.file_stem().and_then(|s| s.to_str()).unwrap_or("output");
+        let cache_path = transcode_dir.join(format!("{}_faststart.mp4", stem));
+
+        // Check if cached version exists and is newer than source
+        if cache_path.exists() {
+            let src_modified = std::fs::metadata(source_path).and_then(|m| m.modified()).ok();
+            let cache_modified = std::fs::metadata(&cache_path).and_then(|m| m.modified()).ok();
+            if let (Some(src_t), Some(cache_t)) = (src_modified, cache_modified) {
+                if cache_t >= src_t {
+                    return Ok(NamedFile::open_async(&cache_path).await?);
+                }
+            }
+        }
+
+        // Remux with faststart (copy streams, no re-encoding, very fast)
+        std::fs::create_dir_all(&transcode_dir)
+            .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法创建转码目录: {}", e)))?;
+
+        let ffmpeg_path = get_ffmpeg_path();
+        let cache_path_str = cache_path.to_str()
+            .ok_or_else(|| actix_web::error::ErrorInternalServerError("缓存路径含非 UTF-8 字符"))?;
+
+        eprintln!("[faststart] remuxing: {}", source_path.display());
+        let output = std::process::Command::new(&ffmpeg_path)
+            .args(["-i", &file_path, "-c", "copy", "-movflags", "+faststart", "-y", cache_path_str])
+            .output()
+            .map_err(|e| actix_web::error::ErrorInternalServerError(format!("ffmpeg faststart 失败: {}", e)))?;
+
+        if output.status.success() {
+            return Ok(NamedFile::open_async(&cache_path).await?);
+        } else {
+            let _ = std::fs::remove_file(&cache_path);
+            // Fallback to original file
+        }
     }
 
     // 检测 HEVC hev1 → 重封装为 hvc1（iOS AVPlayer 兼容）

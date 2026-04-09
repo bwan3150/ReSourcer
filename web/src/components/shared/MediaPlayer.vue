@@ -42,14 +42,18 @@
           ref="videoEl"
           :src="src"
           class="max-w-[100vw] max-h-[100vh] object-contain"
-          preload="metadata"
+          preload="auto"
           playsinline
           @loadedmetadata="onMetadata"
           @timeupdate="onTimeUpdate"
+          @progress="onProgress"
           @play="playing = true"
           @pause="playing = false"
           @ended="playing = false"
           @volumechange="onVolumeChange"
+          @waiting="buffering = true"
+          @playing="buffering = false"
+          @canplay="buffering = false"
         />
 
         <!-- Audio -->
@@ -57,13 +61,17 @@
           <audio
             ref="videoEl"
             :src="src"
-            preload="metadata"
+            preload="auto"
             @loadedmetadata="onMetadata"
             @timeupdate="onTimeUpdate"
+            @progress="onProgress"
             @play="playing = true"
             @pause="playing = false"
             @ended="playing = false"
             @volumechange="onVolumeChange"
+            @waiting="buffering = true"
+            @playing="buffering = false"
+            @canplay="buffering = false"
           />
           <div class="flex flex-col items-center gap-2 text-base-content/20">
             <Music :size="48" />
@@ -76,6 +84,13 @@
       </div>
     </div>
 
+    <!-- Buffering spinner -->
+    <transition name="fade">
+      <div v-if="buffering && hasControls" class="absolute inset-0 flex items-center justify-center z-5 pointer-events-none">
+        <span class="loading loading-spinner loading-lg text-white/60"></span>
+      </div>
+    </transition>
+
     <!-- Floating controls overlay (unaffected by zoom) -->
     <transition name="fade">
       <div
@@ -83,11 +98,18 @@
         class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent pt-10 pb-3 px-4 z-10"
         @click.stop
       >
-        <div v-if="hasControls" class="mb-2">
-          <input
-            type="range" min="0" :max="duration || 0" :value="currentTime" step="0.1"
-            class="range range-xs w-full" style="--range-shdw: transparent;" @input="onSeek"
-          />
+        <div v-if="hasControls" class="mb-2 relative h-4 flex items-center group cursor-pointer" @click="onSeekClick">
+          <!-- Buffer bar (gray) -->
+          <div class="absolute left-0 top-1/2 -translate-y-1/2 h-1 rounded-full bg-white/20 w-full">
+            <div class="h-full rounded-full bg-white/30 transition-all duration-300"
+              :style="{ width: (duration ? (bufferedEnd / duration) * 100 : 0) + '%' }"></div>
+          </div>
+          <!-- Progress bar (white) -->
+          <div class="absolute left-0 top-1/2 -translate-y-1/2 h-1 group-hover:h-1.5 rounded-full bg-white/80 transition-all"
+            :style="{ width: (duration ? (currentTime / duration) * 100 : 0) + '%' }"></div>
+          <!-- Seek thumb (visible on hover) -->
+          <div class="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+            :style="{ left: (duration ? (currentTime / duration) * 100 : 0) + '%', transform: 'translate(-50%, -50%)' }"></div>
         </div>
         <div class="flex items-center gap-2">
           <button v-if="showNav" class="btn btn-ghost btn-xs btn-square text-white" @click="$emit('prev')" :disabled="!hasPrev">
@@ -151,7 +173,9 @@ const currentTime = ref(0)
 const duration = ref(0)
 const volume = ref(parseFloat(localStorage.getItem('player_volume') ?? '1'))
 const muted = ref(localStorage.getItem('player_muted') === 'true')
-const controlsVisible = ref(true) // always visible for now; will be toggled via keyboard shortcut later
+const controlsVisible = ref(true)
+const buffering = ref(false)
+const bufferedEnd = ref(0)
 
 // Zoom & pan state
 const scale = ref(1)
@@ -175,6 +199,8 @@ watch(() => props.src, async () => {
   playing.value = false
   currentTime.value = 0
   duration.value = 0
+  bufferedEnd.value = 0
+  buffering.value = false
   controlsVisible.value = true
   resetZoom()
   if (hasControls.value && props.autoplay) {
@@ -239,6 +265,13 @@ function onMetadata() {
   }
 }
 function onTimeUpdate() { currentTime.value = videoEl.value?.currentTime || 0 }
+function onProgress() {
+  if (!videoEl.value) return
+  const buf = videoEl.value.buffered
+  if (buf.length > 0) {
+    bufferedEnd.value = buf.end(buf.length - 1)
+  }
+}
 function onVolumeChange() {
   volume.value = videoEl.value?.volume || 0
   muted.value = videoEl.value?.muted || false
@@ -255,6 +288,13 @@ function togglePlay() {
 function onSeek(e) {
   if (!videoEl.value) return
   videoEl.value.currentTime = parseFloat(e.target.value)
+}
+
+function onSeekClick(e) {
+  if (!videoEl.value || !duration.value) return
+  const rect = e.currentTarget.getBoundingClientRect()
+  const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+  videoEl.value.currentTime = ratio * duration.value
 }
 
 function onVolume(e) {
