@@ -74,7 +74,8 @@
             @canplay="buffering = false"
           />
           <div class="flex flex-col items-center gap-3">
-            <component :is="fileIconData.icon" :size="56" :style="{ color: fileIconData.color }" />
+            <img v-if="audioCover" :src="audioCover" class="max-w-[300px] max-h-[300px] rounded-lg shadow-lg object-contain" draggable="false" />
+            <component v-else :is="fileIconData.icon" :size="56" :style="{ color: fileIconData.color }" />
             <span class="text-sm text-base-content/30">{{ fileName }}</span>
           </div>
         </template>
@@ -165,6 +166,7 @@ const props = defineProps({
   hasPrev: { type: Boolean, default: false },
   hasNext: { type: Boolean, default: false },
   autoplay: { type: Boolean, default: true },
+  coverUrl: { type: String, default: '' },
 })
 
 const emit = defineEmits(['prev', 'next'])
@@ -180,6 +182,7 @@ const muted = ref(localStorage.getItem('player_muted') === 'true')
 const controlsVisible = ref(true)
 const buffering = ref(false)
 const bufferedEnd = ref(0)
+const audioCover = ref(null)
 
 // Zoom & pan state
 const scale = ref(1)
@@ -206,8 +209,16 @@ watch(() => props.src, async () => {
   duration.value = 0
   bufferedEnd.value = 0
   buffering.value = false
+  audioCover.value = null
   controlsVisible.value = true
   resetZoom()
+  // Load audio cover
+  if (props.type === 'audio' && props.coverUrl) {
+    const img = new window.Image()
+    img.onload = () => { audioCover.value = props.coverUrl }
+    img.onerror = () => { audioCover.value = null }
+    img.src = props.coverUrl
+  }
   if (hasControls.value && props.autoplay) {
     await nextTick()
     // Apply persisted volume/mute to new media element

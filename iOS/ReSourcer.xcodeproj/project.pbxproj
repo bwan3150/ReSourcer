@@ -68,6 +68,7 @@
 		A1000095233F0001 /* DownloaderSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000095233F0000 /* DownloaderSettingsView.swift */; };
 		A1000096233F0001 /* PreviewLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000096233F0000 /* PreviewLogger.swift */; };
 		A10000A0233F0001 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000FE233F0000 /* PreferencesView.swift */; };
+		D622607EE8CDA1C4914D147B /* FileIconHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = E34B9BA63E3E064E0D5F8F08 /* FileIconHelper.swift */; };
 		E0F10391981E71D1AB05829E /* MetricsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 649E6184143302EFD3D570DE /* MetricsModels.swift */; };
 /* End PBXBuildFile section */
 
@@ -136,6 +137,7 @@
 		A1000095233F0000 /* DownloaderSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloaderSettingsView.swift; sourceTree = "<group>"; };
 		A1000096233F0000 /* PreviewLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewLogger.swift; sourceTree = "<group>"; };
 		A10000FE233F0000 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
+		E34B9BA63E3E064E0D5F8F08 /* FileIconHelper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileIconHelper.swift; sourceTree = "<group>"; };
 		EF085BEB183121E3B39A0477 /* MetricsService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MetricsService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -208,6 +210,7 @@
 				A1000079233F0000 /* QRScannerView.swift */,
 				A1000090233F0000 /* FileInfoSheetContent.swift */,
 				A1000093233F0000 /* TagEditorView.swift */,
+				E34B9BA63E3E064E0D5F8F08 /* FileIconHelper.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -472,6 +475,7 @@
 				E0F10391981E71D1AB05829E /* MetricsModels.swift in Sources */,
 				8B6571A01BF18BCAF39FCD63 /* ServerMetricsView.swift in Sources */,
 				4C1D717EE8BDFF4B003707D2 /* AboutView.swift in Sources */,
+				D622607EE8CDA1C4914D147B /* FileIconHelper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -43,6 +43,7 @@
             :src="contentSrc"
             :type="previewFile.fileType"
             :file-name="previewFile.fileName"
+            :cover-url="coverSrc"
             :show-nav="true"
             :has-prev="previewIndex > 0"
             :has-next="previewIndex < files.length - 1"
@@ -232,7 +233,7 @@ import { useTheme } from '../composables/useTheme'
 import UploadArea from '../components/gallery/UploadArea.vue'
 import TagEditor from '../components/gallery/TagEditor.vue'
 import { Folder, ChevronRight, X, Pencil, FolderInput, RefreshCw, Info, Download } from 'lucide-vue-next'
-import { contentUrl } from '../api/preview'
+import { contentUrl, thumbnailUrl } from '../api/preview'
 import { useCurrentFolder } from '../composables/useCurrentFolder'
 import * as indexerApi from '../api/indexer'
 import * as configApi from '../api/config'
@@ -259,6 +260,7 @@ const uploadArea = ref(null)
 const previewFile = ref(null)
 const previewIndex = ref(0)
 const contentSrc = computed(() => previewFile.value ? contentUrl(previewFile.value) : '')
+const coverSrc = computed(() => previewFile.value ? thumbnailUrl(previewFile.value, 600) : '')
 const mediaPlayer = ref(null)
 function isMediaType() {
   return ['video', 'audio'].includes(previewFile.value?.fileType)
@@ -324,6 +326,9 @@ useKeyboardShortcuts({
   panLeft: () => { if (isMediaType()) mediaPlayer.value?.panBy(50, 0) },
   panRight: () => { if (isMediaType()) mediaPlayer.value?.panBy(-50, 0) },
   toggleUI: () => {
+    // Only allow hiding UI for visual content (image/gif/video/pdf), not audio/other
+    const type = previewFile.value?.fileType
+    if (!['image', 'gif', 'video', 'pdf'].includes(type)) return
     previewUIHidden.value = !previewUIHidden.value
     if (mediaPlayer.value) {
       const cv = mediaPlayer.value.controlsVisible

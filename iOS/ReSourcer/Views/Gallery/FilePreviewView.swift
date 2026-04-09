@@ -757,8 +757,14 @@ struct FilePreviewView: View {
 
     // MARK: - 控制栏显示/隐藏
 
+    /// 是否允许隐藏控制栏（仅视觉内容：图片/GIF/视频/PDF）
+    private var canHideControls: Bool {
+        guard let file = currentFile else { return false }
+        return file.isVideo || file.isImage || file.isGif || file.isPdf
+    }
+
     private func toggleControls() {
-        guard prefs.allowToggleUI else { return }
+        guard prefs.allowToggleUI, canHideControls else { return }
         withAnimation(AppTheme.Animation.standard) {
             showControls.toggle()
         }
@@ -769,11 +775,10 @@ struct FilePreviewView: View {
 
     private func scheduleAutoHide() {
         hideControlsTask?.cancel()
-        // 不允许收起 UI，或自动隐藏延迟为 0 → 永不自动隐藏
         guard prefs.allowToggleUI else { return }
         guard prefs.autoHideDelay > 0 else { return }
-        // 只对视频和音频自动隐藏
-        guard currentFile?.isVideo == true || currentFile?.isAudio == true else { return }
+        // 只对视频自动隐藏（图片/PDF/音频/其他 不自动隐藏）
+        guard currentFile?.isVideo == true else { return }
         let delay = prefs.autoHideDelay
         hideControlsTask = Task {
             try? await Task.sleep(for: .seconds(delay))
@@ -1701,6 +1706,7 @@ struct AudioPreviewContent: View {
     @State private var duration: Double = 1
     @State private var timeObserver: Any?
     @State private var statusObserver: NSKeyValueObservation?
+    @State private var coverLoaded = false
 
     var body: some View {
         ZStack {
@@ -1708,10 +1714,32 @@ struct AudioPreviewContent: View {
             VStack(spacing: AppTheme.Spacing.xl) {
                 Spacer()
 
-                // 音乐图标
-                Image(systemName: "music.note")
-                    .font(.system(size: 80, weight: .ultraLight))
-                    .foregroundStyle(.white.opacity(0.6))
+                // 封面图或音乐图标
+                if let coverURL = file.thumbnailURL(apiService: apiService, size: 600) {
+                    AsyncImage(url: coverURL) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(maxWidth: 280, maxHeight: 280)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .shadow(color: .black.opacity(0.4), radius: 20)
+                        case .failure:
+                            Image(systemName: "music.note")
+                                .font(.system(size: 80, weight: .ultraLight))
+                                .foregroundStyle(.white.opacity(0.6))
+                        default:
+                            Image(systemName: "music.note")
+                                .font(.system(size: 80, weight: .ultraLight))
+                                .foregroundStyle(.white.opacity(0.6))
+                        }
+                    }
+                } else {
+                    Image(systemName: "music.note")
+                        .font(.system(size: 80, weight: .ultraLight))
+                        .foregroundStyle(.white.opacity(0.6))
+                }
 
                 // 文件名
                 Text(file.name)
@@ -1979,12 +2007,16 @@ struct OtherFilePreviewContent: View {
     let file: FileInfo
     let onTap: () -> Void
 
+    private var iconInfo: FileIconInfo {
+        FileIconHelper.iconInfo(for: file)
+    }
+
     var body: some View {
         VStack(spacing: AppTheme.Spacing.xl) {
             // 文件图标
-            Image(systemName: fileIconName)
+            Image(systemName: iconInfo.icon)
                 .font(.system(size: 72, weight: .ultraLight))
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(iconInfo.color.opacity(0.7))
 
             // 文件名
             Text(file.name)
@@ -2012,35 +2044,6 @@ struct OtherFilePreviewContent: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
-    }
-
-    /// 根据扩展名返回 SF Symbol 图标
-    private var fileIconName: String {
-        let ext = file.extension.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "."))
-        switch ext {
-        case "pdf":
-            return "doc.fill"
-        case "zip", "rar", "7z", "tar", "gz":
-            return "doc.zipper"
-        case "mp3", "wav", "aac", "flac", "m4a", "ogg":
-            return "music.note"
-        case "txt", "md", "rtf":
-            return "doc.text"
-        case "json", "xml", "yaml", "yml":
-            return "curlybraces"
-        case "py", "js", "ts", "swift", "rs", "go", "java", "c", "cpp", "h":
-            return "chevron.left.forwardslash.chevron.right"
-        case "html", "css":
-            return "globe"
-        case "xls", "xlsx", "csv":
-            return "tablecells"
-        case "ppt", "pptx", "key":
-            return "rectangle.fill.on.rectangle.fill"
-        case "doc", "docx", "pages":
-            return "doc.richtext"
-        default:
-            return "doc.fill"
-        }
     }
 }
 

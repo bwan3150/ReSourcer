@@ -1486,9 +1486,10 @@ struct GalleryGridItem: View {
                     } placeholder: {
                         Color.white.opacity(0.08)
                             .overlay {
-                                Image(systemName: gridPlaceholderIcon(for: file))
+                                let info = gridPlaceholderIcon(for: file)
+                                Image(systemName: info.icon)
                                     .font(.title2)
-                                    .foregroundStyle(.tertiary)
+                                    .foregroundStyle(info.color.opacity(0.6))
                             }
                     }
                 }
@@ -1540,11 +1541,8 @@ struct GalleryGridItem: View {
     }
 
     /// 网格占位图标
-    private func gridPlaceholderIcon(for file: FileInfo) -> String {
-        if file.isVideo { return "film" }
-        if file.isAudio { return "music.note" }
-        if file.isPdf { return "doc.fill" }
-        return "photo"
+    private func gridPlaceholderIcon(for file: FileInfo) -> FileIconInfo {
+        FileIconHelper.iconInfo(for: file)
     }
 }
 
@@ -1572,8 +1570,9 @@ struct GalleryListItem: View {
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                     } placeholder: {
-                        Image(systemName: listPlaceholderIcon(for: file))
-                            .foregroundStyle(.tertiary)
+                        let info = listPlaceholderIcon(for: file)
+                        Image(systemName: info.icon)
+                            .foregroundStyle(info.color.opacity(0.6))
                     }
                     .frame(width: 60, height: 60)
                     .clipped()
@@ -1625,11 +1624,8 @@ struct GalleryListItem: View {
     }
 
     /// 列表占位图标
-    private func listPlaceholderIcon(for file: FileInfo) -> String {
-        if file.isVideo { return "film" }
-        if file.isAudio { return "music.note" }
-        if file.isPdf { return "doc.fill" }
-        return "photo"
+    private func listPlaceholderIcon(for file: FileInfo) -> FileIconInfo {
+        FileIconHelper.iconInfo(for: file)
     }
 }
 

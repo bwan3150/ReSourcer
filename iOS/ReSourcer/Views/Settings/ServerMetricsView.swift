@@ -455,9 +455,16 @@ private struct MiniChartView: View {
                 }
             }
             .gesture(
-                DragGesture(minimumDistance: 0)
+                LongPressGesture(minimumDuration: 0.2)
+                    .sequenced(before: DragGesture(minimumDistance: 0))
                     .onChanged { value in
-                        updateTooltip(at: value.location, size: size, layout: layout)
+                        switch value {
+                        case .second(true, let drag):
+                            if let drag {
+                                updateTooltip(at: drag.location, size: size, layout: layout)
+                            }
+                        default: break
+                        }
                     }
                     .onEnded { _ in
                         tooltipInfo = nil
