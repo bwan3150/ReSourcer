@@ -528,25 +528,43 @@ function closePreview() {
 
 function prevFile() {
   if (playlist.value.length <= 1) return
-  if (playlistIndex.value > 0) {
-    // Still have items before — just move index, no re-fetch
-    moveWithinPlaylist(playlistIndex.value - 1)
+  if (playbackMode.value === 'shuffle') {
+    // Shuffle: always re-fetch with current queue
+    const newIndex = playlistIndex.value > 0 ? playlistIndex.value - 1 : playlist.value.length - 1
+    const file = playlist.value[newIndex]
+    previewFile.value = file
+    loadFileTags(file.uuid)
+    fetchPlaylist(file.uuid)
   } else {
-    // At the start of window — need to re-fetch to get earlier items
-    const file = playlist.value[0]
-    navigateAndRefetch(file, 'backward')
+    // Sequential/repeat: move within window, re-fetch only at edges
+    if (playlistIndex.value > 0) {
+      moveWithinPlaylist(playlistIndex.value - 1)
+    } else {
+      const file = playlist.value[0]
+      previewFile.value = file
+      loadFileTags(file.uuid)
+      fetchPlaylist(file.uuid)
+    }
   }
 }
 
 function nextFile() {
   if (playlist.value.length <= 1) return
-  if (playlistIndex.value < playlist.value.length - 1) {
-    // Still have items after — just move index, no re-fetch
-    moveWithinPlaylist(playlistIndex.value + 1)
+  if (playbackMode.value === 'shuffle') {
+    const newIndex = playlistIndex.value < playlist.value.length - 1 ? playlistIndex.value + 1 : 0
+    const file = playlist.value[newIndex]
+    previewFile.value = file
+    loadFileTags(file.uuid)
+    fetchPlaylist(file.uuid)
   } else {
-    // At the end of window — need to re-fetch to get later items
-    const file = playlist.value[playlist.value.length - 1]
-    navigateAndRefetch(file, 'forward')
+    if (playlistIndex.value < playlist.value.length - 1) {
+      moveWithinPlaylist(playlistIndex.value + 1)
+    } else {
+      const file = playlist.value[playlist.value.length - 1]
+      previewFile.value = file
+      loadFileTags(file.uuid)
+      fetchPlaylist(file.uuid)
+    }
   }
 }
 
@@ -560,21 +578,6 @@ function moveWithinPlaylist(index) {
   startAutoAdvance()
 }
 
-function navigateAndRefetch(currentEdgeFile, direction) {
-  const oldIndex = playlistIndex.value
-
-  let keepUuids = null
-  if (playbackMode.value === 'shuffle' && playlist.value.length > 1) {
-    // Keep all current items except the one we're moving away from the edge
-    keepUuids = playlist.value.map(f => f.uuid).filter(u => u !== currentEdgeFile.uuid)
-  }
-
-  // Optimistically show the edge file
-  previewFile.value = currentEdgeFile
-  loadFileTags(currentEdgeFile.uuid)
-  fetchPlaylist(currentEdgeFile.uuid, direction, keepUuids)
-}
-
 function jumpToPlaylistItem(uuid) {
   // Jump = no keep, full re-fetch
   const file = playlist.value.find(f => f.uuid === uuid)
@@ -585,15 +588,16 @@ function jumpToPlaylistItem(uuid) {
   fetchPlaylist(uuid, 'jump')
 }
 
-async function fetchPlaylist(uuid, direction = 'jump', precomputedKeepUuids = null) {
+async function fetchPlaylist(uuid) {
   clearAutoAdvance()
   const mode = playbackMode.value === 'repeat' ? 'sequential' : playbackMode.value
   const opts = { sort: undefined }
   if (filterByType.value && previewFile.value) {
     opts.fileType = previewFile.value.fileType
   }
-  if (mode === 'shuffle' && precomputedKeepUuids) {
-    opts.keepUuids = precomputedKeepUuids
+  // Shuffle: send current queue so server can decide what to keep
+  if (mode === 'shuffle' && playlist.value.length > 0) {
+    opts.currentQueue = playlist.value.map(f => f.uuid)
   }
   try {
     const { data } = await playlistApi.getPlaylist(uuid, currentFolder.value, mode, opts)

@@ -88,7 +88,7 @@ enum APIEndpoint {
     case tagGetFilesTags                         // POST /api/tag/files
 
     // MARK: - Playlist 播放队列
-    case playlist(uuid: String, folderPath: String, mode: String, sort: String?, fileType: String?, keepUuids: String?)
+    case playlist(uuid: String, folderPath: String, mode: String, sort: String?, fileType: String?, currentQueue: String?)
 
     // MARK: - Metrics 性能指标
     case metricsCurrent                      // GET  /api/metrics/current
@@ -249,11 +249,11 @@ enum APIEndpoint {
             return "/api/tag/files"
 
         // Playlist
-        case .playlist(let uuid, let folderPath, let mode, let sort, let fileType, let keepUuids):
+        case .playlist(let uuid, let folderPath, let mode, let sort, let fileType, let currentQueue):
             var path = "/api/playlist?uuid=\(uuid.urlEncoded)&folder_path=\(folderPath.urlEncoded)&mode=\(mode)"
             if let sort { path += "&sort=\(sort)" }
             if let fileType { path += "&file_type=\(fileType)" }
-            if let keepUuids { path += "&keep_uuids=\(keepUuids.urlEncoded)" }
+            if let currentQueue { path += "&current_queue=\(currentQueue.urlEncoded)" }
             return path
 
         // Metrics

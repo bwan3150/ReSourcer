@@ -156,11 +156,16 @@ pub fn get_playlist_sequential(
 }
 
 /// Shuffle playlist: current file + 6 random files from the folder
+///
+/// `current_queue`: the client's current 7-item queue (UUIDs in order).
+/// If provided, server determines which items stay in the new window
+/// (based on target's position in old queue) and fills the rest with new randoms.
+/// If not provided (initial request), picks 6 fresh randoms.
 pub fn get_playlist_shuffle(
     folder_path: &str,
     uuid: &str,
     file_type: Option<&str>,
-    keep_uuids: Option<&[String]>,
+    current_queue: Option<&[String]>,
 ) -> Result<(Vec<IndexedFile>, usize), rusqlite::Error> {
     let conn = get_connection()?;
     let target = get_file_by_uuid(uuid)?
@@ -169,20 +174,47 @@ pub fn get_playlist_shuffle(
     let (ignore_clause, ignored) = ignored_files_clause();
     let type_clause = if file_type.is_some() { " AND file_type = ?" } else { "" };
 
-    if let Some(keep) = keep_uuids {
-        // Sliding window: keep specified items, fill remaining with new randoms
-        let mut kept_files: Vec<IndexedFile> = Vec::new();
-        for k_uuid in keep {
-            if let Some(f) = get_file_by_uuid(k_uuid)? {
-                kept_files.push(f);
+    if let Some(queue) = current_queue {
+        // Find target's position in old queue
+        let target_pos = queue.iter().position(|u| u == uuid);
+
+        // Determine which old items stay in the new window (centered on target)
+        let mut keep_uuids: Vec<String> = Vec::new();
+        if let Some(pos) = target_pos {
+            // Items within 3 positions of target in the old queue stay
+            for (i, u) in queue.iter().enumerate() {
+                if u == uuid { continue; }
+                let dist = (i as i64 - pos as i64).unsigned_abs() as usize;
+                if dist <= CONTEXT_SIZE as usize {
+                    keep_uuids.push(u.clone());
+                }
+            }
+        }
+        // else: target not in old queue (jump), keep nothing
+
+        // Load kept files, preserving their order from the old queue
+        let mut before_files: Vec<IndexedFile> = Vec::new();
+        let mut after_files: Vec<IndexedFile> = Vec::new();
+        if let Some(pos) = target_pos {
+            for (i, u) in queue.iter().enumerate() {
+                if u == uuid { continue; }
+                if !keep_uuids.contains(u) { continue; }
+                if let Some(f) = get_file_by_uuid(u)? {
+                    if i < pos { before_files.push(f); }
+                    else { after_files.push(f); }
+                }
             }
         }
 
-        let need = (6i64 - kept_files.len() as i64).max(0);
+        // How many new randoms needed?
+        let have = before_files.len() + after_files.len();
+        let need_before = CONTEXT_SIZE as usize - before_files.len();
+        let need_after = CONTEXT_SIZE as usize - after_files.len();
+        let need_total = need_before + need_after;
 
         // Exclude current + kept from random picks
         let mut exclude: Vec<String> = vec![uuid.to_string()];
-        exclude.extend(keep.iter().cloned());
+        exclude.extend(keep_uuids.iter().cloned());
         let excl_placeholders = exclude.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
 
         let rand_query = format!(
@@ -194,30 +226,25 @@ pub fn get_playlist_shuffle(
         rand_params.extend(exclude);
         if let Some(ft) = file_type { rand_params.push(ft.to_string()); }
         rand_params.extend(ignored.iter().cloned());
-        rand_params.push(need.to_string());
+        rand_params.push(need_total.to_string());
 
         let mut stmt = conn.prepare(&rand_query)?;
         let new_randoms: Vec<IndexedFile> = stmt
             .query_map(rusqlite::params_from_iter(rand_params.iter()), map_file_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
-        // Assemble: [kept_before...] + [new_randoms_before...] + target + [kept_after...] + [new_randoms_after...]
-        // Place kept items first (they maintain relative order), then fill with new randoms
-        // Split: 3 before current, 3 after
-        let mut before: Vec<IndexedFile> = Vec::new();
-        let mut after: Vec<IndexedFile> = Vec::new();
+        // Distribute new randoms: fill before first, then after
+        let rand_for_before = &new_randoms[..need_before.min(new_randoms.len())];
+        let rand_for_after = &new_randoms[need_before.min(new_randoms.len())..];
 
-        // Distribute kept + new into before/after
-        let all_others: Vec<IndexedFile> = kept_files.into_iter().chain(new_randoms).collect();
-        for f in all_others.into_iter() {
-            if before.len() < 3 { before.push(f); }
-            else { after.push(f); }
-        }
-
-        let current_index = before.len();
-        let mut items = before;
+        // Assemble: [new_rand_before...] + [kept_before...] + target + [kept_after...] + [new_rand_after...]
+        let mut items: Vec<IndexedFile> = Vec::new();
+        items.extend(rand_for_before.to_vec());
+        items.extend(before_files);
+        let current_index = items.len();
         items.push(target);
-        items.extend(after);
+        items.extend(after_files);
+        items.extend(rand_for_after.to_vec());
 
         Ok((items, current_index))
     } else {
@@ -236,15 +263,11 @@ pub fn get_playlist_shuffle(
             .query_map(rusqlite::params_from_iter(rand_params.iter()), map_file_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
-        // Split: first 3 before, last 3 after
         let split = randoms.len().min(3);
-        let before = &randoms[..split];
-        let after = &randoms[split..];
-
-        let current_index = before.len();
-        let mut items: Vec<IndexedFile> = before.to_vec();
+        let current_index = split;
+        let mut items: Vec<IndexedFile> = randoms[..split].to_vec();
         items.push(target);
-        items.extend(after.to_vec());
+        items.extend(randoms[split..].to_vec());
 
         Ok((items, current_index))
     }

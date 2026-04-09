@@ -8,19 +8,19 @@ pub async fn playlist(query: web::Query<PlaylistQuery>) -> Result<HttpResponse> 
     let mode = query.mode.clone();
     let sort = query.sort.clone();
     let file_type = query.file_type.clone();
-    let keep_uuids_str = query.keep_uuids.clone();
+    let current_queue_str = query.current_queue.clone();
 
     let result = tokio::task::spawn_blocking(move || {
         match mode.as_str() {
             "shuffle" => {
-                let keep: Option<Vec<String>> = keep_uuids_str.map(|s| {
+                let queue: Option<Vec<String>> = current_queue_str.map(|s| {
                     s.split(',').map(|u| u.trim().to_string()).filter(|u| !u.is_empty()).collect()
                 });
                 storage::get_playlist_shuffle(
                     &folder_path,
                     &uuid,
                     file_type.as_deref(),
-                    keep.as_deref(),
+                    queue.as_deref(),
                 )
             }
             _ => {

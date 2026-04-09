@@ -186,11 +186,11 @@ actor PreviewService {
 
     func getPlaylist(uuid: String, folderPath: String, mode: String,
                      sort: String? = nil, fileType: String? = nil,
-                     keepUuids: [String]? = nil) async throws -> PlaylistResponse {
-        let keepStr = keepUuids?.joined(separator: ",")
+                     currentQueue: [String]? = nil) async throws -> PlaylistResponse {
+        let queueStr = currentQueue?.joined(separator: ",")
         return try await networkManager.request(
             .playlist(uuid: uuid, folderPath: folderPath, mode: mode,
-                      sort: sort, fileType: fileType, keepUuids: keepStr)
+                      sort: sort, fileType: fileType, currentQueue: queueStr)
         )
     }
 

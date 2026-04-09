@@ -800,27 +800,19 @@ struct FilePreviewView: View {
     // MARK: - Playlist Navigation
 
     /// Fetch playlist from server centered on given UUID
-    private func fetchPlaylist(uuid: String, direction: String = "jump") async {
+    private func fetchPlaylist(uuid: String) async {
         let mode = playbackMode == .repeatCurrent ? "sequential" : (playbackMode == .shuffle ? "shuffle" : "sequential")
         let fileType = prefs.filterAutoplayByFileType ? currentFile?.fileType.rawValue : nil
 
-        var keepUuids: [String]? = nil
-        if playbackMode == .shuffle && !playlist.isEmpty && direction != "jump" {
-            if direction == "forward" {
-                keepUuids = Array(playlist.suffix(from: min(playlistIndex + 1, playlist.count)))
-                    .compactMap(\.uuid)
-                    .filter { $0 != uuid }
-            } else {
-                keepUuids = Array(playlist.prefix(playlistIndex))
-                    .compactMap(\.uuid)
-                    .filter { $0 != uuid }
-            }
-        }
+        // Shuffle: send current queue so server decides what to keep
+        let queue: [String]? = (playbackMode == .shuffle && !playlist.isEmpty)
+            ? playlist.compactMap(\.uuid)
+            : nil
 
         do {
             let resp = try await apiService.preview.getPlaylist(
                 uuid: uuid, folderPath: folderPath, mode: mode,
-                fileType: fileType, keepUuids: keepUuids
+                fileType: fileType, currentQueue: queue
             )
             let files = resp.items.map { $0.toFileInfo() }
             await MainActor.run {
@@ -837,20 +829,29 @@ struct FilePreviewView: View {
     private func navigateInPlaylist(direction: Int) {
         guard playlist.count > 1 else { return }
 
-        let atEdge = (direction > 0 && playlistIndex >= playlist.count - 1)
-                  || (direction < 0 && playlistIndex <= 0)
+        if playbackMode == .shuffle {
+            // Shuffle: always re-fetch, server decides what to keep from current queue
+            var newIndex = playlistIndex + direction
+            if newIndex < 0 { newIndex = playlist.count - 1 }
+            if newIndex >= playlist.count { newIndex = 0 }
+            let newFile = playlist[newIndex]
 
-        if !atEdge {
-            // Still within window — just move index, no re-fetch
-            let newIndex = playlistIndex + direction
             withAnimation { playlistIndex = newIndex }
-            cancelAutoAdvanceTimer()
-            startAutoAdvanceTimer()
+            Task { await fetchPlaylist(uuid: newFile.uuid ?? newFile.path) }
         } else {
-            // At window edge — need to re-fetch to extend
-            let edgeFile = direction > 0 ? playlist.last! : playlist.first!
-            let dir = direction > 0 ? "forward" : "backward"
-            Task { await fetchPlaylist(uuid: edgeFile.uuid ?? edgeFile.path, direction: dir) }
+            // Sequential/repeat: move within window, re-fetch only at edges
+            let atEdge = (direction > 0 && playlistIndex >= playlist.count - 1)
+                      || (direction < 0 && playlistIndex <= 0)
+
+            if !atEdge {
+                let newIndex = playlistIndex + direction
+                withAnimation { playlistIndex = newIndex }
+                cancelAutoAdvanceTimer()
+                startAutoAdvanceTimer()
+            } else {
+                let edgeFile = direction > 0 ? playlist.last! : playlist.first!
+                Task { await fetchPlaylist(uuid: edgeFile.uuid ?? edgeFile.path) }
+            }
         }
     }
 

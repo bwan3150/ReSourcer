@@ -8,7 +8,7 @@ pub struct PlaylistQuery {
     pub mode: String,              // "sequential" or "shuffle"
     pub sort: Option<String>,      // name_asc, name_desc, size_asc, etc.
     pub file_type: Option<String>, // filter by type (e.g. "video")
-    pub keep_uuids: Option<String>, // comma-separated UUIDs to keep (shuffle mode)
+    pub current_queue: Option<String>, // comma-separated UUIDs of current 7-item queue (shuffle mode)
 }
 
 #[derive(Debug, Serialize)]
