@@ -87,6 +87,9 @@ enum APIEndpoint {
     case tagSetFileTags                          // POST /api/tag/file
     case tagGetFilesTags                         // POST /api/tag/files
 
+    // MARK: - Playlist 播放队列
+    case playlist(uuid: String, folderPath: String, mode: String, sort: String?, fileType: String?, keepUuids: String?)
+
     // MARK: - Metrics 性能指标
     case metricsCurrent                      // GET  /api/metrics/current
     case metricsHistory(minutes: Int)        // GET  /api/metrics/history?minutes=
@@ -245,6 +248,14 @@ enum APIEndpoint {
         case .tagGetFilesTags:
             return "/api/tag/files"
 
+        // Playlist
+        case .playlist(let uuid, let folderPath, let mode, let sort, let fileType, let keepUuids):
+            var path = "/api/playlist?uuid=\(uuid.urlEncoded)&folder_path=\(folderPath.urlEncoded)&mode=\(mode)"
+            if let sort { path += "&sort=\(sort)" }
+            if let fileType { path += "&file_type=\(fileType)" }
+            if let keepUuids { path += "&keep_uuids=\(keepUuids.urlEncoded)" }
+            return path
+
         // Metrics
         case .metricsCurrent:
             return "/api/metrics/current"
@@ -288,6 +299,7 @@ enum APIEndpoint {
              .previewFiles, .previewThumbnail, .previewThumbnailByUuid, .previewContent, .previewContentByUuid,
              .indexerFiles, .indexerFile, .indexerFolders, .indexerStatus, .indexerBreadcrumb,
              .tagList, .tagGetFileTags,
+             .playlist,
              .metricsCurrent, .metricsHistory, .metricsDisk, .metricsSystem,
              .configState, .configDownload, .configSources:
             return .GET

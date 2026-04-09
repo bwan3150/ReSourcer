@@ -46,8 +46,8 @@
             :cover-url="coverSrc"
             :playback-mode="playbackMode"
             :show-nav="true"
-            :has-prev="playlistIndex > 0"
-            :has-next="playlistIndex < playlist.length - 1"
+            :has-prev="playlist.length > 1"
+            :has-next="playlist.length > 1"
             @prev="prevFile"
             @next="nextFile"
             @ended="onMediaEnded"
@@ -284,7 +284,8 @@ const previewFile = ref(null)
 const playlist = ref([])
 const playlistIndex = ref(0)
 const playbackMode = ref('repeat') // repeat | sequential | shuffle
-const filterByType = ref(false)
+const filterByType = ref(localStorage.getItem('playlist_filterByType') === 'true')
+const autoAdvanceSeconds = ref(parseInt(localStorage.getItem('playlist_autoAdvanceSeconds') || '8'))
 const showPlaylistPanel = ref(false)
 let autoAdvanceTimer = null
 const contentSrc = computed(() => previewFile.value ? contentUrl(previewFile.value) : '')
@@ -526,15 +527,15 @@ function closePreview() {
 }
 
 function prevFile() {
-  if (playlistIndex.value > 0) {
-    navigatePlaylist(playlistIndex.value - 1)
-  }
+  if (playlist.value.length <= 1) return
+  const newIdx = playlistIndex.value > 0 ? playlistIndex.value - 1 : playlist.value.length - 1
+  navigatePlaylist(newIdx)
 }
 
 function nextFile() {
-  if (playlistIndex.value < playlist.value.length - 1) {
-    navigatePlaylist(playlistIndex.value + 1)
-  }
+  if (playlist.value.length <= 1) return
+  const newIdx = playlistIndex.value < playlist.value.length - 1 ? playlistIndex.value + 1 : 0
+  navigatePlaylist(newIdx)
 }
 
 function navigatePlaylist(index) {
@@ -614,7 +615,7 @@ function startAutoAdvance() {
   if (['video', 'audio'].includes(type)) return // media auto-advances via onEnded
   autoAdvanceTimer = setTimeout(() => {
     nextFile()
-  }, 5000) // 5 seconds for images/pdf/other
+  }, autoAdvanceSeconds.value * 1000)
 }
 
 function clearAutoAdvance() {

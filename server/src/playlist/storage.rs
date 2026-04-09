@@ -6,6 +6,32 @@ use rusqlite::params;
 const FILE_COLUMNS: &str = "uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at, source_url";
 const CONTEXT_SIZE: i64 = 3;
 
+fn fetch_window(
+    folder_path: &str,
+    file_type: Option<&str>,
+    ignored: &[String],
+    ignore_clause: &str,
+    type_clause: &str,
+    order_by: &str,
+    off: i64,
+    lim: i64,
+) -> Result<Vec<IndexedFile>, rusqlite::Error> {
+    let conn = get_connection()?;
+    let query = format!(
+        "SELECT {} FROM file_index WHERE folder_path = ? AND current_path IS NOT NULL{}{} ORDER BY {} LIMIT ? OFFSET ?",
+        FILE_COLUMNS, type_clause, ignore_clause, order_by
+    );
+    let mut p: Vec<String> = vec![folder_path.to_string()];
+    if let Some(ft) = file_type { p.push(ft.to_string()); }
+    p.extend(ignored.iter().cloned());
+    p.push(lim.to_string());
+    p.push(off.to_string());
+    let mut s = conn.prepare(&query)?;
+    let rows = s.query_map(rusqlite::params_from_iter(p.iter()), map_file_row)?;
+    let result: Vec<IndexedFile> = rows.collect::<Result<Vec<_>, _>>()?;
+    Ok(result)
+}
+
 fn sort_clause(sort: Option<&str>) -> (&str, &str) {
     // Returns (primary_column, direction) for ORDER BY and position counting
     match sort {
@@ -76,28 +102,55 @@ pub fn get_playlist_sequential(
         rows.next()?.map(|r| r.get(0)).transpose()?.unwrap_or(0)
     };
 
-    // Fetch window: offset = max(0, position - 3), limit = 7
-    let offset = (position - CONTEXT_SIZE).max(0);
-    let limit = CONTEXT_SIZE * 2 + 1;
+    // Get total count for wrapping
+    let total_query = format!(
+        "SELECT COUNT(*) FROM file_index WHERE folder_path = ? AND current_path IS NOT NULL{}{}",
+        type_clause, ignore_clause
+    );
+    let mut total_params: Vec<String> = vec![folder_path.to_string()];
+    if let Some(ft) = file_type { total_params.push(ft.to_string()); }
+    total_params.extend(ignored.iter().cloned());
+
+    let total: i64 = {
+        let mut stmt = conn.prepare(&total_query)?;
+        let mut rows = stmt.query(rusqlite::params_from_iter(total_params.iter()))?;
+        rows.next()?.map(|r| r.get(0)).transpose()?.unwrap_or(0)
+    };
+
+    if total == 0 {
+        return Ok((vec![target], 0));
+    }
 
     let order_by = format!("{} {}, uuid {}", col, dir, dir);
-    let fetch_query = format!(
-        "SELECT {} FROM file_index WHERE folder_path = ? AND current_path IS NOT NULL{}{} ORDER BY {} LIMIT ? OFFSET ?",
-        FILE_COLUMNS, type_clause, ignore_clause, order_by
-    );
 
-    let mut fetch_params: Vec<String> = vec![folder_path.to_string()];
-    if let Some(ft) = file_type { fetch_params.push(ft.to_string()); }
-    fetch_params.extend(ignored.iter().cloned());
-    fetch_params.push(limit.to_string());
-    fetch_params.push(offset.to_string());
+    // Build window with wrapping
+    let ctx = CONTEXT_SIZE.min(total - 1);
 
-    let mut stmt = conn.prepare(&fetch_query)?;
-    let items: Vec<IndexedFile> = stmt
-        .query_map(rusqlite::params_from_iter(fetch_params.iter()), map_file_row)?
-        .collect::<Result<Vec<_>, _>>()?;
+    let fw = |off: i64, lim: i64| fetch_window(folder_path, file_type, &ignored, &ignore_clause, &type_clause, &order_by, off, lim);
 
-    let current_index = (position - offset) as usize;
+    // Items before (wrapping)
+    let before = if position >= ctx {
+        fw(position - ctx, ctx)?
+    } else {
+        let mut tail = fw(total - (ctx - position), ctx - position)?;
+        tail.extend(fw(0, position)?);
+        tail
+    };
+
+    // Items after (wrapping)
+    let remaining_after = total - position - 1;
+    let after = if remaining_after >= ctx {
+        fw(position + 1, ctx)?
+    } else {
+        let mut tail = fw(position + 1, remaining_after)?;
+        tail.extend(fw(0, ctx - remaining_after)?);
+        tail
+    };
+
+    let current_index = before.len();
+    let mut items = before;
+    items.push(target);
+    items.extend(after);
 
     Ok((items, current_index))
 }

@@ -182,6 +182,18 @@ actor PreviewService {
     }
 
     /// 清除缩略图缓存
+    // MARK: - Playlist
+
+    func getPlaylist(uuid: String, folderPath: String, mode: String,
+                     sort: String? = nil, fileType: String? = nil,
+                     keepUuids: [String]? = nil) async throws -> PlaylistResponse {
+        let keepStr = keepUuids?.joined(separator: ",")
+        return try await networkManager.request(
+            .playlist(uuid: uuid, folderPath: folderPath, mode: mode,
+                      sort: sort, fileType: fileType, keepUuids: keepStr)
+        )
+    }
+
     func clearThumbnailCache() {
         thumbnailCache.removeAll()
         currentCacheSize = 0

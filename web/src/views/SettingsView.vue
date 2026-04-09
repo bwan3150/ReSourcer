@@ -133,6 +133,35 @@
           </div>
         </div>
 
+        <!-- Playback -->
+        <div class="collapse collapse-arrow join-item border border-base-300">
+          <input type="radio" name="settings-accordion" />
+          <div class="collapse-title font-medium text-sm flex items-center gap-2">
+            <Play :size="18" class="text-base-content/50" />
+            {{ $t('settings.playback') }}
+          </div>
+          <div class="collapse-content space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-sm">{{ $t('settings.sameTypeOnly') }}</div>
+                <div class="text-xs text-base-content/40">{{ $t('settings.sameTypeOnlyDesc') }}</div>
+              </div>
+              <input type="checkbox" class="toggle toggle-sm" v-model="playbackFilterByType" @change="savePlaybackSettings" />
+            </div>
+            <div>
+              <div class="text-sm mb-2">{{ $t('settings.autoAdvanceDelay') }}</div>
+              <div class="text-xs text-base-content/40 mb-2">{{ $t('settings.autoAdvanceDelayDesc') }}</div>
+              <div class="flex gap-2">
+                <button v-for="s in [3, 5, 8, 15, 30]" :key="s"
+                  class="btn btn-sm"
+                  :class="playbackAutoAdvance === s ? 'btn-neutral' : 'btn-ghost'"
+                  @click="playbackAutoAdvance = s; savePlaybackSettings()"
+                >{{ s }}s</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Reindex -->
         <div class="collapse collapse-arrow join-item border border-base-300">
           <input type="radio" name="settings-accordion" />
@@ -255,7 +284,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, Info, Github, Download, Smartphone, HardDrive, Trash2, Keyboard } from 'lucide-vue-next'
+import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, Info, Github, Download, Smartphone, HardDrive, Trash2, Keyboard, Play } from 'lucide-vue-next'
 import { DEFAULTS as SHORTCUT_ACTIONS, getShortcuts, setShortcut, resetShortcuts, formatShortcut, encodeKey } from '../composables/useKeyboardShortcuts'
 import AppLayout from '../components/layout/AppLayout.vue'
 import SourceFolderManager from '../components/settings/SourceFolderManager.vue'
@@ -320,6 +349,16 @@ function startListening(action) {
 function doResetShortcuts() {
   resetShortcuts()
   currentShortcuts.value = getShortcuts()
+  showToast(t('settings.saveSuccess'))
+}
+
+// Playback
+const playbackFilterByType = ref(localStorage.getItem('playlist_filterByType') === 'true')
+const playbackAutoAdvance = ref(parseInt(localStorage.getItem('playlist_autoAdvanceSeconds') || '8'))
+
+function savePlaybackSettings() {
+  localStorage.setItem('playlist_filterByType', String(playbackFilterByType.value))
+  localStorage.setItem('playlist_autoAdvanceSeconds', String(playbackAutoAdvance.value))
   showToast(t('settings.saveSuccess'))
 }
 

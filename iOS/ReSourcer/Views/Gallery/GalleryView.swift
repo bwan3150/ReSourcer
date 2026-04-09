@@ -145,18 +145,11 @@ struct GalleryView: View {
             }
             .navigationBarHidden(true)
             .navigationDestination(for: Int.self) { index in
+                let file = index < files.count ? files[index] : nil
                 FilePreviewView(
                     apiService: apiService,
-                    files: files,
-                    initialIndex: index,
-                    hasMore: hasMoreFiles,
-                    totalCount: filesTotalCount,
-                    onLoadMore: {
-                        await loadMoreForPreview()
-                    },
-                    onLoadAtOffset: { offset in
-                        await loadFileAtOffset(offset)
-                    }
+                    uuid: file?.uuid ?? file?.path ?? "",
+                    folderPath: currentFolderPath
                 )
             }
             .navigationDestination(isPresented: $showUploadTaskList) {
@@ -1042,36 +1035,6 @@ struct GalleryView: View {
         Task {
             await loadFiles(path: currentFolderPath, reset: false)
             isLoadingMore = false
-        }
-    }
-
-    /// 供 FilePreviewView 调用的分页加载，返回新增文件
-    private func loadMoreForPreview() async -> [FileInfo] {
-        guard hasMoreFiles else { return [] }
-        do {
-            let response = try await apiService.preview.getFilesPaginated(
-                in: currentFolderPath, offset: filesOffset, limit: filesPageSize
-            )
-            let newFiles = response.files.map { $0.toFileInfo() }
-            files.append(contentsOf: newFiles)
-            filesOffset += response.files.count
-            hasMoreFiles = response.hasMore
-            filesTotalCount = response.total
-            return newFiles
-        } catch {
-            return []
-        }
-    }
-
-    /// 供 FilePreviewView 随机模式使用：按 offset 取单条文件
-    private func loadFileAtOffset(_ offset: Int) async -> FileInfo? {
-        do {
-            let response = try await apiService.preview.getFilesPaginated(
-                in: currentFolderPath, offset: offset, limit: 1
-            )
-            return response.files.first?.toFileInfo()
-        } catch {
-            return nil
         }
     }
 

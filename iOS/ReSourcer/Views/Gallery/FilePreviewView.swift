@@ -63,9 +63,11 @@ struct FilePreviewView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    // 文件列表与索引
-    @State private var currentFiles: [FileInfo]
-    @State private var currentIndex: Int
+    // 播放队列
+    @State private var playlist: [FileInfo] = []
+    @State private var playlistIndex: Int = 0
+    let initialUuid: String
+    let folderPath: String
 
     // 控制栏
     @State private var showControls = true
@@ -101,8 +103,7 @@ struct FilePreviewView: View {
     // 播放模式
     @State private var playbackMode: PlaybackMode = .repeatCurrent
     @State private var autoAdvanceTask: Task<Void, Never>?
-    /// 同类型连播：记录自动播放开始时的文件类型（nil = 不限类型）
-    @State private var autoplayFileType: FileType? = nil
+    @State private var showPlaylistSheet = false
 
     // 偏好设置（从本地读取）
     @State private var prefs = LocalStorageService.shared.getPreviewPreferences()
@@ -114,34 +115,19 @@ struct FilePreviewView: View {
     @StateObject private var logger = PreviewLogger()
     @State private var showDebugLog = false
 
-    // 分页加载
-    @State private var hasMore: Bool
-    var onLoadMore: (() async -> [FileInfo])? = nil
-    /// 全部文件总数（用于随机模式跨分页跳转）
-    var totalCount: Int = 0
-    /// 按 offset 取单条文件（随机模式专用）
-    var onLoadAtOffset: ((Int) async -> FileInfo?)? = nil
-
     // MARK: - Init
 
-    init(apiService: APIService, files: [FileInfo], initialIndex: Int,
-         hasMore: Bool = false, totalCount: Int = 0,
-         onLoadMore: (() async -> [FileInfo])? = nil,
-         onLoadAtOffset: ((Int) async -> FileInfo?)? = nil) {
+    init(apiService: APIService, uuid: String, folderPath: String) {
         self.apiService = apiService
-        _currentFiles = State(initialValue: files)
-        _currentIndex = State(initialValue: min(initialIndex, max(files.count - 1, 0)))
-        _hasMore = State(initialValue: hasMore)
-        self.totalCount = totalCount
-        self.onLoadMore = onLoadMore
-        self.onLoadAtOffset = onLoadAtOffset
+        self.initialUuid = uuid
+        self.folderPath = folderPath
     }
 
     // MARK: - Computed
 
     private var currentFile: FileInfo? {
-        guard !currentFiles.isEmpty, currentIndex >= 0, currentIndex < currentFiles.count else { return nil }
-        return currentFiles[currentIndex]
+        guard !playlist.isEmpty, playlistIndex >= 0, playlistIndex < playlist.count else { return nil }
+        return playlist[playlistIndex]
     }
 
     // MARK: - Body
@@ -151,10 +137,34 @@ struct FilePreviewView: View {
             // 黑色背景
             Color.black.ignoresSafeArea()
 
-            // 直接显示当前文件（替代 TabView 避免索引跳跃）
-            if let file = currentFile {
+            if playlist.isEmpty {
+                // Loading state — show spinner and back button
+                VStack(spacing: AppTheme.Spacing.lg) {
+                    ProgressView()
+                        .tint(.white)
+                    Text("加载中...")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.5))
+                }
+                // Back button overlay
+                VStack {
+                    HStack {
+                        Button { dismiss() } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 44, height: 44)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, AppTheme.Spacing.md)
+                    .padding(.top, AppTheme.Spacing.xs)
+                    Spacer()
+                }
+            } else if let file = currentFile {
+                // 直接显示当前文件
                 fileContentView(for: file)
-                    .id(file.id) // 用文件 id 确保移除后视图重建
+                    .id(file.id)
                     .ignoresSafeArea()
 
                 // 顶部 + 底部控制层
@@ -176,31 +186,16 @@ struct FilePreviewView: View {
         .toolbar(.hidden, for: .tabBar)
         .statusBarHidden(!showControls)
         .animation(AppTheme.Animation.standard, value: showControls)
-        .onChange(of: currentIndex) { _, newIndex in
+        .onChange(of: playlistIndex) { _, _ in
             scheduleAutoHide()
             startAutoAdvanceTimer()
-            logger.clear()  // 切换文件时清空日志
-
-            // 切换文件时自动解析 UUID
-            Task { await resolveCurrentFileUuid() }
-
-            // 接近末尾时预加载更多文件
-            if hasMore && newIndex >= currentFiles.count - 5 {
-                Task {
-                    if let moreFiles = await onLoadMore?() {
-                        currentFiles.append(contentsOf: moreFiles)
-                        if moreFiles.isEmpty { hasMore = false }
-                    }
-                }
-            }
+            logger.clear()
         }
         .onAppear {
             scheduleAutoHide()
-            startAutoAdvanceTimer()
         }
         .task {
-            // 预览页打开时自动解析 UUID，确保内容使用 UUID-based URL 加载
-            await resolveCurrentFileUuid()
+            await fetchPlaylist(uuid: initialUuid)
         }
         .onDisappear {
             hideControlsTask?.cancel()
@@ -396,7 +391,7 @@ struct FilePreviewView: View {
                 }
             }
 
-            // 播放模式按钮
+            // 播放模式按钮（点击切换模式，长按显示播放列表）
             Image(systemName: playbackMode.iconName)
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(playbackMode == .repeatCurrent ? .black : .white)
@@ -408,15 +403,19 @@ struct FilePreviewView: View {
                     in: Circle()
                 )
                 .onTapGesture {
+                    let newMode = playbackMode.next
                     withAnimation(AppTheme.Animation.standard) {
-                        playbackMode = playbackMode.next
+                        playbackMode = newMode
                     }
-                    if playbackMode != .repeatCurrent {
-                        autoplayFileType = currentFile?.fileType
-                    } else {
-                        autoplayFileType = nil
+                    if let file = currentFile {
+                        Task { await fetchPlaylist(uuid: file.uuid ?? file.path) }
                     }
-                    startAutoAdvanceTimer()
+                }
+                .onLongPressGesture {
+                    showPlaylistSheet = true
+                }
+                .popover(isPresented: $showPlaylistSheet) {
+                    playlistPopoverContent
                 }
         }
     }
@@ -424,18 +423,13 @@ struct FilePreviewView: View {
     // MARK: - 底部导航按钮
 
     private var bottomControls: some View {
-        let isShuffle = playbackMode == .shuffle
-        let canGoPrev = isShuffle ? currentFiles.count > 1 : currentIndex > 0
-        let canGoNext = isShuffle ? currentFiles.count > 1 : currentIndex < currentFiles.count - 1
+        let canGoPrev = playlist.count > 1
+        let canGoNext = playlist.count > 1
 
         return HStack {
-            // 上一个（随机模式下跳到随机文件）
+            // 上一个
             Button {
-                if isShuffle {
-                    navigateToRandom()
-                } else {
-                    withAnimation { currentIndex = max(0, currentIndex - 1) }
-                }
+                navigateInPlaylist(direction: -1)
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 20, weight: .bold))
@@ -553,13 +547,9 @@ struct FilePreviewView: View {
 
             Spacer()
 
-            // 下一个（随机模式下跳到随机文件）
+            // 下一个
             Button {
-                if isShuffle {
-                    navigateToRandom()
-                } else {
-                    withAnimation { currentIndex = min(currentFiles.count - 1, currentIndex + 1) }
-                }
+                navigateInPlaylist(direction: 1)
             } label: {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 20, weight: .bold))
@@ -582,7 +572,7 @@ struct FilePreviewView: View {
         if let file = currentFile {
             FileInfoSheetContent(
                 file: file,
-                position: "\(currentIndex + 1) / \(currentFiles.count)",
+                position: "\(playlistIndex + 1) / \(playlist.count)",
                 tags: fileInfoTags,
                 onAddTag: file.uuid != nil ? {
                     showInfoSheet = false
@@ -715,41 +705,8 @@ struct FilePreviewView: View {
 
     /// 解析当前文件的 UUID（如果为空则通过 indexer 查找）
     /// 用于预览页打开时自动调用，确保内容加载使用 UUID-based URL
-    private func resolveCurrentFileUuid() async {
-        guard let file = currentFile, file.uuid == nil else { return }
-
-        let folderPath = (file.path as NSString).deletingLastPathComponent
-        if let response = try? await apiService.preview.getFilesPaginated(
-            in: folderPath, offset: 0, limit: 500
-        ) {
-            if let matched = response.files.first(where: { $0.fileName == file.name }) {
-                // 回写 uuid 到 currentFiles，后续内容加载自动使用 UUID-based URL
-                if let idx = currentFiles.firstIndex(where: { $0.path == file.path }) {
-                    currentFiles[idx] = FileInfo(
-                        uuid: matched.uuid,
-                        name: file.name,
-                        path: matched.currentPath ?? file.path,
-                        fileType: file.fileType,
-                        extension: file.extension,
-                        size: file.size,
-                        created: file.created,
-                        modified: file.modified,
-                        width: file.width,
-                        height: file.height,
-                        duration: file.duration,
-                        sourceUrl: file.sourceUrl
-                    )
-                }
-            }
-        }
-    }
-
-    /// 如果当前文件 uuid 为空（如从上传/下载历史进入），通过 indexer 查找 uuid 并加载标签
+    /// 加载当前文件的标签
     private func resolveUuidAndLoadTags() async {
-        // 先解析 UUID
-        await resolveCurrentFileUuid()
-
-        // 加载标签
         if let uuid = currentFile?.uuid {
             fileInfoTags = (try? await apiService.tag.getFileTags(fileUuid: uuid)) ?? []
         }
@@ -793,83 +750,117 @@ struct FilePreviewView: View {
 
     // MARK: - 播放模式逻辑
 
-    /// 根据当前播放模式跳转到下一个文件
-    private func advanceToNext() {
-        switch playbackMode {
-        case .repeatCurrent:
-            break
-        case .sequential:
-            let targetType = prefs.filterAutoplayByFileType ? autoplayFileType : nil
-            let next = nextSequentialIndex(from: currentIndex, matchingType: targetType)
-            withAnimation { currentIndex = next }
-        case .shuffle:
-            navigateToRandom()
+    // MARK: - Playlist Popover
+
+    private var playlistPopoverContent: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(playlist.enumerated()), id: \.element.id) { i, file in
+                Button {
+                    jumpToPlaylistFile(file)
+                } label: {
+                    HStack(spacing: 8) {
+                        Text("\(i + 1)")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .frame(width: 14, alignment: .trailing)
+
+                        Text(file.name)
+                            .font(.caption)
+                            .foregroundStyle(i == playlistIndex ? .primary : .secondary)
+                            .fontWeight(i == playlistIndex ? .semibold : .regular)
+                            .lineLimit(1)
+
+                        Spacer()
+
+                        Text(file.extension.uppercased())
+                            .font(.system(size: 9))
+                            .foregroundStyle(.tertiary)
+
+                        if i == playlistIndex {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 8))
+                                .foregroundStyle(.blue)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(i == playlistIndex ? Color.blue.opacity(0.08) : Color.clear)
+                }
+                .buttonStyle(.plain)
+
+                if i < playlist.count - 1 {
+                    Divider().padding(.leading, 34)
+                }
+            }
         }
+        .frame(width: 260)
+        .presentationCompactAdaptation(.popover)
     }
 
-    /// 在 currentFiles 中顺序查找下一个符合类型的索引（循环）
-    private func nextSequentialIndex(from current: Int, matchingType: FileType?) -> Int {
-        guard let type = matchingType else {
-            // 不过滤类型，正常往后走
-            return current < currentFiles.count - 1 ? current + 1 : 0
-        }
-        // 从 current+1 开始找，找不到则从头找
-        let count = currentFiles.count
-        for offset in 1...count {
-            let idx = (current + offset) % count
-            if currentFiles[idx].fileType == type { return idx }
-        }
-        return current // 全部都不匹配（不可能，兜底）
-    }
+    // MARK: - Playlist Navigation
 
-    /// 跳转到随机文件，覆盖全量文件范围（跨分页）
-    private func navigateToRandom() {
-        let total = totalCount > 0 ? totalCount : currentFiles.count
-        guard total > 1 else { return }
+    /// Fetch playlist from server centered on given UUID
+    private func fetchPlaylist(uuid: String, direction: String = "jump") async {
+        let mode = playbackMode == .repeatCurrent ? "sequential" : (playbackMode == .shuffle ? "shuffle" : "sequential")
+        let fileType = prefs.filterAutoplayByFileType ? currentFile?.fileType.rawValue : nil
 
-        // 开启同类型过滤时，优先从已缓存文件中随机挑同类型文件
-        if prefs.filterAutoplayByFileType, let targetType = autoplayFileType {
-            let sameTypeIndices = currentFiles.indices.filter {
-                currentFiles[$0].fileType == targetType && $0 != currentIndex
-            }
-            if !sameTypeIndices.isEmpty {
-                withAnimation { currentIndex = sameTypeIndices.randomElement()! }
-                return
-            }
-            // 缓存中无同类文件，继续走全量随机
-        }
-
-        // 在全量范围内随机取一个 offset，避免和当前相同
-        var randomOffset: Int
-        var attempts = 0
-        repeat {
-            randomOffset = Int.random(in: 0..<total)
-            attempts += 1
-        } while randomOffset == currentIndex && attempts < 10
-
-        // 已在本地缓存，直接跳
-        if randomOffset < currentFiles.count {
-            withAnimation { currentIndex = randomOffset }
-            return
-        }
-
-        // 未缓存：向服务端取单条
-        Task {
-            guard let file = await onLoadAtOffset?(randomOffset) else { return }
-            // 若已存在（UUID 或 path 匹配），直接跳到已有索引
-            if let existing = currentFiles.firstIndex(where: {
-                ($0.uuid != nil && $0.uuid == file.uuid) || $0.path == file.path
-            }) {
-                withAnimation { currentIndex = existing }
+        var keepUuids: [String]? = nil
+        if playbackMode == .shuffle && !playlist.isEmpty && direction != "jump" {
+            if direction == "forward" {
+                keepUuids = Array(playlist.suffix(from: min(playlistIndex + 1, playlist.count)))
+                    .compactMap(\.uuid)
+                    .filter { $0 != uuid }
             } else {
-                currentFiles.append(file)
-                withAnimation { currentIndex = currentFiles.count - 1 }
+                keepUuids = Array(playlist.prefix(playlistIndex))
+                    .compactMap(\.uuid)
+                    .filter { $0 != uuid }
             }
         }
+
+        do {
+            let resp = try await apiService.preview.getPlaylist(
+                uuid: uuid, folderPath: folderPath, mode: mode,
+                fileType: fileType, keepUuids: keepUuids
+            )
+            let files = resp.items.map { $0.toFileInfo() }
+            await MainActor.run {
+                withAnimation {
+                    playlist = files
+                    playlistIndex = resp.currentIndex
+                }
+                startAutoAdvanceTimer()
+            }
+        } catch {}
     }
 
-    /// 启动图片/其他文件的自动跳转定时器
-    /// 视频和音频由播放结束事件触发跳转，不使用定时器
+    /// Navigate within the playlist (direction: +1 forward, -1 backward)
+    private func navigateInPlaylist(direction: Int) {
+        guard playlist.count > 1 else { return }
+        var newIndex = playlistIndex + direction
+        if newIndex < 0 { newIndex = playlist.count - 1 }
+        if newIndex >= playlist.count { newIndex = 0 }
+        let file = playlist[newIndex]
+
+        withAnimation { playlistIndex = newIndex }
+
+        // Re-fetch centered on new file
+        let dir = direction > 0 ? "forward" : "backward"
+        Task { await fetchPlaylist(uuid: file.uuid ?? file.path, direction: dir) }
+    }
+
+    /// Jump to a specific file in the playlist
+    private func jumpToPlaylistFile(_ file: FileInfo) {
+        showPlaylistSheet = false
+        Task { await fetchPlaylist(uuid: file.uuid ?? file.path) }
+    }
+
+    /// Called when media playback ends
+    private func advanceToNext() {
+        if playbackMode == .repeatCurrent { return }
+        navigateInPlaylist(direction: 1)
+    }
+
+    /// Auto-advance timer for static content (images, PDF, other)
     private func startAutoAdvanceTimer() {
         cancelAutoAdvanceTimer()
         guard playbackMode != .repeatCurrent else { return }
@@ -883,7 +874,6 @@ struct FilePreviewView: View {
         }
     }
 
-    /// 取消自动跳转定时器
     private func cancelAutoAdvanceTimer() {
         autoAdvanceTask?.cancel()
         autoAdvanceTask = nil
@@ -1080,7 +1070,7 @@ struct FilePreviewView: View {
             _ = try await apiService.file.renameFile(uuid: uuid, to: newName)
             // 重命名成功后只更新当前文件的名字，不从列表移除
             let ext = file.extension
-            currentFiles[currentIndex] = FileInfo(
+            playlist[playlistIndex] = FileInfo(
                 uuid: file.uuid,
                 name: newName,
                 path: (file.path as NSString).deletingLastPathComponent + "/" + newName,
@@ -1104,11 +1094,11 @@ struct FilePreviewView: View {
 
     /// 操作完成后的导航逻辑
     private func handlePostOperation() {
-        currentFiles.remove(at: currentIndex)
-        if currentFiles.isEmpty {
+        playlist.remove(at: playlistIndex)
+        if playlist.isEmpty {
             dismiss()
-        } else if currentIndex >= currentFiles.count {
-            currentIndex = currentFiles.count - 1
+        } else if playlistIndex >= playlist.count {
+            playlistIndex = playlist.count - 1
         }
     }
 }
@@ -2208,8 +2198,8 @@ struct DebugLogSheet: View {
     if let api = APIService.create(for: server) {
         FilePreviewView(
             apiService: api,
-            files: [],
-            initialIndex: 0
+            uuid: "test",
+            folderPath: "/tmp"
         )
     }
 }

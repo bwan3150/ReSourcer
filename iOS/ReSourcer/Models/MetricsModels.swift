@@ -7,6 +7,15 @@
 
 import Foundation
 
+// MARK: - Playlist
+
+struct PlaylistResponse: Codable {
+    let items: [IndexedFile]
+    let currentIndex: Int
+}
+
+// MARK: - Metrics
+
 struct MetricsSnapshot: Codable {
     let timestamp: String
     let cpuUsagePercent: Double

@@ -126,7 +126,7 @@ struct UploadTaskListView: View {
         }
         .navigationDestination(isPresented: $showFilePreview) {
             if let fileInfo = previewFileInfo {
-                FilePreviewView(apiService: apiService, files: [fileInfo], initialIndex: 0)
+                FilePreviewView(apiService: apiService, uuid: fileInfo.uuid ?? fileInfo.path, folderPath: (fileInfo.path as NSString).deletingLastPathComponent)
             }
         }
     }
