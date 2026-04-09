@@ -206,10 +206,17 @@ pub fn get_playlist_shuffle(
             }
         }
 
+        // Trim to max 3 before, 3 after
+        if before_files.len() > CONTEXT_SIZE as usize {
+            before_files = before_files.split_off(before_files.len() - CONTEXT_SIZE as usize);
+        }
+        if after_files.len() > CONTEXT_SIZE as usize {
+            after_files.truncate(CONTEXT_SIZE as usize);
+        }
+
         // How many new randoms needed?
-        let have = before_files.len() + after_files.len();
-        let need_before = CONTEXT_SIZE as usize - before_files.len();
-        let need_after = CONTEXT_SIZE as usize - after_files.len();
+        let need_before = (CONTEXT_SIZE as usize).saturating_sub(before_files.len());
+        let need_after = (CONTEXT_SIZE as usize).saturating_sub(after_files.len());
         let need_total = need_before + need_after;
 
         // Exclude current + kept from random picks
