@@ -508,8 +508,44 @@ async function doServerUpdate() {
   try {
     await configApi.doUpdate()
     showToast(t('settings.updateStarted'))
-  } catch {}
-  updating.value = false
+    hasServerUpdate.value = false
+    // Poll health until server is back
+    await waitForRestart()
+    // Refresh version info
+    await loadSettings()
+    updating.value = false
+    showToast(t('settings.upToDate'))
+  } catch {
+    updating.value = false
+  }
+}
+
+async function waitForRestart() {
+  const { getServerUrl } = await import('../composables/useServer')
+  const base = getServerUrl()
+  // Phase 1: wait for server to go down
+  let wentDown = false
+  for (let i = 0; i < 10; i++) {
+    await new Promise(r => setTimeout(r, 500))
+    try {
+      const resp = await fetch(`${base}/api/health`)
+      if (!resp.ok) { wentDown = true; break }
+    } catch {
+      wentDown = true; break
+    }
+  }
+  if (!wentDown) {
+    // Server didn't go down within 5s, wait a bit more
+    await new Promise(r => setTimeout(r, 2000))
+  }
+  // Phase 2: wait for server to come back up
+  for (let i = 0; i < 30; i++) {
+    try {
+      const resp = await fetch(`${base}/api/health`)
+      if (resp.ok) return
+    } catch {}
+    await new Promise(r => setTimeout(r, 1000))
+  }
 }
 
 async function refreshCacheInfo() {

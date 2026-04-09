@@ -235,10 +235,39 @@ struct AboutView: View {
         do {
             let result = try await apiService.config.updateServer()
             GlassAlertManager.shared.showSuccess(result.message)
+            latestServerVersion = nil
+            // Wait for server to restart
+            await waitForRestart()
+            isUpdatingServer = false
+            GlassAlertManager.shared.showSuccess("服务器已重启")
         } catch {
             GlassAlertManager.shared.showError("更新失败")
+            isUpdatingServer = false
         }
-        isUpdatingServer = false
+    }
+
+    private func waitForRestart() async {
+        // Phase 1: wait for server to go down
+        var wentDown = false
+        for _ in 0..<10 {
+            try? await Task.sleep(for: .milliseconds(500))
+            do {
+                _ = try await apiService.auth.checkHealth()
+            } catch {
+                wentDown = true; break
+            }
+        }
+        if !wentDown {
+            try? await Task.sleep(for: .seconds(2))
+        }
+        // Phase 2: wait for server to come back up
+        for _ in 0..<30 {
+            do {
+                _ = try await apiService.auth.checkHealth()
+                return
+            } catch {}
+            try? await Task.sleep(for: .seconds(1))
+        }
     }
 
     private static func fetchPgyerVersion() async -> String? {

@@ -836,16 +836,22 @@ struct FilePreviewView: View {
     /// Navigate within the playlist (direction: +1 forward, -1 backward)
     private func navigateInPlaylist(direction: Int) {
         guard playlist.count > 1 else { return }
-        var newIndex = playlistIndex + direction
-        if newIndex < 0 { newIndex = playlist.count - 1 }
-        if newIndex >= playlist.count { newIndex = 0 }
-        let file = playlist[newIndex]
 
-        withAnimation { playlistIndex = newIndex }
+        let atEdge = (direction > 0 && playlistIndex >= playlist.count - 1)
+                  || (direction < 0 && playlistIndex <= 0)
 
-        // Re-fetch centered on new file
-        let dir = direction > 0 ? "forward" : "backward"
-        Task { await fetchPlaylist(uuid: file.uuid ?? file.path, direction: dir) }
+        if !atEdge {
+            // Still within window — just move index, no re-fetch
+            let newIndex = playlistIndex + direction
+            withAnimation { playlistIndex = newIndex }
+            cancelAutoAdvanceTimer()
+            startAutoAdvanceTimer()
+        } else {
+            // At window edge — need to re-fetch to extend
+            let edgeFile = direction > 0 ? playlist.last! : playlist.first!
+            let dir = direction > 0 ? "forward" : "backward"
+            Task { await fetchPlaylist(uuid: edgeFile.uuid ?? edgeFile.path, direction: dir) }
+        }
     }
 
     /// Jump to a specific file in the playlist

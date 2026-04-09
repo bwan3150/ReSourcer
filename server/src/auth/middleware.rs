@@ -58,6 +58,15 @@ where
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let path = req.path();
 
+        // If server is updating, reject all requests except health check
+        if crate::updater::is_updating() && path != "/api/health" {
+            return Box::pin(async move {
+                let resp = HttpResponse::ServiceUnavailable()
+                    .json(serde_json::json!({"error": "Server is restarting after update"}));
+                Ok(req.into_response(resp).map_into_right_body())
+            });
+        }
+
         // 白名单：不需要验证的 API 路径
         let whitelist = [
             "/api/auth/verify",

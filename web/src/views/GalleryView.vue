@@ -528,38 +528,51 @@ function closePreview() {
 
 function prevFile() {
   if (playlist.value.length <= 1) return
-  const newIdx = playlistIndex.value > 0 ? playlistIndex.value - 1 : playlist.value.length - 1
-  navigatePlaylist(newIdx)
+  if (playlistIndex.value > 0) {
+    // Still have items before — just move index, no re-fetch
+    moveWithinPlaylist(playlistIndex.value - 1)
+  } else {
+    // At the start of window — need to re-fetch to get earlier items
+    const file = playlist.value[0]
+    navigateAndRefetch(file, 'backward')
+  }
 }
 
 function nextFile() {
   if (playlist.value.length <= 1) return
-  const newIdx = playlistIndex.value < playlist.value.length - 1 ? playlistIndex.value + 1 : 0
-  navigatePlaylist(newIdx)
+  if (playlistIndex.value < playlist.value.length - 1) {
+    // Still have items after — just move index, no re-fetch
+    moveWithinPlaylist(playlistIndex.value + 1)
+  } else {
+    // At the end of window — need to re-fetch to get later items
+    const file = playlist.value[playlist.value.length - 1]
+    navigateAndRefetch(file, 'forward')
+  }
 }
 
-function navigatePlaylist(index) {
+function moveWithinPlaylist(index) {
   const file = playlist.value[index]
   if (!file) return
-  const direction = index > playlistIndex.value ? 'forward' : 'backward'
-  const oldIndex = playlistIndex.value
-
-  // Compute keep UUIDs before updating state
-  let keepUuids = null
-  if (playbackMode.value === 'shuffle' && playlist.value.length > 1) {
-    let keepItems
-    if (direction === 'forward') {
-      keepItems = playlist.value.slice(oldIndex + 1)
-    } else {
-      keepItems = playlist.value.slice(0, oldIndex)
-    }
-    keepUuids = keepItems.filter(f => f.uuid !== file.uuid).map(f => f.uuid)
-  }
-
   playlistIndex.value = index
   previewFile.value = file
   loadFileTags(file.uuid)
-  fetchPlaylist(file.uuid, direction, keepUuids)
+  clearAutoAdvance()
+  startAutoAdvance()
+}
+
+function navigateAndRefetch(currentEdgeFile, direction) {
+  const oldIndex = playlistIndex.value
+
+  let keepUuids = null
+  if (playbackMode.value === 'shuffle' && playlist.value.length > 1) {
+    // Keep all current items except the one we're moving away from the edge
+    keepUuids = playlist.value.map(f => f.uuid).filter(u => u !== currentEdgeFile.uuid)
+  }
+
+  // Optimistically show the edge file
+  previewFile.value = currentEdgeFile
+  loadFileTags(currentEdgeFile.uuid)
+  fetchPlaylist(currentEdgeFile.uuid, direction, keepUuids)
 }
 
 function jumpToPlaylistItem(uuid) {

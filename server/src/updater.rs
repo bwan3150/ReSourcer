@@ -1,6 +1,14 @@
 // 自更新模块：检查 GitHub releases 并自我更新
 use actix_web::{HttpResponse, Result};
 use serde::Deserialize;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// Global flag: true after update triggered, server is about to restart
+static UPDATING: AtomicBool = AtomicBool::new(false);
+
+pub fn is_updating() -> bool {
+    UPDATING.load(Ordering::Relaxed)
+}
 
 /// 从 app.json 读取当前版本和 GitHub URL
 fn load_app_info() -> Option<(String, String)> {
@@ -159,6 +167,9 @@ pub async fn do_update() -> Result<HttpResponse> {
     }
 
     eprintln!("[update] Updated from {} to {}. Restarting...", current, latest_version);
+
+    // Mark as updating — all subsequent requests will get 503
+    UPDATING.store(true, Ordering::Relaxed);
 
     // Exit — systemd (Restart=always) will restart with the new binary
     tokio::spawn(async move {
