@@ -49,7 +49,7 @@ jobs:
         run: |
           PROJECT_FILE="iOS/ReSourcer.xcodeproj/project.pbxproj"
           sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PROJECT_FILE"
-          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = "";/PROVISIONING_PROFILE_SPECIFIER = "'"$PP_UUID"'";/g' "$PROJECT_FILE"
+          # 描述文件通过 xcodebuild 命令行参数 PROVISIONING_PROFILE_SPECIFIER 指定,无需改 pbxproj
 
       - name: Create ExportOptions.plist
         run: |
@@ -118,6 +118,40 @@ jobs:
           fi
           cp "$IPA_PATH" ReSourcer.ipa
           echo "IPA size: $(du -h ReSourcer.ipa | cut -f1)"
+
+      - name: Diagnose embedded provisioning profile
+        run: |
+          # 解包 IPA,导出内嵌描述文件,打印类型/过期时间/设备白名单
+          unzip -o ReSourcer.ipa -d "$RUNNER_TEMP/ipa_check" >/dev/null
+          APP_DIR=$(find "$RUNNER_TEMP/ipa_check/Payload" -maxdepth 1 -name "*.app" -type d | head -n 1)
+          PP="$APP_DIR/embedded.mobileprovision"
+
+          if [ ! -f "$PP" ]; then
+            echo "::warning::未找到 embedded.mobileprovision,IPA 可能未正确签名"
+            exit 0
+          fi
+
+          PP_PLIST="$RUNNER_TEMP/pp.plist"
+          security cms -D -i "$PP" > "$PP_PLIST"
+
+          echo "===== 内嵌描述文件诊断 ====="
+          echo "Name:        $(/usr/libexec/PlistBuddy -c 'Print :Name' "$PP_PLIST" 2>/dev/null || echo '?')"
+          echo "AppIDName:   $(/usr/libexec/PlistBuddy -c 'Print :AppIDName' "$PP_PLIST" 2>/dev/null || echo '?')"
+          echo "Expiration:  $(/usr/libexec/PlistBuddy -c 'Print :ExpirationDate' "$PP_PLIST" 2>/dev/null || echo '?')"
+          echo "get-task-allow: $(/usr/libexec/PlistBuddy -c 'Print :Entitlements:get-task-allow' "$PP_PLIST" 2>/dev/null || echo '(未设置)')"
+
+          # 判断分发类型:有 ProvisionedDevices 才是 development / ad-hoc
+          if /usr/libexec/PlistBuddy -c 'Print :ProvisionedDevices' "$PP_PLIST" >/dev/null 2>&1; then
+            DEVICE_COUNT=$(/usr/libexec/PlistBuddy -c 'Print :ProvisionedDevices' "$PP_PLIST" 2>/dev/null | grep -cE '^\s+[0-9a-fA-F-]+$' || echo 0)
+            echo "分发类型:    Ad Hoc / Development(含设备白名单)"
+            echo "设备数量:    $DEVICE_COUNT"
+            echo "----- 设备 UDID 列表 -----"
+            /usr/libexec/PlistBuddy -c 'Print :ProvisionedDevices' "$PP_PLIST" 2>/dev/null
+            echo "提示:安装的设备 UDID 必须在上面列表中,否则会报「完整性无法验证」"
+          else
+            echo "::warning::描述文件不含 ProvisionedDevices —— 这是 App Store 类型 profile,任何设备都无法通过 ad-hoc/OTA 安装!请改用 Ad Hoc profile 更新 IOS_PROVISION_PROFILE_BASE64。"
+          fi
+          echo "==========================="
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
