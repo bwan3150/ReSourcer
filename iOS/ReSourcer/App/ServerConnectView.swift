@@ -102,22 +102,12 @@ struct ServerConnectView: View {
         .onAppear {
             loadSavedServers()
         }
-        // 添加/编辑服务器 — 系统 sheet（自带键盘避让，文本可正常选中/拖动）
-        .sheet(isPresented: $showForm, onDismiss: {
+        // 添加/编辑服务器 — 全屏页面（非抽屉，自带键盘避让，文本可正常选中/拖动）
+        .fullScreenCover(isPresented: $showForm, onDismiss: {
             editingServer = nil
             errorMessage = nil
         }) {
             serverFormSheet
-        }
-        // 扫码全屏页
-        .fullScreenCover(isPresented: $showScanner) {
-            QRScannerView { info in
-                serverURL = info.serverURL
-                apiKey = info.apiKey
-                showScanner = false
-            } onDismiss: {
-                showScanner = false
-            }
         }
     }
 
@@ -153,7 +143,7 @@ struct ServerConnectView: View {
 
     // MARK: - Server Form Sheet
 
-    /// 系统 sheet 容器：ScrollView 自动随键盘避让，取消按钮在导航栏
+    /// 全屏表单容器：ScrollView 自动随键盘避让，取消按钮在导航栏
     private var serverFormSheet: some View {
         NavigationStack {
             ScrollView {
@@ -168,9 +158,17 @@ struct ServerConnectView: View {
                     Button("取消") { showForm = false }
                 }
             }
+            // 扫码全屏页 — 挂在表单内部，才能从表单上层弹出（否则需先关闭表单）
+            .fullScreenCover(isPresented: $showScanner) {
+                QRScannerView { info in
+                    serverURL = info.serverURL
+                    apiKey = info.apiKey
+                    showScanner = false
+                } onDismiss: {
+                    showScanner = false
+                }
+            }
         }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
     }
 
     /// 打开"添加新服务器"表单（重置输入）
@@ -270,7 +268,8 @@ struct ServerConnectView: View {
                 placeholder: "输入 API Key",
                 icon: "key",
                 isSecure: true,
-                showSecureToggle: true
+                showSecureToggle: true,
+                axis: .vertical
             )
             .textInputAutocapitalization(.never)
 
@@ -413,7 +412,7 @@ struct ServerConnectView: View {
             id: oldServer.id,
             name: serverName.isEmpty ? extractServerName(from: serverURL) : serverName,
             baseURL: normalizeURL(serverURL),
-            alternateURLs: alternateURLs.map { normalizeURL($0) }.filter { !$0.isEmpty },
+            alternateURLs: normalizedAlternateURLs(),
             apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         )
 
@@ -435,7 +434,7 @@ struct ServerConnectView: View {
             id: oldServer.id,
             name: serverName.isEmpty ? extractServerName(from: serverURL) : serverName,
             baseURL: normalizeURL(serverURL),
-            alternateURLs: alternateURLs.map { normalizeURL($0) }.filter { !$0.isEmpty },
+            alternateURLs: normalizedAlternateURLs(),
             apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         )
 
@@ -487,7 +486,7 @@ struct ServerConnectView: View {
         let server = Server(
             name: serverName.isEmpty ? extractServerName(from: url) : serverName,
             baseURL: url,
-            alternateURLs: alternateURLs.map { normalizeURL($0) }.filter { !$0.isEmpty },
+            alternateURLs: normalizedAlternateURLs(),
             apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         )
 
@@ -558,6 +557,14 @@ struct ServerConnectView: View {
             LocalStorageService.shared.deleteServer(server.id)
             loadSavedServers()
         }
+    }
+
+    /// 规整备用地址：先去空白并过滤空串，再补全协议头，避免空输入被 normalize 成 "http://" 存入
+    private func normalizedAlternateURLs() -> [String] {
+        alternateURLs
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .map { normalizeURL($0) }
     }
 
     private func normalizeURL(_ url: String) -> String {

@@ -135,8 +135,8 @@ struct SettingsView: View {
             VStack(spacing: 0) {
                 // 服务器信息行（可点击展开地址列表）
                 Button {
-                    // 仅在有备用地址时才允许展开
-                    if !apiService.server.alternateURLs.isEmpty {
+                    // 仅在有多个有效地址时才允许展开
+                    if apiService.server.allURLs.count > 1 {
                         withAnimation { showAddressList.toggle() }
                     }
                 } label: {
@@ -167,8 +167,8 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
 
-                        // 有备用地址时显示展开箭头
-                        if !apiService.server.alternateURLs.isEmpty {
+                        // 有多个有效地址时显示展开箭头
+                        if apiService.server.allURLs.count > 1 {
                             Image(systemName: showAddressList ? "chevron.up" : "chevron.down")
                                 .font(.caption)
                                 .foregroundStyle(.tertiary)

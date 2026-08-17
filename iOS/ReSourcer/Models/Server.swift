@@ -82,7 +82,13 @@ struct Server: Identifiable, Codable, Equatable {
     }
 
     /// 所有地址（主 + 备用）
-    var allURLs: [String] { [baseURL] + alternateURLs }
+    /// 过滤掉空或只有协议头（如 "http://"）的无效地址，避免历史脏数据产生"无地址选项"
+    var allURLs: [String] {
+        ([baseURL] + alternateURLs).filter { url in
+            guard let host = URL(string: url)?.host else { return false }
+            return !host.isEmpty
+        }
+    }
 
     // MARK: - Methods
 

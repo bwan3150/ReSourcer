@@ -72,6 +72,8 @@ struct GlassTextField: View {
     let isSecure: Bool
     let showSecureToggle: Bool
     let errorMessage: String?
+    /// 明文输入时的展开方向；设为 .vertical 可让超长内容自动换行完整显示
+    let axis: Axis?
 
     @State private var isSecureVisible = false
 
@@ -82,7 +84,8 @@ struct GlassTextField: View {
         icon: String? = nil,
         isSecure: Bool = false,
         showSecureToggle: Bool = false,
-        errorMessage: String? = nil
+        errorMessage: String? = nil,
+        axis: Axis? = nil
     ) {
         self.title = title
         self._text = text
@@ -91,6 +94,7 @@ struct GlassTextField: View {
         self.isSecure = isSecure
         self.showSecureToggle = showSecureToggle
         self.errorMessage = errorMessage
+        self.axis = axis
     }
 
     var body: some View {
@@ -113,6 +117,8 @@ struct GlassTextField: View {
                 Group {
                     if isSecure && !isSecureVisible {
                         SecureField(placeholder, text: $text)
+                    } else if let axis {
+                        TextField(placeholder, text: $text, axis: axis)
                     } else {
                         TextField(placeholder, text: $text)
                     }
