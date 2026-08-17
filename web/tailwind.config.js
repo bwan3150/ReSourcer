@@ -1,15 +1,18 @@
+import daisyui from 'daisyui'
+import daisyuiThemes from 'daisyui/src/theming/themes'
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{vue,js}'],
   theme: {
     extend: {},
   },
-  plugins: [require('daisyui')],
+  plugins: [daisyui],
   daisyui: {
     themes: [
       {
         light: {
-          ...require('daisyui/src/theming/themes')['light'],
+          ...daisyuiThemes['light'],
           'primary': '#374151',       // gray-700
           'primary-content': '#ffffff',
           'neutral': '#1f2937',       // gray-800
@@ -22,7 +25,7 @@ export default {
       },
       {
         dark: {
-          ...require('daisyui/src/theming/themes')['dark'],
+          ...daisyuiThemes['dark'],
           'primary': '#d1d5db',       // gray-300
           'primary-content': '#111827',
           'neutral': '#e5e7eb',       // gray-200
