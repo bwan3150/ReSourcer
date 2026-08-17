@@ -92,6 +92,74 @@ actor UploadService {
         return response.clearedCount
     }
 
+    // MARK: - 分片上传（大文件）
+
+    /// 获取服务器分片上传策略（分片大小阈值）
+    /// - Returns: 上传策略
+    func getUploadPolicy() async throws -> UploadPolicyResponse {
+        return try await networkManager.request(.uploadPolicy)
+    }
+
+    /// 分片上传单个大文件：切分 → 逐片上传 → 服务端合并
+    /// - Parameters:
+    ///   - fileName: 文件名
+    ///   - data: 完整文件数据
+    ///   - targetFolder: 目标文件夹路径
+    ///   - chunkSize: 分片大小（字节），由服务器策略决定
+    ///   - onProgress: 进度回调（0.0 ~ 1.0），可选
+    /// - Returns: 完成响应
+    @discardableResult
+    func uploadFileChunked(
+        fileName: String,
+        data: Data,
+        to targetFolder: String,
+        chunkSize: Int,
+        onProgress: (@Sendable (Double) -> Void)? = nil
+    ) async throws -> ChunkCompleteResponse {
+        let totalBytes = data.count
+        guard chunkSize > 0 else {
+            throw APIError.unknown("无效的分片大小")
+        }
+        // 向上取整计算分片数量
+        let totalChunks = max(1, (totalBytes + chunkSize - 1) / chunkSize)
+
+        // 1. 初始化分片会话
+        let initBody = ChunkInitRequest(
+            fileName: fileName,
+            fileSize: UInt64(totalBytes),
+            targetFolder: targetFolder,
+            totalChunks: totalChunks
+        )
+        let initResp: ChunkInitResponse = try await networkManager.request(.uploadChunkInit, body: initBody)
+        let uploadId = initResp.uploadId
+
+        do {
+            // 2. 逐片上传（顺序，index 从 0 起）
+            for index in 0..<totalChunks {
+                let start = index * chunkSize
+                let end = min(start + chunkSize, totalBytes)
+                let chunk = data.subdata(in: start..<end)
+
+                let _: ChunkPartResponse = try await networkManager.uploadRaw(
+                    .uploadChunkPart(uploadId: uploadId, index: index),
+                    data: chunk
+                )
+
+                onProgress?(Double(index + 1) / Double(totalChunks))
+            }
+
+            // 3. 触发服务端合并
+            let complete: ChunkCompleteResponse = try await networkManager.request(
+                .uploadChunkComplete(uploadId: uploadId)
+            )
+            return complete
+        } catch {
+            // 失败时尽力清理服务端暂存分片
+            _ = try? await networkManager.requestVoid(.uploadChunkAbort(uploadId: uploadId))
+            throw error
+        }
+    }
+
     // MARK: - 便捷方法
 
     /// 获取活跃的上传任务

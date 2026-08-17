@@ -146,14 +146,28 @@ struct PhotoUploadConfirmView: View {
         var uploadedAssetIds: [String] = []
         var totalUploaded = 0
 
+        // 上传前查询服务器分片策略：单文件超过阈值走分片上传，避免大文件直传失败
+        // 查询失败则回退为「全部直传」（chunkSize = 0 表示不分片）
+        let chunkThreshold: Int = (try? await apiService.upload.getUploadPolicy().chunkSize) ?? 0
+
         // 逐个处理
         for (i, assetId) in assetIds.enumerated() {
             do {
                 // 通过 ObjC PhotoExporter 导出文件（避免 Swift 6 线程断言）
                 let pendingFile = try await exportViaObjC(assetId: assetId)
 
-                // 上传
-                _ = try await apiService.upload.uploadFiles([pendingFile], to: folder)
+                if chunkThreshold > 0 && pendingFile.data.count > chunkThreshold {
+                    // 大文件：分片上传（服务端合并）
+                    _ = try await apiService.upload.uploadFileChunked(
+                        fileName: pendingFile.fileName,
+                        data: pendingFile.data,
+                        to: folder,
+                        chunkSize: chunkThreshold
+                    )
+                } else {
+                    // 小文件：原有直传
+                    _ = try await apiService.upload.uploadFiles([pendingFile], to: folder)
+                }
                 totalUploaded += 1
                 uploadedAssetIds.append(assetId)
             } catch {

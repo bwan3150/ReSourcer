@@ -59,6 +59,14 @@ enum APIEndpoint {
     case uploadHistory(offset: Int, limit: Int, status: String?)    // GET /api/transfer/upload/history
     case uploadTasksClear                    // POST /api/transfer/upload/tasks/clear
 
+    // MARK: - Transfer/Upload 分片上传（大文件）
+    case uploadPolicy                        // GET  /api/transfer/upload/policy
+    case uploadChunkInit                     // POST /api/transfer/upload/chunk/init
+    case uploadChunkPart(uploadId: String, index: Int)  // POST /api/transfer/upload/chunk/part/{id}/{index}
+    case uploadChunkStatus(uploadId: String) // GET  /api/transfer/upload/chunk/status/{id}
+    case uploadChunkComplete(uploadId: String) // POST /api/transfer/upload/chunk/complete/{id}
+    case uploadChunkAbort(uploadId: String)  // POST /api/transfer/upload/chunk/abort/{id}
+
     // MARK: - Preview 预览相关
     case previewFiles(folder: String)        // GET  /api/preview/files?folder=
     case previewThumbnail(path: String, size: Int) // GET /api/preview/thumbnail?path=&size=
@@ -187,6 +195,20 @@ enum APIEndpoint {
         case .uploadTasksClear:
             return "/api/transfer/upload/tasks/clear"
 
+        // Upload 分片
+        case .uploadPolicy:
+            return "/api/transfer/upload/policy"
+        case .uploadChunkInit:
+            return "/api/transfer/upload/chunk/init"
+        case .uploadChunkPart(let uploadId, let index):
+            return "/api/transfer/upload/chunk/part/\(uploadId)/\(index)"
+        case .uploadChunkStatus(let uploadId):
+            return "/api/transfer/upload/chunk/status/\(uploadId)"
+        case .uploadChunkComplete(let uploadId):
+            return "/api/transfer/upload/chunk/complete/\(uploadId)"
+        case .uploadChunkAbort(let uploadId):
+            return "/api/transfer/upload/chunk/abort/\(uploadId)"
+
         // Preview
         case .previewFiles(let folder):
             return "/api/preview/files?folder=\(folder.urlEncoded)"
@@ -296,6 +318,7 @@ enum APIEndpoint {
              .fileInfo, .folderList,
              .downloadTasks, .downloadTaskStatus, .downloadHistory, .downloaderYtdlpVersion,
              .uploadTasks, .uploadTaskStatus, .uploadHistory,
+             .uploadPolicy, .uploadChunkStatus,
              .previewFiles, .previewThumbnail, .previewThumbnailByUuid, .previewContent, .previewContentByUuid,
              .indexerFiles, .indexerFile, .indexerFolders, .indexerStatus, .indexerBreadcrumb,
              .tagList, .tagGetFileTags,

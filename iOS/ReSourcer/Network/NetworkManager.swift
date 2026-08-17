@@ -146,6 +146,22 @@ actor NetworkManager {
         return try decodeResponse(data, response: response)
     }
 
+    /// 上传原始二进制内容（用于分片上传，body 为裸字节流）
+    /// - Parameters:
+    ///   - endpoint: API 端点
+    ///   - data: 原始二进制数据
+    /// - Returns: 解码后的响应
+    func uploadRaw<T: Decodable>(_ endpoint: APIEndpoint, data: Data) async throws -> T {
+        var request = try buildRequest(for: endpoint, body: nil as EmptyBody?)
+        request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+        request.httpBody = data
+        // 单个分片可能较大，给足超时时间（5 分钟）
+        request.timeoutInterval = 300
+
+        let (respData, response) = try await performRequest(request)
+        return try decodeResponse(respData, response: response)
+    }
+
     /// 上传原始文本内容（用于 credentials 等）
     /// - Parameters:
     ///   - endpoint: API 端点

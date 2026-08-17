@@ -92,7 +92,8 @@ fn init_config_files() {
             "version": "0.3.0-beta",
             "android_url": "",
             "ios_url": "https://www.pgyer.com/resourcer-ios",
-            "github_url": "https://github.com/bwan3150/ReSourcer"
+            "github_url": "https://github.com/bwan3150/ReSourcer",
+            "upload_chunk_size_mb": 30
         });
         let _ = fs::write(&app_path, serde_json::to_string_pretty(&default).unwrap());
         eprintln!("[init] 已生成 config/app.json");
@@ -155,6 +156,9 @@ async fn main() -> std::io::Result<()> {
     // 初始化上传器任务管理器
     let upload_task_manager = web::Data::new(transfer::upload::TaskManager::new());
 
+    // 初始化分片上传会话管理器
+    let chunk_upload_manager = web::Data::new(transfer::upload::ChunkUploadManager::new());
+
     // 初始化扫描状态（索引模块共享）
     let scan_status = web::Data::new(Arc::new(RwLock::new(indexer::models::ScanStatus::default())));
 
@@ -210,6 +214,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(api_key_data.clone())
             .app_data(download_task_manager.clone())
             .app_data(upload_task_manager.clone())
+            .app_data(chunk_upload_manager.clone())
             .app_data(scan_status.clone())
             .app_data(metrics_state.clone())
             // 健康检查 API（不需要认证）

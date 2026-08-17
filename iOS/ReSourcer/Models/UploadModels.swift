@@ -151,6 +151,45 @@ struct ClearUploadTasksResponse: Codable {
     let clearedCount: Int
 }
 
+// MARK: - 分片上传相关
+
+/// 上传策略响应（服务器分片大小限制）
+struct UploadPolicyResponse: Codable {
+    /// 分片大小阈值（字节）：单文件超过此值走分片上传
+    let chunkSize: Int
+    /// 分片大小阈值（MB）；注意 convertFromSnakeCase 将 chunk_size_mb 映射为 chunkSizeMb
+    let chunkSizeMb: Int
+}
+
+/// 分片会话初始化请求体（编码时 convertToSnakeCase）
+struct ChunkInitRequest: Codable {
+    let fileName: String
+    let fileSize: UInt64
+    let targetFolder: String
+    let totalChunks: Int
+}
+
+/// 分片会话初始化响应
+struct ChunkInitResponse: Codable {
+    let uploadId: String
+    let totalChunks: Int
+}
+
+/// 单个分片上传响应
+struct ChunkPartResponse: Codable {
+    let index: Int
+    let received: UInt64
+}
+
+/// 分片上传完成响应
+struct ChunkCompleteResponse: Codable {
+    let uploadId: String
+    let fileName: String
+    let fileSize: UInt64
+    let fileUuid: String?
+    let message: String
+}
+
 // MARK: - 待上传文件模型（本地使用）
 
 /// 待上传的文件信息
