@@ -95,6 +95,13 @@ final class LocalStorageService: @unchecked Sendable {
         }
 
         servers[index] = server
+
+        // 若记录的活动地址已不在该服务器的地址列表中（如编辑改了主地址），
+        // 清除它，避免旧的持久化地址永久覆盖新配置
+        if let active = getActiveURL(forServerId: server.id), !server.allURLs.contains(active) {
+            clearActiveURL(forServerId: server.id)
+        }
+
         return saveServers(servers)
     }
 

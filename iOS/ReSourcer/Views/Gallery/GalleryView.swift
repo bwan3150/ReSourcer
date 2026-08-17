@@ -8,6 +8,7 @@
 import SwiftUI
 import PhotosUI
 import Photos
+import Combine
 
 struct GalleryView: View {
 
@@ -162,8 +163,11 @@ struct GalleryView: View {
             isInitialized = true
             await loadInitial()
         }
-        // 监听源文件夹切换：清空当前状态，重新加载新源文件夹
-        .onReceive(NotificationCenter.default.publisher(for: .sourceFolderDidChange)) { _ in
+        // 监听源文件夹切换 / 地址切换：清空当前状态，用新地址重新加载
+        .onReceive(
+            NotificationCenter.default.publisher(for: .sourceFolderDidChange)
+                .merge(with: NotificationCenter.default.publisher(for: .activeURLDidChange))
+        ) { _ in
             files = []
             subfolders = []
             breadcrumb = []

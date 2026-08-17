@@ -223,6 +223,10 @@ struct ClassifierView: View {
         .task {
             await loadData()
         }
+        // 地址切换后用新地址重载
+        .onReceive(NotificationCenter.default.publisher(for: .activeURLDidChange)) { _ in
+            Task { await loadData() }
+        }
     }
 
     // MARK: - Current File

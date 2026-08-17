@@ -44,16 +44,17 @@ struct ServerConnectView: View {
             )
             .ignoresSafeArea()
 
-            // 内容 — 使用 List 以支持 swipeActions
-            List {
-                // Logo
-                headerSection
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(top: 0, leading: AppTheme.Spacing.lg, bottom: 0, trailing: AppTheme.Spacing.lg))
+            if savedServers.isEmpty {
+                // 首次：居中 Logo + 添加按钮引导
+                emptyStateContent
+            } else {
+                // 已保存服务器列表 — 使用 List 以支持 swipeActions
+                List {
+                    headerSection
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppTheme.Spacing.lg, bottom: 0, trailing: AppTheme.Spacing.lg))
 
-                // 已保存的服务器列表
-                if !savedServers.isEmpty {
                     ForEach(savedServers) { server in
                         serverRow(server)
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -74,26 +75,12 @@ struct ServerConnectView: View {
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .listRowInsets(EdgeInsets(top: AppTheme.Spacing.xs, leading: AppTheme.Spacing.lg, bottom: AppTheme.Spacing.xs, trailing: AppTheme.Spacing.lg))
-                }
 
-                // 没有服务器时显示内联表单
-                if savedServers.isEmpty {
-                    serverFormSection
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: AppTheme.Spacing.md, leading: AppTheme.Spacing.lg, bottom: 0, trailing: AppTheme.Spacing.lg))
-                } else {
                     // 添加按钮（仅图标）
                     HStack {
                         Spacer()
                         Button {
-                            editingServer = nil
-                            serverURL = ""
-                            apiKey = ""
-                            serverName = ""
-                            alternateURLs = []
-                            errorMessage = nil
-                            showForm = true
+                            openAddForm()
                         } label: {
                             Image(systemName: "plus")
                                 .font(.title3)
@@ -108,24 +95,19 @@ struct ServerConnectView: View {
                     .listRowSeparator(.hidden)
                     .listRowInsets(EdgeInsets(top: AppTheme.Spacing.md, leading: AppTheme.Spacing.lg, bottom: 0, trailing: AppTheme.Spacing.lg))
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
         }
         .onAppear {
             loadSavedServers()
         }
-        // 添加/编辑服务器弹窗（有已保存服务器时使用）
-        .glassBottomSheet(
-            isPresented: $showForm,
-            showHandle: true,
-            showCloseButton: false,
-            onDismiss: {
-                editingServer = nil
-                errorMessage = nil
-            }
-        ) {
-            serverFormSection
+        // 添加/编辑服务器 — 系统 sheet（自带键盘避让，文本可正常选中/拖动）
+        .sheet(isPresented: $showForm, onDismiss: {
+            editingServer = nil
+            errorMessage = nil
+        }) {
+            serverFormSheet
         }
         // 扫码全屏页
         .fullScreenCover(isPresented: $showScanner) {
@@ -137,6 +119,69 @@ struct ServerConnectView: View {
                 showScanner = false
             }
         }
+    }
+
+    // MARK: - Empty State
+
+    /// 首次无服务器时的引导内容
+    private var emptyStateContent: some View {
+        VStack(spacing: AppTheme.Spacing.xxl) {
+            Image("AppLogo")
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 110, height: 110)
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.2), radius: 16, x: 0, y: 6)
+
+            Button {
+                openAddForm()
+            } label: {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Image(systemName: "plus")
+                    Text("添加服务器")
+                }
+                .font(.body)
+                .fontWeight(.semibold)
+                .foregroundStyle(.primary)
+                .padding(.horizontal, AppTheme.Spacing.xl)
+                .padding(.vertical, AppTheme.Spacing.md)
+            }
+            .interactiveGlassBackground(in: Capsule())
+        }
+        .padding(AppTheme.Spacing.lg)
+    }
+
+    // MARK: - Server Form Sheet
+
+    /// 系统 sheet 容器：ScrollView 自动随键盘避让，取消按钮在导航栏
+    private var serverFormSheet: some View {
+        NavigationStack {
+            ScrollView {
+                serverFormSection
+                    .padding(AppTheme.Spacing.lg)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .navigationTitle(editingServer != nil ? "编辑服务器" : "添加服务器")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { showForm = false }
+                }
+            }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+    }
+
+    /// 打开"添加新服务器"表单（重置输入）
+    private func openAddForm() {
+        editingServer = nil
+        serverURL = ""
+        apiKey = ""
+        serverName = ""
+        alternateURLs = []
+        errorMessage = nil
+        showForm = true
     }
 
     // MARK: - Header Section
@@ -340,10 +385,6 @@ struct ServerConnectView: View {
                 .interactiveGlassBackground(in: Capsule())
                 .disabled(serverURL.isEmpty || apiKey.isEmpty)
             }
-        }
-        .padding(savedServers.isEmpty ? AppTheme.Spacing.lg : 0)
-        .if(savedServers.isEmpty) { view in
-            view.glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
         }
     }
 

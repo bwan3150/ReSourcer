@@ -262,6 +262,8 @@ struct SettingsView: View {
                 healthStatus = .online
                 isSwitchingURL = false
                 GlassAlertManager.shared.showSuccess("已切换到新地址")
+                // 通知其他 tab 用新地址重载数据
+                NotificationCenter.default.post(name: .activeURLDidChange, object: nil)
             } else {
                 // 连接失败，回退到原来的地址
                 await apiService.switchToURL(previousURL)
@@ -978,6 +980,8 @@ extension Notification.Name {
     static let themeDidChange = Notification.Name("themeDidChange")
     static let serverDidSwitch = Notification.Name("serverDidSwitch")
     static let sourceFolderDidChange = Notification.Name("sourceFolderDidChange")
+    /// 当前活动地址已就地切换（同一 APIService 实例），通知各视图重载数据
+    static let activeURLDidChange = Notification.Name("activeURLDidChange")
     /// 当 NetworkManager 检测到连接错误时发送（用于触发全局切换地址对话框）
     static let networkConnectivityError = Notification.Name("networkConnectivityError")
 }

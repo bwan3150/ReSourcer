@@ -127,6 +127,10 @@ struct DownloadView: View {
         .task {
             await loadFolders()
         }
+        // 地址切换后用新地址重载
+        .onReceive(NotificationCenter.default.publisher(for: .activeURLDidChange)) { _ in
+            Task { await loadFolders() }
+        }
     }
 
     // MARK: - Main Input Area

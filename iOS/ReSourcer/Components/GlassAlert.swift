@@ -252,37 +252,22 @@ struct ConnectionFailureDialog: View {
             Color.black.opacity(isVisible ? 0.5 : 0)
                 .ignoresSafeArea()
 
-            // 对话框内容
+            // 对话框内容 — 极简：图标 + 一句话 + 可切换地址列表 + 返回
             VStack(spacing: AppTheme.Spacing.lg) {
 
                 // 图标
                 Image(systemName: "wifi.exclamationmark")
-                    .font(.system(size: 44))
-                    .foregroundStyle(.primary)
+                    .font(.system(size: 32))
+                    .foregroundStyle(.secondary)
                     .symbolEffect(.bounce, value: isVisible)
 
                 // 标题
-                Text("连接失败")
-                    .font(.title3)
-                    .fontWeight(.semibold)
+                Text("连接失败，切换地址")
+                    .font(.headline)
                     .foregroundStyle(.primary)
 
-                // 失败地址
-                Text(failedURL)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-
-                Divider()
-                    .padding(.horizontal, -AppTheme.Spacing.xxl)
-
                 // 备用地址列表
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
-                    Text("切换到其他地址")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
+                VStack(spacing: AppTheme.Spacing.sm) {
                     ForEach(alternateURLs, id: \.absoluteString) { url in
                         let probe = probeStates[url.absoluteString] ?? .checking
                         Button {
@@ -296,29 +281,24 @@ struct ConnectionFailureDialog: View {
                                     case .checking:
                                         ProgressView()
                                             .progressViewStyle(.circular)
-                                            .scaleEffect(0.75)
-                                            .frame(width: 16, height: 16)
+                                            .scaleEffect(0.7)
+                                            .frame(width: 14, height: 14)
                                     case .reachable:
                                         Image(systemName: "checkmark.circle.fill")
                                             .foregroundStyle(.green)
                                     case .unreachable:
                                         Image(systemName: "xmark.circle")
-                                            .foregroundStyle(.secondary)
+                                            .foregroundStyle(.tertiary)
                                     }
                                 }
                                 .font(.subheadline)
 
-                                Text(url.absoluteString)
+                                Text(shortURL(url))
                                     .font(.subheadline)
-                                    .foregroundStyle(.primary)
+                                    .foregroundStyle(probe == .unreachable ? .secondary : .primary)
                                     .lineLimit(1)
                                     .truncationMode(.middle)
                                 Spacer(minLength: 0)
-                                if probe == .reachable {
-                                    Text("可用")
-                                        .font(.caption)
-                                        .foregroundStyle(.green)
-                                }
                             }
                             .padding(.horizontal, AppTheme.Spacing.md)
                             .padding(.vertical, AppTheme.Spacing.sm)
@@ -334,11 +314,10 @@ struct ConnectionFailureDialog: View {
                     onReturnToList()
                     dismiss()
                 } label: {
-                    Text("返回服务器列表")
-                        .font(.subheadline)
+                    Text("返回列表")
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-                .padding(.top, AppTheme.Spacing.xs)
             }
             .padding(AppTheme.Spacing.xxl)
             .frame(maxWidth: 340)
@@ -369,6 +348,13 @@ struct ConnectionFailureDialog: View {
                 probeStates[key] = state
             }
         }
+    }
+
+    /// 去掉协议前缀的简短地址
+    private func shortURL(_ url: URL) -> String {
+        url.absoluteString
+            .replacingOccurrences(of: "https://", with: "")
+            .replacingOccurrences(of: "http://", with: "")
     }
 
     private func dismiss() {

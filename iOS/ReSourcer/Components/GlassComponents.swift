@@ -37,7 +37,7 @@ struct GlassSearchBar: View {
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
                 .foregroundStyle(.primary)
-                .tint(.white)
+                .tint(.primary)
                 .focused($isFocused)
                 .submitLabel(.search)
                 .onSubmit {
@@ -119,7 +119,7 @@ struct GlassTextField: View {
                 }
                 .textFieldStyle(.plain)
                 .foregroundStyle(.primary)
-                .tint(.white)
+                .tint(.primary)
 
                 if isSecure && showSecureToggle {
                     Button {
