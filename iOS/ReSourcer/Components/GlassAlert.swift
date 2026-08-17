@@ -640,6 +640,10 @@ extension View {
             .overlay {
                 GlassQuickLoadingContainer()
             }
+            .overlay {
+                // 命令式确认弹窗容器（GlassConfirmManager.shared 全局可用）
+                GlassConfirmContainer()
+            }
     }
 }
 

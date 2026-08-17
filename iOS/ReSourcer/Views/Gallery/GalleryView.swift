@@ -283,27 +283,27 @@ struct GalleryView: View {
                 }
             }
         }
-        // 上传确认面板
-        .glassBottomSheet(isPresented: $showUploadConfirm) {
-            PhotoUploadConfirmView(
-                apiService: apiService,
-                pickerResults: pickerResults,
-                targetFolder: currentFolderPath,
-                onUploadStarted: {
-                    showUploadConfirm = false
-                    pickerResults = []
-                    // 留在当前页面，延迟后刷新文件列表
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(500))
-                        await refreshFiles()
+        // 上传悬浮弹窗
+        .overlay {
+            if showUploadConfirm {
+                PhotoUploadFloatingView(
+                    apiService: apiService,
+                    pickerResults: pickerResults,
+                    targetFolder: currentFolderPath,
+                    onClose: {
+                        showUploadConfirm = false
+                        pickerResults = []
+                        // 留在当前页面，延迟后刷新文件列表
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(300))
+                            await refreshFiles()
+                        }
                     }
-                },
-                onCancel: {
-                    showUploadConfirm = false
-                    pickerResults = []
-                }
-            )
+                )
+                .transition(.opacity)
+            }
         }
+        .animation(AppTheme.Animation.quick, value: showUploadConfirm)
         // 新建文件夹弹窗
         .alert("新建文件夹", isPresented: $showAddFolder) {
             TextField("文件夹名称", text: $newFolderName)
