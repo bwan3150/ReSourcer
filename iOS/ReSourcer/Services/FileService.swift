@@ -48,4 +48,13 @@ actor FileService {
         let response: FileMoveResponse = try await networkManager.request(.fileMove, body: request)
         return response
     }
+
+    /// 删除文件（软删除：服务器会将文件移动到源文件夹下的回收站）
+    /// - Parameter uuid: 文件 UUID
+    /// - Returns: 操作响应（含 uuid + 回收站中的 newPath）
+    func deleteFile(uuid: String) async throws -> FileMoveResponse {
+        let request = FileDeleteRequest(uuid: uuid)
+        let response: FileMoveResponse = try await networkManager.request(.fileDelete, body: request)
+        return response
+    }
 }

@@ -1,7 +1,6 @@
 use crate::database::get_connection;
 use crate::indexer::models::IndexedFile;
 use crate::indexer::storage::{map_file_row, get_file_by_uuid};
-use rusqlite::params;
 
 const FILE_COLUMNS: &str = "uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at, source_url";
 const CONTEXT_SIZE: i64 = 3;

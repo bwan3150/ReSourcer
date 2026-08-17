@@ -45,6 +45,9 @@ pub struct ReorderCategoriesRequest {
 #[derive(Debug, Deserialize)]
 pub struct CreateFolderRequest {
     pub folder_name: String,
+    /// 父目录路径（可选）；若提供且合法则在该目录下创建，否则回退到源文件夹根部
+    #[serde(default)]
+    pub parent_path: Option<String>,
 }
 
 /// 打开文件夹请求

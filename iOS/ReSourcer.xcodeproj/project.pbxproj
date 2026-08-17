@@ -67,6 +67,8 @@
 		A1000094233F0001 /* IgnoreSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000094233F0000 /* IgnoreSettingsView.swift */; };
 		A1000095233F0001 /* DownloaderSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000095233F0000 /* DownloaderSettingsView.swift */; };
 		A10000AA233F0001 /* UploadSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000AA233F0000 /* UploadSettingsView.swift */; };
+		A1000200233F0001 /* PrivacyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000200233F0000 /* PrivacyManager.swift */; };
+		A1000201233F0001 /* PatternLockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000201233F0000 /* PatternLockView.swift */; };
 		A1000096233F0001 /* PreviewLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000096233F0000 /* PreviewLogger.swift */; };
 		A10000A0233F0001 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000FE233F0000 /* PreferencesView.swift */; };
 		D622607EE8CDA1C4914D147B /* FileIconHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = E34B9BA63E3E064E0D5F8F08 /* FileIconHelper.swift */; };
@@ -109,6 +111,8 @@
 		A1000056233F0000 /* FileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileService.swift; sourceTree = "<group>"; };
 		A1000057233F0000 /* FolderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderService.swift; sourceTree = "<group>"; };
 		A1000058233F0000 /* LocalStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStorageService.swift; sourceTree = "<group>"; };
+		A1000200233F0000 /* PrivacyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyManager.swift; sourceTree = "<group>"; };
+		A1000201233F0000 /* PatternLockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatternLockView.swift; sourceTree = "<group>"; };
 		A1000059233F0000 /* PreviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewService.swift; sourceTree = "<group>"; };
 		A100005A233F0000 /* UploadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadService.swift; sourceTree = "<group>"; };
 		A100005B233F0000 /* TagService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagService.swift; sourceTree = "<group>"; };
@@ -212,6 +216,7 @@
 				A1000079233F0000 /* QRScannerView.swift */,
 				A1000090233F0000 /* FileInfoSheetContent.swift */,
 				A1000093233F0000 /* TagEditorView.swift */,
+				A1000201233F0000 /* PatternLockView.swift */,
 				E34B9BA63E3E064E0D5F8F08 /* FileIconHelper.swift */,
 			);
 			path = Components;
@@ -263,6 +268,7 @@
 				A1000056233F0000 /* FileService.swift */,
 				A1000057233F0000 /* FolderService.swift */,
 				A1000058233F0000 /* LocalStorageService.swift */,
+				A1000200233F0000 /* PrivacyManager.swift */,
 				A1000059233F0000 /* PreviewService.swift */,
 				A100005A233F0000 /* UploadService.swift */,
 				A100005B233F0000 /* TagService.swift */,
@@ -463,6 +469,8 @@
 				A1000094233F0001 /* IgnoreSettingsView.swift in Sources */,
 				A1000095233F0001 /* DownloaderSettingsView.swift in Sources */,
 				A10000AA233F0001 /* UploadSettingsView.swift in Sources */,
+				A1000200233F0001 /* PrivacyManager.swift in Sources */,
+				A1000201233F0001 /* PatternLockView.swift in Sources */,
 				A10000A0233F0001 /* PreferencesView.swift in Sources */,
 				A1000091233F0001 /* ThumbnailCacheDetailView.swift in Sources */,
 				A1000077233F0001 /* ThumbnailCacheService.swift in Sources */,

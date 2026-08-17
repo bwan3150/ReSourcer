@@ -2,6 +2,7 @@
 pub mod models;
 mod rename;
 mod move_file;
+mod delete;
 mod info;
 mod utils;
 
@@ -11,5 +12,6 @@ use actix_web::web;
 pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("/rename").route(web::post().to(rename::rename_file)))
        .service(web::resource("/move").route(web::post().to(move_file::move_file)))
+       .service(web::resource("/delete").route(web::post().to(delete::delete_file)))
        .service(web::resource("/info").route(web::get().to(info::get_file_info)));
 }

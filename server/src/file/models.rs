@@ -48,6 +48,16 @@ pub struct MoveFileRequest {
     pub new_name: Option<String>,  // 可选：移动时同时重命名
 }
 
+/// 删除文件请求（软删除：移入回收站）
+#[derive(Debug, Deserialize)]
+pub struct DeleteFileRequest {
+    pub uuid: String,
+}
+
+/// 回收站文件夹名称（位于每个源文件夹根部，软删除的文件移动至此）
+/// 使用英文名并加下划线前缀，与普通用户文件夹区分
+pub const RECYCLE_BIN_NAME: &str = "_Recycle";
+
 /// 文件操作响应
 #[derive(Debug, Serialize)]
 pub struct FileOperationResponse {

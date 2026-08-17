@@ -25,6 +25,12 @@ struct SettingsView: View {
     @State private var sourceFolders: SourceFoldersResponse?
     @State private var showSourceFolderList = false
 
+    // 私密源文件夹手势锁
+    @State private var showPatternLock = false
+    @State private var patternPurpose: PatternLockView.Purpose = .verify
+    /// 待标记为私密的路径（设置新手势成功后写入）
+    @State private var pendingPrivatePath: String?
+
     // 语言设置
     @State private var language: LocalStorageService.AppSettings.Language = .zh
 
@@ -105,6 +111,51 @@ struct SettingsView: View {
                 reindexProgressOverlay
             }
         }
+        .overlay {
+            if showPatternLock {
+                PatternLockView(
+                    purpose: patternPurpose,
+                    onCancel: {
+                        showPatternLock = false
+                        pendingPrivatePath = nil
+                    },
+                    onSuccess: {
+                        showPatternLock = false
+                        withAnimation { PrivacyManager.shared.isUnlocked = true }
+                        // 设置新手势后如有待标记路径，则立即标记为私密
+                        if let p = pendingPrivatePath {
+                            PrivacyManager.shared.setPrivate(p, true)
+                            pendingPrivatePath = nil
+                        }
+                    }
+                )
+                .transition(.opacity)
+            }
+        }
+    }
+
+    // MARK: - 私密源文件夹
+
+    /// 长按"源文件夹"标题：已解锁则重新隐藏，否则进入校验/设置手势
+    private func handleSourceTitleLongPress() {
+        if PrivacyManager.shared.isUnlocked {
+            withAnimation { PrivacyManager.shared.isUnlocked = false }
+            return
+        }
+        patternPurpose = PrivacyManager.shared.hasPattern ? .verify : .setNew
+        pendingPrivatePath = nil
+        showPatternLock = true
+    }
+
+    /// 切换某源文件夹的私密标记；若尚未设置手势则先要求设置
+    private func togglePrivate(path: String, makePrivate: Bool) {
+        if makePrivate && !PrivacyManager.shared.hasPattern {
+            patternPurpose = .setNew
+            pendingPrivatePath = path
+            showPatternLock = true
+            return
+        }
+        withAnimation { PrivacyManager.shared.setPrivate(path, makePrivate) }
     }
 
     // MARK: - 重新索引进度弹窗
@@ -298,8 +349,36 @@ struct SettingsView: View {
     // MARK: - 2. 源文件夹
 
     private var sourceFolderSection: some View {
-        SettingsSection(title: "源文件夹") {
+        // 使用空标题，自行渲染标题行以便长按"源文件夹"解锁私密源
+        SettingsSection(title: "") {
             VStack(spacing: 0) {
+                // 标题行：长按"源文件夹"文字进入手势解锁/设置
+                HStack(spacing: AppTheme.Spacing.xs) {
+                    Text("源文件夹")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                        .contentShape(Rectangle())
+                        .onLongPressGesture(minimumDuration: 0.6) {
+                            handleSourceTitleLongPress()
+                        }
+
+                    // 已解锁时显示开锁图标，点击可重新隐藏私密源
+                    if PrivacyManager.shared.isUnlocked {
+                        Button {
+                            withAnimation { PrivacyManager.shared.isUnlocked = false }
+                        } label: {
+                            Image(systemName: "lock.open.fill")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Spacer()
+                }
+                .padding(.bottom, AppTheme.Spacing.sm)
+
                 // 当前源文件夹
                 Button {
                     withAnimation { showSourceFolderList.toggle() }
@@ -346,15 +425,23 @@ struct SettingsView: View {
     private var sourceFolderListContent: some View {
         VStack(spacing: AppTheme.Spacing.sm) {
             if let folders = sourceFolders {
-                // 当前源文件夹
+                // 当前源文件夹（始终显示，即使被标记为私密）
                 sourceFolderRow(path: folders.current, isCurrent: true)
 
-                // 备用源文件夹
-                ForEach(folders.backups, id: \.self) { backup in
+                // 备用源文件夹：未解锁时隐藏私密项
+                ForEach(visibleBackups(folders), id: \.self) { backup in
                     sourceFolderRow(path: backup, isCurrent: false)
                 }
             }
         }
+    }
+
+    /// 根据解锁状态过滤备用源文件夹列表
+    private func visibleBackups(_ folders: SourceFoldersResponse) -> [String] {
+        if PrivacyManager.shared.isUnlocked {
+            return folders.backups
+        }
+        return folders.backups.filter { !PrivacyManager.shared.isPrivate($0) }
     }
 
     @ViewBuilder
@@ -379,6 +466,13 @@ struct SettingsView: View {
                             .foregroundStyle(.primary)
                     }
 
+                    // 私密标记（仅在解锁后可见，因为未解锁时私密项已被隐藏）
+                    if PrivacyManager.shared.isPrivate(path) {
+                        Image(systemName: "lock.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    }
+
                     Spacer()
                 }
                 .contentShape(Rectangle())
@@ -386,6 +480,18 @@ struct SettingsView: View {
             }
             .buttonStyle(.plain)
             .disabled(isCurrent)
+            .contextMenu {
+                // 已解锁时可切换私密标记
+                if PrivacyManager.shared.isUnlocked {
+                    let isPriv = PrivacyManager.shared.isPrivate(path)
+                    Button {
+                        togglePrivate(path: path, makePrivate: !isPriv)
+                    } label: {
+                        Label(isPriv ? "取消私密" : "设为私密",
+                              systemImage: isPriv ? "lock.open" : "lock")
+                    }
+                }
+            }
 
             // 当前源文件夹显示重新索引按钮
             if isCurrent {

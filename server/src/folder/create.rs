@@ -27,8 +27,26 @@ pub async fn create_folder(req: web::Json<CreateFolderRequest>) -> Result<HttpRe
         })));
     }
 
+    // 解析父目录：若请求提供了 parent_path 且合法（位于源文件夹内且存在），则在该目录下创建；
+    // 否则回退到源文件夹根部，兼容旧客户端
+    let base_dir = match &req.parent_path {
+        Some(p) if !p.trim().is_empty() => {
+            let canon_source = std::fs::canonicalize(source_path).ok();
+            let canon_parent = std::fs::canonicalize(Path::new(p)).ok();
+            match (canon_source, canon_parent) {
+                (Some(cs), Some(cp)) if cp.starts_with(&cs) && cp.is_dir() => cp,
+                _ => {
+                    return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+                        "error": "无效的父目录"
+                    })));
+                }
+            }
+        }
+        _ => source_path.to_path_buf(),
+    };
+
     // 创建文件夹
-    let folder_path = source_path.join(folder_name);
+    let folder_path = base_dir.join(folder_name);
 
     if folder_path.exists() {
         return Ok(HttpResponse::BadRequest().json(serde_json::json!({

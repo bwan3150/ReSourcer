@@ -121,6 +121,13 @@ struct BreadcrumbItem: Identifiable, Codable, Equatable {
 /// 文件夹创建请求
 struct FolderCreateRequest: Codable {
     let folderName: String
+    /// 父目录路径（可选）；提供后服务器会在该目录下创建，否则落到源文件夹根部
+    let parentPath: String?
+
+    init(folderName: String, parentPath: String? = nil) {
+        self.folderName = folderName
+        self.parentPath = parentPath
+    }
 }
 
 /// 文件夹创建响应

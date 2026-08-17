@@ -188,6 +188,11 @@ struct FileMoveResponse: Codable {
     let newPath: String
 }
 
+/// 文件删除请求（软删除到回收站）
+struct FileDeleteRequest: Codable {
+    let uuid: String
+}
+
 // MARK: - 索引系统模型
 
 /// 服务端 IndexedFile（索引 API 原始返回格式）

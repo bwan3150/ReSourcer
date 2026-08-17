@@ -33,10 +33,12 @@ actor FolderService {
     }
 
     /// 创建新文件夹
-    /// - Parameter folderName: 文件夹名称
+    /// - Parameters:
+    ///   - folderName: 文件夹名称
+    ///   - parentPath: 父目录路径（可选）；传入后在当前目录下创建，否则落到源文件夹根部
     /// - Returns: 创建的文件夹名称
-    func createFolder(name folderName: String) async throws -> String {
-        let request = FolderCreateRequest(folderName: folderName)
+    func createFolder(name folderName: String, parentPath: String? = nil) async throws -> String {
+        let request = FolderCreateRequest(folderName: folderName, parentPath: parentPath)
         let response: FolderCreateResponse = try await networkManager.request(.folderCreate, body: request)
         return response.folderName
     }

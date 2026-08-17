@@ -822,7 +822,20 @@ struct GalleryView: View {
     private func loadInitial() async {
         do {
             let configState = try await apiService.config.getConfigState()
-            sourceFolder = configState.sourceFolder
+            var active = configState.sourceFolder
+            // 启动时若当前源为私密且未解锁，自动切换到首个非私密源
+            if PrivacyManager.shared.isPrivate(active) && !PrivacyManager.shared.isUnlocked {
+                let all = [configState.sourceFolder] + configState.backupSourceFolders
+                if let target = all.first(where: { !PrivacyManager.shared.isPrivate($0) }) {
+                    do {
+                        try await apiService.config.switchSourceFolder(to: target)
+                        active = target
+                    } catch {
+                        // 切换失败则仍使用原始源
+                    }
+                }
+            }
+            sourceFolder = active
             NavigationState.shared.setSourceFolder(sourceFolder)
             await navigateToFolder(path: sourceFolder)
         } catch {
@@ -878,9 +891,11 @@ struct GalleryView: View {
         let name = newFolderName.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return }
 
+        // 在下拉菜单当前浏览路径下创建（为空则回退到当前 gallery 目录）
+        let parent = dropdownBrowsingPath.isEmpty ? currentFolderPath : dropdownBrowsingPath
         Task {
             do {
-                _ = try await apiService.folder.createFolder(name: name)
+                _ = try await apiService.folder.createFolder(name: name, parentPath: parent)
                 newFolderName = ""
                 // 刷新下拉菜单的子文件夹列表
                 await browseInDropdown(path: dropdownBrowsingPath)
@@ -959,6 +974,28 @@ struct GalleryView: View {
                     Image(systemName: "arrow.up.arrow.down")
                         .font(.caption)
                     Text("排序")
+                        .font(font)
+                        .fontWeight(.semibold)
+                }
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+            }
+            .buttonStyle(.plain)
+
+            // 回收站：导航到当前源文件夹下的回收站目录
+            Button {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    isDropdownOpen = false
+                }
+                let recyclePath = (sourceFolder as NSString).appendingPathComponent("_Recycle")
+                Task { await navigateWithHistory(path: recyclePath) }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "trash")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                    Text("回收站")
                         .font(font)
                         .fontWeight(.semibold)
                 }

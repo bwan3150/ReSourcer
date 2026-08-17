@@ -130,6 +130,17 @@ struct FilePreviewView: View {
         return playlist[playlistIndex]
     }
 
+    /// 当前是否位于回收站中（回收站内禁止再次删除，仅允许移出/还原）
+    private var isInRecycleBin: Bool {
+        let recycleBinName = "_Recycle"
+        if (folderPath as NSString).lastPathComponent == recycleBinName { return true }
+        if let file = currentFile {
+            let parent = (file.path as NSString).deletingLastPathComponent
+            return (parent as NSString).lastPathComponent == recycleBinName
+        }
+        return false
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -600,6 +611,13 @@ struct FilePreviewView: View {
                     showInfoSheet = false
                     saveFileToDevice(file)
                 },
+                onDelete: (file.uuid != nil && !isInRecycleBin) ? {
+                    showInfoSheet = false
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        promptDelete(file: file)
+                    }
+                } : nil,
                 onShowDebugLog: {
                     showInfoSheet = false
                     Task { @MainActor in
@@ -1098,6 +1116,38 @@ struct FilePreviewView: View {
         isOperating = false
     }
 
+
+    /// 弹出删除确认（软删除到回收站）
+    private func promptDelete(file: FileInfo) {
+        GlassConfirmManager.shared.show(
+            config: GlassConfirmConfig(
+                title: "删除此文件？",
+                message: "文件将被移动到回收站，可稍后在回收站中还原。",
+                icon: "trash.fill",
+                iconColor: .red,
+                confirmTitle: "删除",
+                confirmStyle: .destructive,
+                cancelTitle: "取消"
+            ),
+            onConfirm: {
+                Task { @MainActor in await performDelete(file: file) }
+            }
+        )
+    }
+
+    /// 执行软删除：调用服务器接口将文件移入回收站
+    private func performDelete(file: FileInfo) async {
+        guard let uuid = file.uuid else { return }
+        isOperating = true
+        do {
+            _ = try await apiService.file.deleteFile(uuid: uuid)
+            GlassAlertManager.shared.showSuccess("已移到回收站")
+            handlePostOperation()
+        } catch {
+            GlassAlertManager.shared.showError("删除失败", message: error.localizedDescription)
+        }
+        isOperating = false
+    }
 
     /// 操作完成后的导航逻辑
     private func handlePostOperation() {

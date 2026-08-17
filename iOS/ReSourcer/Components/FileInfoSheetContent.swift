@@ -27,6 +27,8 @@ struct FileInfoSheetContent: View {
     var onRename: (() -> Void)? = nil
     var onMove: (() -> Void)? = nil
     var onDownload: (() -> Void)? = nil
+    /// 删除回调（软删除到回收站，nil 则隐藏；回收站内应隐藏）
+    var onDelete: (() -> Void)? = nil
 
     /// 调试日志按钮（nil 则隐藏）
     var onShowDebugLog: (() -> Void)? = nil
@@ -163,6 +165,12 @@ struct FileInfoSheetContent: View {
                     }
                 }
                 .padding(.top, AppTheme.Spacing.sm)
+            }
+
+            // 删除按钮（单独一行，破坏性样式；软删除到回收站）
+            if let onDelete {
+                GlassButton("删除", icon: "trash", style: .destructive, size: .medium, action: onDelete)
+                    .frame(maxWidth: .infinity)
             }
 
             if bottomSpacing > 0 {
