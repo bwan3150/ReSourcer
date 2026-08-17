@@ -230,6 +230,11 @@ export default {
     checkUpdate: 'Check Update',
     upToDate: 'Already up to date',
     updateStarted: 'Updating, server will restart',
+    upload: 'Upload',
+    chunkSize: 'Chunk Size (MB)',
+    chunkSizeDesc: 'Files larger than this are split into chunks for reliable upload',
+    chunkSizeHint: 'Range 1 ~ 10240 MB. Smaller = more chunks, more stable per request; larger = fewer chunks.',
+    saveFailed: 'Save failed',
   },
   metrics: {
     title: 'Metrics',

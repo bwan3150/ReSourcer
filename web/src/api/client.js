@@ -10,7 +10,16 @@ function toCamel(str) {
 }
 function convertKeys(obj, fn) {
   if (Array.isArray(obj)) return obj.map(v => convertKeys(v, fn))
-  if (obj && typeof obj === 'object' && !(obj instanceof File) && !(obj instanceof FormData)) {
+  // 仅转换普通对象；二进制类型（Blob/File/ArrayBuffer/TypedArray）及 FormData 原样穿过，避免被破坏
+  if (
+    obj &&
+    typeof obj === 'object' &&
+    !(obj instanceof File) &&
+    !(obj instanceof Blob) &&
+    !(obj instanceof FormData) &&
+    !(obj instanceof ArrayBuffer) &&
+    !ArrayBuffer.isView(obj)
+  ) {
     return Object.fromEntries(Object.entries(obj).map(([k, v]) => [fn(k), convertKeys(v, fn)]))
   }
   return obj

@@ -100,6 +100,15 @@ actor UploadService {
         return try await networkManager.request(.uploadPolicy)
     }
 
+    /// 更新服务器分片大小限制
+    /// - Parameter chunkSizeMb: 新的分片大小（MB）
+    /// - Returns: 更新后的上传策略
+    @discardableResult
+    func updateUploadPolicy(chunkSizeMb: Int) async throws -> UploadPolicyResponse {
+        let body = UpdateUploadPolicyRequest(chunkSizeMb: chunkSizeMb)
+        return try await networkManager.request(.uploadPolicyUpdate, body: body)
+    }
+
     /// 分片上传单个大文件：切分 → 逐片上传 → 服务端合并
     /// - Parameters:
     ///   - fileName: 文件名

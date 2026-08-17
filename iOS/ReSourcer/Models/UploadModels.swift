@@ -161,6 +161,11 @@ struct UploadPolicyResponse: Codable {
     let chunkSizeMb: Int
 }
 
+/// 更新分片大小策略请求体（编码时 convertToSnakeCase → chunk_size_mb）
+struct UpdateUploadPolicyRequest: Codable {
+    let chunkSizeMb: Int
+}
+
 /// 分片会话初始化请求体（编码时 convertToSnakeCase）
 struct ChunkInitRequest: Codable {
     let fileName: String

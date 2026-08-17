@@ -61,6 +61,7 @@ enum APIEndpoint {
 
     // MARK: - Transfer/Upload 分片上传（大文件）
     case uploadPolicy                        // GET  /api/transfer/upload/policy
+    case uploadPolicyUpdate                  // POST /api/transfer/upload/policy
     case uploadChunkInit                     // POST /api/transfer/upload/chunk/init
     case uploadChunkPart(uploadId: String, index: Int)  // POST /api/transfer/upload/chunk/part/{id}/{index}
     case uploadChunkStatus(uploadId: String) // GET  /api/transfer/upload/chunk/status/{id}
@@ -196,7 +197,7 @@ enum APIEndpoint {
             return "/api/transfer/upload/tasks/clear"
 
         // Upload 分片
-        case .uploadPolicy:
+        case .uploadPolicy, .uploadPolicyUpdate:
             return "/api/transfer/upload/policy"
         case .uploadChunkInit:
             return "/api/transfer/upload/chunk/init"

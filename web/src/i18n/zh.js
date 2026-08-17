@@ -230,6 +230,11 @@ export default {
     checkUpdate: '检查更新',
     upToDate: '已是最新版本',
     updateStarted: '正在更新，服务器将重启',
+    upload: '上传设置',
+    chunkSize: '分片大小（MB）',
+    chunkSizeDesc: '超过此大小的文件将自动分片上传，保证大文件稳定传输',
+    chunkSizeHint: '范围 1 ~ 10240 MB。设置越小分片越多、单次请求越稳；设置越大分片越少。',
+    saveFailed: '保存失败',
   },
   metrics: {
     title: '性能',

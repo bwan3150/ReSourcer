@@ -24,8 +24,10 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         )
         // 历史记录分页
         .service(web::resource("/history").route(web::get().to(task::get_history)))
-        // 分片上传策略
-        .service(web::resource("/policy").route(web::get().to(chunk::get_upload_policy)))
+        // 分片上传策略（读取 / 更新）
+        .service(web::resource("/policy")
+            .route(web::get().to(chunk::get_upload_policy))
+            .route(web::post().to(chunk::update_upload_policy)))
         // 分片上传：初始化 / 上传分片 / 状态 / 完成 / 取消（literal 前缀，避免路由冲突）
         .service(web::resource("/chunk/init").route(web::post().to(chunk::init_chunk_upload)))
         .service(web::resource("/chunk/part/{upload_id}/{index}").route(web::post().to(chunk::upload_chunk_part)))

@@ -162,6 +162,43 @@
           </div>
         </div>
 
+        <!-- Upload（分片上传设置） -->
+        <div class="collapse collapse-arrow join-item border border-base-300">
+          <input type="radio" name="settings-accordion" />
+          <div class="collapse-title font-medium text-sm flex items-center gap-2">
+            <UploadCloud :size="18" class="text-base-content/50" />
+            {{ $t('settings.upload') }}
+          </div>
+          <div class="collapse-content space-y-4">
+            <div>
+              <div class="text-sm mb-1">{{ $t('settings.chunkSize') }}</div>
+              <div class="text-xs text-base-content/40 mb-2">{{ $t('settings.chunkSizeDesc') }}</div>
+              <div class="flex flex-wrap gap-2 items-center">
+                <button v-for="mb in uploadPresets" :key="mb"
+                  class="btn btn-sm"
+                  :class="uploadChunkSizeMb === mb ? 'btn-neutral' : 'btn-ghost'"
+                  :disabled="savingUpload"
+                  @click="saveUploadPolicy(mb)"
+                >{{ mb }} MB</button>
+                <div class="join">
+                  <input
+                    type="number" min="1" max="10240"
+                    class="input input-bordered input-sm join-item w-24"
+                    :placeholder="$t('settings.chunkSize')"
+                    v-model.number="uploadChunkSizeMb"
+                  />
+                  <button
+                    class="btn btn-sm btn-neutral join-item"
+                    :disabled="savingUpload"
+                    @click="saveUploadPolicy(uploadChunkSizeMb)"
+                  >{{ $t('common.save') }}</button>
+                </div>
+              </div>
+              <div class="text-xs text-base-content/40 mt-2">{{ $t('settings.chunkSizeHint') }}</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Reindex -->
         <div class="collapse collapse-arrow join-item border border-base-300">
           <input type="radio" name="settings-accordion" />
@@ -284,7 +321,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, Info, Github, Download, Smartphone, HardDrive, Trash2, Keyboard, Play } from 'lucide-vue-next'
+import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, Info, Github, Download, Smartphone, HardDrive, Trash2, Keyboard, Play, UploadCloud } from 'lucide-vue-next'
 import { DEFAULTS as SHORTCUT_ACTIONS, getShortcuts, setShortcut, resetShortcuts, formatShortcut, encodeKey } from '../composables/useKeyboardShortcuts'
 import AppLayout from '../components/layout/AppLayout.vue'
 import SourceFolderManager from '../components/settings/SourceFolderManager.vue'
@@ -295,6 +332,7 @@ import { getCacheStats, getTotalCacheSize, clearServerCache, clearAllThumbnailCa
 import * as configApi from '../api/config'
 import * as folderApi from '../api/folder'
 import * as indexerApi from '../api/indexer'
+import * as uploadApi from '../api/upload'
 
 const { t } = useI18n()
 
@@ -366,9 +404,37 @@ function savePlaybackSettings() {
 const cacheSize = ref('')
 const cacheDetails = ref([])
 
+// Upload（分片上传策略）
+const uploadChunkSizeMb = ref(0)
+const uploadPresets = [10, 30, 50, 100, 200]
+const savingUpload = ref(false)
+
+async function loadUploadPolicy() {
+  try {
+    const { data } = await uploadApi.getUploadPolicy()
+    uploadChunkSizeMb.value = data.chunkSizeMb || 0
+  } catch {}
+}
+
+async function saveUploadPolicy(mb) {
+  const value = parseInt(mb)
+  if (!value || value < 1 || value > 10240) return
+  savingUpload.value = true
+  try {
+    const { data } = await uploadApi.setUploadPolicy(value)
+    uploadChunkSizeMb.value = data.chunkSizeMb || value
+    showToast(t('settings.saveSuccess'))
+  } catch {
+    showToast(t('settings.saveFailed') || 'Failed')
+  } finally {
+    savingUpload.value = false
+  }
+}
+
 onMounted(async () => {
   await loadSettings()
   await loadTools()
+  await loadUploadPolicy()
   refreshCacheInfo()
   try {
     const { data } = await configApi.getAppInfo()

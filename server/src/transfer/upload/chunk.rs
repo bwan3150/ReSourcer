@@ -161,6 +161,61 @@ pub async fn get_upload_policy() -> Result<HttpResponse> {
     })))
 }
 
+/// 更新分片大小策略请求
+#[derive(Deserialize)]
+pub struct UpdatePolicyRequest {
+    pub chunk_size_mb: u64,
+}
+
+/// POST /api/transfer/upload/policy
+/// 更新服务器端分片大小限制（写回 config/app.json，保留其它字段）
+pub async fn update_upload_policy(
+    body: web::Json<UpdatePolicyRequest>,
+) -> Result<HttpResponse> {
+    let mb = body.chunk_size_mb;
+    // 合理范围：1 MB ~ 10 GB
+    if mb == 0 || mb > 10_240 {
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "分片大小需在 1 ~ 10240 MB 之间"
+        })));
+    }
+
+    let app_json_path = crate::static_files::app_dir()
+        .join("config")
+        .join("app.json");
+
+    // 读取现有 app.json（不存在则以空对象为基础），仅更新目标字段，保留其它配置
+    let mut root: serde_json::Value = match std::fs::read(&app_json_path) {
+        Ok(data) => serde_json::from_slice(&data)
+            .unwrap_or_else(|_| serde_json::json!({})),
+        Err(_) => serde_json::json!({}),
+    };
+
+    if !root.is_object() {
+        root = serde_json::json!({});
+    }
+    root["upload_chunk_size_mb"] = serde_json::json!(mb);
+
+    let pretty = serde_json::to_string_pretty(&root)
+        .unwrap_or_else(|_| "{}".to_string());
+
+    // 确保 config 目录存在后写回
+    if let Some(parent) = app_json_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Err(e) = std::fs::write(&app_json_path, pretty) {
+        return Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": format!("写入配置失败: {}", e)
+        })));
+    }
+
+    let bytes = mb.saturating_mul(1024 * 1024);
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "chunk_size": bytes,
+        "chunk_size_mb": mb,
+    })))
+}
+
 /// 初始化分片会话请求
 #[derive(Deserialize)]
 pub struct InitChunkRequest {

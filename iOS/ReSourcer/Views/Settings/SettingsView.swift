@@ -68,6 +68,9 @@ struct SettingsView: View {
                     // 7. 下载器
                     downloaderSection
 
+                    // 7.1 上传设置
+                    uploadSection
+
                     // 8. 服务器性能
                     metricsSection
 
@@ -505,6 +508,35 @@ struct SettingsView: View {
                         .frame(width: 28)
 
                     Text("下载器管理")
+                        .font(.body)
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - 7.1 上传设置
+
+    private var uploadSection: some View {
+        SettingsSection(title: "") {
+            NavigationLink {
+                UploadSettingsView(apiService: apiService)
+            } label: {
+                HStack(spacing: AppTheme.Spacing.md) {
+                    Image(systemName: "square.stack.3d.up.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.blue)
+                        .frame(width: 28)
+
+                    Text("上传设置")
                         .font(.body)
                         .foregroundStyle(.primary)
 
