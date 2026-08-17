@@ -5,8 +5,11 @@ export function listFolders(sourceFolder) {
   return client.get('/api/folder/list', { params })
 }
 
-export function createFolder(folderName) {
-  return client.post('/api/folder/create', { folderName })
+export function createFolder(folderName, parentPath) {
+  const data = { folderName }
+  // 传入父目录时在其下创建，否则默认建在源文件夹根部
+  if (parentPath) data.parentPath = parentPath
+  return client.post('/api/folder/create', data)
 }
 
 export function reorderFolders(sourceFolder, categoryOrder) {

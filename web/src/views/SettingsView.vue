@@ -11,7 +11,21 @@
           <input type="radio" name="settings-accordion" />
           <div class="collapse-title font-medium text-sm flex items-center gap-2">
             <FolderCog :size="18" class="text-base-content/50" />
-            {{ $t('settings.sourceFolders') }}
+            <!-- 长按标题解锁/隐藏私密源 -->
+            <span
+              class="relative z-[2] cursor-default select-none"
+              :title="$t('privacy.hint')"
+              @pointerdown.stop="startTitlePress"
+              @pointerup.stop="cancelTitlePress"
+              @pointerleave="cancelTitlePress"
+            >{{ $t('settings.sourceFolders') }}</span>
+            <button
+              v-if="privacyUnlocked"
+              class="relative z-[2] btn btn-ghost btn-xs btn-square text-warning"
+              @click.stop="relockPrivate"
+            >
+              <LockOpen :size="14" />
+            </button>
             <span v-if="sourceFolder" class="text-xs text-base-content/40 ml-auto mr-4 truncate max-w-48">{{ sourceFolder }}</span>
           </div>
           <div class="collapse-content">
@@ -22,6 +36,7 @@
               @remove="onRemoveSource"
               @browse="fileBrowser?.show()"
               @migrated="loadSettings"
+              @toggle-private="onTogglePrivate"
             />
           </div>
         </div>
@@ -315,19 +330,24 @@
     </div>
 
     <FileBrowserModal ref="fileBrowser" @select="onAddSource" />
+
+    <!-- 私密源手势锁 -->
+    <PatternLock ref="patternLock" :purpose="patternPurpose" @success="onPatternSuccess" />
   </AppLayout>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, Info, Github, Download, Smartphone, HardDrive, Trash2, Keyboard, Play, UploadCloud } from 'lucide-vue-next'
+import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, Info, Github, Download, Smartphone, HardDrive, Trash2, Keyboard, Play, UploadCloud, LockOpen } from 'lucide-vue-next'
 import { DEFAULTS as SHORTCUT_ACTIONS, getShortcuts, setShortcut, resetShortcuts, formatShortcut, encodeKey } from '../composables/useKeyboardShortcuts'
 import AppLayout from '../components/layout/AppLayout.vue'
 import SourceFolderManager from '../components/settings/SourceFolderManager.vue'
 import CategoryManager from '../components/settings/CategoryManager.vue'
 import IgnoreManager from '../components/settings/IgnoreManager.vue'
 import FileBrowserModal from '../components/settings/FileBrowserModal.vue'
+import PatternLock from '../components/shared/PatternLock.vue'
+import { usePrivacy } from '../composables/usePrivacy'
 import { getCacheStats, getTotalCacheSize, clearServerCache, clearAllThumbnailCache } from '../composables/useThumbnailCache'
 import * as configApi from '../api/config'
 import * as folderApi from '../api/folder'
@@ -345,6 +365,53 @@ const ignoredFiles = ref([])
 const reindexing = ref(false)
 const toast = ref('')
 const fileBrowser = ref(null)
+
+// 私密源文件夹
+const { isUnlocked: privacyUnlocked, isPrivate, setPrivate, hasPattern } = usePrivacy()
+const patternLock = ref(null)
+const patternPurpose = ref('verify')
+const pendingPrivatePath = ref(null)
+let titlePressTimer = null
+
+// 长按标题：已解锁则重新隐藏，否则校验/设置手势
+function startTitlePress() {
+  cancelTitlePress()
+  titlePressTimer = setTimeout(() => {
+    if (privacyUnlocked.value) {
+      privacyUnlocked.value = false
+      return
+    }
+    patternPurpose.value = hasPattern() ? 'verify' : 'setNew'
+    pendingPrivatePath.value = null
+    patternLock.value?.show()
+  }, 600)
+}
+function cancelTitlePress() {
+  if (titlePressTimer) { clearTimeout(titlePressTimer); titlePressTimer = null }
+}
+function relockPrivate() {
+  privacyUnlocked.value = false
+}
+
+// 切换某源的私密标记；首次设为私密需先设置手势
+function onTogglePrivate(path) {
+  const makePrivate = !isPrivate(path)
+  if (makePrivate && !hasPattern()) {
+    pendingPrivatePath.value = path
+    patternPurpose.value = 'setNew'
+    patternLock.value?.show()
+    return
+  }
+  setPrivate(path, makePrivate)
+}
+
+function onPatternSuccess() {
+  privacyUnlocked.value = true
+  if (pendingPrivatePath.value) {
+    setPrivate(pendingPrivatePath.value, true)
+    pendingPrivatePath.value = null
+  }
+}
 const tools = ref([])
 const editingTool = ref('')
 const editUrls = ref({ linux_x86_64: '', linux_aarch64: '', macos: '', windows: '' })

@@ -15,6 +15,12 @@
         </template>
       </div>
       <span class="text-xs text-base-content/40 shrink-0">{{ total }}</span>
+      <button class="btn btn-ghost btn-sm btn-square" @click="openNewFolderDialog" :title="$t('gallery.newFolder')">
+        <FolderPlus :size="16" />
+      </button>
+      <button class="btn btn-ghost btn-sm btn-square" @click="openRecycleBin" :title="$t('gallery.recycleBin')">
+        <Trash2 :size="16" />
+      </button>
       <button class="btn btn-ghost btn-sm btn-square" @click="reindexFolder" :disabled="reindexing" :title="$t('settings.reindex')">
         <span v-if="reindexing" class="loading loading-spinner loading-xs"></span>
         <RefreshCw v-else :size="16" />
@@ -166,6 +172,41 @@
             {{ $t('common.download') }}
           </a>
         </div>
+        <!-- 删除按钮（软删除到回收站；回收站内文件不显示，防止彻底删除） -->
+        <button
+          v-if="!isInRecycleBin"
+          class="btn btn-ghost btn-sm w-full gap-1 mt-2 text-error"
+          @click="fileInfoDialog?.close(); confirmDelete(previewFile)"
+        >
+          <Trash2 :size="14" />
+          {{ $t('common.delete') }}
+        </button>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
+    <!-- Delete Confirm Dialog -->
+    <ConfirmDialog
+      ref="deleteDialog"
+      :title="$t('gallery.deleteConfirmTitle')"
+      :message="$t('gallery.deleteConfirmMsg')"
+      @confirm="doDelete"
+    />
+
+    <!-- New Folder Dialog -->
+    <dialog ref="newFolderDialog" class="modal">
+      <div class="modal-box max-w-sm">
+        <h3 class="font-bold text-lg mb-4">{{ $t('gallery.newFolder') }}</h3>
+        <input
+          v-model="newFolderName"
+          class="input input-bordered w-full"
+          :placeholder="$t('gallery.folderName')"
+          @keyup.enter="doCreateFolder"
+        />
+        <div class="modal-action">
+          <button class="btn" @click="newFolderDialog?.close()">{{ $t('common.cancel') }}</button>
+          <button class="btn btn-neutral" @click="doCreateFolder" :disabled="!newFolderName.trim()">{{ $t('common.confirm') }}</button>
+        </div>
       </div>
       <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
@@ -254,14 +295,19 @@ import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
 import { useTheme } from '../composables/useTheme'
 import UploadArea from '../components/gallery/UploadArea.vue'
 import TagEditor from '../components/gallery/TagEditor.vue'
-import { Folder, ChevronRight, X, Pencil, FolderInput, RefreshCw, Info, Download } from 'lucide-vue-next'
+import ConfirmDialog from '../components/shared/ConfirmDialog.vue'
+import { Folder, ChevronRight, X, Pencil, FolderInput, RefreshCw, Info, Download, FolderPlus, Trash2 } from 'lucide-vue-next'
 import { contentUrl, thumbnailUrl } from '../api/preview'
 import { useCurrentFolder } from '../composables/useCurrentFolder'
+import { usePrivacy } from '../composables/usePrivacy'
 import * as indexerApi from '../api/indexer'
 import * as playlistApi from '../api/playlist'
 import * as configApi from '../api/config'
 import * as fileApi from '../api/file'
+import * as folderApi from '../api/folder'
 import * as tagApi from '../api/tag'
+
+const RECYCLE_BIN_NAME = '_Recycle'
 
 const { t } = useI18n()
 const PAGE_SIZE = 50
@@ -390,9 +436,34 @@ const moveBrowsePath = ref('')
 const moveLoading = ref(false)
 const moveTargetFile = ref(null)
 
+// 新建文件夹 / 删除（回收站）
+const newFolderDialog = ref(null)
+const newFolderName = ref('')
+const deleteDialog = ref(null)
+const deleteTarget = ref(null)
+const { isPrivate, isUnlocked } = usePrivacy()
+
+// 当前浏览目录是否为回收站（回收站内禁止再次删除）
+const isInRecycleBin = computed(() => {
+  const p = currentFolder.value || ''
+  return p.split('/').filter(Boolean).pop() === RECYCLE_BIN_NAME
+})
+
 onMounted(async () => {
   const { data } = await configApi.getSources()
-  setSourceFolder(data.current)
+  let current = data.current
+  // 启动时若当前源为私密且未解锁，自动切换到首个非私密源
+  if (current && isPrivate(current) && !isUnlocked.value) {
+    const all = [data.current, ...(data.backups || [])]
+    const target = all.find(p => !isPrivate(p))
+    if (target && target !== current) {
+      try {
+        await configApi.switchSource(target)
+        current = target
+      } catch {}
+    }
+  }
+  setSourceFolder(current)
   if (sourceFolder.value) {
     // Load root folders for sidebar tree
     loadingFolders.value = true
@@ -700,6 +771,48 @@ async function doMove() {
     closePreview()
     refreshFiles()
   } catch { alert(t('common.error')) }
+}
+
+// 新建文件夹：在当前浏览目录下创建
+function openNewFolderDialog() {
+  newFolderName.value = ''
+  newFolderDialog.value?.showModal()
+}
+
+async function doCreateFolder() {
+  const name = newFolderName.value.trim()
+  if (!name) return
+  try {
+    await folderApi.createFolder(name, currentFolder.value || sourceFolder.value)
+    newFolderDialog.value?.close()
+    // 刷新根文件夹树与当前文件列表
+    try {
+      const { data } = await indexerApi.getFolders(sourceFolder.value, sourceFolder.value)
+      rootFolders.value = data
+    } catch {}
+    refreshFiles()
+  } catch { alert(t('common.error')) }
+}
+
+// 打开回收站（当前源文件夹根部的 _Recycle 目录）
+function openRecycleBin() {
+  navigateTo(`${sourceFolder.value}/${RECYCLE_BIN_NAME}`)
+}
+
+// 软删除：确认后移入回收站
+function confirmDelete(file) {
+  deleteTarget.value = file
+  deleteDialog.value?.show()
+}
+
+async function doDelete() {
+  if (!deleteTarget.value) return
+  try {
+    await fileApi.deleteFile(deleteTarget.value.uuid)
+    closePreview()
+    refreshFiles()
+  } catch { alert(t('common.error')) }
+  deleteTarget.value = null
 }
 </script>
 
