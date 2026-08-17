@@ -55,9 +55,6 @@ struct ReSourcerApp: App {
             .onReceive(NotificationCenter.default.publisher(for: .userDidLogout)) { _ in
                 handleLogout()
             }
-            .onReceive(NotificationCenter.default.publisher(for: .serverDidSwitch)) { notification in
-                handleServerSwitch(notification)
-            }
         }
     }
 
@@ -106,31 +103,6 @@ struct ReSourcerApp: App {
         }
     }
 
-    /// 处理服务器切换
-    private func handleServerSwitch(_ notification: Notification) {
-        guard let server = notification.object as? Server,
-              let newService = APIService.create(for: server) else {
-            return
-        }
-
-        withAnimation(AppTheme.Animation.standard) {
-            apiService = newService
-            selectedTab = .gallery
-        }
-
-        // 快速探测新服务器，不可达则弹切换对话框；仅检查 auth 失效时登出
-        Task {
-            await newService.probeConnectivity()
-
-            let status = await newService.checkConnection()
-            if status == .authError {
-                await MainActor.run {
-                    handleLogout()
-                    GlassAlertManager.shared.showError("认证失败", message: "API Key 已失效，请重新登录")
-                }
-            }
-        }
-    }
 }
 
 // MARK: - App Tab 枚举

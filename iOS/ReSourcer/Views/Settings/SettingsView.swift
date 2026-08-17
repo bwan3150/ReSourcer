@@ -978,7 +978,6 @@ private struct MarqueeText<S: ShapeStyle>: View {
 extension Notification.Name {
     static let userDidLogout = Notification.Name("userDidLogout")
     static let themeDidChange = Notification.Name("themeDidChange")
-    static let serverDidSwitch = Notification.Name("serverDidSwitch")
     static let sourceFolderDidChange = Notification.Name("sourceFolderDidChange")
     /// 当前活动地址已就地切换（同一 APIService 实例），通知各视图重载数据
     static let activeURLDidChange = Notification.Name("activeURLDidChange")
