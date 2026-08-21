@@ -9,6 +9,9 @@ import SwiftUI
 import PhotosUI
 import Photos
 import Combine
+import AVFoundation
+import UIKit
+import UniformTypeIdentifiers
 
 struct GalleryView: View {
 
@@ -71,9 +74,15 @@ struct GalleryView: View {
     @State private var showTagEditor = false
 
     // 上传相关
+    @State private var isUploadMenuExpanded = false            // 右下角上传按钮是否展开
     @State private var showPhotoPicker = false
+    @State private var showFileImporter = false
+    @State private var showCameraCapture = false
     @State private var showUploadConfirm = false
     @State private var pickerResults: [PHPickerResult] = []
+    @State private var capturedFileURL: URL?                   // 相机拍摄结果
+    @State private var uploadItems: [UploadItem] = []          // 本次待上传条目
+    @State private var uploadOrigin: UploadOrigin = .photoLibrary
     @State private var showUploadTaskList = false
 
     // MARK: - Body
@@ -128,21 +137,9 @@ struct GalleryView: View {
                     Spacer()
                 }
             }
-            // 右下角悬浮上传按钮
+            // 右下角悬浮上传按钮（展开后为三种上传来源）
             .overlay(alignment: .bottomTrailing) {
-                Button {
-                    requestPhotoAccessAndShowPicker()
-                } label: {
-                    Image(systemName: "icloud.and.arrow.up")
-                        .font(.system(size: 22, weight: .medium))
-                        .foregroundStyle(Color(.systemBackground))
-                        .frame(width: 56, height: 56)
-                        .background(Color.primary)
-                        .clipShape(Circle())
-                        .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
-                }
-                .padding(.trailing, AppTheme.Spacing.lg)
-                .padding(.bottom, 16)
+                uploadFloatingMenu
             }
             .navigationBarHidden(true)
             .navigationDestination(for: Int.self) { index in
@@ -273,26 +270,50 @@ struct GalleryView: View {
             }
             .ignoresSafeArea()
         }
+        // 系统文件选择器（从文件夹上传）
+        .fileImporter(
+            isPresented: $showFileImporter,
+            allowedContentTypes: [.item],
+            allowsMultipleSelection: true
+        ) { result in
+            handleFileImport(result)
+        }
+        // 相机拍摄（拍照 / 录像后上传）
+        .fullScreenCover(isPresented: $showCameraCapture) {
+            CameraCaptureWrapper(isPresented: $showCameraCapture) { url in
+                capturedFileURL = url
+            }
+            .ignoresSafeArea()
+        }
         // picker 关闭后延迟显示确认面板，避免时序问题
         // 注意：Swift 6 中 DispatchQueue.main.asyncAfter 不等同于 MainActor，修改 @State 会崩溃
         .onChange(of: showPhotoPicker) { _, isShowing in
-            if !isShowing && !pickerResults.isEmpty {
-                Task { @MainActor in
-                    try? await Task.sleep(for: .milliseconds(500))
-                    showUploadConfirm = true
-                }
+            guard !isShowing, !pickerResults.isEmpty else { return }
+            let items = pickerResults.compactMap(\.assetIdentifier).map { UploadItem.photoAsset(id: $0) }
+            pickerResults = []
+            guard !items.isEmpty else {
+                GlassAlertManager.shared.showError("上传失败", message: "无法访问所选照片")
+                return
             }
+            presentUploadConfirm(items: items, origin: .photoLibrary)
+        }
+        // 相机收起后带着拍摄结果进入上传确认
+        .onChange(of: showCameraCapture) { _, isShowing in
+            guard !isShowing, let url = capturedFileURL else { return }
+            capturedFileURL = nil
+            presentUploadConfirm(items: [UploadItem.file(url: url)], origin: .camera)
         }
         // 上传悬浮弹窗
         .overlay {
             if showUploadConfirm {
                 PhotoUploadFloatingView(
                     apiService: apiService,
-                    pickerResults: pickerResults,
+                    items: uploadItems,
+                    origin: uploadOrigin,
                     targetFolder: currentFolderPath,
                     onClose: {
                         showUploadConfirm = false
-                        pickerResults = []
+                        uploadItems = []
                         // 留在当前页面，延迟后刷新文件列表
                         Task { @MainActor in
                             try? await Task.sleep(for: .milliseconds(300))
@@ -570,6 +591,95 @@ struct GalleryView: View {
         }
     }
 
+    // MARK: - 上传悬浮按钮
+
+    /// 右下角上传按钮：收起时是单个按钮，展开后显示三种上传来源
+    private var uploadFloatingMenu: some View {
+        ZStack(alignment: .bottomTrailing) {
+            // 展开时的遮罩：点击空白处收起
+            if isUploadMenuExpanded {
+                Color.black.opacity(0.25)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture { collapseUploadMenu() }
+                    .transition(.opacity)
+            }
+
+            VStack(alignment: .trailing, spacing: AppTheme.Spacing.md) {
+                if isUploadMenuExpanded {
+                    uploadMenuItem(title: "从图库上传", icon: "photo.on.rectangle") {
+                        collapseUploadMenu()
+                        requestPhotoAccessAndShowPicker()
+                    }
+
+                    uploadMenuItem(title: "从文件夹上传", icon: "folder") {
+                        collapseUploadMenu()
+                        showFileImporter = true
+                    }
+
+                    uploadMenuItem(title: "拍照上传", icon: "camera") {
+                        collapseUploadMenu()
+                        requestCameraAccessAndCapture()
+                    }
+                }
+
+                // 主按钮：展开 / 收起
+                Button {
+                    withAnimation(AppTheme.Animation.spring) {
+                        isUploadMenuExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: isUploadMenuExpanded ? "xmark" : "icloud.and.arrow.up")
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundStyle(Color(.systemBackground))
+                        .frame(width: 56, height: 56)
+                        .background(Color.primary)
+                        .clipShape(Circle())
+                        .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
+                }
+            }
+            .padding(.trailing, AppTheme.Spacing.lg)
+            .padding(.bottom, 16)
+        }
+    }
+
+    /// 展开后的单个上传来源按钮：文字胶囊 + 圆形图标
+    private func uploadMenuItem(
+        title: String,
+        icon: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, AppTheme.Spacing.md)
+                    .padding(.vertical, AppTheme.Spacing.sm)
+                    .glassBackground(in: Capsule())
+
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(Color(.systemBackground))
+                    .frame(width: 44, height: 44)
+                    .background(Color.primary)
+                    .clipShape(Circle())
+                    .shadow(color: .black.opacity(0.2), radius: 6, x: 0, y: 3)
+            }
+        }
+        .buttonStyle(.plain)
+        .transition(.move(edge: .trailing).combined(with: .opacity))
+    }
+
+    private func collapseUploadMenu() {
+        withAnimation(AppTheme.Animation.spring) {
+            isUploadMenuExpanded = false
+        }
+    }
+
     // MARK: - Folder Dropdown
 
     private var folderDropdown: some View {
@@ -636,7 +746,7 @@ struct GalleryView: View {
                     Spacer()
                 }
                 .padding(.vertical, AppTheme.Spacing.lg)
-            } else if dropdownSubfolders.isEmpty {
+            } else if dropdownSubfolders.isEmpty && !showsRecycleBinEntry {
                 Spacer().frame(height: AppTheme.Spacing.lg)
             } else {
                 ScrollView {
@@ -687,6 +797,11 @@ struct GalleryView: View {
                             .padding(.horizontal, AppTheme.Spacing.md)
                             .padding(.vertical, AppTheme.Spacing.sm)
                         }
+
+                        // 回收站：固定排在源文件夹列表最末尾，代替被隐藏的真实 _Recycle 目录
+                        if showsRecycleBinEntry {
+                            recycleBinRow
+                        }
                     }
                 }
                 .frame(maxHeight: 400)
@@ -697,6 +812,7 @@ struct GalleryView: View {
                 ViewThatFits(in: .horizontal) {
                     dropdownActionButtons(font: .subheadline)
                     dropdownActionButtons(font: .caption)
+                    dropdownActionButtons(font: .caption2)
                 }
                 Spacer(minLength: 0)
             }
@@ -879,7 +995,8 @@ struct GalleryView: View {
         isLoadingDropdown = true
         do {
             dropdownSubfolders = try await apiService.preview.getIndexedFolders(
-                parentPath: path, sourceFolder: sourceFolder)
+                parentPath: path, sourceFolder: sourceFolder
+            ).filter { !$0.isRecycleBin }
         } catch {
             dropdownSubfolders = []
         }
@@ -925,6 +1042,54 @@ struct GalleryView: View {
         }
     }
 
+    /// 回收站完整路径（源文件夹下的软删除目录）
+    private var recycleBinPath: String {
+        (sourceFolder as NSString).appendingPathComponent(IndexedFolder.recycleBinName)
+    }
+
+    /// 是否展示回收站列表项：回收站挂在源文件夹下，只在这一层展示
+    private var showsRecycleBinEntry: Bool {
+        !sourceFolder.isEmpty && (dropdownBrowsingPath.isEmpty || dropdownBrowsingPath == sourceFolder)
+    }
+
+    /// 回收站列表项：固定排在源文件夹列表末尾，点击后画廊导航到回收站
+    private var recycleBinRow: some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.2)) {
+                isDropdownOpen = false
+            }
+            Task { await navigateWithHistory(path: recycleBinPath) }
+        } label: {
+            HStack(spacing: AppTheme.Spacing.md) {
+                Image(systemName: "trash.fill")
+                    .font(.title3)
+                    .foregroundStyle(.red)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("回收站")
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    Text("已删除的文件")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "arrow.right.circle")
+                    .font(.title3)
+                    .foregroundStyle(.blue)
+                    .frame(width: 44, height: 44)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, AppTheme.Spacing.md)
+        .padding(.vertical, AppTheme.Spacing.sm)
+    }
+
     /// 下拉菜单底部操作按钮行（统一字号）
     @ViewBuilder
     private func dropdownActionButtons(font: Font) -> some View {
@@ -943,6 +1108,8 @@ struct GalleryView: View {
                     Text("源文件夹")
                         .font(font)
                         .fontWeight(.semibold)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 12)
@@ -960,6 +1127,8 @@ struct GalleryView: View {
                     Text("添加")
                         .font(font)
                         .fontWeight(.semibold)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 12)
@@ -976,28 +1145,8 @@ struct GalleryView: View {
                     Text("排序")
                         .font(font)
                         .fontWeight(.semibold)
-                }
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-            }
-            .buttonStyle(.plain)
-
-            // 回收站：导航到当前源文件夹下的回收站目录
-            Button {
-                withAnimation(.easeOut(duration: 0.2)) {
-                    isDropdownOpen = false
-                }
-                let recyclePath = (sourceFolder as NSString).appendingPathComponent("_Recycle")
-                Task { await navigateWithHistory(path: recyclePath) }
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "trash")
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                    Text("回收站")
-                        .font(font)
-                        .fontWeight(.semibold)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 12)
@@ -1018,7 +1167,8 @@ struct GalleryView: View {
         // 加载子文件夹
         do {
             subfolders = try await apiService.preview.getIndexedFolders(
-                parentPath: path, sourceFolder: sourceFolder)
+                parentPath: path, sourceFolder: sourceFolder
+            ).filter { !$0.isRecycleBin }
         } catch {
             subfolders = []
         }
@@ -1111,7 +1261,12 @@ struct GalleryView: View {
         }
 
         // 等待子文件夹和面包屑
-        do { subfolders = try await foldersTask } catch { subfolders = [] }
+        do {
+            let folders = try await foldersTask
+            subfolders = folders.filter { !$0.isRecycleBin }
+        } catch {
+            subfolders = []
+        }
         do { breadcrumb = try await breadcrumbTask } catch {
             breadcrumb = [BreadcrumbItem(name: sourceFolderDisplayName, path: sourceFolder)]
         }
@@ -1126,6 +1281,53 @@ struct GalleryView: View {
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(500))
             GlassAlertManager.shared.hideQuickLoading()
+        }
+    }
+
+    /// 选择完成后延迟弹出上传确认弹窗（等 picker 完全收起，避免时序问题）
+    private func presentUploadConfirm(items: [UploadItem], origin: UploadOrigin) {
+        uploadItems = items
+        uploadOrigin = origin
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(500))
+            showUploadConfirm = true
+        }
+    }
+
+    /// 处理系统文件选择结果（从文件夹上传）
+    private func handleFileImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard !urls.isEmpty else { return }
+            presentUploadConfirm(items: urls.map { UploadItem.file(url: $0) }, origin: .files)
+        case .failure(let error):
+            GlassAlertManager.shared.showError("选择文件失败", message: error.localizedDescription)
+        }
+    }
+
+    /// 检查并请求相机权限，然后调起拍摄
+    private func requestCameraAccessAndCapture() {
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            GlassAlertManager.shared.showWarning("无法拍摄", message: "当前设备没有可用的相机")
+            return
+        }
+
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            showCameraCapture = true
+        case .notDetermined:
+            Task {
+                let granted = await AVCaptureDevice.requestAccess(for: .video)
+                await MainActor.run {
+                    if granted {
+                        showCameraCapture = true
+                    } else {
+                        GlassAlertManager.shared.showWarning("需要相机权限", message: "请在设置中允许访问相机")
+                    }
+                }
+            }
+        default:
+            GlassAlertManager.shared.showWarning("需要相机权限", message: "请在设置中允许访问相机")
         }
     }
 
@@ -1451,7 +1653,8 @@ struct MoveSheetView: View {
         do {
             let result = try await apiService.preview.getIndexedFolders(
                 parentPath: path, sourceFolder: sourceFolder)
-            subfolders = result
+            // 回收站不作为移动目标展示
+            subfolders = result.filter { !$0.isRecycleBin }
         } catch {
             subfolders = []
         }

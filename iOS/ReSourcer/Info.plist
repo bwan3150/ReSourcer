@@ -3,7 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>NSCameraUsageDescription</key>
-	<string>需要访问相机以扫描服务器二维码</string>
+	<string>需要访问相机以扫描服务器二维码、拍照或录像后上传</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>需要访问麦克风以在录像时录制声音</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>需要访问相册以选择照片和视频上传到服务器</string>
 	<key>NSAppTransportSecurity</key>
