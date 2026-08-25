@@ -98,6 +98,14 @@ struct IndexedFolder: Identifiable, Codable, Equatable {
 }
 
 extension IndexedFolder {
+
+    /// 服务端软删除使用的回收站目录名
+    /// 客户端不直接展示该目录，而是用列表末尾固定的「回收站」入口代替
+    static let recycleBinName = "_Recycle"
+
+    /// 是否为回收站目录
+    var isRecycleBin: Bool { name == IndexedFolder.recycleBinName }
+
     /// 内容描述：文件数 + 子文件夹数
     var contentDescription: String {
         let parts: [String?] = [

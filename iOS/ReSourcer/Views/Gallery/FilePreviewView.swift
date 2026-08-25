@@ -132,7 +132,7 @@ struct FilePreviewView: View {
 
     /// 当前是否位于回收站中（回收站内禁止再次删除，仅允许移出/还原）
     private var isInRecycleBin: Bool {
-        let recycleBinName = "_Recycle"
+        let recycleBinName = IndexedFolder.recycleBinName
         if (folderPath as NSString).lastPathComponent == recycleBinName { return true }
         if let file = currentFile {
             let parent = (file.path as NSString).deletingLastPathComponent

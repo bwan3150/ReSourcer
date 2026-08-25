@@ -2,13 +2,15 @@
 //  PhotoUploadView.swift
 //  ReSourcer
 //
-//  从手机相册选择照片/视频上传到服务器，支持上传后删除本地照片
+//  上传入口的三种来源：手机图库 / 系统文件 / 相机拍摄，统一由悬浮弹窗完成上传
 //  Photos 框架操作通过 ObjC PhotoExporter 执行，避免 Swift 6 的线程断言崩溃
 //
 
 import SwiftUI
 import PhotosUI
 import Photos
+import UIKit
+import UniformTypeIdentifiers
 
 // MARK: - PHPicker SwiftUI 包装器
 
@@ -52,32 +54,201 @@ struct PHPickerWrapper: UIViewControllerRepresentable {
     }
 }
 
+// MARK: - 相机拍摄包装器
+
+/// 包装 UIImagePickerController，调起系统相机拍照 / 录像
+/// 拍摄结果先落到临时目录，再交给上传弹窗处理
+struct CameraCaptureWrapper: UIViewControllerRepresentable {
+
+    @Binding var isPresented: Bool
+    /// 拍摄完成回调，参数为临时文件 URL
+    let onCaptured: (URL) -> Void
+
+    func makeUIViewController(context: Context) -> UIViewController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.mediaTypes = [UTType.image.identifier, UTType.movie.identifier]
+        picker.videoQuality = .typeHigh
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: CameraCaptureWrapper
+
+        init(parent: CameraCaptureWrapper) {
+            self.parent = parent
+        }
+
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+        ) {
+            // 先回传结果再收起，确保 onChange 时结果已就绪
+            if let movieURL = info[.mediaURL] as? URL {
+                if let dest = Self.moveToTemporary(movieURL) {
+                    parent.onCaptured(dest)
+                }
+            } else if let image = info[.originalImage] as? UIImage,
+                      let data = image.jpegData(compressionQuality: 0.95),
+                      let dest = Self.writeToTemporary(data: data, ext: "jpg") {
+                parent.onCaptured(dest)
+            }
+            parent.isPresented = false
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.isPresented = false
+        }
+
+        /// 拍摄时间戳文件名前缀
+        private static func timestamp() -> String {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyyMMdd_HHmmss"
+            return formatter.string(from: Date())
+        }
+
+        /// 把录像文件搬到自己的临时目录（系统给的路径随时可能被清理）
+        static func moveToTemporary(_ url: URL) -> URL? {
+            let ext = url.pathExtension.isEmpty ? "mov" : url.pathExtension
+            let dest = FileManager.default.temporaryDirectory
+                .appendingPathComponent("VID_\(timestamp()).\(ext)")
+            do {
+                if FileManager.default.fileExists(atPath: dest.path) {
+                    try FileManager.default.removeItem(at: dest)
+                }
+                try FileManager.default.moveItem(at: url, to: dest)
+                return dest
+            } catch {
+                return nil
+            }
+        }
+
+        /// 把照片数据写入临时目录
+        static func writeToTemporary(data: Data, ext: String) -> URL? {
+            let dest = FileManager.default.temporaryDirectory
+                .appendingPathComponent("IMG_\(timestamp()).\(ext)")
+            do {
+                try data.write(to: dest)
+                return dest
+            } catch {
+                return nil
+            }
+        }
+    }
+}
+
+// MARK: - 上传条目与来源
+
+/// 待上传条目
+enum UploadItem: Identifiable, Equatable {
+    /// 相册资源（上传后可从相册删除）
+    case photoAsset(id: String)
+    /// 本地文件（系统文件 App 选中的原文件，或相机拍摄的临时文件）
+    case file(url: URL)
+
+    var id: String {
+        switch self {
+        case .photoAsset(let id): return "asset:\(id)"
+        case .file(let url): return "file:\(url.path)"
+        }
+    }
+}
+
+/// 上传来源：决定弹窗文案与「上传后删除」的语义
+enum UploadOrigin: Equatable {
+    /// 手机图库多选
+    case photoLibrary
+    /// 系统文件夹多选
+    case files
+    /// 相机拍摄（临时文件，上传成功后自动清理）
+    case camera
+
+    /// 「上传后删除」开关标题，nil 表示不显示开关
+    var deleteToggleTitle: String? {
+        switch self {
+        case .photoLibrary: return "上传后删除本地照片"
+        case .files: return "上传后删除原文件"
+        case .camera: return nil
+        }
+    }
+
+    /// 开关默认值：图库沿用原有的默认勾选，文件默认不删
+    var deleteDefaultsOn: Bool {
+        switch self {
+        case .photoLibrary: return true
+        case .files, .camera: return false
+        }
+    }
+
+    /// 部分失败时询问删除的文案
+    var deletePromptMessage: String {
+        switch self {
+        case .photoLibrary: return "个文件已成功上传到服务器，是否从手机相册删除它们？"
+        case .files, .camera: return "个文件已成功上传到服务器，是否删除本机上的原文件？"
+        }
+    }
+
+    /// 删除完成后的结果文案
+    var deletedResultNoun: String {
+        switch self {
+        case .photoLibrary: return "已从相册删除"
+        case .files, .camera: return "已删除本地原文件"
+        }
+    }
+}
+
 // MARK: - 上传悬浮弹窗
 
-/// 照片上传悬浮弹窗
+/// 上传悬浮弹窗
 /// - 悬浮居中弹窗（非底部抽屉）
-/// - 上传中禁止收起弹窗、禁止改动「上传后删除」开关，仅允许取消上传
+/// - 只能通过「取消 / 完成」按钮收起，点击弹窗外侧不会关闭
+/// - 上传中禁止改动「上传后删除」开关，仅允许取消上传
 /// - 上传后删除仅在上传前决定；取消 / 部分失败结束时若曾勾选删除，则弹窗询问是否删除已上传的文件
 struct PhotoUploadFloatingView: View {
 
     let apiService: APIService
-    let pickerResults: [PHPickerResult]
+    /// 待上传条目
+    let items: [UploadItem]
+    /// 上传来源
+    let origin: UploadOrigin
     let targetFolder: String
     /// 弹窗关闭回调（负责清理选择结果并刷新列表）
     let onClose: () -> Void
 
+    init(
+        apiService: APIService,
+        items: [UploadItem],
+        origin: UploadOrigin,
+        targetFolder: String,
+        onClose: @escaping () -> Void
+    ) {
+        self.apiService = apiService
+        self.items = items
+        self.origin = origin
+        self.targetFolder = targetFolder
+        self.onClose = onClose
+        _deleteAfterUpload = State(initialValue: origin.deleteDefaultsOn)
+    }
+
     /// 上传流程阶段
     private enum Phase {
         case idle       // 上传前（可编辑开关、可取消/开始）
-        case uploading  // 上传中（锁定开关、仅允许取消上传、禁止收起）
+        case uploading  // 上传中（锁定开关、仅允许取消上传）
         case finished   // 已结束（可关闭）
     }
 
     @State private var phase: Phase = .idle
-    @State private var deleteAfterUpload = true
+    @State private var deleteAfterUpload: Bool
     @State private var currentProgress = 0
-    /// 已成功上传的 assetId（用于结束后按需删除本地）
-    @State private var uploadedAssetIds: [String] = []
+    /// 已成功上传的条目（用于结束后按需删除本地）
+    @State private var uploadedItems: [UploadItem] = []
     @State private var failedCount = 0
     @State private var cancelRequested = false
     @State private var resultText = ""
@@ -89,20 +260,17 @@ struct PhotoUploadFloatingView: View {
         targetFolder.components(separatedBy: "/").last ?? "源文件夹"
     }
 
-    private var totalCount: Int { pickerResults.count }
+    private var totalCount: Int { items.count }
 
     // MARK: - Body
 
     var body: some View {
         ZStack {
-            // 背景遮罩：上传中禁止点击收起
+            // 背景遮罩：只吞掉点击，不再作为收起弹窗的手段（仅「取消 / 完成」可收起）
             Color.black.opacity(isVisible ? 0.5 : 0)
                 .ignoresSafeArea()
-                .onTapGesture {
-                    if phase != .uploading {
-                        close()
-                    }
-                }
+                .contentShape(Rectangle())
+                .onTapGesture {}
 
             card
                 .padding(AppTheme.Spacing.xxl)
@@ -154,7 +322,7 @@ struct PhotoUploadFloatingView: View {
                 }
             }
 
-            // 删除开关（仅上传前可改动）
+            // 删除开关（仅上传前可改动；相机拍摄无此开关）
             deleteToggle
 
             // 操作按钮
@@ -166,27 +334,31 @@ struct PhotoUploadFloatingView: View {
 
     @ViewBuilder
     private var deleteToggle: some View {
-        let locked = phase != .idle
-        Button {
-            guard !locked else { return }
-            deleteAfterUpload.toggle()
-        } label: {
-            HStack(spacing: AppTheme.Spacing.sm) {
-                Image(systemName: deleteAfterUpload ? "checkmark.square.fill" : "square")
-                    .font(.system(size: 20))
-                Text("上传后删除本地照片")
-                    .font(.subheadline)
-                Spacer()
-                if locked {
-                    Image(systemName: "lock.fill")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+        if let toggleTitle = origin.deleteToggleTitle {
+            let locked = phase != .idle
+            Button {
+                guard !locked else { return }
+                deleteAfterUpload.toggle()
+            } label: {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Image(systemName: deleteAfterUpload ? "checkmark.square.fill" : "square")
+                        .font(.system(size: 20))
+                    Text(toggleTitle)
+                        .font(.subheadline)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Spacer()
+                    if locked {
+                        Image(systemName: "lock.fill")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
                 }
+                .foregroundStyle(locked ? .secondary : .primary)
             }
-            .foregroundStyle(locked ? .secondary : .primary)
+            .buttonStyle(.plain)
+            .disabled(locked)
         }
-        .buttonStyle(.plain)
-        .disabled(locked)
     }
 
     // MARK: - 按钮区
@@ -226,7 +398,12 @@ struct PhotoUploadFloatingView: View {
 
     private var phaseIcon: String {
         switch phase {
-        case .idle: return "square.and.arrow.up.on.square"
+        case .idle:
+            switch origin {
+            case .photoLibrary: return "square.and.arrow.up.on.square"
+            case .files: return "folder.badge.plus"
+            case .camera: return "camera.fill"
+            }
         case .uploading: return "arrow.up.circle"
         case .finished: return failedCount > 0 ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
         }
@@ -251,6 +428,11 @@ struct PhotoUploadFloatingView: View {
     // MARK: - 关闭
 
     private func close() {
+        // 相机拍摄且尚未开始上传就取消：顺手清掉临时文件
+        if origin == .camera && phase == .idle {
+            removeLocalFiles(for: items)
+        }
+
         withAnimation(AppTheme.Animation.quick) {
             isVisible = false
         }
@@ -264,17 +446,16 @@ struct PhotoUploadFloatingView: View {
     private func startUpload() async {
         phase = .uploading
         currentProgress = 0
-        uploadedAssetIds = []
+        uploadedItems = []
         failedCount = 0
         cancelRequested = false
 
-        // 收集所有 assetIdentifier
-        let assetIds = pickerResults.compactMap(\.assetIdentifier)
+        let pending = items
         let folder = targetFolder
 
-        guard !assetIds.isEmpty else {
+        guard !pending.isEmpty else {
             phase = .idle
-            GlassAlertManager.shared.showError("上传失败", message: "无法访问所选照片")
+            GlassAlertManager.shared.showError("上传失败", message: "没有可上传的文件")
             return
         }
 
@@ -285,15 +466,14 @@ struct PhotoUploadFloatingView: View {
         var cancelled = false
 
         // 逐个处理
-        for (i, assetId) in assetIds.enumerated() {
+        for (i, item) in pending.enumerated() {
             // 取消：在开始下一个文件前中断（进行中的文件会先完成）
             if Task.isCancelled {
                 cancelled = true
                 break
             }
             do {
-                // 通过 ObjC PhotoExporter 导出文件（避免 Swift 6 线程断言）
-                let pendingFile = try await exportViaObjC(assetId: assetId)
+                let pendingFile = try await exportFile(for: item)
 
                 if chunkThreshold > 0 && pendingFile.data.count > chunkThreshold {
                     // 大文件：分片上传（服务端合并）
@@ -307,7 +487,7 @@ struct PhotoUploadFloatingView: View {
                     // 小文件：原有直传
                     _ = try await apiService.upload.uploadFiles([pendingFile], to: folder)
                 }
-                uploadedAssetIds.append(assetId)
+                uploadedItems.append(item)
             } catch {
                 // 取消导致的中断不计入失败
                 if Task.isCancelled {
@@ -321,14 +501,14 @@ struct PhotoUploadFloatingView: View {
             currentProgress = i + 1
         }
 
-        await finishUpload(total: assetIds.count, cancelled: cancelled)
+        await finishUpload(total: pending.count, cancelled: cancelled)
     }
 
     // MARK: - 结束处理
 
     private func finishUpload(total: Int, cancelled: Bool) async {
         phase = .finished
-        let ok = uploadedAssetIds.count
+        let ok = uploadedItems.count
 
         // 结果文案
         if cancelled {
@@ -339,27 +519,33 @@ struct PhotoUploadFloatingView: View {
             resultText = "全部 \(ok) 个文件上传成功"
         }
 
+        // 相机拍摄产生的临时文件：上传成功后即清理，不再询问
+        if origin == .camera {
+            removeLocalFiles(for: uploadedItems)
+            return
+        }
+
         // 删除逻辑
-        guard deleteAfterUpload && !uploadedAssetIds.isEmpty else { return }
+        guard deleteAfterUpload && !uploadedItems.isEmpty else { return }
 
         if cancelled || failedCount > 0 {
             // 取消 / 部分失败：询问是否删除已成功上传的文件
             promptDeleteUploaded()
         } else {
             // 全部成功：按上传前的选择直接删除本地
-            await deleteLocalPhotos(assetIds: uploadedAssetIds)
-            resultText = "全部上传成功，已从相册删除 \(ok) 个"
+            await deleteLocalCopies(of: uploadedItems)
+            resultText = "全部上传成功，\(origin.deletedResultNoun) \(ok) 个"
         }
     }
 
     /// 弹出删除确认（复用全局命令式确认弹窗）
     private func promptDeleteUploaded() {
-        let ids = uploadedAssetIds
-        let count = ids.count
+        let done = uploadedItems
+        let count = done.count
         GlassConfirmManager.shared.show(
             config: GlassConfirmConfig(
                 title: "删除已上传的文件？",
-                message: "有 \(count) 个文件已成功上传到服务器，是否从手机相册删除它们？",
+                message: "有 \(count) \(origin.deletePromptMessage)",
                 icon: "trash.fill",
                 iconColor: .red,
                 confirmTitle: "删除",
@@ -368,14 +554,40 @@ struct PhotoUploadFloatingView: View {
             ),
             onConfirm: {
                 Task { @MainActor in
-                    await deleteLocalPhotos(assetIds: ids)
-                    resultText = "已从相册删除 \(count) 个已上传文件"
+                    await deleteLocalCopies(of: done)
+                    resultText = "\(origin.deletedResultNoun) \(count) 个已上传文件"
                 }
             }
         )
     }
 
-    // MARK: - ObjC 桥接导出
+    // MARK: - 导出待上传文件
+
+    /// 把条目导出为待上传文件
+    private func exportFile(for item: UploadItem) async throws -> PendingUploadFile {
+        switch item {
+        case .photoAsset(let assetId):
+            return try await exportViaObjC(assetId: assetId)
+        case .file(let url):
+            return try await exportLocalFile(at: url)
+        }
+    }
+
+    /// 读取本地文件（文件 App 选中的 URL 需要安全作用域）
+    /// 读盘放到后台，避免大文件卡住主线程
+    private func exportLocalFile(at url: URL) async throws -> PendingUploadFile {
+        let data = try await Task.detached(priority: .userInitiated) {
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            return try Data(contentsOf: url)
+        }.value
+
+        return PendingUploadFile(
+            fileName: url.lastPathComponent,
+            data: data,
+            mimeType: PendingUploadFile.mimeType(for: url.pathExtension)
+        )
+    }
 
     /// 通过 Objective-C PhotoExporter 导出 asset（绕过 Swift 6 线程限制）
     private func exportViaObjC(assetId: String) async throws -> PendingUploadFile {
@@ -403,7 +615,23 @@ struct PhotoUploadFloatingView: View {
         }
     }
 
-    // MARK: - 删除本地照片
+    // MARK: - 删除本地副本
+
+    /// 按条目类型分别删除：相册资源走 Photos，本地文件走 FileManager
+    private func deleteLocalCopies(of done: [UploadItem]) async {
+        var assetIds: [String] = []
+        var fileItems: [UploadItem] = []
+
+        for item in done {
+            switch item {
+            case .photoAsset(let id): assetIds.append(id)
+            case .file: fileItems.append(item)
+            }
+        }
+
+        removeLocalFiles(for: fileItems)
+        await deleteLocalPhotos(assetIds: assetIds)
+    }
 
     private func deleteLocalPhotos(assetIds: [String]) async {
         guard !assetIds.isEmpty else { return }
@@ -412,6 +640,15 @@ struct PhotoUploadFloatingView: View {
             PhotoExporter.deleteAssets(withIdentifiers: assetIds) { _, _ in
                 continuation.resume()
             }
+        }
+    }
+
+    /// 删除本机文件（部分来源为只读，删除失败时静默跳过）
+    private func removeLocalFiles(for fileItems: [UploadItem]) {
+        for case .file(let url) in fileItems {
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            try? FileManager.default.removeItem(at: url)
         }
     }
 }
