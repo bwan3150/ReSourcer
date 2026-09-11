@@ -53,7 +53,12 @@ ratchet() {
 # ══ 编译 ══════════════════════════════════════════════
 check "server-check"  "cargo check --manifest-path server/Cargo.toml --quiet"
 check "server-test"   "cargo test  --manifest-path server/Cargo.toml --quiet"
-[ -d web/node_modules ] && check "web-build" "cd web && npm run build"
+if [ -d web/node_modules ]; then
+  check "web-build" "cd web && npm run build"
+else
+  printf '── %-20s FAIL  (web/node_modules 缺失，先跑 .ai/preflight.sh)\n' "web-build"
+  FAILED=1
+fi
 
 # ══ 架构约束（project.md 的硬化）══════════════════════
 # web 的 HTTP 请求必须走 api/ 层（棘轮：存量豁免，新增拦死）
