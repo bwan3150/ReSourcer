@@ -9,6 +9,11 @@ INSTALL_DIR="/opt/re-sourcer"
 SERVICE_NAME="re-sourcer"
 S3_BASE="https://resourcer-assets.s3.ap-southeast-2.amazonaws.com/binaries"
 
+# 持久化数据目录（sqlite/config/backups），由 resolve_data_dir() 在 main() 里填充。
+# 必须与 INSTALL_DIR 分开：INSTALL_DIR 是程序目录，NAS 系统更新可能整体清空重装；
+# DATA_DIR 必须指向一个不会被这种更新清空的位置（比如群晖/QNAP 的持久化卷）。
+DATA_DIR=""
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -43,6 +48,39 @@ check_deps() {
     for cmd in curl; do
         command -v "$cmd" >/dev/null 2>&1 || error "$cmd is required"
     done
+}
+
+# 解析持久化数据目录：
+#   1. 环境变量 RESOURCER_DATA_DIR（非交互场景，例如脚本化部署）
+#   2. 交互式询问（脚本可能是 curl | sudo bash 起的，标准输入被脚本占用，得从 /dev/tty 读），
+#      必须显式输入一个 INSTALL_DIR 之外的路径，不提供安全的“默认值”
+#   3. 都拿不到，或拿到的路径仍在 INSTALL_DIR 内 → 直接装不上（exit 1），
+#      宁可装不上，也不要静默装成一个会被 NAS 系统更新清空的配置
+resolve_data_dir() {
+    if [ -n "${RESOURCER_DATA_DIR:-}" ]; then
+        DATA_DIR="$RESOURCER_DATA_DIR"
+        if [ "$DATA_DIR" = "$INSTALL_DIR" ] || [[ "$DATA_DIR" == "$INSTALL_DIR"/* ]]; then
+            warn "RESOURCER_DATA_DIR (${DATA_DIR}) is inside ${INSTALL_DIR} — a NAS OS update can still wipe your data."
+        fi
+        info "Persistent data dir (from env): ${DATA_DIR}"
+        return
+    fi
+
+    if [ -r /dev/tty ]; then
+        local input=""
+        echo ""
+        info "Where should ReSourcer keep its persistent data (database, config, backups)?"
+        info "This must be OUTSIDE ${INSTALL_DIR} — NAS system updates can wipe that directory."
+        info "Example (Synology): /volume1/docker/re-sourcer   Example (QNAP): /share/re-sourcer-data"
+        read -r -p "Data directory (required): " input < /dev/tty || true
+        if [ -n "$input" ] && [ "$input" != "$INSTALL_DIR" ] && [[ "$input" != "$INSTALL_DIR"/* ]]; then
+            DATA_DIR="$input"
+            return
+        fi
+        error "A persistent data directory outside ${INSTALL_DIR} is required. Re-run and provide one (e.g. /volume1/docker/re-sourcer)."
+    fi
+
+    error "Non-interactive install and RESOURCER_DATA_DIR is not set. Re-run with RESOURCER_DATA_DIR=/your/persistent/path (e.g. /volume1/docker/re-sourcer on Synology, /share/re-sourcer-data on QNAP)."
 }
 
 # 获取最新版本号
@@ -113,16 +151,18 @@ download_tools() {
 # 创建目录结构
 create_dirs() {
     info "Creating directory structure..."
-    mkdir -p "${INSTALL_DIR}/config"
     mkdir -p "${INSTALL_DIR}/tools"
-    mkdir -p "${INSTALL_DIR}/sqlite"
     mkdir -p "${INSTALL_DIR}/tmp"
+    # config/、sqlite/、backups/ 由程序自己在 DATA_DIR 下创建（含迁移逻辑），这里只是先建好挂载点
+    mkdir -p "${DATA_DIR}"
 
-    info "  ${INSTALL_DIR}/"
+    info "  ${INSTALL_DIR}/           # program (safe to wipe/reinstall)"
     info "  ├── re-sourcer           # server binary"
-    info "  ├── config/              # app.json, secret.json, tools.json"
-    info "  ├── tools/               # ffmpeg, ffprobe, yt-dlp"
-    info "  └── sqlite/              # data.db (auto-created)"
+    info "  └── tools/               # ffmpeg, ffprobe, yt-dlp"
+    info "  ${DATA_DIR}/              # persistent data"
+    info "  ├── config/              # app.json, secret.json, tools.json (auto-created)"
+    info "  ├── sqlite/              # data.db (auto-created)"
+    info "  └── backups/             # periodic data.db snapshots (auto-created)"
 }
 
 # 安装 systemd 服务
@@ -147,6 +187,9 @@ WorkingDirectory=${INSTALL_DIR}
 # Many NAS systems mount /tmp with noexec, which blocks .so loading.
 # Point TMPDIR to a writable+exec directory instead.
 Environment=TMPDIR=${INSTALL_DIR}/tmp
+# RESOURCER_DATA_DIR: sqlite/config/backups live here, kept outside INSTALL_DIR
+# so a NAS OS update (which can wipe INSTALL_DIR) never touches your data.
+Environment=RESOURCER_DATA_DIR=${DATA_DIR}
 Restart=always
 RestartSec=3
 
@@ -163,7 +206,7 @@ EOF
 
 # 显示 API Key
 show_api_key() {
-    local secret_file="${INSTALL_DIR}/config/secret.json"
+    local secret_file="${DATA_DIR}/config/secret.json"
     if [ -f "$secret_file" ]; then
         local key=$(grep -o '"apikey":"[^"]*"' "$secret_file" | cut -d'"' -f4)
         if [ -n "$key" ]; then
@@ -171,7 +214,7 @@ show_api_key() {
         fi
     else
         info "API Key will be auto-generated on first start"
-        info "Check: cat ${INSTALL_DIR}/config/secret.json"
+        info "Check: cat ${secret_file}"
     fi
 }
 
@@ -197,6 +240,7 @@ main() {
     fi
 
     check_deps
+    resolve_data_dir
 
     # 如果已安装，提示更新
     if [ -f "${INSTALL_DIR}/re-sourcer" ]; then

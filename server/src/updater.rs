@@ -161,7 +161,7 @@ pub async fn do_update() -> Result<HttpResponse> {
     if let Some(data) = crate::static_files::read_config_file("app.json") {
         if let Ok(mut config) = serde_json::from_slice::<serde_json::Value>(&data) {
             config["version"] = serde_json::Value::String(latest_version.clone());
-            let app_json_path = crate::static_files::app_dir().join("config").join("app.json");
+            let app_json_path = crate::static_files::data_dir().join("config").join("app.json");
             let _ = std::fs::write(&app_json_path, serde_json::to_string_pretty(&config).unwrap());
         }
     }

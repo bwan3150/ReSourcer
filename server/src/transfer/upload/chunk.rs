@@ -180,7 +180,7 @@ pub async fn update_upload_policy(
         })));
     }
 
-    let app_json_path = crate::static_files::app_dir()
+    let app_json_path = crate::static_files::data_dir()
         .join("config")
         .join("app.json");
 

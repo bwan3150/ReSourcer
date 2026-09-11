@@ -1,11 +1,30 @@
 # 数据库设计与索引机制
 
-ReSourcer 使用 SQLite（WAL 模式）作为本地数据库，文件位于 `<app_dir>/sqlite/data.db`。
+ReSourcer 使用 SQLite（WAL 模式）作为本地数据库，文件位于 `<data_dir>/sqlite/data.db`。
 
-`app_dir` 按优先级确定：
-1. 环境变量 `RESOURCER_DIR`（开发环境）
-2. 可执行文件目录（如果含 `config/` 子目录，部署环境）
-3. 当前工作目录（兜底）
+## 数据目录 vs 程序目录
+
+`app_dir`（程序安装目录）和 `data_dir`（持久化数据目录）是分开的两个概念：
+程序可以随时被覆盖重装（比如 NAS 系统更新会清空 `/opt`），但数据不能跟着丢。
+
+- `app_dir` 按优先级确定：
+  1. 环境变量 `RESOURCER_DIR`（开发环境）
+  2. 可执行文件目录（如果含 `config/` 子目录，部署环境）
+  3. 当前工作目录（兜底）
+- `data_dir` 按优先级确定：
+  1. 环境变量 `RESOURCER_DATA_DIR`（部署时指定持久化卷，如群晖 `/volume1/...`、QNAP `/share/...`）
+  2. 回退到 `app_dir()`（不设置该变量时，行为与旧版完全一致）
+
+`sqlite/`、`config/`（app.json、secret.json、tools.json）、`backups/` 都存放在 `data_dir` 下；
+`tools/`（ffmpeg/ffprobe/yt-dlp 二进制）仍留在 `app_dir` 下——这些是可重新下载的程序资产，不是数据。
+
+**一次性迁移**：首次配置 `RESOURCER_DATA_DIR` 后，如果新数据目录下还没有数据库、而旧的
+`app_dir` 下有，启动时会自动把 `sqlite/` 和 `config/` 整体搬过去（不会覆盖已有数据），
+并在日志里打印搬了什么。
+
+**自动备份**：每次启动、以及之后每 6 小时，会用 SQLite 的 `VACUUM INTO`（而非直接 `cp`，
+避免 WAL 模式下拿到不一致的快照）把 `data.db` 备份到 `data_dir/backups/data-<时间戳>.db`，
+只保留最近 10 份。
 
 ---
 

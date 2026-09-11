@@ -2,8 +2,8 @@
 id: RS-001
 type: bug
 priority: 1
-status: READY
-attempt: 0
+status: DEVELOPING
+attempt: 2
 needs_human: false
 created: 2026-09-11
 ---

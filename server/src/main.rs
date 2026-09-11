@@ -82,7 +82,7 @@ async fn get_app_config() -> Result<HttpResponse> {
 fn init_config_files() {
     use std::fs;
 
-    let config_dir = static_files::app_dir().join("config");
+    let config_dir = static_files::data_dir().join("config");
     let _ = fs::create_dir_all(&config_dir);
 
     // app.json
@@ -114,6 +114,9 @@ fn init_config_files() {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    // 一次性迁移：把旧版直接放在 app_dir() 下的 sqlite/、config/ 搬到 RESOURCER_DATA_DIR
+    static_files::migrate_legacy_data_if_needed();
+
     // 初始化配置文件（缺失的自动生成）
     init_config_files();
 
@@ -122,6 +125,13 @@ async fn main() -> std::io::Result<()> {
         eprintln!("数据库初始化失败: {}", e);
         return Err(std::io::Error::new(std::io::ErrorKind::Other, e.to_string()));
     }
+
+    // 启动即备份一次，之后每隔几小时自动备份（VACUUM INTO，WAL 模式下也能拿到一致快照）
+    match database::backup_now() {
+        Ok(p) => eprintln!("[backup] 启动备份完成: {}", p.display()),
+        Err(e) => eprintln!("[backup] 启动备份失败: {}", e),
+    }
+    database::spawn_periodic_backup();
 
     // 获取本机局域网 IP
     fn get_local_ip() -> Option<String> {
@@ -176,7 +186,7 @@ async fn main() -> std::io::Result<()> {
             apikey: String,
         }
 
-        let secret_path = crate::static_files::app_dir().join("config").join("secret.json");
+        let secret_path = crate::static_files::data_dir().join("config").join("secret.json");
         let content = fs::read_to_string(&secret_path).ok()?;
         let config: SecretConfig = serde_json::from_str(&content).ok()?;
         Some(config.apikey)

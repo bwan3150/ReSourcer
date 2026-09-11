@@ -69,7 +69,7 @@ fn default_tools() -> Vec<ToolConfig> {
 }
 
 fn tools_json_path() -> PathBuf {
-    crate::static_files::app_dir().join("config").join("tools.json")
+    crate::static_files::data_dir().join("config").join("tools.json")
 }
 
 fn tools_dir() -> PathBuf {

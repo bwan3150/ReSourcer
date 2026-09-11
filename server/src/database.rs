@@ -2,26 +2,82 @@
 use rusqlite::{Connection, Result as SqliteResult};
 use std::path::PathBuf;
 use std::fs;
+use std::time::Duration;
 
-/// 获取应用根目录（统一使用 app_dir）
+/// 获取数据目录（统一使用 data_dir，跨程序重装保留）
 pub fn get_config_dir() -> PathBuf {
-    crate::static_files::app_dir()
+    crate::static_files::data_dir()
 }
 
-/// 获取数据库文件路径：app_dir()/sqlite/data.db
+/// 获取数据库文件路径：data_dir()/sqlite/data.db
 pub fn get_db_path() -> PathBuf {
-    crate::static_files::app_dir().join("sqlite").join("data.db")
+    crate::static_files::data_dir().join("sqlite").join("data.db")
 }
 
 /// 确保必要的目录存在
 pub fn ensure_config_dir() -> std::io::Result<()> {
-    let app = crate::static_files::app_dir();
+    let data = crate::static_files::data_dir();
     // 确保 sqlite/ 目录存在
-    let sqlite_dir = app.join("sqlite");
+    let sqlite_dir = data.join("sqlite");
     if !sqlite_dir.exists() {
         fs::create_dir_all(&sqlite_dir)?;
     }
     Ok(())
+}
+
+/// 备份文件保留份数、定时备份间隔
+const BACKUP_KEEP: usize = 10;
+const BACKUP_INTERVAL_HOURS: u64 = 6;
+
+/// 备份文件存放目录：data_dir()/backups/
+pub fn backup_dir() -> PathBuf {
+    crate::static_files::data_dir().join("backups")
+}
+
+/// 立即备份一次数据库。用 SQLite 的 VACUUM INTO（而非直接 cp 文件），
+/// 保证 WAL 模式下拿到的是一致快照，不会出现半写状态。
+pub fn backup_now() -> SqliteResult<PathBuf> {
+    let dir = backup_dir();
+    fs::create_dir_all(&dir).map_err(|e| {
+        rusqlite::Error::InvalidPath(PathBuf::from(format!("无法创建备份目录: {}", e)))
+    })?;
+
+    let ts = chrono::Utc::now().format("%Y%m%d-%H%M%S");
+    let backup_path = dir.join(format!("data-{}.db", ts));
+
+    let conn = get_connection()?;
+    conn.execute(
+        "VACUUM INTO ?1",
+        rusqlite::params![backup_path.to_string_lossy()],
+    )?;
+
+    prune_old_backups(&dir, BACKUP_KEEP);
+    Ok(backup_path)
+}
+
+/// 只保留最近 keep 份备份，按文件名（含时间戳）排序后删除最旧的
+fn prune_old_backups(dir: &std::path::Path, keep: usize) {
+    let mut entries: Vec<_> = match fs::read_dir(dir) {
+        Ok(rd) => rd.filter_map(|e| e.ok()).collect(),
+        Err(_) => return,
+    };
+    entries.sort_by_key(|e| e.file_name());
+    if entries.len() > keep {
+        for e in &entries[..entries.len() - keep] {
+            let _ = fs::remove_file(e.path());
+        }
+    }
+}
+
+/// 启动一个后台线程，每隔 BACKUP_INTERVAL_HOURS 小时自动备份一次
+pub fn spawn_periodic_backup() {
+    std::thread::spawn(|| loop {
+        std::thread::sleep(Duration::from_secs(BACKUP_INTERVAL_HOURS * 3600));
+        match backup_now() {
+            Ok(p) => eprintln!("[backup] 定时备份完成: {}", p.display()),
+            Err(e) => eprintln!("[backup] 定时备份失败: {}", e),
+        }
+    });
 }
 
 /// 获取数据库连接（已配置 WAL 模式 + busy_timeout）
