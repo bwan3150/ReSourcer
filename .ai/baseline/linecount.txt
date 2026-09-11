@@ -1,0 +1,19 @@
+# 超过 500 行的存量文件，只许变短。RATCHET_REFRESH=1 ./.ai/guard.sh 重新生成。
+# 刷新基线 = 认可这些文件又长了，需要人工确认，不是 Agent 自己能做的事。
+iOS/ReSourcer/App/ServerConnectView.swift	592
+iOS/ReSourcer/Components/GlassAlert.swift	697
+iOS/ReSourcer/Components/GlassBottomSheet.swift	503
+iOS/ReSourcer/Components/GlassComponents.swift	526
+iOS/ReSourcer/Services/ThumbnailCacheService.swift	599
+iOS/ReSourcer/Views/Classifier/ClassifierView.swift	1195
+iOS/ReSourcer/Views/Download/DownloadView.swift	944
+iOS/ReSourcer/Views/Gallery/FilePreviewView.swift	2262
+iOS/ReSourcer/Views/Gallery/GalleryView.swift	1869
+iOS/ReSourcer/Views/Gallery/PhotoUploadView.swift	654
+iOS/ReSourcer/Views/Settings/ServerMetricsView.swift	607
+iOS/ReSourcer/Views/Settings/SettingsView.swift	1134
+server/src/indexer/storage.rs	529
+server/src/preview/content.rs	558
+server/src/transfer/upload/chunk.rs	550
+web/src/views/GalleryView.vue	822
+web/src/views/SettingsView.vue	715

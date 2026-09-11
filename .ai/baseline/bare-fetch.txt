@@ -1,0 +1,3 @@
+# no-bare-fetch 的存量违规，只许减少。
+web/src/composables/useThumbnailCache.js
+web/src/views/SettingsView.vue

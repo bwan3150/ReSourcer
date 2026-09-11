@@ -1,0 +1,9 @@
+state.db
+state.db-wal
+state.db-shm
+outbox/*.json
+task.md
+handoff.md
+review-input.md
+runs/
+usage.jsonl
