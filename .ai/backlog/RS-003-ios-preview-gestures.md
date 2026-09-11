@@ -7,7 +7,6 @@ attempt: 0
 needs_human: false
 created: 2026-09-11
 ---
-
 # iOS 预览页：视频画面上左右拖动调进度，图片左右滑动切上/下一张
 
 ## 背景

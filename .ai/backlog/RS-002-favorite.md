@@ -7,7 +7,6 @@ attempt: 0
 needs_human: false
 created: 2026-09-11
 ---
-
 # server 端支持「收藏 / 精选」标记
 
 ## 背景

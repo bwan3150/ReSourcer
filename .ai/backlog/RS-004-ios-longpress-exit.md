@@ -6,8 +6,8 @@ status: READY
 attempt: 0
 needs_human: false
 created: 2026-09-11
+depends_on: RS-003
 ---
-
 # iOS 预览页：长按屏幕退出预览
 
 ## 背景

@@ -7,7 +7,6 @@ attempt: 0
 needs_human: false
 created: 2026-09-11
 ---
-
 # server 数据目录可持久化，不再随 NAS 更新被清空
 
 > 优先级排在收藏功能前面：这条是**正在丢数据**，其它是缺功能。
