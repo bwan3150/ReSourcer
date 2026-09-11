@@ -9,6 +9,7 @@
 #   - 软链 node_modules，否则 web-build 直接 FAIL
 #   - caffeinate 防锁屏，否则 iOS/web 的 UI 自动化整夜全红
 #   - SRC_PATHS 覆盖三端源码，Tester 碰任何一处都会被回滚判 FAIL
+#   - 开发用 sonnet（产出量），测试/审查用 opus（判断力）；各自可用环境变量覆盖
 set -uo pipefail
 MAX_TASKS="${1:-6}"
 MAIN="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -37,5 +38,8 @@ echo
 exec caffeinate -dimsu env \
   SRC_PATHS="server/src web/src iOS/ReSourcer E-ink/app/src" \
   MODEL="${MODEL:-opus}" \
+  DEVELOPER_MODEL="${DEVELOPER_MODEL:-sonnet}" \
+  TESTER_MODEL="${TESTER_MODEL:-opus}" \
+  REVIEWER_MODEL="${REVIEWER_MODEL:-opus}" \
   REVIEW_EVERY=3 MAX_ATTEMPTS=3 \
   bash "$ORCH" "$WT" "$MAX_TASKS" 2>&1 | tee "$WT/.ai/nightly.log"
