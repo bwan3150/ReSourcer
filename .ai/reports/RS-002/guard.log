@@ -1,0 +1,61 @@
+### git status (guard 的 diff 检查基于 HEAD，本轮改动已在 HEAD 提交)
+?? .ai/reports/RS-002/api.log
+?? .ai/reports/RS-002/api.sh
+?? .ai/reports/RS-002/boot-restart.log
+?? .ai/reports/RS-002/boot.log
+?? .ai/reports/RS-002/guard.log
+?? .ai/reports/RS-002/regression.log
+?? .ai/reports/RS-002/structure.log
+?? .ai/reports/RS-002/unit.log
+
+### ./.ai/guard.sh
+── server-check         PASS  (0s)
+── server-test          PASS  (0s)
+── web-build            PASS  (3s)
+── no-bare-fetch        PASS
+── no-hardcoded-path    PASS  (0s)
+── no-secrets           PASS  (0s)
+── api-doc-sync         PASS  (0s)
+── linecount            PASS  
+guard exit=0
+
+### docs/API.md 收藏段落
+81:### 收藏 API (`/api/favorite`)
+84:| POST | `/api/favorite/toggle` | 切换收藏 / 精选状态 |
+85:| GET | `/api/favorite/list` | 获取收藏列表（分页） |
+86:| GET | `/api/favorite/status` | 批量查询收藏状态 |
+950:### POST `/api/favorite/toggle`
+957:  "level": "favorite"
+964:| `level` | 是 | `favorite`（收藏）或 `featured`（精选） |
+970:  "level": "favorite",
+971:  "favorited": true
+974:`favorited` 为 `false` 表示本次调用取消了该标记。
+
+### docs/database.md 收藏段落
+42:| `favorites` | 收藏 / 精选标记（每个文件一行） |
+248:CREATE TABLE favorites (
+257:CREATE INDEX idx_favorites_level ON favorites(level);
+263:查询收藏列表时用 `JOIN` + `current_path IS NOT NULL` 过滤，不需要在文件删除时同步清理 `favorites`：
+266:SELECT f.* FROM favorites fav
+440:CREATE INDEX idx_favorites_level ON favorites(level);
+
+### 文档 vs 代码一致性：表结构
+CREATE TABLE favorites (
+    file_uuid  TEXT PRIMARY KEY,
+    level      TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+        "CREATE TABLE IF NOT EXISTS favorites (
+            file_uuid TEXT PRIMARY KEY,
+            level TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )",
+
+### 实际库中 schema
+CREATE TABLE favorites (
+            file_uuid TEXT PRIMARY KEY,
+            level TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+CREATE INDEX idx_favorites_level ON favorites(level);
+idx_favorites_level           sqlite_autoindex_favorites_1

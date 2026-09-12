@@ -1,0 +1,11 @@
+health 200 after 1000ms
+初始 favorites 行: f8a0519b-8e6b-428a-ad93-f6e984b96aaa|featured
+--- 并发 40 个 toggle 同一 uuid（20 favorite + 20 featured 交错）
+HTTP 状态码分布 (40 并发 toggle):   40 200   共 40 条
+并发后 favorites 行数(同 uuid): 1  内容: favorite
+status 接口: {"f8a0519b-8e6b-428a-ad93-f6e984b96aaa":"favorite"}
+integrity_check: ok
+health HTTP 200
+list HTTP 200
+server log 中 error/panic 行数: 0
+server stopped, port free

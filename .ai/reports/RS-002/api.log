@@ -1,0 +1,104 @@
+WORK=/tmp/rs002.Z198He  SRC_REAL=/private/tmp/rs002.Z198He/src
+-- 启动 server pid=34385 (run 1)
+-- health 200 after 34000ms
+-- API key 读取自 /tmp/rs002.Z198He/data/config/secret.json: 2ab04559...
+
+===== 准备：加源文件夹 + 扫描 + 取 uuid =====
+{"status":"success"}
+200
+{"status":"started"}
+200
+{"files":[{"uuid":"0e288cc1-9899-40d5-bf94-df4d9e985287","fingerprint":"","current_path":"/private/tmp/rs002.Z198He/src/gamma.mp4","folder_path":"/private/tmp/rs002.Z198He/src","file_name":"gamma.mp4","file_type":"video","extension":"mp4","file_size":5,"created_at":"2026-09-12T01:59:17.846080486+00:00","modified_at":"2026-09-12T01:59:17.846116943+00:00","indexed_at":"2026-09-12T01:59:54.341991+00:00","source_url":null},{"uuid":"f8a0519b-8e6b-428a-ad93-f6e984b96aaa","fingerprint":"","current_path":"/private/tmp/rs002.Z198He/src/beta.jpg","folder_path":"/private/tmp/rs002.Z198He/src","file_name"
+  [PASS] 扫描后拿到 3 个文件 uuid
+A(alpha.png)=0adbe8fd-d564-4ad9-852a-fece2701c9a9  B(beta.jpg)=f8a0519b-8e6b-428a-ad93-f6e984b96aaa  C(gamma.mp4)=0e288cc1-9899-40d5-bf94-df4d9e985287
+
+===== AC2: toggle 同一 uuid 两次 =====
+1st: 200 {"uuid":"0adbe8fd-d564-4ad9-852a-fece2701c9a9","level":"favorite","favorited":true}
+  [PASS] 第一次 toggle → 200
+  [PASS] 第一次 toggle → favorited=true, uuid/level 回显
+status after 1st: {"0adbe8fd-d564-4ad9-852a-fece2701c9a9":"favorite"}
+  [PASS] 第一次后 status 显示 favorite
+2nd: 200 {"uuid":"0adbe8fd-d564-4ad9-852a-fece2701c9a9","level":"favorite","favorited":false}
+  [PASS] 第二次 toggle → 200
+  [PASS] 第二次 toggle → favorited=false
+status after 2nd: {}
+  [PASS] 第二次后 status 里不再有该 uuid
+-- 级别切换：favorite → featured 应覆盖而非取消
+3rd(favorite): {"uuid":"0adbe8fd-d564-4ad9-852a-fece2701c9a9","level":"favorite","favorited":true}
+4th(featured): {"uuid":"0adbe8fd-d564-4ad9-852a-fece2701c9a9","level":"featured","favorited":true}
+  [PASS] favorite→featured 返回 favorited=true level=featured
+status: {"0adbe8fd-d564-4ad9-852a-fece2701c9a9":"featured"}
+  [PASS] status 显示 featured（覆盖，非双记录）
+5th(featured again → 取消): {"uuid":"0adbe8fd-d564-4ad9-852a-fece2701c9a9","level":"featured","favorited":false}
+  [PASS] 同级再点取消 favorited=false
+-- 非法 level
+  [PASS] level=bogus → 400 (got 400)
+  [PASS] 缺 level → 400 (got 400)
+  [PASS] 无 API key → 401 (got 401)
+
+===== AC3: list?level=favorite 返回完整文件信息 =====
+200 {"files":[{"uuid":"0e288cc1-9899-40d5-bf94-df4d9e985287","fingerprint":"","current_path":"/private/tmp/rs002.Z198He/src/gamma.mp4","folder_path":"/private/tmp/rs002.Z198He/src","file_name":"gamma.mp4","file_type":"video","extension":"mp4","file_size":5,"created_at":"2026-09-12T01:59:17.846080486+00:00","modified_at":"2026-09-12T01:59:17.846116943+00:00","indexed_at":"2026-09-12T01:59:54.341991+00:00","source_url":null},{"uuid":"0adbe8fd-d564-4ad9-852a-fece2701c9a9","fingerprint":"","current_path":"/private/tmp/rs002.Z198He/src/alpha.png","folder_path":"/private/tmp/rs002.Z198He/src","file_name":"alpha.png","file_type":"image","extension":"png","file_size":5,"created_at":"2026-09-12T01:59:17.845853285+00:00","modified_at":"2026-09-12T01:59:17.845923408+00:00","indexed_at":"2026-09-12T01:59:54.341991+00:00","source_url":null}],"total":2,"offset":0,"limit":50,"has_more":false}
+  [PASS] list?level=favorite → 200
+  [PASS] total=2, files 长度 2
+  [PASS] 包含 alpha.png 与 gamma.mp4，不含 beta.jpg(featured)
+  [PASS] 每个文件含完整 IndexedFile 字段
+  [PASS] 按 created_at DESC：gamma.mp4 在前
+  [PASS] current_path 指向真实路径
+featured: {"files":[{"uuid":"f8a0519b-8e6b-428a-ad93-f6e984b96aaa","fingerprint":"","current_path":"/private/tmp/rs002.Z198He/src/beta.jpg","folder_path":"/private/tmp/rs002.Z198He/src","file_name":"beta.jpg","file_type":"image","extension":"jpg","file_size":5,"created_at":"2026-09-12T01:59:17.84599
+  [PASS] list?level=featured → 仅 beta.jpg
+  [PASS] list 不带 level → 全部 3 条
+page1: ['gamma.mp4', 'beta.jpg'] True 3
+  [PASS] 分页 limit=2 offset=0 → 2 条 has_more=true
+page2: ['alpha.png'] False 3
+  [PASS] 分页 limit=2 offset=2 → 1 条 has_more=false
+  [PASS] 两页合并无重复且覆盖全部
+  [PASS] list?level=bogus → 400 (got 400)
+  [PASS] limit=9999 被钳到 200
+
+===== AC4: status 批量 =====
+200 {"0adbe8fd-d564-4ad9-852a-fece2701c9a9":"favorite","f8a0519b-8e6b-428a-ad93-f6e984b96aaa":"featured","0e288cc1-9899-40d5-bf94-df4d9e985287":"favorite"}
+  [PASS] status 4 个 uuid → 200
+  [PASS] 一次返回 A=favorite B=featured C=favorite
+  [PASS] 未收藏 uuid 不出现
+带空白/空项: {"0adbe8fd-d564-4ad9-852a-fece2701c9a9":"favorite","f8a0519b-8e6b-428a-ad93-f6e984b96aaa":"featured"}
+  [PASS] uuids 含空白与空项仍正常解析
+空 uuids: {}
+200
+  [PASS] uuids= 空 → 200 {}
+  [PASS] 缺 uuids 参数 → 400 (got 400)
+
+===== 孤儿记录容忍：删掉 gamma.mp4 再扫描 =====
+  file_index: 0e288cc1-9899-40d5-bf94-df4d9e985287|
+  favorites: 0e288cc1-9899-40d5-bf94-df4d9e985287|favorite|2026-09-12T01:59:59.169965+00:00
+200 ['alpha.png'] 1
+  [PASS] 删文件后 list 仍 200 不崩
+  [PASS] 删文件后 list 不再含 gamma.mp4，total 同步
+
+===== 回归：既有接口 =====
+  [PASS] GET /api/playlist (uuid+folder_path+mode) 仍 200 (got 200)
+  [PASS] GET /api/playlist 无 uuid 仍 400 既有契约 (got 400)
+  [PASS] GET /api/tag/list 仍可用 (got 200)
+  [PASS] GET /api/config/state 仍 200 (got 200)
+  [PASS] POST /api/browser/browse 仍 200 (got 200)
+  [PASS] indexer/files 仍返回 2 个现存文件
+  [PASS] tags/file_tags 表仍在
+
+===== AC5: 重启进程后收藏仍在 =====
+  db before restart: 0adbe8fd-d564-4ad9-852a-fece2701c9a9|favorite
+  db before restart: 0e288cc1-9899-40d5-bf94-df4d9e985287|favorite
+  db before restart: f8a0519b-8e6b-428a-ad93-f6e984b96aaa|featured
+-- kill server pid=34385
+-- 进程已退出，端口已释放
+-- 启动 server pid=34904 (run 2)
+-- health 200 after 1000ms
+200 {"0adbe8fd-d564-4ad9-852a-fece2701c9a9":"favorite","f8a0519b-8e6b-428a-ad93-f6e984b96aaa":"featured","0e288cc1-9899-40d5-bf94-df4d9e985287":"favorite"}
+  [PASS] 重启后 status 仍返回 A=favorite B=featured C=favorite
+list after restart: ['beta.jpg', 'alpha.png'] 2
+  [PASS] 重启后 list 仍返回 alpha.png + beta.jpg（gamma 已删）
+toggle after restart: {"uuid":"0adbe8fd-d564-4ad9-852a-fece2701c9a9","level":"favorite","favorited":false}
+  [PASS] 重启后同级 toggle 是取消（说明状态确实来自磁盘）
+-- kill server pid=34904
+-- 进程已退出，端口已释放
+
+===== 汇总: PASS=44 FAIL=0 =====
+WORK dir 保留: /tmp/rs002.Z198He

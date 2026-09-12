@@ -1,0 +1,13 @@
+WORK=/tmp/rs002.a1z0zU
+(eval):disown:15: no current job
+health 200 after 1000ms
+--- GET /api/playlist?uuid=ad211ed7-a3a4-46c7-877b-25ebd486b1e1&folder_path=/private/tmp/rs002.a1z0zU/src&mode=sequential
+{"items":[{"uuid":"fe6dd9d8-ffb3-4d25-9aee-c429b92128ba","fingerprint":"","current_path":"/private/tmp/rs002.a1z0zU/src/beta.jpg","folder_path":"/private/tmp/rs002.a1z0zU/src","file_name":"beta.jpg","file_type":"image","extension":"jpg","file_size":5,"created_at":"2026-09-12T01:57:45.387578504+00:00","modified_at":"2026-09-12T01:57:45.387618920+00:00","indexed_at":"2026-09-12T01:58:21.517947+00:00","source_url":null},{"uuid":"ad211ed7-a3a4-46c7-877b-25ebd486b1e1","fingerprint":"","current_path":"/private/tmp/rs002.a1z0zU/src/alpha.png","folder_path":"/private/tmp/rs002.a1z0zU/src","file_name":"alpha.png","file_type":"image","extension":"png","file_size":5,"created_at":"2026-09-12T01:57:45.38
+--- GET /api/playlist?uuid=ad211ed7-a3a4-46c7-877b-25ebd486b1e1&folder_path=/private/tmp/rs002.a1z0zU/src&mode=shuffle
+HTTP 200
+--- 第三次启动后收藏仍在（再验一次 AC5）
+['beta.jpg'] 1 200
+--- tag 接口回归：给 alpha.png 打标签再读回
+{"id":1,"source_folder":"/private/tmp/rs002.a1z0zU/src","name":"regtag","color":"#007AFF","created_at":"2026-09-12T01:59:01.584642+00:00"} HTTP 200
+[{"id":1,"source_folder":"/private/tmp/rs002.a1z0zU/src","name":"regtag","color":"#007AFF","created_at":"2026-09-12T01:59:01.584642+00:00"}] HTTP 200
+server stopped, port free

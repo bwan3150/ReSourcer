@@ -1,0 +1,23 @@
+### 四件套结构
+handlers.rs
+mod.rs
+models.rs
+storage.rs
+
+### handlers.rs 里 SQL 关键字扫描（期望无输出）
+grep exit=1 (1 = 无匹配)
+
+### mod.rs 只登记 routes（非 use/mod/routes 的行）
+grep exit=1 (1 = 无多余逻辑)
+
+### storage.rs 复用 map_file_row
+6:use crate::indexer::storage::map_file_row;
+68:        .query_map(rusqlite::params_from_iter(params_vec.iter()), map_file_row)?
+
+### database.rs 建表
+256:        "CREATE TABLE IF NOT EXISTS favorites (
+263:    conn.execute("CREATE INDEX IF NOT EXISTS idx_favorites_level ON favorites(level)", [])?;
+
+### main.rs 挂载
+16:mod favorite;
+266:            .service(web::scope("/api/favorite").configure(favorite::routes))

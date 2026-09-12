@@ -20,3 +20,7 @@
 - `2026-09-11` RS-001/tester — 要在 macOS 上造「跨文件系统」场景验证 fs::rename 失败分支：hdiutil attach -nomount ram://40960 拿到 /dev/diskN，再 diskutil eraseVolume HFS+ <名字> <dev> 就会挂到 /Volumes/<名字>，用 df 确认两侧 Filesystem 列不同即可。注意 hdiutil 输出带尾随空白，要用 awk '{print $1}' 取设备名。
 - `2026-09-11` RS-001/tester — 验收 ops 下的交互式安装脚本不必真的执行安装：用 sed -n '/^函数名() {/,/^}/p' 把目标函数抽出来、配上桩 info/warn 单独跑，就能覆盖各分支；交互式「直接回车走默认值」这条路用 script -q /dev/null 配合空 stdin 能真实复现。
 - `2026-09-11` RS-001/tester — ReSourcer 的真实路由与直觉不同，写 API 测试前先看 mod.rs 而不要猜：目录浏览是 POST /api/browser/browse（不是 GET /list），播放队列是 GET /api/playlist 且必须带 uuid 查询参数（不带就是 400，属既有契约），配置保存是 POST /api/config/save、源文件夹是 /api/config/sources/add。
+- `2026-09-12` RS-002/tester — 2026-09-12 RS-002/tester — macOS 自带 bash 3.2 没有 mapfile/readarray，测试脚本要用 arr=( $(cmd) ) 或 while read；否则脚本会在中途以 unbound variable 崩掉、留下没被 kill 的 server。
+- `2026-09-12` RS-002/tester — 2026-09-12 RS-002/tester — 在同一个 shell 里用 & 起 server 再用 & 起一批 curl 后跑裸 `wait`，会连 server 一起等、永远不返回。并发测试要 `wait $curl_pids` 指定 pid，或把 server 放到另一个进程组（nohup … & disown）再 wait。
+- `2026-09-12` RS-002/tester — 2026-09-12 RS-002/tester — GET /api/playlist 的必填参数是 uuid + folder_path + mode 三个，只给 uuid 会 400，这不是回归。写回归脚本前先看 models.rs 的 Query struct 哪些字段不是 Option。
+- `2026-09-12` RS-002/tester — 2026-09-12 RS-002/tester — 首次冷启动（新 RESOURCER_DIR）到 /api/health 可达约 34s，第二次同目录启动只要 1s；等待循环给 45s 够用。
