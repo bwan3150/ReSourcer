@@ -1,0 +1,7 @@
+AC2 证据说明（视频画面中部水平拖动 seek）
+- 首次尝试（WDA dragfromtoforduration）是"长按 3s 再瞬移"，SwiftUI 只收到一跳、未触发 seek，属测试手法问题，作废。
+- tke 滑动 [坐标@(450,1290)→(900,1290), 300]：0:22 → 1:19（+150pt*0.4=+60s 命中；step_019/020 前后 refresh）。
+- WDA W3C actions 慢速拖动 +100pt/2.5s（wda-drag.sh 150 430 250 430 2500）+ simctl 连拍 → ac2-drag-burst.jpg：
+  拖动中顶部 HUD 依次显示 0:35 +6s / 0:41 +12s / 0:48 +19s / 0:55 +26s / 1:01 +32s / 1:06 +37s；
+  松手后画面内计数器从 31 跳到 75。单帧：ac2-hud-during-drag.jpg（HUD）、ac2-after-seek.jpg。
+- 暂停状态下同样生效：暂停在 0:37，拖 +100pt 后计数器 75（reg-slider 首次尝试时控制栏已自动隐藏，实际打在画面上）。

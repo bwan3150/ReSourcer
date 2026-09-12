@@ -1,0 +1,18 @@
+48 | pub struct FoldersResponse {
+   |            ^^^^^^^^^^^^^^^
+
+server pid=38444
+health 200 after 36500ms
+apikey=4f6c797a-281c-49ed-8e48-67532cf5cc63
+-- sources/add
+{"status":"success"} [200]
+-- indexer/scan
+{"status":"started"} [200]
+-- indexer/files
+video120.mp4 video 217e9e23-c8db-4982-bb7f-c0214f7c7482
+img4-orange.png image 6bf73949-2364-492a-9415-0fbeef39de84
+img3-blue.png image cf81cd31-45c1-4325-8b02-117386125c47
+img2-green.png image 697d51f4-f854-4f77-b840-5bf51a4294f2
+img1-red.png image 6ba873bf-822c-4d30-b4c3-6f73f6156104
+-- config/state
+{"backup_source_folders":[],"hidden_folders":[],"ignored_files":[".DS_Store"],"ignored_folders":["@eaDir","#recycle","$RECYCLE.BIN"],"source_folder":"/private/tmp/rs003-work/media"}

@@ -1,0 +1,48 @@
+{
+  "task_id": "RS-003",
+  "verdict": "PASS",
+  "ac_results": ["PASS", "PASS", "PASS", "PASS", "PASS", "PASS", "PASS"],
+  "checks": [
+    {"name": "build-ios", "status": "PASS",
+     "cmd": "cd iOS && xcodebuild -scheme ReSourcer -destination 'id=575B910A-8F00-40D9-A501-C28C7A3199F0' -derivedDataPath /tmp/rs003-dd build",
+     "evidence": ".ai/reports/RS-003/build-sim.log",
+     "notes": "AC1 字面命令 -destination 'generic/platform=iOS Simulator' 在本机 BUILD FAILED（x86_64 链接 libclang_rt.iossim 缺 x86_64 slice）。我在 HEAD~1 的 worktree 上跑同一条命令得到完全相同的失败（build-generic-baseline.log），确认是环境问题而非本次改动；按 AC1 的『或等效命令』用 arm64 模拟器 destination 编译 BUILD SUCCEEDED，0 个 Swift 警告。"},
+    {"name": "unit", "status": "PASS", "cmd": "cargo test --manifest-path server/Cargo.toml",
+     "evidence": ".ai/reports/RS-003/unit.log",
+     "notes": "server 2/2 通过（本任务未动 server）。iOS 工程没有测试 target，且 Tester 不改产品代码/pbxproj，手势 ViewModifier 的逻辑只能靠下面的真机操作黑盒验。"},
+    {"name": "boot", "status": "PASS", "cmd": "bash .ai/reports/RS-003/boot.sh",
+     "evidence": ".ai/reports/RS-003/boot.log",
+     "notes": "RESOURCER_DIR=/tmp/rs003-work/data 冷启动 36.5s 后 /api/health 200；app 装到模拟器并启动、连接成功，全程无崩溃。"},
+    {"name": "api", "status": "PASS", "cmd": "bash .ai/reports/RS-003/boot.sh（sources/add → indexer/scan → indexer/files → config/state）",
+     "evidence": ".ai/reports/RS-003/boot.log",
+     "notes": "本任务不改任何 HTTP 接口；这些真实请求只用于给 iOS 端准备 4 张图 + 1 个 120s 视频的测试数据，均 200 且字段正确。"},
+    {"name": "ui", "status": "PASS", "cmd": "tke -d sim:575B910A-... steps ...（见 ui.log）+ .ai/reports/RS-003/wda-drag.sh（W3C actions 慢速拖动）+ /wda/pinch + /wda/doubleTap",
+     "evidence": ".ai/reports/RS-003/ui/report.html",
+     "notes": "AC2: ac2-drag-burst.jpg（拖动中 HUD 0:35 +6s → 1:06 +37s，松手后计数器 31→75）；AC3: ac3-zoomed-drag-burst.jpg + ac3-notes.txt（放大后拖动=平移、无 HUD、1:10→1:14 仅墙钟）；AC4: ui/screenshots/step_035/038/041/046.jpg（橙→蓝→橙→蓝→绿，与缩略图顺序一致）；AC5: ac5-image-zoomed-after-drag.jpg（放大后拖 550pt 仍 img2-green.png，画面平移露出黑底）；AC6: ac6-*.jpg 与 step_051-058（视频/图片双击 1x↔2x，单击控制栏隐藏/恢复）。"},
+    {"name": "e2e", "status": "PASS", "cmd": "同 ui（添加服务器 → 连接 → gallery → 视频 seek → 返回 → 图片翻页 → 子文件夹单图边界）",
+     "evidence": ".ai/reports/RS-003/ui.log",
+     "notes": "完整用户流程走通；单文件文件夹左滑有跟手+回弹、不崩溃（boundary-swipe-burst.jpg），震动反馈在模拟器无法观测。"},
+    {"name": "guard", "status": "PASS", "cmd": "./.ai/guard.sh",
+     "evidence": ".ai/reports/RS-003/guard.log",
+     "notes": "linecount 绿：FilePreviewView.swift 2262 → 2156；三个新 Gestures/*.swift 都 <110 行。"}
+  ],
+  "repro": "",
+  "regression_checked": [
+    "视频垂直拖动 250pt 不触发 seek（reg-vertical.txt：13s 墙钟 ≈ 14s 进度）",
+    "底部进度条拖动仍正常且不会同时触发 seek HUD（reg-slider-drag-burst.jpg / reg-slider.txt）",
+    "音量键长按+水平拖动仍出音量环，不触发 seek（reg-volume-drag-burst.jpg）",
+    "底部上一/下一按钮仍能切换文件（ui/screenshots/step_078-082）",
+    "缩放重置后左右翻页仍可用（step_061-063）",
+    "列表末尾再左滑停留原图、不崩溃（step_064-066）",
+    "单击切控制栏 / 双击 1x↔2x 在视频和图片上都与改动前一致"
+  ],
+  "notes": "全部用 iPhone 17 Pro 模拟器（iOS 26.2）验证，没有真机；pinch 用 WDA /wda/pinch 真实双指事件，双击用 /wda/doubleTap。两点非阻塞观察供 Reviewer 参考：(1) 到头反馈只在 playlist.count<=1 时触发（handoff 已声明），多文件列表末尾再滑是静默停留（无震动），与 task.md『到头时给出边界反馈』的字面略有差距，但 AC 列表未把它列为验收项；(2) seek 灵敏度 0.4s/pt 在 402pt 宽屏上满幅约 ±160s，对短视频偏猛，属手感问题不是缺陷。tke 报告没有上传云端（属对外发布，未获授权），本地在 .ai/reports/RS-003/ui/report.html。",
+  "learnings": [
+    "2026-09-12 RS-003/tester — 在 tke 执行 steps 的同时并发直连 WebDriverAgent(端口 8150)发请求，tke 会判定 WDA 卡死并重启它，把被测 app 挤到后台、会话 ID 全换；tke 与自己的 WDA 调用必须串行。",
+    "2026-09-12 RS-003/tester — WDA 的 /wda/dragfromtoforduration 是『长按 duration 秒再瞬移』，SwiftUI DragGesture 只收到一跳，测不出拖动中的 HUD、甚至可能不触发 onChanged；要慢速插值拖动用 POST /session/:id/actions 的 W3C pointer actions（pointerMove 带 duration），脚本见 .ai/reports/RS-003/wda-drag.sh。tke 的 滑动 [.., .., 毫秒] 在 iOS 模拟器上也是瞬移，只能验最终结果。",
+    "2026-09-12 RS-003/tester — tke 没有 pinch/双击指令；模拟器上可直接打 WDA：POST /wda/pinch {scale, velocity}、POST /wda/doubleTap {x,y}（坐标是 pt，iPhone 17 Pro 是 402x874，tke 元素表给的是 px，除以 3）。拖动过程中的画面用 xcrun simctl io <UDID> screenshot 连拍，不经过 WDA、不会和 tke 打架。",
+    "2026-09-12 RS-003/tester — 视频预览页控制栏 10s 自动隐藏（LocalStorageService autoHideDelay 默认 10），隐藏后点顶部返回/底部按钮会点空并把控制栏切出来；每次读时间前先单击画面中部叫出控制栏再 refresh。",
+    "2026-09-12 RS-003/tester — 造测试视频用 ffmpeg lavfi testsrc（自带走秒计数器，seek 后画面里直接能读到秒数），本机 ffmpeg 没编 drawtext 滤镜；图片用 lavfi color= 纯色即可靠标题+颜色区分。",
+    "2026-09-12 RS-003/tester — `xcodebuild -destination 'generic/platform=iOS Simulator'` 在这台 arm64 Mac 上因 libclang_rt.iossim 缺 x86_64 slice 必失败，与代码无关（HEAD~1 同样失败）；验编译用 -destination 'id=<模拟器UDID>'。"
+  ]
+}

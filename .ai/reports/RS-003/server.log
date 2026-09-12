@@ -1,0 +1,84 @@
+[init] 已生成 config/app.json
+[init] 已生成 config/secret.json (API Key: 4f6c797a-281c-49ed-8e48-67532cf5cc63)
+[backup] 启动备份完成: /tmp/rs003-work/data/backups/data-20260912-021533.db
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║  ██████╗ ███████╗███████╗ ██████╗ ██╗   ██╗██████╗  ██████╗███████╗██████╗   ║
+║  ██╔══██╗██╔════╝██╔════╝██╔═══██╗██║   ██║██╔══██╗██╔════╝██╔════╝██╔══██╗  ║
+║  ██████╔╝█████╗  ███████╗██║   ██║██║   ██║██████╔╝██║     █████╗  ██████╔╝  ║
+║  ██╔══██╗██╔══╝  ╚════██║██║   ██║██║   ██║██╔══██╗██║     ██╔══╝  ██╔══██╗  ║
+║  ██║  ██║███████╗███████║╚██████╔╝╚██████╔╝██║  ██║╚██████╗███████╗██║  ██║  ║
+║  ╚═╝  ╚═╝╚══════╝╚══════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝ ╚═════╝╚══════╝╚═╝  ╚═╝  ║
+║                                                                              ║
+║                                 S E R V E R                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  [32m✓[0m db: 136.0 KB  [32m✓[0m ffmpeg  [32m✓[0m ffprobe
+[metrics] collector started (30s interval, 24h retention)
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  API:  http://192.168.0.147:1234                                            │
+│  Key:  4f6c797a-281c-49ed-8e48-67532cf5cc63                                 │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+[metrics] first snapshot: CPU 3.6%, Mem 11.8 GB
+[2026-09-12T12:16:10.872501+10:00] GET /api/health HTTP/1.1 - 0.10ms (200)
+[2026-09-12T12:16:10.929362+10:00] POST /api/config/sources/add HTTP/1.1 - 1.27ms (200)
+[2026-09-12T12:16:10.940879+10:00] POST /api/indexer/scan HTTP/1.1 - 0.12ms (200)
+[2026-09-12T12:16:13.002356+10:00] GET /api/indexer/files HTTP/1.1 - 5.51ms (200)
+[2026-09-12T12:16:13.055837+10:00] GET /api/config/state HTTP/1.1 - 1.00ms (200)
+[2026-09-12T12:17:05.293881+10:00] GET /api/health HTTP/1.1 - 0.08ms (200)
+[2026-09-12T12:17:05.299927+10:00] GET /api/auth/check HTTP/1.1 - 0.17ms (200)
+[2026-09-12T12:17:05.649273+10:00] GET /api/config/state HTTP/1.1 - 2.34ms (200)
+[2026-09-12T12:17:05.672414+10:00] GET /api/indexer/folders HTTP/1.1 - 5.97ms (200)
+[2026-09-12T12:17:05.676122+10:00] GET /api/indexer/breadcrumb HTTP/1.1 - 1.72ms (200)
+[2026-09-12T12:17:05.689406+10:00] GET /api/indexer/files HTTP/1.1 - 9.14ms (200)
+[2026-09-12T12:17:05.803493+10:00] GET /api/preview/thumbnail HTTP/1.1 - 59.3ms (200)
+[2026-09-12T12:17:05.803882+10:00] GET /api/preview/thumbnail HTTP/1.1 - 59.5ms (200)
+[2026-09-12T12:17:05.805293+10:00] GET /api/preview/thumbnail HTTP/1.1 - 61.3ms (200)
+[2026-09-12T12:17:05.806784+10:00] GET /api/preview/thumbnail HTTP/1.1 - 62.5ms (200)
+[2026-09-12T12:17:05.878818+10:00] GET /api/preview/thumbnail HTTP/1.1 - 135ms (200)
+[2026-09-12T12:18:05.612262+10:00] GET /api/playlist HTTP/1.1 - 5.83ms (200)
+[2026-09-12T12:18:05.786987+10:00] GET /api/preview/content/_ HTTP/1.1 - 56.4ms (206)
+[2026-09-12T12:18:05.797257+10:00] GET /api/preview/content/_ HTTP/1.1 - 1.15ms (200)
+[2026-09-12T12:18:06.035582+10:00] GET /api/preview/content/_ HTTP/1.1 - 2.69ms (206)
+[2026-09-12T12:19:33.174964+10:00] GET /api/health HTTP/1.1 - 0.09ms (200)
+[2026-09-12T12:19:33.184653+10:00] GET /api/health HTTP/1.1 - 0.06ms (200)
+[2026-09-12T12:19:33.300824+10:00] GET /api/auth/check HTTP/1.1 - 0.08ms (200)
+[2026-09-12T12:19:33.305189+10:00] GET /api/config/state HTTP/1.1 - 3.28ms (200)
+[2026-09-12T12:19:33.314534+10:00] GET /api/indexer/folders HTTP/1.1 - 6.60ms (200)
+[2026-09-12T12:19:33.318416+10:00] GET /api/indexer/breadcrumb HTTP/1.1 - 2.10ms (200)
+[2026-09-12T12:19:33.331081+10:00] GET /api/indexer/files HTTP/1.1 - 9.55ms (200)
+[2026-09-12T12:20:04.460361+10:00] GET /api/playlist HTTP/1.1 - 5.83ms (200)
+[2026-09-12T12:20:04.513625+10:00] GET /api/preview/content/_ HTTP/1.1 - 2.65ms (206)
+[2026-09-12T12:20:04.520337+10:00] GET /api/preview/content/_ HTTP/1.1 - 1.95ms (200)
+[2026-09-12T12:20:04.573910+10:00] GET /api/preview/content/_ HTTP/1.1 - 1.74ms (206)
+[2026-09-12T12:25:43.259449+10:00] GET /api/playlist HTTP/1.1 - 7.66ms (200)
+[2026-09-12T12:25:43.276988+10:00] GET /api/preview/content/_ HTTP/1.1 - 3.05ms (200)
+[2026-09-12T12:25:43.330767+10:00] GET /api/preview/thumbnail HTTP/1.1 - 53.3ms (200)
+[2026-09-12T12:26:01.969016+10:00] GET /api/preview/content/_ HTTP/1.1 - 3.61ms (200)
+[2026-09-12T12:26:02.028964+10:00] GET /api/preview/thumbnail HTTP/1.1 - 59.4ms (200)
+[2026-09-12T12:26:05.697288+10:00] GET /api/preview/content/_ HTTP/1.1 - 4.06ms (200)
+[2026-09-12T12:26:09.446672+10:00] GET /api/preview/content/_ HTTP/1.1 - 3.51ms (200)
+[2026-09-12T12:26:12.346340+10:00] GET /api/preview/content/_ HTTP/1.1 - 4.91ms (200)
+[2026-09-12T12:26:12.415171+10:00] GET /api/preview/thumbnail HTTP/1.1 - 66.9ms (200)
+[2026-09-12T12:28:00.830103+10:00] GET /api/preview/content/_ HTTP/1.1 - 4.49ms (200)
+[2026-09-12T12:28:00.895796+10:00] GET /api/preview/thumbnail HTTP/1.1 - 67.3ms (200)
+[2026-09-12T12:28:04.582086+10:00] GET /api/playlist HTTP/1.1 - 15.6ms (200)
+[2026-09-12T12:28:25.654127+10:00] GET /api/playlist HTTP/1.1 - 7.83ms (200)
+[2026-09-12T12:28:25.665584+10:00] GET /api/preview/content/_ HTTP/1.1 - 1.80ms (206)
+[2026-09-12T12:28:25.673132+10:00] GET /api/preview/content/_ HTTP/1.1 - 3.97ms (200)
+[2026-09-12T12:28:25.681378+10:00] GET /api/preview/content/_ HTTP/1.1 - 1.94ms (206)
+[2026-09-12T12:31:57.994642+10:00] GET /api/preview/content/_ HTTP/1.1 - 3.36ms (200)
+[2026-09-12T12:32:00.282482+10:00] GET /api/preview/content/_ HTTP/1.1 - 4.25ms (206)
+[2026-09-12T12:32:00.288923+10:00] GET /api/preview/content/_ HTTP/1.1 - 2.98ms (200)
+[2026-09-12T12:32:00.296677+10:00] GET /api/preview/content/_ HTTP/1.1 - 2.41ms (206)
+[2026-09-12T12:32:15.665314+10:00] POST /api/indexer/scan HTTP/1.1 - 0.12ms (200)
+[2026-09-12T12:32:51.385152+10:00] GET /api/indexer/folders HTTP/1.1 - 4.97ms (200)
+[2026-09-12T12:33:03.056287+10:00] GET /api/indexer/folders HTTP/1.1 - 5.03ms (200)
+[2026-09-12T12:33:03.069765+10:00] GET /api/indexer/breadcrumb HTTP/1.1 - 2.92ms (200)
+[2026-09-12T12:33:03.085657+10:00] GET /api/indexer/files HTTP/1.1 - 12.0ms (200)
+[2026-09-12T12:33:03.153039+10:00] GET /api/preview/thumbnail HTTP/1.1 - 59.6ms (200)
+[2026-09-12T12:33:21.440423+10:00] GET /api/playlist HTTP/1.1 - 5.61ms (200)
+[2026-09-12T12:33:21.449201+10:00] GET /api/preview/content/_ HTTP/1.1 - 2.61ms (200)
+[2026-09-12T12:33:21.511348+10:00] GET /api/preview/thumbnail HTTP/1.1 - 63.8ms (200)

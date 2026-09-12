@@ -1,0 +1,115 @@
+RS-003 UI 自动化（tke steps + 少量 WDA W3C actions 做慢速拖动/pinch/双击）步骤摘要
+完整报告 ui/report.html；截图 ui/screenshots/（已转 jpg）；原始产物 ~/.toolkit/tke/logs/RS-003/
+设备: iPhone 17 Pro 模拟器 (iOS 26.2)；server: 127.0.0.1:1234, RESOURCER_DIR=/tmp/rs003-work/data, 源文件夹 /private/tmp/rs003-work/media
+tke 之外的手势（wda-drag.sh / wda-press-drag.sh / /wda/pinch / /wda/doubleTap）没有 step 编号，其证据是 ac*-burst.jpg（simctl 连拍）。
+
+OK   screenshots/step_001.jpg     启动 ["com.resourcer.apple"]  # 首次启动 app，期望进入添加服务器页  
+OK   screenshots/step_002.jpg     点击 ["添加服务器"]  # 打开添加服务器表单  
+OK   screenshots/step_003.jpg     输入 ["我的服务器", "rs003"]  # 服务器名  
+OK   screenshots/step_004.jpg     输入 ["http://192.168.1.100:1234", "http://127.0.0.1:1234"]  # 本机 server 地址  
+OK   screenshots/step_005.jpg     输入 ["输入 API Key", "••••••"]  # 从 /tmp/rs003-work/data/config/secret.json 取的 key  
+OK   screenshots/step_006.jpg     隐藏键盘    
+OK   screenshots/step_007.jpg     点击 ["连接服务器"]  # 连接  
+OK   screenshots/step_008.jpg     截图 ["连接成功后的 gallery 缩略图列表，记录顺序"]  # 缩略图顺序基线  
+OK   screenshots/step_009.jpg     阶段 ["AC2/AC3 视频 seek 手势"]    
+OK   screenshots/step_010.jpg     点击 ["MP4"]  # 打开视频 video120.mp4（120s，testsrc 自带运行计时器）  
+OK   screenshots/step_011.jpg     等待 [4s]  # 等播放器缓冲起播  
+OK   screenshots/step_012.jpg     截图 ["视频预览页初始状态，记录当前播放时间"]    
+FAIL screenshots/step_013.jpg     点击 ["暂停"]  # 暂停，让当前时间固定，便于比对 seek 前后  !! 元素未找到: 未找到包含文本 '暂停' 的元素
+FAIL                              截图 ["拖动进行中：期望画面顶部出现 seek HUD（目标时间 + 偏移量）"]    !! 设备错误: 现在前台是桌面（主屏幕），不是你要测的 App。
+　第一次把 WebDriverAgent 拉起来时会挤掉前台 App——用 `启动 ["你的BundleID"]` 把它拉回来。
+　之后 WDA 一直跑着，不会再挤了（包名用 `xcrun simctl listapps <UDID>` 找）
+FAIL                              截图 ["松手后：期望进度已跳到目标时间，HUD 消失"]    !! 设备错误: 现在前台是桌面（主屏幕），不是你要测的 App。
+　第一次把 WebDriverAgent 拉起来时会挤掉前台 App——用 `启动 ["你的BundleID"]` 把它拉回来。
+　之后 WDA 一直跑着，不会再挤了（包名用 `xcrun simctl listapps <UDID>` 找）
+FAIL                              截图 ["当前状态"]    !! 设备错误: 现在前台是桌面（主屏幕），不是你要测的 App。
+　第一次把 WebDriverAgent 拉起来时会挤掉前台 App——用 `启动 ["你的BundleID"]` 把它拉回来。
+　之后 WDA 一直跑着，不会再挤了（包名用 `xcrun simctl listapps <UDID>` 找）
+OK   screenshots/step_014.jpg     启动 ["com.resourcer.apple"]  # WDA 重启把 app 挤到后台，拉回前台  
+OK   screenshots/step_015.jpg     点击 ["MP4"]  # 打开视频 video120.mp4  
+OK   screenshots/step_016.jpg     等待 [3s]  # 等起播  
+OK   screenshots/step_017.jpg     截图 ["AC2 拖动前：记录当前播放时间"]    
+OK   screenshots/step_018.jpg     截图 ["AC2 松手后：期望进度跳到目标时间，HUD 消失"]    
+OK   screenshots/step_019.jpg     点击 [坐标@(603,1000)]  # 单击画面：把控制栏叫回来，好读时间  
+OK   screenshots/step_020.jpg     滑动 [坐标@(450,1290), 坐标@(900,1290), 1500]  # AC2: 画面中部水平右拖 450px=150pt，期望 seek +60s，拖动中顶部有 HUD  
+OK   screenshots/step_021.jpg     截图 ["AC3: 双指放大后的视频画面（WDA pinch scale=2.5）"]    
+OK   screenshots/step_022.jpg     点击 [坐标@(603,1000)]  # 单击叫出控制栏读时间  
+OK   screenshots/step_023.jpg     截图 ["AC3: 放大态水平拖动后——期望画面被平移、无 seek HUD、时间只按墙钟走"]    
+OK   screenshots/step_024.jpg     点击 [坐标@(603,1000)]  # 单击叫出控制栏  
+OK   screenshots/step_025.jpg     点击 [坐标@(603,1000)]  # 单击叫出控制栏  
+OK   screenshots/step_026.jpg     截图 ["AC3: 放大态水平拖动后——期望画面被平移、无 seek HUD、时间只按墙钟走"]    
+OK   screenshots/step_027.jpg     点击 [坐标@(603,1000)]  # 单击叫出控制栏  
+OK   screenshots/step_028.jpg     截图 ["AC3: 放大态左拖后：画面平移，时间只按墙钟走（见 ac3-before/after.txt）"]    
+OK   screenshots/step_029.jpg     截图 ["AC6 视频: 双击后期望缩放重置为 1.0（整幅画面回到居中未放大）"]    
+OK   screenshots/step_030.jpg     阶段 ["AC4/AC5/AC6 图片翻页手势"]    
+OK   screenshots/step_031.jpg     点击 [坐标@(603,1000)]  # 单击叫出控制栏  
+OK   screenshots/step_032.jpg     点击 [坐标@(105,270)]  # 顶部返回按钮，回到 gallery  
+OK   screenshots/step_033.jpg     点击 [坐标@(603,613)]  # 打开第 2 个缩略图（橙色 img4-orange.png）  
+OK   screenshots/step_034.jpg     等待 [2s]    
+OK   screenshots/step_035.jpg     截图 ["AC4 起点：橙色图 img4-orange.png"]    
+OK   screenshots/step_036.jpg     滑动 [坐标@(900,1300), 坐标@(300,1300), 300]  # AC4 左滑：期望切到下一张（缩略图顺序里橙色之后是蓝色 img3-blue.png）  
+OK   screenshots/step_037.jpg     断言 ["img3-blue.png", 包含, 5s]  # 标题应变为 img3-blue.png  
+OK   screenshots/step_038.jpg     截图 ["AC4 左滑后：期望蓝色图"]    
+OK   screenshots/step_039.jpg     滑动 [坐标@(300,1300), 坐标@(900,1300), 300]  # AC4 右滑：期望回到上一张（橙色）  
+OK   screenshots/step_040.jpg     断言 ["img4-orange.png", 包含, 5s]  # 标题应回到 img4-orange.png  
+OK   screenshots/step_041.jpg     截图 ["AC4 右滑后：期望回到橙色图"]    
+OK   screenshots/step_042.jpg     滑动 [坐标@(900,1300), 坐标@(300,1300), 300]  # 再左滑 → 蓝  
+OK   screenshots/step_043.jpg     断言 ["img3-blue.png", 包含, 5s]    
+OK   screenshots/step_044.jpg     滑动 [坐标@(900,1300), 坐标@(300,1300), 300]  # 再左滑 → 绿 img2-green.png  
+OK   screenshots/step_045.jpg     断言 ["img2-green.png", 包含, 5s]    
+OK   screenshots/step_046.jpg     截图 ["AC4 连续左滑两次后：期望绿色图（与缩略图顺序 橙→蓝→绿 一致）"]    
+OK   screenshots/step_047.jpg     断言 ["img2-green.png", 包含]  # AC5: 放大后左拖 200pt，标题仍应是 img2-green.png（未翻页）  
+OK   screenshots/step_048.jpg     截图 ["AC5: 放大态拖动后仍是绿色图（未翻页）"]    
+OK   screenshots/step_049.jpg     断言 ["img2-green.png", 包含]  # AC5: 放大后再左拖 350pt，仍应是 img2-green.png（未翻页）  
+OK   screenshots/step_050.jpg     截图 ["AC5: 放大态累计左拖 550pt 后：期望画面被平移（右侧露出黑底），仍是绿色图"]    
+OK   screenshots/step_051.jpg     截图 ["AC6 图片: 双击后期望缩放重置为 1.0（图片回到居中、上下黑边）"]    
+OK   screenshots/step_052.jpg     点击 [坐标@(603,1300)]  # AC6: 单击画面 → 期望控制栏隐藏  
+OK   screenshots/step_053.jpg     等待 [1s]    
+OK   screenshots/step_054.jpg     断言 ["img2-green.png", 不包含]  # 控制栏（含标题）应已隐藏  
+OK   screenshots/step_055.jpg     截图 ["AC6: 单击后控制栏隐藏"]    
+OK   screenshots/step_056.jpg     点击 [坐标@(603,1300)]  # 再单击 → 控制栏回来  
+OK   screenshots/step_057.jpg     断言 ["img2-green.png", 包含, 3s]  # 标题回来  
+OK   screenshots/step_058.jpg     截图 ["AC6: 再单击后控制栏恢复"]    
+OK   screenshots/step_059.jpg     阶段 ["附加：缩放重置后翻页仍可用 + 列表末尾左滑行为"]    
+OK   screenshots/step_060.jpg     滑动 [坐标@(900,1300), 坐标@(300,1300), 300]  # 双击重置后左滑：期望切到红色 img1-red.png（最后一张）  
+OK   screenshots/step_061.jpg     断言 ["img1-red.png", 包含, 5s]    
+OK   screenshots/step_062.jpg     截图 ["重置缩放后左滑仍能翻到 img1-red.png（列表最后一张）"]    
+OK   screenshots/step_063.jpg     滑动 [坐标@(900,1300), 坐标@(300,1300), 300]  # 在最后一张再左滑：观察到头行为（不应崩溃/不应静默跳到别处）  
+OK   screenshots/step_064.jpg     等待 [2s]    
+OK   screenshots/step_065.jpg     截图 ["最后一张再左滑之后的状态"]    
+OK   screenshots/step_066.jpg     阶段 ["回归：垂直拖动不抢 seek；底部进度条仍可用；上一/下一按钮仍可用"]    
+OK   screenshots/step_067.jpg     点击 [坐标@(105,270)]  # 返回 gallery  
+OK   screenshots/step_068.jpg     点击 ["MP4"]  # 重新打开视频  
+OK   screenshots/step_069.jpg     等待 [3s]    
+OK   screenshots/step_070.jpg     点击 [坐标@(603,1000)]  # 单击叫出控制栏  
+OK   screenshots/step_071.jpg     点击 [坐标@(603,1000)]  # 叫出控制栏  
+OK   screenshots/step_072.jpg     滑动 [坐标@(420,2208), 坐标@(880,2208), 500]  # 回归：拖底部进度条滑块到约 75% 处，期望时间跳到 ~1:30  
+OK   screenshots/step_073.jpg     等待 [1s]    
+OK   screenshots/step_074.jpg     截图 ["回归：底部进度条拖动后"]    
+OK   screenshots/step_075.jpg     点击 [坐标@(603,1000)]  # 叫出控制栏  
+OK   screenshots/step_076.jpg     点击 [坐标@(603,1000)]  # 叫出控制栏  
+OK   screenshots/step_077.jpg     点击 [坐标@(603,2466)]  # 暂停，消除墙钟噪声  
+OK   screenshots/step_078.jpg     点击 [坐标@(603,1000)]  # 叫出控制栏  
+OK   screenshots/step_079.jpg     点击 [坐标@(1062,2466)]  # 回归：底部“下一个”按钮 → 期望切到 img4-orange.png  
+OK   screenshots/step_080.jpg     断言 ["img4-orange.png", 包含, 5s]    
+OK   screenshots/step_081.jpg     点击 [坐标@(144,2466)]  # 回归：底部“上一个”按钮 → 期望回到 video120.mp4  
+OK   screenshots/step_082.jpg     断言 ["video120.mp4", 包含, 5s]    
+OK   screenshots/step_083.jpg     截图 ["回归：上一/下一按钮仍正常"]    
+OK   screenshots/step_084.jpg     点击 [坐标@(105,270)]  # 返回 gallery  
+FAIL screenshots/step_085.jpg     点击 ["media"]  # 打开文件夹选择  !! 元素未找到: 未找到包含文本 'media' 的元素
+OK   screenshots/step_086.jpg     点击 [坐标@(603,1000)]  # 叫出控制栏  
+OK   screenshots/step_087.jpg     点击 [坐标@(105,270)]  # 返回 gallery  
+OK   screenshots/step_088.jpg     点击 ["media"]  # 打开文件夹选择  
+OK   screenshots/step_089.jpg     阶段 ["附加：单文件文件夹到头反馈"]    
+OK   screenshots/step_090.jpg     点击 [坐标@(1032,493)]  # 进入 solo 子文件夹（只有 1 个文件）  
+OK   screenshots/step_091.jpg     等待 [2s]    
+OK   screenshots/step_092.jpg     点击 ["PNG"]  # 打开唯一的一张图 only-one.png  
+OK   screenshots/step_093.jpg     等待 [2s]    
+OK   screenshots/step_094.jpg     断言 ["only-one.png", 包含]    
+OK   screenshots/step_095.jpg     断言 ["only-one.png", 包含]  # 到头：应仍停留在 only-one.png，不崩溃  
+OK   screenshots/step_096.jpg     截图 ["单文件文件夹左滑后：仍是 only-one.png（边界回弹动画见 burst 帧；震动反馈模拟器无法观测）"]    
+
+说明：上面 5 个 FAIL 步都是测试操作本身的失误，不是产品缺陷：
+- step_013 点击"暂停"未找到：视频控制栏 10s 自动隐藏（prefs.autoHideDelay 默认 10），点的时候已经藏起来了。
+- 三个"前台是桌面"：我在 tke 执行期间并发直连 WDA 发拖动请求，tke 判定 WDA 卡死并重启了它，把 app 挤到后台；之后改为串行（tke 与 WDA 调用不重叠）就没再发生。
+- step_085 点击"media"未找到：上一步的返回按钮在控制栏隐藏时点空了，仍停留在预览页；补一次单击叫出控制栏后成功。

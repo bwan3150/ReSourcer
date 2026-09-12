@@ -1,0 +1,6 @@
+回归：视频垂直拖动 250pt/2s（wda-drag.sh 201 300 201 550 2000）不应 seek。前：0:07 @12:28:34；后：0:21 @12:28:47（13s 墙钟 ≈ 14s 进度，无跳变）。
+  2   XCUIElementTypeStaticText   0:07                   88,2301    ✓
+12:28:34
+12:28:37
+  2   XCUIElementTypeStaticText   0:21                   88,2301    ✓
+12:28:47

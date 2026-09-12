@@ -1,0 +1,31 @@
+ld: warning: ignoring file '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/lib/darwin/libclang_rt.iossim.a(bswapsi2.c.o)': found architecture 'arm64', required architecture 'x86_64'
+ld: warning: ignoring file '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/lib/darwin/libclang_rt.iossim.a(bswapdi2.c.o)': found architecture 'arm64', required architecture 'x86_64'
+ld: warning: ignoring file '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/lib/darwin/libclang_rt.iossim.a(ashrti3.c.o)': found architecture 'arm64', required architecture 'x86_64'
+ld: warning: ignoring file '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/lib/darwin/libclang_rt.iossim.a(ashrdi3.c.o)': found architecture 'arm64', required architecture 'x86_64'
+ld: warning: ignoring file '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/lib/darwin/libclang_rt.iossim.a(ashlti3.c.o)': found architecture 'arm64', required architecture 'x86_64'
+ld: warning: ignoring file '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/lib/darwin/libclang_rt.iossim.a(ashldi3.c.o)': found architecture 'arm64', required architecture 'x86_64'
+ld: warning: ignoring file '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/lib/darwin/libclang_rt.iossim.a(addvti3.c.o)': found architecture 'arm64', required architecture 'x86_64'
+ld: warning: ignoring file '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/lib/darwin/libclang_rt.iossim.a(addvsi3.c.o)': found architecture 'arm64', required architecture 'x86_64'
+ld: warning: ignoring file '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/lib/darwin/libclang_rt.iossim.a(addvdi3.c.o)': found architecture 'arm64', required architecture 'x86_64'
+ld: warning: ignoring file '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/lib/darwin/libclang_rt.iossim.a(addsf3.c.o)': found architecture 'arm64', required architecture 'x86_64'
+ld: warning: Could not find or use auto-linked framework 'CoreAudioTypes': framework 'CoreAudioTypes' not found
+ld: warning: Could not find or use auto-linked framework 'UIUtilities': framework 'UIUtilities' not found
+ld: warning: Could not parse or use implicit file '/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/System/Library/Frameworks/SwiftUICore.framework/SwiftUICore.tbd': cannot link directly with 'SwiftUICore' because product being built is not an allowed client of it
+Undefined symbols for architecture x86_64:
+  "___isPlatformVersionAtLeast", referenced from:
+      Swift._stdlib_isOSVersionAtLeast_AEIC(Builtin.Word, Builtin.Word, Builtin.Word) -> Builtin.Int1 in ReSourcerApp.o
+      l_get_underlying_type_ref 7SwiftUI4ViewPAAEAcAE3tag_15includeOptionalQrqd___SbtSHRd__lFQOQr in GlassTabBar.o
+      l_get_underlying_witness 7SwiftUI4ViewPAAEAcAE3tag_15includeOptionalQrqd___SbtSHRd__lFQOqd0__AaBHC in GlassTabBar.o
+      l_get_underlying_type_ref 7SwiftUI4ViewPAAEAcAE7popover11isPresented16attachmentAnchor9arrowEdge7contentQrAA7BindingVySbG_AA017PopoverAttachmentH0OAA0J0OSgqd__yctAaBRd__lFQOQr in FilePreviewView.o
+      l_get_underlying_witness 7SwiftUI4ViewPAAEAcAE7popover11isPresented16attachmentAnchor9arrowEdge7contentQrAA7BindingVySbG_AA017PopoverAttachmentH0OAA0J0OSgqd__yctAaBRd__lFQOqd0__AaBHC in FilePreviewView.o
+ld: symbol(s) not found for architecture x86_64
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+
+** BUILD FAILED **
+
+
+The following build commands failed:
+	Ld /Users/ericwang/Library/Developer/Xcode/DerivedData/ReSourcer-gwqbhwmmrxqiqeetxarwinoflacn/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/x86_64/Binary/ReSourcer.debug.dylib normal x86_64 (in target 'ReSourcer' from project 'ReSourcer')
+	Building project ReSourcer with scheme ReSourcer
+(2 failures)
+EXIT: 

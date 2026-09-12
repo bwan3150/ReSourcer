@@ -1,0 +1,985 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -scheme ReSourcer -destination id=575B910A-8F00-40D9-A501-C28C7A3199F0 -derivedDataPath /tmp/rs003-dd build
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'ReSourcer' in project 'ReSourcer' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x objective-c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Preview Content/Preview Assets.xcassets /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 7f5d5fcc1effc9cfac5a3db4d36644ee
+Build description path: /tmp/rs003-dd/Build/Intermediates.noindex/XCBuildData/7f5d5fcc1effc9cfac5a3db4d36644ee.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk /tmp/rs003-dd/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -o /tmp/rs003-dd/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache
+
+CreateBuildDirectory /tmp/rs003-dd/Build/Products
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer.xcodeproj
+    builtin-create-build-directory /tmp/rs003-dd/Build/Products
+
+CreateBuildDirectory /tmp/rs003-dd/Build/Intermediates.noindex
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer.xcodeproj
+    builtin-create-build-directory /tmp/rs003-dd/Build/Intermediates.noindex
+
+CreateBuildDirectory /tmp/rs003-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer.xcodeproj
+    builtin-create-build-directory /tmp/rs003-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+CreateBuildDirectory /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer.xcodeproj
+    builtin-create-build-directory /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+CreateBuildDirectory /tmp/rs003-dd/Build/Products/Debug-iphonesimulator
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer.xcodeproj
+    builtin-create-build-directory /tmp/rs003-dd/Build/Products/Debug-iphonesimulator
+
+CreateBuildDirectory /tmp/rs003-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer.xcodeproj
+    builtin-create-build-directory /tmp/rs003-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer-6fb5bd7bf7469906da74632c87d211c5-VFS-iphonesimulator/all-product-headers.yaml
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer.xcodeproj
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer-6fb5bd7bf7469906da74632c87d211c5-VFS-iphonesimulator/all-product-headers.yaml
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-project-headers.hmap (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-project-headers.hmap
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-all-target-headers.hmap (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-all-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-generated-files.hmap (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-generated-files.hmap
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.DependencyMetadataFileList (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.DependencyMetadataFileList
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-all-non-framework-target-headers.hmap (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.hmap (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.hmap
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.DependencyStaticMetadataFileList (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-DebugDylibPath-normal-arm64.txt (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-DebugDylibPath-normal-arm64.txt
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-DebugDylibInstallName-normal-arm64.txt (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-DebugDylibInstallName-normal-arm64.txt
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-own-target-headers.hmap (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-own-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/e6072d4f65d7061329687fe24e3d63a7-common-args.resp (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/e6072d4f65d7061329687fe24e3d63a7-common-args.resp
+-target arm64-apple-ios18.0-simulator '-std=gnu17' -fobjc-arc -fobjc-weak -fmodules -gmodules '-fmodules-cache-path=/tmp/rs003-dd/ModuleCache.noindex' -fpascal-strings -O0 -fno-common '-DDEBUG=1' '-DOBJC_OLD_DISPATCH_PROTOTYPES=0' -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -g '-fobjc-abi-version=2' -fobjc-legacy-dispatch -iquote /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-generated-files.hmap -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-own-target-headers.hmap -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-all-target-headers.hmap -iquote /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-project-headers.hmap -I/tmp/rs003-dd/Build/Products/Debug-iphonesimulator/include -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources-normal/arm64 -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources/arm64 -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources -F/tmp/rs003-dd/Build/Products/Debug-iphonesimulator
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.SwiftFileList (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.SwiftFileList
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer_const_extract_protocols.json (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer_const_extract_protocols.json
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.SwiftConstValuesFileList (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.LinkFileList (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.LinkFileList
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer-OutputFileMap.json (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer-OutputFileMap.json
+
+MkDir /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    /bin/mkdir -p /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app
+
+WriteAuxiliaryFile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources/Entitlements-Simulated.plist (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    write-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources/Entitlements-Simulated.plist
+
+ValidateDevelopmentAssets /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    builtin-validate-development-assets --validate YES_ERROR /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Preview\ Content
+
+ProcessProductPackaging "" /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.app-Simulated.xcent (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+    Entitlements:
+    
+    {
+    "application-identifier" = "925YHK2R4K.com.resourcer.apple";
+}
+    
+    builtin-productPackagingUtility -entitlements -format xml -o /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.app-Simulated.xcent
+
+ProcessProductPackagingDER /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.app-Simulated.xcent /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.app-Simulated.xcent.der (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    /usr/bin/derq query -f xml -i /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.app-Simulated.xcent -o /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.app-Simulated.xcent.der --raw
+
+Ld /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/__preview.dylib normal (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios18.0-simulator -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -O0 -L/tmp/rs003-dd/Build/Products/Debug-iphonesimulator -F/tmp/rs003-dd/Build/Products/Debug-iphonesimulator -install_name @rpath/ReSourcer.debug.dylib -dead_strip -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer_dependency_info.dat -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __entitlements -Xlinker /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.app-Simulated.xcent -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __ents_der -Xlinker /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.app-Simulated.xcent.der -Xlinker -no_adhoc_codesign -o /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/__preview.dylib
+
+GenerateAssetSymbols /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Preview\ Content/Preview\ Assets.xcassets /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Assets.xcassets (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Preview\ Content/Preview\ Assets.xcassets /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Assets.xcassets --compile /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app --output-format human-readable-text --notices --warnings --export-dependency-info /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_dependencies --output-partial-info-plist /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_generated_info.plist --app-icon AppIcon --accent-color AccentColor --compress-pngs --enable-on-demand-resources YES --development-region zh-Hans --target-device iphone --target-device ipad --minimum-deployment-target 18.0 --platform iphonesimulator --bundle-identifier com.resourcer.apple --generate-swift-asset-symbols /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources/GeneratedAssetSymbols.swift --generate-objc-asset-symbols /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources/GeneratedAssetSymbols.h --generate-asset-symbol-index /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/* com.apple.actool.compilation-results */
+/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources/GeneratedAssetSymbols.h
+/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources/GeneratedAssetSymbols.swift
+
+
+MkDir /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_output/thinned (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    /bin/mkdir -p /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_output/thinned
+
+MkDir /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_output/unthinned (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    /bin/mkdir -p /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_output/unthinned
+
+CompileAssetCatalogVariant thinned /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Preview\ Content/Preview\ Assets.xcassets /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Assets.xcassets (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Preview\ Content/Preview\ Assets.xcassets /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Assets.xcassets --compile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_output/thinned --output-format human-readable-text --notices --warnings --export-dependency-info /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_dependencies_thinned --output-partial-info-plist /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_generated_info.plist_thinned --app-icon AppIcon --accent-color AccentColor --compress-pngs --enable-on-demand-resources YES --filter-for-thinning-device-configuration iPhone18,1 --filter-for-device-os-version 26.2 --development-region zh-Hans --target-device iphone --target-device ipad --minimum-deployment-target 18.0 --platform iphonesimulator
+/* com.apple.actool.compilation-results */
+/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_generated_info.plist_thinned
+/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_output/thinned/AppIcon60x60@2x.png
+/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_output/thinned/AppIcon76x76@2x~ipad.png
+/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_output/thinned/Assets.car
+
+
+SwiftDriver ReSourcer normal arm64 com.apple.xcode.tools.swift.compiler (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name ReSourcer -Onone -enforce-exclusivity\=checked @/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.SwiftFileList -DDEBUG -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -target arm64-apple-ios18.0-simulator -g -module-cache-path /tmp/rs003-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/rs003-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /tmp/rs003-dd/Build/Products/Debug-iphonesimulator -F /tmp/rs003-dd/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64 -c -j11 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/rs003-dd/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -output-file-map /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/rs003-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/rs003-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/rs003-dd/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/rs003-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-generated-files.hmap -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-own-target-headers.hmap -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-project-headers.hmap -Xcc -I/tmp/rs003-dd/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources-normal/arm64 -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources/arm64 -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer-Swift.h -import-objc-header /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/ReSourcer-Bridging-Header.h -working-directory /Users/ericwang/Documents/GitHub/ReSourcer/iOS -experimental-emit-module-separately -disable-cmo
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/_Builtin_stddef-85ZPCWVWXQVURTHWFMM4EJ3WP.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/ptrcheck-6AY5BRLGGE3H2WCT754KJL1KM.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/_Builtin_stdarg-AYMV1RY15EWHBLDQV7Z84P024.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/_Builtin_stdbool-2YO48WX1TQ2GZTBBDRWG9AP3K.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/_SwiftConcurrencyShims-B5LFXBNW7ENOYXNN0C5FDDZT1.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/ptrauth-8AYY8PN7ZCT5MA99NGUQY719B.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/_Builtin_float-AU8C4MC9O3340NUZCDFFY9CBN.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/SwiftShims-9BNTOW6B44P6EMRUDOKAADKEV.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/DeveloperToolsSupport-BS3NU9TNML396R1NJ5UNV4TCD.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/_AvailabilityInternal-6HJXCNPY0ED5MWOOTD42GEKN2.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/_DarwinFoundation1-68RIYZ9Z7Y0MLYT5Y6M7HR4J5.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/_Builtin_limits-AIH1GIADME6TYDUO5ID0FSTO2.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/ExtensionFoundation-C55O0I8D22G8MXQ3IYF83C3R9.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/_DarwinFoundation2-9LXJPMB497T0SFYYWEOW1I786.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/_Builtin_stdint-D9XXINN17N28HPQKCHGULOAGO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/sys_types-CO24DYSFPUJ4UIHPA05JUO0ZH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/_Builtin_tgmath-8Z2P0CUXDBLNHFPVKYQTZXCZL.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/_Builtin_intrinsics-416CTFQ220Q4OX65QEJGOHM2O.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/_DarwinFoundation3-ATZWXBULRJ3SJRQU8VX19X4CW.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/_Builtin_stdatomic-AKO08C2Y6X750BIZJOVWH6H24.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/_Builtin_inttypes-9YPYFIB3C8EFXIC6HFUVH7MLR.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/Darwin-5F8EN6VM6PQX12IB51RMIG6EB.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/simd-23DUMKE37G1VYOD7J6ZSZW273.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/MachO-DIQ1WXQYMJYQ5ES3ESB2V8L3D.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/ObjectiveC-50IKSD45CNQ21OM70OQCJ5DGA.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/os_object-1QEE1Z0EJCEU0M1OWXBHG2YBW.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/Spatial-EWC233HFAQ1GSO1LGM4ARPRD8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/os_workgroup-DMF0LYNGUOAWPXAJDD1RM8DYC.pcm
+
+LinkAssetCatalog /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Preview\ Content/Preview\ Assets.xcassets /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Assets.xcassets (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    builtin-linkAssetCatalog --thinned /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_output/thinned --thinned-dependencies /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_dependencies_thinned --thinned-info-plist-content /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_generated_info.plist_thinned --unthinned /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_output/unthinned --unthinned-dependencies /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_dependencies_unthinned --unthinned-info-plist-content /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_generated_info.plist_unthinned --output /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app --plist-output /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_generated_info.plist
+note: Emplaced /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/AppIcon76x76@2x~ipad.png (in target 'ReSourcer' from project 'ReSourcer')
+note: Emplaced /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/Assets.car (in target 'ReSourcer' from project 'ReSourcer')
+note: Emplaced /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/AppIcon60x60@2x.png (in target 'ReSourcer' from project 'ReSourcer')
+
+ProcessInfoPlistFile /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/Info.plist /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Info.plist (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    builtin-infoPlistUtility /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Info.plist -producttype com.apple.product-type.application -genpkginfo /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/PkgInfo -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/assetcatalog_generated_info.plist -o /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/Info.plist
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/Dispatch-6E1U1CQSU18CUW1GZAHT93WSU.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/dnssd-BZDWISEHBXOE35GUYLRZT0AQW.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/XPC-4Y4F88TLEPFXAIBGZ2FZ2LSY3.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/CoreFoundation-1X8GZBNTOZR1Z1DGPTCP1C8JQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/os-5NJ0CBYD1SMXDUCO374XKLNDO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/Security-7G5Y49ALRNHL0MXYJJ7DOTR2O.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/CoreAudioTypes-6JMEGTNAQRGY2HJRB7HNOVBY8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/CFNetwork-F4JG7KI4OASY6K4RADRY6EG0M.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/CoreGraphics-CURVWOT1P1MV4PBHLM38MFNGS.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/Foundation-6FUDBDXZ5V3JEVTSSX39R2P2D.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/CoreAudio-52D59O96D45Z76QI726Z0DNXT.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/ImageIO-4NE35Y2WS69SPBO8IOFKXV9BG.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/CoreText-3OMXTF2ACRHGFTQFEPMLFRX3K.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/Symbols-2PRQYZ46O11OO3CXJCI3LSZT9.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/OSLog-7YYUDZ1SFX6QOXOX5AKTZ8FML.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/Accessibility-EWY2D4UEHBX63D3OQN0J010VQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/DataDetection-6QX0V5O218PTXL081U5WMTYMP.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/UIUtilities-9H10H0RAXEX67X4WNURYNLX0M.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/FileProvider-5QE7FNNFN98GSDTCLU8U6RIME.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/CoreData-BGUSMSH5YAALOHNZ802DAFXU1.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/_LocationEssentials-ACXT092AR6VMIZ17EUBZ01UAP.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/UserNotifications-3LPWT4R9QXVPYGCPPMZSS6YCC.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/CoreTransferable-OWC6F9VP3V4V6UMU1XJPUIEY.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/CoreMIDI-8R509EAGJHWW2Y12M8EH0M2VC.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/OpenGLES-1343846RHL6IELQIUK0A4YE7Q.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/IOSurface-BBBCTTH4HLVNE1CMS6GWI2F6T.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/LocalAuthentication-DFZG6XVNKMBO42OJ15MV8TY9O.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/UniformTypeIdentifiers-85RF39HYPS1M6LNYUREIGSVLE.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/Network-ESTB9EO5ODFH0JHMD6DJJP6B5.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/AudioToolbox-EFLH1QXI65KQOJX3AU7HL42WO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/CoreLocation-47NY156ECW6W66QCVFHAWUG87.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/Metal-8WNDK39G0ORY4RJH992MIONLO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/AVRouting-6D1GHMFTY3MPXP6N7IYC8QJJ4.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/CoreVideo-DPM5XX4X60QSNW3QU7QAK1TN3.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/QuartzCore-CJ1KEBOMX7ICZS9VD8JRI2MD.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/CoreMedia-1FLN8UVOLFD8BYZIBQUQ7R35C.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/CoreImage-A99AWN7P46KYSB2NNWFP41KMG.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/SwiftUICore-87SV8S4B26XF7ZEOWC6SBEBX1.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/UIKit-52999DXIOXHIAGIREM73G4MI4.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/MediaToolbox-9P6K3IOS3MFD2R6B10KJHF1AN.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/AVFAudio-5YMER00SZA6EU8XLSWB1S5OBQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/AVFoundation-CZG6171SS1CJJMBRIQCZMFZ0Z.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/Photos-3NN0Q2JQBQDVRK9ICDJFF77GQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/MediaPlayer-E2WXC90GMRLN7WR738NSJH1ER.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/SwiftUI-48S1GK4YDDV0JBWYK5T8B6UP.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/PDFKit-DACOI86REX4UDVBDPX6UVNKWW.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/AVKit-BDWZ1V031Y40R1N0LLEVQ2SK1.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/rs003-dd/ModuleCache.noindex/PhotosUI-38EGJV7YH4AE624ZQ97HPU614.pcm
+
+SwiftGeneratePch normal arm64 Compiling\ bridging\ header (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftDriverJobDiscovery normal arm64 Compiling bridging header (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ ReSourcer (in target 'ReSourcer' from project 'ReSourcer')
+
+EmitSwiftModule normal arm64 (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 Compiling\ PreviewService.swift,\ UploadService.swift,\ TagService.swift,\ AppTheme.swift,\ ClassifierView.swift,\ DownloadView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/PreviewService.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/UploadService.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/TagService.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Theme/AppTheme.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Classifier/ClassifierView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Download/DownloadView.swift (in target 'ReSourcer' from project 'ReSourcer')
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/PreviewService.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/UploadService.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/TagService.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Theme/AppTheme.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Classifier/ClassifierView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Download/DownloadView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 Compiling\ BrowserService.swift,\ ConfigService.swift,\ DownloadService.swift,\ FileService.swift,\ FolderService.swift,\ LocalStorageService.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/BrowserService.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/ConfigService.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/DownloadService.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/FileService.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/FolderService.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/LocalStorageService.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/BrowserService.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/ConfigService.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/DownloadService.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/FileService.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/FolderService.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/LocalStorageService.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 Compiling\ GlassConfirmDialog.swift,\ GlassNavigationBar.swift,\ GlassTabBar.swift,\ View+Extensions.swift,\ AuthModels.swift,\ ConfigModels.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/GlassConfirmDialog.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/GlassNavigationBar.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/GlassTabBar.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Extensions/View+Extensions.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/AuthModels.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/ConfigModels.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/GlassConfirmDialog.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/GlassNavigationBar.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/GlassTabBar.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Extensions/View+Extensions.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/AuthModels.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/ConfigModels.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 Compiling\ GalleryView.swift,\ FilePreviewView.swift,\ ZoomPanGesture.swift,\ PageSwipeGesture.swift,\ SeekDragGesture.swift,\ SettingsView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Gallery/GalleryView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Gallery/FilePreviewView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Gallery/Gestures/ZoomPanGesture.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Gallery/Gestures/PageSwipeGesture.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Gallery/Gestures/SeekDragGesture.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/SettingsView.swift (in target 'ReSourcer' from project 'ReSourcer')
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Gallery/GalleryView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Gallery/FilePreviewView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Gallery/Gestures/ZoomPanGesture.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Gallery/Gestures/PageSwipeGesture.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Gallery/Gestures/SeekDragGesture.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/SettingsView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 Compiling\ PatternLockView.swift,\ PreferencesView.swift,\ ThumbnailCacheDetailView.swift,\ ThumbnailCacheService.swift,\ NavigationState.swift,\ PreviewLogger.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/PatternLockView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/PreferencesView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/ThumbnailCacheDetailView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/ThumbnailCacheService.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/NavigationState.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/PreviewLogger.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/PatternLockView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/PreferencesView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/ThumbnailCacheDetailView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/ThumbnailCacheService.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/NavigationState.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/PreviewLogger.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 Compiling\ TagEditorView.swift,\ CachedThumbnailView.swift,\ QRScannerView.swift,\ PhotoUploadView.swift,\ UploadTaskListView.swift,\ FileInfoSheetContent.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/TagEditorView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/CachedThumbnailView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/QRScannerView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Gallery/PhotoUploadView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Gallery/UploadTaskListView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/FileInfoSheetContent.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/TagEditorView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/CachedThumbnailView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/QRScannerView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Gallery/PhotoUploadView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Gallery/UploadTaskListView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/FileInfoSheetContent.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 Compiling\ ReSourcerApp.swift,\ MainTabView.swift,\ ServerConnectView.swift,\ GlassAlert.swift,\ GlassBottomSheet.swift,\ GlassButton.swift,\ GlassComponents.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/App/ReSourcerApp.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/App/MainTabView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/App/ServerConnectView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/GlassAlert.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/GlassBottomSheet.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/GlassButton.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/GlassComponents.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/App/ReSourcerApp.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/App/MainTabView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/App/ServerConnectView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/GlassAlert.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/GlassBottomSheet.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/GlassButton.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/GlassComponents.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 Compiling\ AuthSettingsView.swift,\ CacheSettingsView.swift,\ IgnoreSettingsView.swift,\ DownloaderSettingsView.swift,\ UploadSettingsView.swift,\ PrivacyManager.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/AuthSettingsView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/CacheSettingsView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/IgnoreSettingsView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/DownloaderSettingsView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/UploadSettingsView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/PrivacyManager.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/AuthSettingsView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/CacheSettingsView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/IgnoreSettingsView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/DownloaderSettingsView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/UploadSettingsView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/PrivacyManager.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 Compiling\ DownloadModels.swift,\ FileModels.swift,\ FolderModels.swift,\ Server.swift,\ UploadModels.swift,\ TagModels.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/DownloadModels.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/FileModels.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/FolderModels.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/Server.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/UploadModels.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/TagModels.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/DownloadModels.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/FileModels.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/FolderModels.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/Server.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/UploadModels.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/TagModels.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 Compiling\ MetricsService.swift,\ MetricsModels.swift,\ ServerMetricsView.swift,\ AboutView.swift,\ FileIconHelper.swift,\ GeneratedAssetSymbols.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/MetricsService.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/MetricsModels.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/ServerMetricsView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/AboutView.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/FileIconHelper.swift /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/MetricsService.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Models/MetricsModels.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/ServerMetricsView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Views/Settings/AboutView.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Components/FileIconHelper.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 Compiling\ APIEndpoint.swift,\ APIError.swift,\ NetworkManager.swift,\ APIService.swift,\ APIServiceUsageExamples.swift,\ AuthService.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Network/APIEndpoint.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Network/APIError.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Network/NetworkManager.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/APIService.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/APIServiceUsageExamples.swift /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/AuthService.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Network/APIEndpoint.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Network/APIError.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Network/NetworkManager.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/APIService.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/APIServiceUsageExamples.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftCompile normal arm64 /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/AuthService.swift (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for ReSourcer (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftDriver\ Compilation\ Requirements ReSourcer normal arm64 com.apple.xcode.tools.swift.compiler (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name ReSourcer -Onone -enforce-exclusivity\=checked @/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.SwiftFileList -DDEBUG -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -target arm64-apple-ios18.0-simulator -g -module-cache-path /tmp/rs003-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/rs003-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /tmp/rs003-dd/Build/Products/Debug-iphonesimulator -F /tmp/rs003-dd/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64 -c -j11 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/rs003-dd/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -output-file-map /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/rs003-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/rs003-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/rs003-dd/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/rs003-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-generated-files.hmap -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-own-target-headers.hmap -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-project-headers.hmap -Xcc -I/tmp/rs003-dd/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources-normal/arm64 -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources/arm64 -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer-Swift.h -import-objc-header /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/ReSourcer-Bridging-Header.h -working-directory /Users/ericwang/Documents/GitHub/ReSourcer/iOS -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Compiling BrowserService.swift, ConfigService.swift, DownloadService.swift, FileService.swift, FolderService.swift, LocalStorageService.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftMergeGeneratedHeaders /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources/ReSourcer-Swift.h /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer-Swift.h (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    builtin-swiftHeaderTool -arch arm64 /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer-Swift.h -o /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources/ReSourcer-Swift.h
+
+Copy /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.swiftmodule/arm64-apple-ios-simulator.swiftmodule /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.swiftmodule (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.swiftmodule /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.swiftmodule/arm64-apple-ios-simulator.swiftmodule
+
+Copy /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.swiftmodule/arm64-apple-ios-simulator.swiftdoc /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.swiftdoc (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.swiftdoc /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.swiftmodule/arm64-apple-ios-simulator.swiftdoc
+
+Copy /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.swiftmodule/arm64-apple-ios-simulator.abi.json /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.abi.json (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.abi.json /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+Copy /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.swiftsourceinfo (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.swiftsourceinfo /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo
+
+ScanDependencies /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/PhotoExporter.o /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/PhotoExporter.m normal arm64 objective-c com.apple.compilers.llvm.clang.1_0.compiler (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+    Using response file: /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/e6072d4f65d7061329687fe24e3d63a7-common-args.resp
+    
+    builtin-ScanDependencies -o /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/PhotoExporter.o.scan -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x objective-c -ivfsstatcache /tmp/rs003-dd/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -fmessage-length\=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit\=0 -fno-color-diagnostics -fmodules-prune-interval\=86400 -fmodules-prune-after\=345600 -fbuild-session-file\=/tmp/rs003-dd/ModuleCache.noindex/Session.modulevalidation -fmodules-validate-once-per-build-session -Wnon-modular-include-in-framework-module -Werror\=non-modular-include-in-framework-module -Wno-trigraphs -Wno-missing-field-initializers -Wno-missing-prototypes -Werror\=return-type -Wdocumentation -Wunreachable-code -Wquoted-include-in-framework-header -Wno-implicit-atomic-properties -Werror\=deprecated-objc-isa-usage -Wno-objc-interface-ivars -Werror\=objc-root-class -Wno-arc-repeated-use-of-weak -Wimplicit-retain-self -Wduplicate-method-match -Wno-missing-braces -Wparentheses -Wswitch -Wunused-function -Wno-unused-label -Wno-unused-parameter -Wunused-variable -Wunused-value -Wempty-body -Wuninitialized -Wconditional-uninitialized -Wno-unknown-pragmas -Wno-shadow -Wno-four-char-constants -Wno-conversion -Wconstant-conversion -Wint-conversion -Wbool-conversion -Wenum-conversion -Wno-float-conversion -Wnon-literal-null-conversion -Wobjc-literal-conversion -Wshorten-64-to-32 -Wpointer-sign -Wno-newline-eof -Wno-selector -Wno-strict-selector-match -Wundeclared-selector -Wdeprecated-implementations -Wno-implicit-fallthrough -fstrict-aliasing -Wprotocol -Wdeprecated-declarations -Wno-sign-conversion -Winfinite-recursion -Wcomma -Wblock-capture-autoreleasing -Wstrict-prototypes -Wno-semicolon-before-method-body -Wunguarded-availability -index-store-path /tmp/rs003-dd/Index.noindex/DataStore @/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/e6072d4f65d7061329687fe24e3d63a7-common-args.resp -MMD -MT dependencies -MF /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/PhotoExporter.d --serialize-diagnostics /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/PhotoExporter.dia -c /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/PhotoExporter.m -o /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/PhotoExporter.o -index-unit-output-path /ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/PhotoExporter.o
+
+SwiftDriverJobDiscovery normal arm64 Compiling DownloadModels.swift, FileModels.swift, FolderModels.swift, Server.swift, UploadModels.swift, TagModels.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_stdbool-DQ8ZKMID5QKS1OXVM4ZDR89VN.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_stdbool-DQ8ZKMID5QKS1OXVM4ZDR89VN.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_AvailabilityInternal-A46UUK5L4Z9YJ6NJ6RYMKCS3L.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_AvailabilityInternal-A46UUK5L4Z9YJ6NJ6RYMKCS3L.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_stdarg-BIOK342W4Q5QE2PPIDEIOXGC0.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_stdarg-BIOK342W4Q5QE2PPIDEIOXGC0.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/ptrcheck-4R57H6BKTS07TP1VP5SS4NQEU.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/ptrcheck-4R57H6BKTS07TP1VP5SS4NQEU.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_float-47VIZUJ50MVTIHYBQ4W9A6251.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_float-47VIZUJ50MVTIHYBQ4W9A6251.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/ptrauth-28C28OU3UFK6715LHUB2XG101.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/ptrauth-28C28OU3UFK6715LHUB2XG101.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_DarwinFoundation1-CR2NH3WIMQK3BG4VQGP9OUXKY.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_DarwinFoundation1-CR2NH3WIMQK3BG4VQGP9OUXKY.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_stddef-9MOL2284R04TZOMCEYAZT9JK8.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_stddef-9MOL2284R04TZOMCEYAZT9JK8.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_DarwinFoundation2-7TLVI2GK51CM2AIELGK5VHFV5.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_DarwinFoundation2-7TLVI2GK51CM2AIELGK5VHFV5.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_limits-BQ1BHSVYRRN3N7ZUMK03L3WCF.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_limits-BQ1BHSVYRRN3N7ZUMK03L3WCF.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_tgmath-15I9YRDH39NLQSS3H88W7XRSH.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_tgmath-15I9YRDH39NLQSS3H88W7XRSH.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_stdint-8200UNJ6O8WW8KUKNW0GHWSY5.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_stdint-8200UNJ6O8WW8KUKNW0GHWSY5.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_DarwinFoundation3-6HBVSOBSVJ94UAD3NX1CTYSCY.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_DarwinFoundation3-6HBVSOBSVJ94UAD3NX1CTYSCY.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_intrinsics-BKKP4JTF0PDNFXT7130I5JU24.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_intrinsics-BKKP4JTF0PDNFXT7130I5JU24.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_inttypes-9Q6MLVDG3C1S0YF3ZKALKR3FA.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_inttypes-9Q6MLVDG3C1S0YF3ZKALKR3FA.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/Darwin-32UUCU1PJFF9LIFRJME4VHLPG.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/Darwin-32UUCU1PJFF9LIFRJME4VHLPG.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/simd-5EU420ULC9SUEQS4YC6I8SE7E.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/simd-5EU420ULC9SUEQS4YC6I8SE7E.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/ObjectiveC-B494WAJ5BLHUFQBESIGXE526N.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/ObjectiveC-B494WAJ5BLHUFQBESIGXE526N.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/os_object-8IEKADS4DWK7RNAEWU0Z2TR5D.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/os_object-8IEKADS4DWK7RNAEWU0Z2TR5D.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/os_workgroup-86NGLQWJJISF2OD6JLBHZ1VM5.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/os_workgroup-86NGLQWJJISF2OD6JLBHZ1VM5.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/Dispatch-55AT2ND37H9YROPBXUKZCBWKH.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/Dispatch-55AT2ND37H9YROPBXUKZCBWKH.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/XPC-DQ5SRN8XPQ2TTIUWT1IOBQ519.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/XPC-DQ5SRN8XPQ2TTIUWT1IOBQ519.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/dnssd-AF3VM9L40Y4EAXZTVYOF5W1FU.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/dnssd-AF3VM9L40Y4EAXZTVYOF5W1FU.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreFoundation-2RMPXZKNKBZG7WH3PKXJFHM50.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreFoundation-2RMPXZKNKBZG7WH3PKXJFHM50.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/Security-397KJUBMSXT8JFK7E6XTJZ7Z2.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/Security-397KJUBMSXT8JFK7E6XTJZ7Z2.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreAudioTypes-7SJIXW1V4KY90T85D9ZKVNL72.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreAudioTypes-7SJIXW1V4KY90T85D9ZKVNL72.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreGraphics-3GLVRVUBB3KT1UFOGNOKTUEZ6.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreGraphics-3GLVRVUBB3KT1UFOGNOKTUEZ6.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreAudio-24VMQOUVPI2J3MMZ8JJS3ZGRS.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreAudio-24VMQOUVPI2J3MMZ8JJS3ZGRS.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CFNetwork-EYDUQN9UUVANNP62IUFUF4001.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CFNetwork-EYDUQN9UUVANNP62IUFUF4001.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/ImageIO-A9D12ICZSJFIS1JZNLA69EVEV.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/ImageIO-A9D12ICZSJFIS1JZNLA69EVEV.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/Foundation-1V8HIKFYR7RQTMYU1LRR8JQLR.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/Foundation-1V8HIKFYR7RQTMYU1LRR8JQLR.scan
+
+SwiftDriverJobDiscovery normal arm64 Compiling APIEndpoint.swift, APIError.swift, NetworkManager.swift, APIService.swift, APIServiceUsageExamples.swift, AuthService.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftDriverJobDiscovery normal arm64 Compiling PatternLockView.swift, PreferencesView.swift, ThumbnailCacheDetailView.swift, ThumbnailCacheService.swift, NavigationState.swift, PreviewLogger.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftDriverJobDiscovery normal arm64 Compiling AuthSettingsView.swift, CacheSettingsView.swift, IgnoreSettingsView.swift, DownloaderSettingsView.swift, UploadSettingsView.swift, PrivacyManager.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/IOSurface-BV1B87Q11UQN60OJAM3XQY5P6.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/IOSurface-BV1B87Q11UQN60OJAM3XQY5P6.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_LocationEssentials-CY3OHXA9XJIA7VWFQ8HV444TH.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/_LocationEssentials-CY3OHXA9XJIA7VWFQ8HV444TH.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/UniformTypeIdentifiers-D91GDFRU69682D3SDGJY7HK0G.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/UniformTypeIdentifiers-D91GDFRU69682D3SDGJY7HK0G.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/Network-30Y9MGRRT4RDKF6YMGI4KFYX2.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/Network-30Y9MGRRT4RDKF6YMGI4KFYX2.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreMIDI-491LBU7NEMP9W6WBGFBFI5ZHX.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreMIDI-491LBU7NEMP9W6WBGFBFI5ZHX.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/OpenGLES-DYC38KCNI5CSLNIROYHD386S9.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/OpenGLES-DYC38KCNI5CSLNIROYHD386S9.scan
+
+SwiftDriverJobDiscovery normal arm64 Compiling MetricsService.swift, MetricsModels.swift, ServerMetricsView.swift, AboutView.swift, FileIconHelper.swift, GeneratedAssetSymbols.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreLocation-EJLA2BHUP7U2IQ1NJ7VZDETLI.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreLocation-EJLA2BHUP7U2IQ1NJ7VZDETLI.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/Metal-6NITKSOXI395R1P63WB6C4B2R.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/Metal-6NITKSOXI395R1P63WB6C4B2R.scan
+
+SwiftDriverJobDiscovery normal arm64 Compiling GlassConfirmDialog.swift, GlassNavigationBar.swift, GlassTabBar.swift, View+Extensions.swift, AuthModels.swift, ConfigModels.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/AudioToolbox-A1WLOS8KYHGFTICM9I8J0Z8J4.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/AudioToolbox-A1WLOS8KYHGFTICM9I8J0Z8J4.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/AVRouting-6NG9QLYQS60DTGJLOPTTNUJ8W.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/AVRouting-6NG9QLYQS60DTGJLOPTTNUJ8W.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreVideo-EG4HB41HURPKH23KGPUYZQYTK.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreVideo-EG4HB41HURPKH23KGPUYZQYTK.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreMedia-C6BJSWB2VKZ3Q9DHC3DYRM4VW.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreMedia-C6BJSWB2VKZ3Q9DHC3DYRM4VW.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/QuartzCore-7YATWETEGUAKJDE35QZD4R30M.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/QuartzCore-7YATWETEGUAKJDE35QZD4R30M.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreImage-8N1RBUOQUPN3NIJLYCH1XYBLM.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/CoreImage-8N1RBUOQUPN3NIJLYCH1XYBLM.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/MediaToolbox-EJVBIT87O4VARH94XS07IQINB.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/MediaToolbox-EJVBIT87O4VARH94XS07IQINB.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/AVFAudio-37VX6HK40RWIGJBUPB6JKMF11.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/AVFAudio-37VX6HK40RWIGJBUPB6JKMF11.scan
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/AVFoundation-E33PV4KVLX64X727X97D0PM94.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/AVFoundation-E33PV4KVLX64X727X97D0PM94.scan
+
+SwiftDriverJobDiscovery normal arm64 Compiling ReSourcerApp.swift, MainTabView.swift, ServerConnectView.swift, GlassAlert.swift, GlassBottomSheet.swift, GlassButton.swift, GlassComponents.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+PrecompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/Photos-F49FZA906D374W4JMBX7V7WUU.scan
+    cd /
+    builtin-precompileModule /tmp/rs003-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules/Photos-F49FZA906D374W4JMBX7V7WUU.scan
+
+CompileC /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/PhotoExporter.o /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/PhotoExporter.m normal arm64 objective-c com.apple.compilers.llvm.clang.1_0.compiler (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+    Using response file: /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/e6072d4f65d7061329687fe24e3d63a7-common-args.resp
+    
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x objective-c -ivfsstatcache /tmp/rs003-dd/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -fmessage-length\=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit\=0 -fno-color-diagnostics -fmodules-prune-interval\=86400 -fmodules-prune-after\=345600 -fbuild-session-file\=/tmp/rs003-dd/ModuleCache.noindex/Session.modulevalidation -fmodules-validate-once-per-build-session -Wnon-modular-include-in-framework-module -Werror\=non-modular-include-in-framework-module -Wno-trigraphs -Wno-missing-field-initializers -Wno-missing-prototypes -Werror\=return-type -Wdocumentation -Wunreachable-code -Wquoted-include-in-framework-header -Wno-implicit-atomic-properties -Werror\=deprecated-objc-isa-usage -Wno-objc-interface-ivars -Werror\=objc-root-class -Wno-arc-repeated-use-of-weak -Wimplicit-retain-self -Wduplicate-method-match -Wno-missing-braces -Wparentheses -Wswitch -Wunused-function -Wno-unused-label -Wno-unused-parameter -Wunused-variable -Wunused-value -Wempty-body -Wuninitialized -Wconditional-uninitialized -Wno-unknown-pragmas -Wno-shadow -Wno-four-char-constants -Wno-conversion -Wconstant-conversion -Wint-conversion -Wbool-conversion -Wenum-conversion -Wno-float-conversion -Wnon-literal-null-conversion -Wobjc-literal-conversion -Wshorten-64-to-32 -Wpointer-sign -Wno-newline-eof -Wno-selector -Wno-strict-selector-match -Wundeclared-selector -Wdeprecated-implementations -Wno-implicit-fallthrough -fstrict-aliasing -Wprotocol -Wdeprecated-declarations -Wno-sign-conversion -Winfinite-recursion -Wcomma -Wblock-capture-autoreleasing -Wstrict-prototypes -Wno-semicolon-before-method-body -Wunguarded-availability -index-store-path /tmp/rs003-dd/Index.noindex/DataStore @/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/e6072d4f65d7061329687fe24e3d63a7-common-args.resp -MMD -MT dependencies -MF /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/PhotoExporter.d --serialize-diagnostics /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/PhotoExporter.dia -c /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/Services/PhotoExporter.m -o /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/PhotoExporter.o -index-unit-output-path /ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/PhotoExporter.o
+
+SwiftDriverJobDiscovery normal arm64 Compiling TagEditorView.swift, CachedThumbnailView.swift, QRScannerView.swift, PhotoUploadView.swift, UploadTaskListView.swift, FileInfoSheetContent.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftDriverJobDiscovery normal arm64 Compiling PreviewService.swift, UploadService.swift, TagService.swift, AppTheme.swift, ClassifierView.swift, DownloadView.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftDriverJobDiscovery normal arm64 Compiling GalleryView.swift, FilePreviewView.swift, ZoomPanGesture.swift, PageSwipeGesture.swift, SeekDragGesture.swift, SettingsView.swift (in target 'ReSourcer' from project 'ReSourcer')
+
+SwiftDriver\ Compilation ReSourcer normal arm64 com.apple.xcode.tools.swift.compiler (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name ReSourcer -Onone -enforce-exclusivity\=checked @/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.SwiftFileList -DDEBUG -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -target arm64-apple-ios18.0-simulator -g -module-cache-path /tmp/rs003-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/rs003-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /tmp/rs003-dd/Build/Products/Debug-iphonesimulator -F /tmp/rs003-dd/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64 -c -j11 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/rs003-dd/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -output-file-map /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/rs003-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/rs003-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/rs003-dd/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/rs003-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-generated-files.hmap -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-own-target-headers.hmap -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-project-headers.hmap -Xcc -I/tmp/rs003-dd/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources-normal/arm64 -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources/arm64 -Xcc -I/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer-Swift.h -import-objc-header /Users/ericwang/Documents/GitHub/ReSourcer/iOS/ReSourcer/ReSourcer-Bridging-Header.h -working-directory /Users/ericwang/Documents/GitHub/ReSourcer/iOS -experimental-emit-module-separately -disable-cmo
+
+Ld /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/ReSourcer.debug.dylib normal (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios18.0-simulator -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -O0 -L/tmp/rs003-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/tmp/rs003-dd/Build/Products/Debug-iphonesimulator -F/tmp/rs003-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/tmp/rs003-dd/Build/Products/Debug-iphonesimulator -filelist /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.LinkFileList -install_name @rpath/ReSourcer.debug.dylib -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker @executable_path/Frameworks -dead_strip -Xlinker -object_path_lto -Xlinker /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer_dependency_info.dat -fobjc-arc -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.swiftmodule @/tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer-linker-args.resp -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -Xlinker -no_adhoc_codesign -o /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/ReSourcer.debug.dylib
+
+ConstructStubExecutorLinkFileList /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-ExecutorLinkFileList-normal-arm64.txt (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    construct-stub-executor-link-file-list /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/ReSourcer.debug.dylib /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-ExecutorLinkFileList-normal-arm64.txt
+note: Using stub executor library with Swift entry point. (in target 'ReSourcer' from project 'ReSourcer')
+
+Ld /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/ReSourcer normal (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios18.0-simulator -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -O0 -L/tmp/rs003-dd/Build/Products/Debug-iphonesimulator -F/tmp/rs003-dd/Build/Products/Debug-iphonesimulator -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker @executable_path/Frameworks -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-DebugDylibPath-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-DebugDylibInstallName-normal-arm64.txt -Xlinker -filelist -Xlinker /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer-ExecutorLinkFileList-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __entitlements -Xlinker /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.app-Simulated.xcent -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __ents_der -Xlinker /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.app-Simulated.xcent.der /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/ReSourcer.debug.dylib -Xlinker -no_adhoc_codesign -o /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/ReSourcer
+
+CopySwiftLibs /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/ReSourcer.debug.dylib --scan-folder /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/Frameworks --scan-folder /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/PlugIns --scan-folder /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/SystemExtensions --scan-folder /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ExtractAppIntentsMetadata (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name ReSourcer --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk --xcode-version 17C52 --platform-family iOS --deployment-target 18.0 --bundle-identifier com.resourcer.apple --output /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app --target-triple arm64-apple-ios18.0-simulator --binary-file /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/ReSourcer --dependency-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer_dependency_info.dat --stringsdata-file /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.SwiftFileList --metadata-file-list /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.DependencyMetadataFileList --static-metadata-file-list /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/Objects-normal/arm64/ReSourcer.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-09-12 12:14:26.257 appintentsmetadataprocessor[37851:31310876] Starting appintentsmetadataprocessor export
+2026-09-12 12:14:26.259 appintentsmetadataprocessor[37851:31310876] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+AppIntentsSSUTraining (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsnltrainingprocessor --infoplist-path /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/Info.plist --temp-dir-path /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ssu --bundle-id com.resourcer.apple --product-path /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app --extracted-metadata-path /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/Metadata.appintents --metadata-file-list /tmp/rs003-dd/Build/Intermediates.noindex/ReSourcer.build/Debug-iphonesimulator/ReSourcer.build/ReSourcer.DependencyMetadataFileList --archive-ssu-assets
+2026-09-12 12:14:26.279 appintentsnltrainingprocessor[37852:31310878] Parsing options for appintentsnltrainingprocessor
+2026-09-12 12:14:26.279 appintentsnltrainingprocessor[37852:31310878] No AppShortcuts found - Skipping.
+
+CodeSign /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/ReSourcer.debug.dylib (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/ReSourcer.debug.dylib
+
+CodeSign /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/__preview.dylib (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app/__preview.dylib
+
+CodeSign /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app
+
+RegisterExecutionPolicyException /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    builtin-RegisterExecutionPolicyException /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app
+
+Validate /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    builtin-validationUtility /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app -shallow-bundle -infoplist-subpath Info.plist
+
+Touch /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app (in target 'ReSourcer' from project 'ReSourcer')
+    cd /Users/ericwang/Documents/GitHub/ReSourcer/iOS
+    /usr/bin/touch -c /tmp/rs003-dd/Build/Products/Debug-iphonesimulator/ReSourcer.app
+
+** BUILD SUCCEEDED **
+
+EXIT: 0

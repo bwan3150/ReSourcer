@@ -1,0 +1,5 @@
+回归：底部进度条拖动。暂停在 0:37 后，叫出控制栏并用 WDA 慢速拖滑块 -100pt（wda-drag.sh 247 736 147 736 2000）→ reg-slider-drag-burst.jpg：滑块跟手（1:15→1:12→…→0:45），顶部无 seek HUD，松手后停在 0:50（进度条自己的值，不是 seek 手势会给出的 35s）。结论：进度条不会被新手势误抢。
+  1   XCUIElementTypeSlider       37.439                 603,2208   ✓
+  2   XCUIElementTypeStaticText   0:37                   88,2301    ✓
+  3   XCUIElementTypeStaticText   2:00                   1117,2301  ✓
+  9   XCUIElementTypeButton       播放                   603,2466   ✓
