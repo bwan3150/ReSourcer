@@ -1,0 +1,3425 @@
+{
+  "batches": [
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:42:03.200675+10:00",
+      "end_time": "2026-09-12T12:42:08.803904+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "启动 [com.resourcer.apple]",
+          "success": true,
+          "error": null,
+          "duration_ms": 4868,
+          "line": 2,
+          "screenshot": "screenshots/step_001.png",
+          "xml": "pages/step_001.json",
+          "note": "启动新装的 RS-004 构建，期望自动连上 127.0.0.1:1234 进入 gallery"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "launched_packages": [
+        "com.resourcer.apple"
+      ],
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": false,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:42:33.083437+10:00",
+      "end_time": "2026-09-12T12:42:36.958301+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "阶段 [AC2 图片预览长按退出]",
+          "success": true,
+          "error": null,
+          "duration_ms": 0,
+          "line": 2,
+          "screenshot": "screenshots/step_002.png",
+          "xml": "pages/step_002.json"
+        },
+        {
+          "index": 1,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 799,
+          "line": 3,
+          "screenshot": "screenshots/step_003.png",
+          "xml": "pages/step_003.json",
+          "note": "打开第 1 个缩略图（图片）进入预览",
+          "hit": "PNG"
+        },
+        {
+          "index": 2,
+          "command": "等待 [1.5s]",
+          "success": false,
+          "error": "无效的参数: 无法解析等待参数: 1.5s",
+          "duration_ms": 0,
+          "line": 4,
+          "screenshot": "screenshots/step_004.png",
+          "xml": "pages/step_004.json",
+          "note": "等预览页出现"
+        }
+      ],
+      "error": "无效的参数: 无法解析等待参数: 1.5s",
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:42:46.162503+10:00",
+      "end_time": "2026-09-12T12:42:54.677340+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "截图 [AC2 起点：图片预览页 img3-blue.png 已打开]",
+          "success": true,
+          "error": null,
+          "duration_ms": 514,
+          "line": 2,
+          "screenshot": "screenshots/step_005.png",
+          "xml": "pages/step_005.json"
+        },
+        {
+          "index": 1,
+          "command": "按压 [坐标@(603,1300), 1000]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1351,
+          "line": 3,
+          "screenshot": "screenshots/step_006.png",
+          "xml": "pages/step_006.json",
+          "note": "AC2：在图片画面中部长按 1s（不移动），期望退出预览回到 Gallery",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 2,
+          "command": "等到 [MP4, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 343,
+          "line": 4,
+          "screenshot": "screenshots/step_007.png",
+          "xml": "pages/step_007.json",
+          "note": "回到 gallery 后应看到 MP4 缩略图",
+          "assertion": {
+            "expect": "「MP4」出现（5s 内）",
+            "actual": "0.3s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 3,
+          "command": "断言 [MP4, 包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 659,
+          "line": 5,
+          "screenshot": "screenshots/step_008.png",
+          "xml": "pages/step_008.json",
+          "note": "AC2 验收：已回到 Gallery 列表",
+          "assertion": {
+            "expect": "包含「MP4」",
+            "actual": "找到了 · 元素表",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 4,
+          "command": "断言 [img3-blue.png, 不包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 904,
+          "line": 6,
+          "screenshot": "screenshots/step_009.png",
+          "xml": "pages/step_009.json",
+          "note": "预览页标题不应再存在",
+          "assertion": {
+            "expect": "不包含「img3-blue.png」",
+            "actual": "没找到 · 查了元素表 + OCR",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 5,
+          "command": "截图 [AC2 长按后：期望回到 Gallery 列表]",
+          "success": true,
+          "error": null,
+          "duration_ms": 337,
+          "line": 7,
+          "screenshot": "screenshots/step_010.png",
+          "xml": "pages/step_010.json"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:43:05.630591+10:00",
+      "end_time": "2026-09-12T12:43:19.166293+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "阶段 [回归：单击图片不应退出]",
+          "success": true,
+          "error": null,
+          "duration_ms": 0,
+          "line": 2,
+          "screenshot": "screenshots/step_011.png",
+          "xml": "pages/step_011.json"
+        },
+        {
+          "index": 1,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 742,
+          "line": 3,
+          "screenshot": "screenshots/step_012.png",
+          "xml": "pages/step_012.json",
+          "note": "再次打开图片预览",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 2,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 193,
+          "line": 4,
+          "screenshot": "screenshots/step_013.png",
+          "xml": "pages/step_013.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 3,
+          "command": "点击 [坐标@(603,1300)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 397,
+          "line": 5,
+          "screenshot": "screenshots/step_014.png",
+          "xml": "pages/step_014.json",
+          "note": "回归：单击画面中部只切换控制栏，不应退出预览",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 4,
+          "command": "等待 [1s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1001,
+          "line": 6,
+          "screenshot": "screenshots/step_015.png",
+          "xml": "pages/step_015.json"
+        },
+        {
+          "index": 5,
+          "command": "断言 [MP4, 不包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 490,
+          "line": 7,
+          "screenshot": "screenshots/step_016.png",
+          "xml": "pages/step_016.json",
+          "note": "单击后仍在预览页（没回 gallery）",
+          "assertion": {
+            "expect": "不包含「MP4」",
+            "actual": "没找到 · 查了元素表 + OCR",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 6,
+          "command": "按压 [坐标@(603,1300), 300]",
+          "success": true,
+          "error": null,
+          "duration_ms": 635,
+          "line": 8,
+          "screenshot": "screenshots/step_017.png",
+          "xml": "pages/step_017.json",
+          "note": "回归：短按 0.3s（低于 0.55s 阈值）不应退出",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 7,
+          "command": "等待 [1s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1001,
+          "line": 9,
+          "screenshot": "screenshots/step_018.png",
+          "xml": "pages/step_018.json"
+        },
+        {
+          "index": 8,
+          "command": "断言 [MP4, 不包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 552,
+          "line": 10,
+          "screenshot": "screenshots/step_019.png",
+          "xml": "pages/step_019.json",
+          "note": "短按后仍在预览页",
+          "assertion": {
+            "expect": "不包含「MP4」",
+            "actual": "没找到 · 查了元素表 + OCR",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 9,
+          "command": "截图 [单击/短按后仍停留在预览页]",
+          "success": true,
+          "error": null,
+          "duration_ms": 206,
+          "line": 11,
+          "screenshot": "screenshots/step_020.png",
+          "xml": "pages/step_020.json"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:43:48.385759+10:00",
+      "end_time": "2026-09-12T12:43:51.930513+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "阶段 [AC6 按住后移动不退出]",
+          "success": true,
+          "error": null,
+          "duration_ms": 0,
+          "line": 2,
+          "screenshot": "screenshots/step_021.png",
+          "xml": "pages/step_021.json"
+        },
+        {
+          "index": 1,
+          "command": "断言 [MP4, 不包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 624,
+          "line": 3,
+          "screenshot": "screenshots/step_022.png",
+          "xml": "pages/step_022.json",
+          "note": "AC6(图片): 按住 100ms 后水平拖 150pt/1.5s（手指总共按住 1.8s）→ 仍在预览页，未退出",
+          "assertion": {
+            "expect": "不包含「MP4」",
+            "actual": "没找到 · 查了元素表 + OCR",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 2,
+          "command": "截图 [AC6 图片：按住后拖动 150pt 松开，期望仍在预览页（可能已翻页）]",
+          "success": true,
+          "error": null,
+          "duration_ms": 231,
+          "line": 4,
+          "screenshot": "screenshots/step_023.png",
+          "xml": "pages/step_023.json"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:44:06.230362+10:00",
+      "end_time": "2026-09-12T12:44:07.473500+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "截图 [AC6 视频起点：video120.mp4 预览页，记录当前时间]",
+          "success": true,
+          "error": null,
+          "duration_ms": 480,
+          "line": 2,
+          "screenshot": "screenshots/step_024.png",
+          "xml": "pages/step_024.json"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:44:12.387680+10:00",
+      "end_time": "2026-09-12T12:44:16.035029+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,1000)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 706,
+          "line": 2,
+          "screenshot": "screenshots/step_025.png",
+          "xml": "pages/step_025.json",
+          "note": "单击叫出控制栏读时间",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "断言 [video120.mp4, 包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 391,
+          "line": 3,
+          "screenshot": "screenshots/step_026.png",
+          "xml": "pages/step_026.json",
+          "note": "AC6(视频): 按住 100ms 后水平拖 100pt/1.5s → 仍在视频预览页，未退出",
+          "assertion": {
+            "expect": "包含「video120.mp4」",
+            "actual": "找到了 · 元素表",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 2,
+          "command": "截图 [AC6 视频：seek 拖动后仍在预览页，时间应已前跳约 40s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 228,
+          "line": 4,
+          "screenshot": "screenshots/step_027.png",
+          "xml": "pages/step_027.json"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:44:33.233398+10:00",
+      "end_time": "2026-09-12T12:44:35.377305+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "阶段 [AC3 视频预览长按退出]",
+          "success": true,
+          "error": null,
+          "duration_ms": 0,
+          "line": 2,
+          "screenshot": "screenshots/step_028.png",
+          "xml": "pages/step_028.json"
+        },
+        {
+          "index": 1,
+          "command": "截图 [AC3 起点：video120.mp4 预览页]",
+          "success": true,
+          "error": null,
+          "duration_ms": 181,
+          "line": 3,
+          "screenshot": "screenshots/step_029.png",
+          "xml": "pages/step_029.json"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:44:40.353028+10:00",
+      "end_time": "2026-09-12T12:44:45.689150+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "等到 [MP4, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 651,
+          "line": 2,
+          "screenshot": "screenshots/step_030.png",
+          "xml": "pages/step_030.json",
+          "note": "回到 gallery 后应看到 MP4 缩略图",
+          "assertion": {
+            "expect": "「MP4」出现（5s 内）",
+            "actual": "0.7s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 1,
+          "command": "断言 [MP4, 包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 657,
+          "line": 3,
+          "screenshot": "screenshots/step_031.png",
+          "xml": "pages/step_031.json",
+          "note": "AC3 验收：视频画面长按后已回到 Gallery",
+          "assertion": {
+            "expect": "包含「MP4」",
+            "actual": "找到了 · 元素表",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 2,
+          "command": "断言 [video120.mp4, 不包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 915,
+          "line": 4,
+          "screenshot": "screenshots/step_032.png",
+          "xml": "pages/step_032.json",
+          "note": "预览页标题不应再存在",
+          "assertion": {
+            "expect": "不包含「video120.mp4」",
+            "actual": "没找到 · 查了元素表 + OCR",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 3,
+          "command": "截图 [AC3 长按视频画面后：期望回到 Gallery 列表]",
+          "success": true,
+          "error": null,
+          "duration_ms": 362,
+          "line": 5,
+          "screenshot": "screenshots/step_033.png",
+          "xml": "pages/step_033.json"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:45:25.771179+10:00",
+      "end_time": "2026-09-12T12:45:36.009139+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "阶段 [AC4 长按文件名 Capsule 仍弹快捷操作面板]",
+          "success": true,
+          "error": null,
+          "duration_ms": 0,
+          "line": 2,
+          "screenshot": "screenshots/step_034.png",
+          "xml": "pages/step_034.json"
+        },
+        {
+          "index": 1,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 748,
+          "line": 3,
+          "screenshot": "screenshots/step_035.png",
+          "xml": "pages/step_035.json",
+          "note": "打开图片预览（img3-blue.png）",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 2,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 192,
+          "line": 4,
+          "screenshot": "screenshots/step_036.png",
+          "xml": "pages/step_036.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 3,
+          "command": "按压 [img3-blue.png, 1000]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1490,
+          "line": 5,
+          "target_bounds": {
+            "x1": 240,
+            "y1": 243,
+            "x2": 561,
+            "y2": 297
+          },
+          "screenshot": "screenshots/step_037.png",
+          "xml": "pages/step_037.json",
+          "note": "AC4：长按顶部文件名 Capsule，期望弹出快捷操作面板（重命名输入框 + 取消/确认），且不退出预览",
+          "hit": "img3-blue.png"
+        },
+        {
+          "index": 4,
+          "command": "等到 [确认, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 233,
+          "line": 6,
+          "screenshot": "screenshots/step_038.png",
+          "xml": "pages/step_038.json",
+          "note": "快捷操作面板出现",
+          "assertion": {
+            "expect": "「确认」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 5,
+          "command": "断言 [确认, 包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 429,
+          "line": 7,
+          "screenshot": "screenshots/step_039.png",
+          "xml": "pages/step_039.json",
+          "note": "AC4 验收：面板弹出",
+          "assertion": {
+            "expect": "包含「确认」",
+            "actual": "找到了 · 元素表",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 6,
+          "command": "断言 [MP4, 不包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 644,
+          "line": 8,
+          "screenshot": "screenshots/step_040.png",
+          "xml": "pages/step_040.json",
+          "note": "未被全屏长按吞掉、未退出预览",
+          "assertion": {
+            "expect": "不包含「MP4」",
+            "actual": "没找到 · 查了元素表 + OCR",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 7,
+          "command": "截图 [AC4：长按文件名 Capsule 后的快捷操作面板]",
+          "success": true,
+          "error": null,
+          "duration_ms": 236,
+          "line": 9,
+          "screenshot": "screenshots/step_041.png",
+          "xml": "pages/step_041.json"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:45:46.451155+10:00",
+      "end_time": "2026-09-12T12:45:57.492271+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [取消]",
+          "success": true,
+          "error": null,
+          "duration_ms": 909,
+          "line": 2,
+          "target_bounds": {
+            "x1": 288,
+            "y1": 1473,
+            "x2": 462,
+            "y2": 1578
+          },
+          "screenshot": "screenshots/step_042.png",
+          "xml": "pages/step_042.json",
+          "note": "关闭快捷操作面板",
+          "hit": "取消"
+        },
+        {
+          "index": 1,
+          "command": "等到 [确认, 消失, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 365,
+          "line": 3,
+          "screenshot": "screenshots/step_043.png",
+          "xml": "pages/step_043.json",
+          "assertion": {
+            "expect": "「确认」消失（5s 内）",
+            "actual": "0.4s 后消失",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 2,
+          "command": "阶段 [AC5 长按播放模式按钮仍弹播放列表]",
+          "success": true,
+          "error": null,
+          "duration_ms": 0,
+          "line": 4,
+          "screenshot": "screenshots/step_044.png",
+          "xml": "pages/step_044.json"
+        },
+        {
+          "index": 3,
+          "command": "按压 [坐标@(1098,270), 1000]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1733,
+          "line": 5,
+          "screenshot": "screenshots/step_045.png",
+          "xml": "pages/step_045.json",
+          "note": "AC5：长按右上角播放模式按钮，期望弹出播放列表 popover，且不退出预览",
+          "hit": "前进"
+        },
+        {
+          "index": 4,
+          "command": "等到 [video120.mp4, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 347,
+          "line": 6,
+          "screenshot": "screenshots/step_046.png",
+          "xml": "pages/step_046.json",
+          "note": "播放列表里应列出所有文件（含 video120.mp4）",
+          "assertion": {
+            "expect": "「video120.mp4」出现（5s 内）",
+            "actual": "0.3s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 5,
+          "command": "断言 [video120.mp4, 包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 695,
+          "line": 7,
+          "screenshot": "screenshots/step_047.png",
+          "xml": "pages/step_047.json",
+          "note": "AC5 验收：播放列表 popover 弹出",
+          "assertion": {
+            "expect": "包含「video120.mp4」",
+            "actual": "找到了 · 元素表",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 6,
+          "command": "断言 [img2-green.png, 包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 695,
+          "line": 8,
+          "screenshot": "screenshots/step_048.png",
+          "xml": "pages/step_048.json",
+          "note": "列表里有其它文件",
+          "assertion": {
+            "expect": "包含「img2-green.png」",
+            "actual": "找到了 · 元素表",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 7,
+          "command": "截图 [AC5：长按播放模式按钮后的播放列表 popover]",
+          "success": true,
+          "error": null,
+          "duration_ms": 372,
+          "line": 9,
+          "screenshot": "screenshots/step_049.png",
+          "xml": "pages/step_049.json"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:46:08.856281+10:00",
+      "end_time": "2026-09-12T12:46:20.713880+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,2000)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1125,
+          "line": 2,
+          "screenshot": "screenshots/step_050.png",
+          "xml": "pages/step_050.json",
+          "note": "点 popover 外部关闭播放列表",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img1-red.png, 消失, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 414,
+          "line": 3,
+          "screenshot": "screenshots/step_051.png",
+          "xml": "pages/step_051.json",
+          "assertion": {
+            "expect": "「img1-red.png」消失（5s 内）",
+            "actual": "0.4s 后消失",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 2,
+          "command": "断言 [img3-blue.png, 包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 399,
+          "line": 4,
+          "screenshot": "screenshots/step_052.png",
+          "xml": "pages/step_052.json",
+          "note": "仍在预览页",
+          "assertion": {
+            "expect": "包含「img3-blue.png」",
+            "actual": "找到了 · 元素表",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 3,
+          "command": "阶段 [AC7 左上角关闭按钮仍可用]",
+          "success": true,
+          "error": null,
+          "duration_ms": 0,
+          "line": 5,
+          "screenshot": "screenshots/step_053.png",
+          "xml": "pages/step_053.json"
+        },
+        {
+          "index": 4,
+          "command": "点击 [坐标@(105,270)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 695,
+          "line": 6,
+          "screenshot": "screenshots/step_054.png",
+          "xml": "pages/step_054.json",
+          "note": "AC7：点左上角关闭按钮，期望回到 Gallery",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 5,
+          "command": "等到 [MP4, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 365,
+          "line": 7,
+          "screenshot": "screenshots/step_055.png",
+          "xml": "pages/step_055.json",
+          "assertion": {
+            "expect": "「MP4」出现（5s 内）",
+            "actual": "0.4s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 6,
+          "command": "断言 [MP4, 包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 697,
+          "line": 8,
+          "screenshot": "screenshots/step_056.png",
+          "xml": "pages/step_056.json",
+          "note": "AC7 验收：关闭按钮退出预览",
+          "assertion": {
+            "expect": "包含「MP4」",
+            "actual": "找到了 · 元素表",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 7,
+          "command": "断言 [img3-blue.png, 不包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 972,
+          "line": 9,
+          "screenshot": "screenshots/step_057.png",
+          "xml": "pages/step_057.json",
+          "assertion": {
+            "expect": "不包含「img3-blue.png」",
+            "actual": "没找到 · 查了元素表 + OCR",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 8,
+          "command": "截图 [AC7：点关闭按钮后回到 Gallery]",
+          "success": true,
+          "error": null,
+          "duration_ms": 385,
+          "line": 10,
+          "screenshot": "screenshots/step_058.png",
+          "xml": "pages/step_058.json"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:46:39.787807+10:00",
+      "end_time": "2026-09-12T12:46:44.640225+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "阶段 [回归：放大态平移不退出 + 翻页/底部按钮]",
+          "success": true,
+          "error": null,
+          "duration_ms": 0,
+          "line": 2,
+          "screenshot": "screenshots/step_059.png",
+          "xml": "pages/step_059.json"
+        },
+        {
+          "index": 1,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 749,
+          "line": 3,
+          "screenshot": "screenshots/step_060.png",
+          "xml": "pages/step_060.json",
+          "note": "打开图片预览",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 2,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 206,
+          "line": 4,
+          "screenshot": "screenshots/step_061.png",
+          "xml": "pages/step_061.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 3,
+          "command": "截图 [回归起点：img3-blue.png 1x]",
+          "success": true,
+          "error": null,
+          "duration_ms": 221,
+          "line": 5,
+          "screenshot": "screenshots/step_062.png",
+          "xml": "pages/step_062.json"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:46:53.780526+10:00",
+      "end_time": "2026-09-12T12:46:57.305236+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "断言 [img3-blue.png, 包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 691,
+          "line": 2,
+          "screenshot": "screenshots/step_063.png",
+          "xml": "pages/step_063.json",
+          "note": "回归：放大 2.5x 后按住拖动 150pt → 仍在预览页、仍是同一张图（平移而非翻页/退出）",
+          "assertion": {
+            "expect": "包含「img3-blue.png」",
+            "actual": "找到了 · 元素表",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 1,
+          "command": "断言 [MP4, 不包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 587,
+          "line": 3,
+          "screenshot": "screenshots/step_064.png",
+          "xml": "pages/step_064.json",
+          "assertion": {
+            "expect": "不包含「MP4」",
+            "actual": "没找到 · 查了元素表 + OCR",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 2,
+          "command": "截图 [回归：放大态拖动后仍在 img3-blue.png 预览]",
+          "success": true,
+          "error": null,
+          "duration_ms": 216,
+          "line": 4,
+          "screenshot": "screenshots/step_065.png",
+          "xml": "pages/step_065.json"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:47:33.742385+10:00",
+      "end_time": "2026-09-12T12:47:42.886562+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "截图 [双击后缩放重置为 1x（应重新看到上下黑边）]",
+          "success": true,
+          "error": null,
+          "duration_ms": 520,
+          "line": 2,
+          "screenshot": "screenshots/step_066.png",
+          "xml": "pages/step_066.json"
+        },
+        {
+          "index": 1,
+          "command": "点击 [坐标@(1062,2478)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 406,
+          "line": 3,
+          "screenshot": "screenshots/step_067.png",
+          "xml": "pages/step_067.json",
+          "note": "回归：底部“下一个”按钮仍能切换文件（播放列表里 blue 之后是 green）",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 2,
+          "command": "等到 [img2-green.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 205,
+          "line": 4,
+          "screenshot": "screenshots/step_068.png",
+          "xml": "pages/step_068.json",
+          "assertion": {
+            "expect": "「img2-green.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 3,
+          "command": "断言 [img2-green.png, 包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 398,
+          "line": 5,
+          "screenshot": "screenshots/step_069.png",
+          "xml": "pages/step_069.json",
+          "note": "底部按钮翻页正常",
+          "assertion": {
+            "expect": "包含「img2-green.png」",
+            "actual": "找到了 · 元素表",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 4,
+          "command": "滑动 [坐标@(300,1300), 坐标@(900,1300), 300]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1053,
+          "line": 6,
+          "screenshot": "screenshots/step_070.png",
+          "xml": "pages/step_070.json",
+          "note": "回归：快速右滑翻回上一张（blue）",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 5,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 194,
+          "line": 7,
+          "screenshot": "screenshots/step_071.png",
+          "xml": "pages/step_071.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 6,
+          "command": "断言 [img3-blue.png, 包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 400,
+          "line": 8,
+          "screenshot": "screenshots/step_072.png",
+          "xml": "pages/step_072.json",
+          "note": "滑动翻页正常，未被长按手势影响",
+          "assertion": {
+            "expect": "包含「img3-blue.png」",
+            "actual": "找到了 · 元素表",
+            "pass": true,
+            "kind": "assert"
+          }
+        },
+        {
+          "index": 7,
+          "command": "截图 [回归：底部按钮 + 滑动翻页均正常]",
+          "success": true,
+          "error": null,
+          "duration_ms": 217,
+          "line": 9,
+          "screenshot": "screenshots/step_073.png",
+          "xml": "pages/step_073.json"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:48:00.793971+10:00",
+      "end_time": "2026-09-12T12:48:03.171725+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "阶段 [边界：先移动 40pt 再停住 1s → 不应退出；原地抖动 8pt 长按 → 应退出]",
+          "success": true,
+          "error": null,
+          "duration_ms": 0,
+          "line": 2,
+          "screenshot": "screenshots/step_074.png",
+          "xml": "pages/step_074.json"
+        },
+        {
+          "index": 1,
+          "command": "断言 [img3-blue.png, 包含]",
+          "success": true,
+          "error": null,
+          "duration_ms": 385,
+          "line": 3,
+          "screenshot": "screenshots/step_075.png",
+          "xml": "pages/step_075.json",
+          "note": "起点：img3-blue.png 预览",
+          "assertion": {
+            "expect": "包含「img3-blue.png」",
+            "actual": "找到了 · 元素表",
+            "pass": true,
+            "kind": "assert"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": false,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:48:08.609407+10:00",
+      "end_time": "2026-09-12T12:48:10.307490+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "断言 [MP4, 不包含]",
+          "success": false,
+          "error": "脚本执行错误: 断言失败：期望页面不包含「MP4」，实际找到了",
+          "duration_ms": 1005,
+          "line": 2,
+          "screenshot": "screenshots/step_076.png",
+          "xml": "pages/step_076.json",
+          "note": "边界 b3：按下后先移动 40pt（超容差）再停住 1.2s → 不退出（长按识别已失败，不会重新计时）",
+          "assertion": {
+            "expect": "不包含「MP4」",
+            "actual": "找到了 · 元素表",
+            "pass": false,
+            "kind": "assert"
+          }
+        }
+      ],
+      "error": "脚本执行错误: 断言失败：期望页面不包含「MP4」，实际找到了",
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:48:50.861640+10:00",
+      "end_time": "2026-09-12T12:48:54.570270+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1053,
+          "line": 2,
+          "screenshot": "screenshots/step_077.png",
+          "xml": "pages/step_077.json",
+          "note": "重新打开图片预览",
+          "hit": "PNG"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 198,
+          "line": 3,
+          "screenshot": "screenshots/step_078.png",
+          "xml": "pages/step_078.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 2,
+          "command": "截图 [E1 起点：img3-blue.png 预览]",
+          "success": true,
+          "error": null,
+          "duration_ms": 217,
+          "line": 4,
+          "screenshot": "screenshots/step_079.png",
+          "xml": "pages/step_079.json"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:49:34.768181+10:00",
+      "end_time": "2026-09-12T12:49:42.540200+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "截图 [E1 结果：100pt 移动后停住 1.5s 未退出，松手后翻到了 video120.mp4]",
+          "success": true,
+          "error": null,
+          "duration_ms": 512,
+          "line": 2,
+          "screenshot": "screenshots/step_080.png",
+          "xml": "pages/step_080.json"
+        },
+        {
+          "index": 1,
+          "command": "点击 [坐标@(603,1000)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 393,
+          "line": 3,
+          "screenshot": "screenshots/step_081.png",
+          "xml": "pages/step_081.json",
+          "note": "叫出控制栏",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 2,
+          "command": "点击 [坐标@(105,270)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 683,
+          "line": 4,
+          "screenshot": "screenshots/step_082.png",
+          "xml": "pages/step_082.json",
+          "note": "关闭按钮回 gallery",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 3,
+          "command": "等到 [MP4, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 365,
+          "line": 5,
+          "screenshot": "screenshots/step_083.png",
+          "xml": "pages/step_083.json",
+          "assertion": {
+            "expect": "「MP4」出现（5s 内）",
+            "actual": "0.4s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 4,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 753,
+          "line": 6,
+          "screenshot": "screenshots/step_084.png",
+          "xml": "pages/step_084.json",
+          "note": "重新打开图片预览",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 5,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 205,
+          "line": 7,
+          "screenshot": "screenshots/step_085.png",
+          "xml": "pages/step_085.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:49:55.950693+10:00",
+      "end_time": "2026-09-12T12:49:58.836203+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1069,
+          "line": 2,
+          "screenshot": "screenshots/step_086.png",
+          "xml": "pages/step_086.json",
+          "note": "重新打开图片预览",
+          "hit": "PNG"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 207,
+          "line": 3,
+          "screenshot": "screenshots/step_087.png",
+          "xml": "pages/step_087.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:50:33.901238+10:00",
+      "end_time": "2026-09-12T12:50:36.786380+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1066,
+          "line": 2,
+          "screenshot": "screenshots/step_088.png",
+          "xml": "pages/step_088.json",
+          "note": "重新打开图片预览",
+          "hit": "PNG"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 207,
+          "line": 3,
+          "screenshot": "screenshots/step_089.png",
+          "xml": "pages/step_089.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:50:45.172396+10:00",
+      "end_time": "2026-09-12T12:50:48.046267+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1070,
+          "line": 2,
+          "screenshot": "screenshots/step_090.png",
+          "xml": "pages/step_090.json",
+          "note": "重新打开图片预览",
+          "hit": "PNG"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 197,
+          "line": 3,
+          "screenshot": "screenshots/step_091.png",
+          "xml": "pages/step_091.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:50:56.541096+10:00",
+      "end_time": "2026-09-12T12:50:59.434364+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1073,
+          "line": 2,
+          "screenshot": "screenshots/step_092.png",
+          "xml": "pages/step_092.json",
+          "note": "重新打开图片预览",
+          "hit": "PNG"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 209,
+          "line": 3,
+          "screenshot": "screenshots/step_093.png",
+          "xml": "pages/step_093.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": false,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:51:17.231946+10:00",
+      "end_time": "2026-09-12T12:51:25.902355+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,1000)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 723,
+          "line": 2,
+          "screenshot": "screenshots/step_094.png",
+          "xml": "pages/step_094.json",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "点击 [坐标@(105,270)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 350,
+          "line": 3,
+          "screenshot": "screenshots/step_095.png",
+          "xml": "pages/step_095.json",
+          "note": "关闭回 gallery",
+          "hit": "返回"
+        },
+        {
+          "index": 2,
+          "command": "等到 [MP4, 5s]",
+          "success": false,
+          "error": "脚本执行错误: 等到「MP4」超时（5s）：它没有出现，或者在视口外（先 滚动查找）",
+          "duration_ms": 5280,
+          "line": 4,
+          "screenshot": "screenshots/step_096.png",
+          "xml": "pages/step_096.json",
+          "assertion": {
+            "expect": "「MP4」出现（5s 内）",
+            "actual": "5s 内没出现",
+            "pass": false,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": "脚本执行错误: 等到「MP4」超时（5s）：它没有出现，或者在视口外（先 滚动查找）",
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:52:05.430640+10:00",
+      "end_time": "2026-09-12T12:52:11.638750+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,1000)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 675,
+          "line": 2,
+          "screenshot": "screenshots/step_097.png",
+          "xml": "pages/step_097.json",
+          "note": "叫出控制栏",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等待 [1s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1002,
+          "line": 3,
+          "screenshot": "screenshots/step_098.png",
+          "xml": "pages/step_098.json"
+        },
+        {
+          "index": 2,
+          "command": "点击 [坐标@(105,270)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 649,
+          "line": 4,
+          "screenshot": "screenshots/step_099.png",
+          "xml": "pages/step_099.json",
+          "note": "关闭按钮回 gallery",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 3,
+          "command": "等到 [MP4, 8s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 366,
+          "line": 5,
+          "screenshot": "screenshots/step_100.png",
+          "xml": "pages/step_100.json",
+          "assertion": {
+            "expect": "「MP4」出现（8s 内）",
+            "actual": "0.4s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:52:15.020497+10:00",
+      "end_time": "2026-09-12T12:52:17.803209+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1031,
+          "line": 2,
+          "screenshot": "screenshots/step_101.png",
+          "xml": "pages/step_101.json",
+          "note": "打开图片预览",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 198,
+          "line": 3,
+          "screenshot": "screenshots/step_102.png",
+          "xml": "pages/step_102.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": false,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:52:27.152133+10:00",
+      "end_time": "2026-09-12T12:52:40.356275+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,1000)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 721,
+          "line": 2,
+          "screenshot": "screenshots/step_103.png",
+          "xml": "pages/step_103.json",
+          "note": "叫出控制栏",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等待 [1s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1002,
+          "line": 3,
+          "screenshot": "screenshots/step_104.png",
+          "xml": "pages/step_104.json"
+        },
+        {
+          "index": 2,
+          "command": "点击 [坐标@(105,270)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 364,
+          "line": 4,
+          "screenshot": "screenshots/step_105.png",
+          "xml": "pages/step_105.json",
+          "note": "关闭按钮回 gallery",
+          "hit": "返回"
+        },
+        {
+          "index": 3,
+          "command": "等到 [MP4, 8s]",
+          "success": false,
+          "error": "脚本执行错误: 等到「MP4」超时（8s）：它没有出现，或者在视口外（先 滚动查找）",
+          "duration_ms": 8056,
+          "line": 5,
+          "screenshot": "screenshots/step_106.png",
+          "xml": "pages/step_106.json",
+          "assertion": {
+            "expect": "「MP4」出现（8s 内）",
+            "actual": "8s 内没出现",
+            "pass": false,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": "脚本执行错误: 等到「MP4」超时（8s）：它没有出现，或者在视口外（先 滚动查找）",
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": false,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:52:44.025094+10:00",
+      "end_time": "2026-09-12T12:52:52.178704+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 660,
+          "line": 2,
+          "screenshot": "screenshots/step_107.png",
+          "xml": "pages/step_107.json",
+          "note": "打开图片预览",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": false,
+          "error": "脚本执行错误: 等到「img3-blue.png」超时（5s）：它没有出现，或者在视口外（先 滚动查找）",
+          "duration_ms": 5996,
+          "line": 3,
+          "screenshot": "screenshots/step_108.png",
+          "xml": "pages/step_108.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "5s 内没出现",
+            "pass": false,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": "脚本执行错误: 等到「img3-blue.png」超时（5s）：它没有出现，或者在视口外（先 滚动查找）",
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:53:01.232614+10:00",
+      "end_time": "2026-09-12T12:53:07.246252+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,1000)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 669,
+          "line": 2,
+          "screenshot": "screenshots/step_109.png",
+          "xml": "pages/step_109.json",
+          "note": "叫出控制栏",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等待 [1s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1003,
+          "line": 3,
+          "screenshot": "screenshots/step_110.png",
+          "xml": "pages/step_110.json"
+        },
+        {
+          "index": 2,
+          "command": "点击 [坐标@(105,270)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 657,
+          "line": 4,
+          "screenshot": "screenshots/step_111.png",
+          "xml": "pages/step_111.json",
+          "note": "关闭按钮回 gallery",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 3,
+          "command": "等到 [MP4, 8s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 313,
+          "line": 5,
+          "screenshot": "screenshots/step_112.png",
+          "xml": "pages/step_112.json",
+          "assertion": {
+            "expect": "「MP4」出现（8s 内）",
+            "actual": "0.3s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:53:11.144878+10:00",
+      "end_time": "2026-09-12T12:53:13.959844+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1071,
+          "line": 2,
+          "screenshot": "screenshots/step_113.png",
+          "xml": "pages/step_113.json",
+          "note": "打开图片预览",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 191,
+          "line": 3,
+          "screenshot": "screenshots/step_114.png",
+          "xml": "pages/step_114.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": false,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:53:23.644975+10:00",
+      "end_time": "2026-09-12T12:53:36.932976+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,1000)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 678,
+          "line": 2,
+          "screenshot": "screenshots/step_115.png",
+          "xml": "pages/step_115.json",
+          "note": "叫出控制栏",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等待 [1s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1001,
+          "line": 3,
+          "screenshot": "screenshots/step_116.png",
+          "xml": "pages/step_116.json"
+        },
+        {
+          "index": 2,
+          "command": "点击 [坐标@(105,270)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 383,
+          "line": 4,
+          "screenshot": "screenshots/step_117.png",
+          "xml": "pages/step_117.json",
+          "note": "关闭按钮回 gallery",
+          "hit": "返回"
+        },
+        {
+          "index": 3,
+          "command": "等到 [MP4, 8s]",
+          "success": false,
+          "error": "脚本执行错误: 等到「MP4」超时（8s）：它没有出现，或者在视口外（先 滚动查找）",
+          "duration_ms": 8135,
+          "line": 5,
+          "screenshot": "screenshots/step_118.png",
+          "xml": "pages/step_118.json",
+          "assertion": {
+            "expect": "「MP4」出现（8s 内）",
+            "actual": "8s 内没出现",
+            "pass": false,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": "脚本执行错误: 等到「MP4」超时（8s）：它没有出现，或者在视口外（先 滚动查找）",
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": false,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:53:40.971513+10:00",
+      "end_time": "2026-09-12T12:53:48.552302+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 725,
+          "line": 2,
+          "screenshot": "screenshots/step_119.png",
+          "xml": "pages/step_119.json",
+          "note": "打开图片预览",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": false,
+          "error": "脚本执行错误: 等到「img3-blue.png」超时（5s）：它没有出现，或者在视口外（先 滚动查找）",
+          "duration_ms": 5333,
+          "line": 3,
+          "screenshot": "screenshots/step_120.png",
+          "xml": "pages/step_120.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "5s 内没出现",
+            "pass": false,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": "脚本执行错误: 等到「img3-blue.png」超时（5s）：它没有出现，或者在视口外（先 滚动查找）",
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:53:58.090913+10:00",
+      "end_time": "2026-09-12T12:54:04.404801+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,1000)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 725,
+          "line": 2,
+          "screenshot": "screenshots/step_121.png",
+          "xml": "pages/step_121.json",
+          "note": "叫出控制栏",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等待 [1s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1001,
+          "line": 3,
+          "screenshot": "screenshots/step_122.png",
+          "xml": "pages/step_122.json"
+        },
+        {
+          "index": 2,
+          "command": "点击 [坐标@(105,270)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 683,
+          "line": 4,
+          "screenshot": "screenshots/step_123.png",
+          "xml": "pages/step_123.json",
+          "note": "关闭按钮回 gallery",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 3,
+          "command": "等到 [MP4, 8s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 318,
+          "line": 5,
+          "screenshot": "screenshots/step_124.png",
+          "xml": "pages/step_124.json",
+          "assertion": {
+            "expect": "「MP4」出现（8s 内）",
+            "actual": "0.3s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:54:08.692770+10:00",
+      "end_time": "2026-09-12T12:54:11.525799+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1003,
+          "line": 2,
+          "screenshot": "screenshots/step_125.png",
+          "xml": "pages/step_125.json",
+          "note": "打开图片预览",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 208,
+          "line": 3,
+          "screenshot": "screenshots/step_126.png",
+          "xml": "pages/step_126.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:54:38.381268+10:00",
+      "end_time": "2026-09-12T12:54:39.587465+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "阶段 [边界：视频 seek 拖动后手指停住 >0.55s 会不会误退出]",
+          "success": true,
+          "error": null,
+          "duration_ms": 0,
+          "line": 2,
+          "screenshot": "screenshots/step_127.png",
+          "xml": "pages/step_127.json"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:54:44.734221+10:00",
+      "end_time": "2026-09-12T12:54:51.014835+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,1000)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 723,
+          "line": 2,
+          "screenshot": "screenshots/step_128.png",
+          "xml": "pages/step_128.json",
+          "note": "叫出控制栏",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等待 [1s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1001,
+          "line": 3,
+          "screenshot": "screenshots/step_129.png",
+          "xml": "pages/step_129.json"
+        },
+        {
+          "index": 2,
+          "command": "点击 [坐标@(105,270)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 663,
+          "line": 4,
+          "screenshot": "screenshots/step_130.png",
+          "xml": "pages/step_130.json",
+          "note": "关闭按钮回 gallery",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 3,
+          "command": "等到 [MP4, 8s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 367,
+          "line": 5,
+          "screenshot": "screenshots/step_131.png",
+          "xml": "pages/step_131.json",
+          "assertion": {
+            "expect": "「MP4」出现（8s 内）",
+            "actual": "0.4s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:54:55.521529+10:00",
+      "end_time": "2026-09-12T12:55:01.313295+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,999)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1073,
+          "line": 2,
+          "screenshot": "screenshots/step_132.png",
+          "xml": "pages/step_132.json",
+          "note": "打开视频预览",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等到 [video120.mp4, 8s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 233,
+          "line": 3,
+          "screenshot": "screenshots/step_133.png",
+          "xml": "pages/step_133.json",
+          "assertion": {
+            "expect": "「video120.mp4」出现（8s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 2,
+          "command": "等待 [2s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 2003,
+          "line": 4,
+          "screenshot": "screenshots/step_134.png",
+          "xml": "pages/step_134.json",
+          "note": "等起播"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:55:11.543483+10:00",
+      "end_time": "2026-09-12T12:55:17.768086+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,1000)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 672,
+          "line": 2,
+          "screenshot": "screenshots/step_135.png",
+          "xml": "pages/step_135.json",
+          "note": "叫出控制栏",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等待 [1s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1001,
+          "line": 3,
+          "screenshot": "screenshots/step_136.png",
+          "xml": "pages/step_136.json"
+        },
+        {
+          "index": 2,
+          "command": "点击 [坐标@(105,270)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 665,
+          "line": 4,
+          "screenshot": "screenshots/step_137.png",
+          "xml": "pages/step_137.json",
+          "note": "关闭按钮回 gallery",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 3,
+          "command": "等到 [MP4, 8s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 361,
+          "line": 5,
+          "screenshot": "screenshots/step_138.png",
+          "xml": "pages/step_138.json",
+          "assertion": {
+            "expect": "「MP4」出现（8s 内）",
+            "actual": "0.4s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:55:22.536819+10:00",
+      "end_time": "2026-09-12T12:55:28.276122+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,999)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1019,
+          "line": 2,
+          "screenshot": "screenshots/step_139.png",
+          "xml": "pages/step_139.json",
+          "note": "打开视频预览",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等到 [video120.mp4, 8s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 217,
+          "line": 3,
+          "screenshot": "screenshots/step_140.png",
+          "xml": "pages/step_140.json",
+          "assertion": {
+            "expect": "「video120.mp4」出现（8s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 2,
+          "command": "等待 [2s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 2003,
+          "line": 4,
+          "screenshot": "screenshots/step_141.png",
+          "xml": "pages/step_141.json",
+          "note": "等起播"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:55:38.693443+10:00",
+      "end_time": "2026-09-12T12:55:44.904219+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,1000)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 668,
+          "line": 2,
+          "screenshot": "screenshots/step_142.png",
+          "xml": "pages/step_142.json",
+          "note": "叫出控制栏",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等待 [1s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1002,
+          "line": 3,
+          "screenshot": "screenshots/step_143.png",
+          "xml": "pages/step_143.json"
+        },
+        {
+          "index": 2,
+          "command": "点击 [坐标@(105,270)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 673,
+          "line": 4,
+          "screenshot": "screenshots/step_144.png",
+          "xml": "pages/step_144.json",
+          "note": "关闭按钮回 gallery",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 3,
+          "command": "等到 [MP4, 8s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 362,
+          "line": 5,
+          "screenshot": "screenshots/step_145.png",
+          "xml": "pages/step_145.json",
+          "assertion": {
+            "expect": "「MP4」出现（8s 内）",
+            "actual": "0.4s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:55:49.934499+10:00",
+      "end_time": "2026-09-12T12:55:55.525566+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,999)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1004,
+          "line": 2,
+          "screenshot": "screenshots/step_146.png",
+          "xml": "pages/step_146.json",
+          "note": "打开视频预览",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等到 [video120.mp4, 8s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 197,
+          "line": 3,
+          "screenshot": "screenshots/step_147.png",
+          "xml": "pages/step_147.json",
+          "assertion": {
+            "expect": "「video120.mp4」出现（8s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 2,
+          "command": "等待 [2s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 2001,
+          "line": 4,
+          "screenshot": "screenshots/step_148.png",
+          "xml": "pages/step_148.json",
+          "note": "等起播"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:56:18.833180+10:00",
+      "end_time": "2026-09-12T12:56:25.007542+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,1000)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 657,
+          "line": 2,
+          "screenshot": "screenshots/step_149.png",
+          "xml": "pages/step_149.json",
+          "note": "叫出控制栏",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等待 [1s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1003,
+          "line": 3,
+          "screenshot": "screenshots/step_150.png",
+          "xml": "pages/step_150.json"
+        },
+        {
+          "index": 2,
+          "command": "点击 [坐标@(105,270)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 683,
+          "line": 4,
+          "screenshot": "screenshots/step_151.png",
+          "xml": "pages/step_151.json",
+          "note": "关闭按钮回 gallery",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 3,
+          "command": "等到 [MP4, 8s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 367,
+          "line": 5,
+          "screenshot": "screenshots/step_152.png",
+          "xml": "pages/step_152.json",
+          "assertion": {
+            "expect": "「MP4」出现（8s 内）",
+            "actual": "0.4s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:56:30.287497+10:00",
+      "end_time": "2026-09-12T12:56:35.904067+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,999)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1014,
+          "line": 2,
+          "screenshot": "screenshots/step_153.png",
+          "xml": "pages/step_153.json",
+          "note": "打开视频预览",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等到 [video120.mp4, 8s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 197,
+          "line": 3,
+          "screenshot": "screenshots/step_154.png",
+          "xml": "pages/step_154.json",
+          "assertion": {
+            "expect": "「video120.mp4」出现（8s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 2,
+          "command": "等待 [2s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 2002,
+          "line": 4,
+          "screenshot": "screenshots/step_155.png",
+          "xml": "pages/step_155.json",
+          "note": "等起播"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:56:46.655356+10:00",
+      "end_time": "2026-09-12T12:56:52.420287+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,999)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1004,
+          "line": 2,
+          "screenshot": "screenshots/step_156.png",
+          "xml": "pages/step_156.json",
+          "note": "打开视频预览",
+          "hit": "播放"
+        },
+        {
+          "index": 1,
+          "command": "等到 [video120.mp4, 8s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 230,
+          "line": 3,
+          "screenshot": "screenshots/step_157.png",
+          "xml": "pages/step_157.json",
+          "assertion": {
+            "expect": "「video120.mp4」出现（8s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 2,
+          "command": "等待 [2s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 2001,
+          "line": 4,
+          "screenshot": "screenshots/step_158.png",
+          "xml": "pages/step_158.json",
+          "note": "等起播"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:57:02.801068+10:00",
+      "end_time": "2026-09-12T12:57:08.994383+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,1000)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 702,
+          "line": 2,
+          "screenshot": "screenshots/step_159.png",
+          "xml": "pages/step_159.json",
+          "note": "叫出控制栏",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等待 [1s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1001,
+          "line": 3,
+          "screenshot": "screenshots/step_160.png",
+          "xml": "pages/step_160.json"
+        },
+        {
+          "index": 2,
+          "command": "点击 [坐标@(105,270)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 663,
+          "line": 4,
+          "screenshot": "screenshots/step_161.png",
+          "xml": "pages/step_161.json",
+          "note": "关闭按钮回 gallery",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 3,
+          "command": "等到 [MP4, 8s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 318,
+          "line": 5,
+          "screenshot": "screenshots/step_162.png",
+          "xml": "pages/step_162.json",
+          "assertion": {
+            "expect": "「MP4」出现（8s 内）",
+            "actual": "0.3s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:57:14.709533+10:00",
+      "end_time": "2026-09-12T12:57:20.416559+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,999)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1020,
+          "line": 2,
+          "screenshot": "screenshots/step_163.png",
+          "xml": "pages/step_163.json",
+          "note": "打开视频预览",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等到 [video120.mp4, 8s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 198,
+          "line": 3,
+          "screenshot": "screenshots/step_164.png",
+          "xml": "pages/step_164.json",
+          "assertion": {
+            "expect": "「video120.mp4」出现（8s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        },
+        {
+          "index": 2,
+          "command": "等待 [2s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 2003,
+          "line": 4,
+          "screenshot": "screenshots/step_165.png",
+          "xml": "pages/step_165.json",
+          "note": "等起播"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:57:31.800633+10:00",
+      "end_time": "2026-09-12T12:57:34.532386+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1013,
+          "line": 2,
+          "screenshot": "screenshots/step_166.png",
+          "xml": "pages/step_166.json",
+          "note": "打开图片预览",
+          "hit": "PNG"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 179,
+          "line": 3,
+          "screenshot": "screenshots/step_167.png",
+          "xml": "pages/step_167.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:57:46.520095+10:00",
+      "end_time": "2026-09-12T12:57:49.275638+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1014,
+          "line": 2,
+          "screenshot": "screenshots/step_168.png",
+          "xml": "pages/step_168.json",
+          "note": "打开图片预览",
+          "hit": "PNG"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 180,
+          "line": 3,
+          "screenshot": "screenshots/step_169.png",
+          "xml": "pages/step_169.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:58:01.406639+10:00",
+      "end_time": "2026-09-12T12:58:04.159693+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1011,
+          "line": 2,
+          "screenshot": "screenshots/step_170.png",
+          "xml": "pages/step_170.json",
+          "note": "打开图片预览",
+          "hit": "PNG"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 181,
+          "line": 3,
+          "screenshot": "screenshots/step_171.png",
+          "xml": "pages/step_171.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:58:16.333189+10:00",
+      "end_time": "2026-09-12T12:58:19.148109+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1070,
+          "line": 2,
+          "screenshot": "screenshots/step_172.png",
+          "xml": "pages/step_172.json",
+          "note": "打开图片预览",
+          "hit": "PNG"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 183,
+          "line": 3,
+          "screenshot": "screenshots/step_173.png",
+          "xml": "pages/step_173.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": false,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:58:30.131068+10:00",
+      "end_time": "2026-09-12T12:58:44.191474+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,1000)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 722,
+          "line": 2,
+          "screenshot": "screenshots/step_174.png",
+          "xml": "pages/step_174.json",
+          "note": "叫出控制栏",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等待 [1s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1003,
+          "line": 3,
+          "screenshot": "screenshots/step_175.png",
+          "xml": "pages/step_175.json"
+        },
+        {
+          "index": 2,
+          "command": "点击 [坐标@(105,270)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 395,
+          "line": 4,
+          "screenshot": "screenshots/step_176.png",
+          "xml": "pages/step_176.json",
+          "note": "关闭按钮回 gallery",
+          "hit": "返回"
+        },
+        {
+          "index": 3,
+          "command": "等到 [MP4, 8s]",
+          "success": false,
+          "error": "脚本执行错误: 等到「MP4」超时（8s）：它没有出现，或者在视口外（先 滚动查找）",
+          "duration_ms": 8700,
+          "line": 5,
+          "screenshot": "screenshots/step_177.png",
+          "xml": "pages/step_177.json",
+          "assertion": {
+            "expect": "「MP4」出现（8s 内）",
+            "actual": "8s 内没出现",
+            "pass": false,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": "脚本执行错误: 等到「MP4」超时（8s）：它没有出现，或者在视口外（先 滚动查找）",
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": false,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:58:50.271654+10:00",
+      "end_time": "2026-09-12T12:58:57.999877+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 719,
+          "line": 2,
+          "screenshot": "screenshots/step_178.png",
+          "xml": "pages/step_178.json",
+          "note": "打开图片预览",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": false,
+          "error": "脚本执行错误: 等到「img3-blue.png」超时（5s）：它没有出现，或者在视口外（先 滚动查找）",
+          "duration_ms": 5499,
+          "line": 3,
+          "screenshot": "screenshots/step_179.png",
+          "xml": "pages/step_179.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "5s 内没出现",
+            "pass": false,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": "脚本执行错误: 等到「img3-blue.png」超时（5s）：它没有出现，或者在视口外（先 滚动查找）",
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:59:08.890782+10:00",
+      "end_time": "2026-09-12T12:59:15.027969+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,1000)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 709,
+          "line": 2,
+          "screenshot": "screenshots/step_180.png",
+          "xml": "pages/step_180.json",
+          "note": "叫出控制栏",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等待 [1s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1001,
+          "line": 3,
+          "screenshot": "screenshots/step_181.png",
+          "xml": "pages/step_181.json"
+        },
+        {
+          "index": 2,
+          "command": "点击 [坐标@(105,270)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 678,
+          "line": 4,
+          "screenshot": "screenshots/step_182.png",
+          "xml": "pages/step_182.json",
+          "note": "关闭按钮回 gallery",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 3,
+          "command": "等到 [MP4, 8s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 319,
+          "line": 5,
+          "screenshot": "screenshots/step_183.png",
+          "xml": "pages/step_183.json",
+          "assertion": {
+            "expect": "「MP4」出现（8s 内）",
+            "actual": "0.3s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T12:59:21.417307+10:00",
+      "end_time": "2026-09-12T12:59:24.295879+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1047,
+          "line": 2,
+          "screenshot": "screenshots/step_184.png",
+          "xml": "pages/step_184.json",
+          "note": "打开图片预览",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 204,
+          "line": 3,
+          "screenshot": "screenshots/step_185.png",
+          "xml": "pages/step_185.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T13:00:03.696938+10:00",
+      "end_time": "2026-09-12T13:00:05.053272+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "阶段 [边界：放大态慢速平移后手指停住]",
+          "success": true,
+          "error": null,
+          "duration_ms": 0,
+          "line": 2,
+          "screenshot": "screenshots/step_186.png",
+          "xml": "pages/step_186.json"
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": false,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T13:00:12.362213+10:00",
+      "end_time": "2026-09-12T13:00:26.213763+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(603,1000)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 720,
+          "line": 2,
+          "screenshot": "screenshots/step_187.png",
+          "xml": "pages/step_187.json",
+          "note": "叫出控制栏",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等待 [1s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1003,
+          "line": 3,
+          "screenshot": "screenshots/step_188.png",
+          "xml": "pages/step_188.json"
+        },
+        {
+          "index": 2,
+          "command": "点击 [坐标@(105,270)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 391,
+          "line": 4,
+          "screenshot": "screenshots/step_189.png",
+          "xml": "pages/step_189.json",
+          "note": "关闭按钮回 gallery",
+          "hit": "返回"
+        },
+        {
+          "index": 3,
+          "command": "等到 [MP4, 8s]",
+          "success": false,
+          "error": "脚本执行错误: 等到「MP4」超时（8s）：它没有出现，或者在视口外（先 滚动查找）",
+          "duration_ms": 8512,
+          "line": 5,
+          "screenshot": "screenshots/step_190.png",
+          "xml": "pages/step_190.json",
+          "assertion": {
+            "expect": "「MP4」出现（8s 内）",
+            "actual": "8s 内没出现",
+            "pass": false,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": "脚本执行错误: 等到「MP4」超时（8s）：它没有出现，或者在视口外（先 滚动查找）",
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": false,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T13:00:32.774104+10:00",
+      "end_time": "2026-09-12T13:00:40.403178+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 734,
+          "line": 2,
+          "screenshot": "screenshots/step_191.png",
+          "xml": "pages/step_191.json",
+          "note": "打开图片预览",
+          "hit": "ReSourcer"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": false,
+          "error": "脚本执行错误: 等到「img3-blue.png」超时（5s）：它没有出现，或者在视口外（先 滚动查找）",
+          "duration_ms": 5411,
+          "line": 3,
+          "screenshot": "screenshots/step_192.png",
+          "xml": "pages/step_192.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "5s 内没出现",
+            "pass": false,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": "脚本执行错误: 等到「img3-blue.png」超时（5s）：它没有出现，或者在视口外（先 滚动查找）",
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T13:00:56.734211+10:00",
+      "end_time": "2026-09-12T13:00:59.613215+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1069,
+          "line": 2,
+          "screenshot": "screenshots/step_193.png",
+          "xml": "pages/step_193.json",
+          "note": "打开图片预览",
+          "hit": "PNG"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 208,
+          "line": 3,
+          "screenshot": "screenshots/step_194.png",
+          "xml": "pages/step_194.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    },
+    {
+      "success": true,
+      "case_id": "",
+      "script_name": "steps",
+      "start_time": "2026-09-12T13:01:16.050882+10:00",
+      "end_time": "2026-09-12T13:01:18.797806+10:00",
+      "steps": [
+        {
+          "index": 0,
+          "command": "点击 [坐标@(217,613)]",
+          "success": true,
+          "error": null,
+          "duration_ms": 1018,
+          "line": 2,
+          "screenshot": "screenshots/step_195.png",
+          "xml": "pages/step_195.json",
+          "note": "打开图片预览",
+          "hit": "PNG"
+        },
+        {
+          "index": 1,
+          "command": "等到 [img3-blue.png, 5s]",
+          "success": true,
+          "error": null,
+          "duration_ms": 199,
+          "line": 3,
+          "screenshot": "screenshots/step_196.png",
+          "xml": "pages/step_196.json",
+          "assertion": {
+            "expect": "「img3-blue.png」出现（5s 内）",
+            "actual": "0.2s 后出现",
+            "pass": true,
+            "kind": "wait"
+          }
+        }
+      ],
+      "error": null,
+      "script_path": "<steps>",
+      "run_dir": "/Users/ericwang/.toolkit/tke/logs/RS-004",
+      "device": "sim:575B910A-8F00-40D9-A501-C28C7A3199F0",
+      "device_label": "iPhone 17 Pro · iOS 26.2（模拟器）"
+    }
+  ],
+  "task": "RS-004 iOS 预览页：长按屏幕退出预览 —— 按 task.md 8 条 AC 在 iPhone 17 Pro 模拟器上实测",
+  "verdict": "fail",
+  "summary": "**结论：FAIL（AC6 不过，其余 7 条通过）**\n\n| AC | 结果 | 证据 |\n|---|---|---|\n| 1 编译 | PASS | build-sim.log BUILD SUCCEEDED |\n| 2 图片长按退出 | PASS | step_005~010 |\n| 3 视频长按退出 | PASS | step_027~030 + ac3-hold-burst.jpg（0.55s 即退出，手指未抬） |\n| 4 文件名 Capsule 长按 → 快捷面板 | PASS | step_035~042 |\n| 5 播放模式按钮长按 → 播放列表 | PASS | step_043~050 |\n| 6 按住后移动不退出 | **FAIL** | 连续移动 150pt 不退出（step_019~021），但慢速/小幅移动后停住会退出：D-01 |\n| 7 关闭按钮 | PASS | step_051~059 |\n| 8 guard | PASS | guard.log linecount 绿 |\n\n- D-01：`maximumDistance: 14` 实际不生效——放大态慢速平移 40pt 3/3 退出、1x 慢拖 30pt 3/3 退出。疑因长按修饰符挂在 `fileContentView` 外层，而 `.offset()`（翻页/平移）在其内部，触点在该视图局部坐标系里随内容一起走，位移被抵消。\n- 回归：单击切控制栏、短按 0.3s 不退出、底部上一/下一、滑动翻页、放大态平移、seek 拖动均正常。",
+  "method": "iPhone 17 Pro 模拟器 (iOS 26.2)，xcodebuild 新构建装入；server 跑在 127.0.0.1:1234 (RESOURCER_DIR=/tmp/rs004-work/data)。长按用 tke 按压；带停顿/慢速的复合手势用 WDA W3C pointer actions 脚本（.ai/reports/RS-004/wda-*.sh），拖动中画面用 simctl 连拍。判缺陷门槛：对外生产功能。"
+}

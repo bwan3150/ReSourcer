@@ -1,0 +1,33 @@
+# RS-004 AC6 边界：按下→移动→停住(手指不抬) 是否误触发长按退出。坐标 pt，脚本 wda-move-hold.sh / wda-press-drag-hold.sh
+# 注：第一组『move 100pt/400ms』5 次里 trial 2/4 的前置导航失败（实际打在上一轮翻到的视频页上），以第二组『image: move 100pt/400ms』为准（有效 trial 1/3/5 全部 stayed）
+trial | gesture | result
+1 | move 40pt/300ms then hold 1.2s | DISMISSED
+2 | move 40pt/300ms then hold 1.2s | DISMISSED
+3 | move 40pt/300ms then hold 1.2s | DISMISSED
+4 | move 40pt/300ms then hold 1.2s | stayed
+5 | move 40pt/300ms then hold 1.2s | stayed
+1 | move 100pt/400ms then hold 1.5s | stayed (video120.mp4)
+2 | move 100pt/400ms then hold 1.5s | stayed ()
+3 | move 100pt/400ms then hold 1.5s | stayed ()
+4 | move 100pt/400ms then hold 1.5s | stayed ()
+5 | move 100pt/400ms then hold 1.5s | stayed ()
+1 | image: move 100pt/400ms then hold 1.5s | stayed (video120.mp4)
+2 | image: move 100pt/400ms then hold 1.5s | stayed ()
+3 | image: move 100pt/400ms then hold 1.5s | stayed (video120.mp4)
+4 | image: move 100pt/400ms then hold 1.5s | stayed ()
+5 | image: move 100pt/400ms then hold 1.5s | stayed (video120.mp4)
+1 | video: hold 0.1s, seek-drag 100pt/1.0s, then hold still 1.5s | stayed
+2 | video: hold 0.1s, seek-drag 100pt/1.0s, then hold still 1.5s | stayed
+3 | video: hold 0.1s, seek-drag 100pt/1.0s, then hold still 1.5s | stayed
+1 | video: move 40pt/300ms then hold 1.2s | DISMISSED
+2 | video: move 40pt/300ms then hold 1.2s | stayed
+3 | video: move 40pt/300ms then hold 1.2s | DISMISSED
+1 | image: slow move 30pt/1000ms then hold 1.2s | DISMISSED
+2 | image: slow move 30pt/1000ms then hold 1.2s | DISMISSED
+3 | image: slow move 30pt/1000ms then hold 1.2s | DISMISSED
+1 | image: vertical move 60pt/300ms then hold 1.2s | stayed
+2 | image: vertical move 60pt/300ms then hold 1.2s | stayed
+3 | image: vertical move 60pt/300ms then hold 1.2s | stayed
+1 | image zoomed 2.5x: slow pan 40pt/800ms then hold 1.2s | DISMISSED
+2 | image zoomed 2.5x: slow pan 40pt/800ms then hold 1.2s | DISMISSED
+3 | image zoomed 2.5x: slow pan 40pt/800ms then hold 1.2s | DISMISSED

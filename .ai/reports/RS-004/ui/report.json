@@ -1,0 +1,542 @@
+{
+  "case_id": "RS-004",
+  "task": "RS-004 iOS 预览页：长按屏幕退出预览 —— 按 task.md 8 条 AC 在 iPhone 17 Pro 模拟器上实测",
+  "verdict": "fail",
+  "summary": "**结论：FAIL（AC6 不过，其余 7 条通过）**\n\n| AC | 结果 | 证据 |\n|---|---|---|\n| 1 编译 | PASS | build-sim.log BUILD SUCCEEDED |\n| 2 图片长按退出 | PASS | step_005~010 |\n| 3 视频长按退出 | PASS | step_027~030 + ac3-hold-burst.jpg（0.55s 即退出，手指未抬） |\n| 4 文件名 Capsule 长按 → 快捷面板 | PASS | step_035~042 |\n| 5 播放模式按钮长按 → 播放列表 | PASS | step_043~050 |\n| 6 按住后移动不退出 | **FAIL** | 连续移动 150pt 不退出（step_019~021），但慢速/小幅移动后停住会退出：D-01 |\n| 7 关闭按钮 | PASS | step_051~059 |\n| 8 guard | PASS | guard.log linecount 绿 |\n\n- D-01：`maximumDistance: 14` 实际不生效——放大态慢速平移 40pt 3/3 退出、1x 慢拖 30pt 3/3 退出。疑因长按修饰符挂在 `fileContentView` 外层，而 `.offset()`（翻页/平移）在其内部，触点在该视图局部坐标系里随内容一起走，位移被抵消。\n- 回归：单击切控制栏、短按 0.3s 不退出、底部上一/下一、滑动翻页、放大态平移、seek 拖动均正常。",
+  "method": "iPhone 17 Pro 模拟器 (iOS 26.2)，xcodebuild 新构建装入；server 跑在 127.0.0.1:1234 (RESOURCER_DIR=/tmp/rs004-work/data)。长按用 tke 按压；带停顿/慢速的复合手势用 WDA W3C pointer actions 脚本（.ai/reports/RS-004/wda-*.sh），拖动中画面用 simctl 连拍。判缺陷门槛：对外生产功能。",
+  "steps": 196,
+  "failed_steps": 11,
+  "batches": 59,
+  "duration_ms": 1155597,
+  "started_at": "2026-09-12T12:42:03.200675+10:00",
+  "ended_at": "2026-09-12T13:01:18.797806+10:00",
+  "devices": [
+    "iPhone 17 Pro · iOS 26.2（模拟器）"
+  ],
+  "assertions": [
+    {
+      "expect": "「MP4」出现（5s 内）",
+      "actual": "0.3s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "包含「MP4」",
+      "actual": "找到了 · 元素表",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "不包含「img3-blue.png」",
+      "actual": "没找到 · 查了元素表 + OCR",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "不包含「MP4」",
+      "actual": "没找到 · 查了元素表 + OCR",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "不包含「MP4」",
+      "actual": "没找到 · 查了元素表 + OCR",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "不包含「MP4」",
+      "actual": "没找到 · 查了元素表 + OCR",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "包含「video120.mp4」",
+      "actual": "找到了 · 元素表",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "「MP4」出现（5s 内）",
+      "actual": "0.7s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "包含「MP4」",
+      "actual": "找到了 · 元素表",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "不包含「video120.mp4」",
+      "actual": "没找到 · 查了元素表 + OCR",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「确认」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "包含「确认」",
+      "actual": "找到了 · 元素表",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "不包含「MP4」",
+      "actual": "没找到 · 查了元素表 + OCR",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "「确认」消失（5s 内）",
+      "actual": "0.4s 后消失",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「video120.mp4」出现（5s 内）",
+      "actual": "0.3s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "包含「video120.mp4」",
+      "actual": "找到了 · 元素表",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "包含「img2-green.png」",
+      "actual": "找到了 · 元素表",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "「img1-red.png」消失（5s 内）",
+      "actual": "0.4s 后消失",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "包含「img3-blue.png」",
+      "actual": "找到了 · 元素表",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "「MP4」出现（5s 内）",
+      "actual": "0.4s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "包含「MP4」",
+      "actual": "找到了 · 元素表",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "不包含「img3-blue.png」",
+      "actual": "没找到 · 查了元素表 + OCR",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "包含「img3-blue.png」",
+      "actual": "找到了 · 元素表",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "不包含「MP4」",
+      "actual": "没找到 · 查了元素表 + OCR",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "「img2-green.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "包含「img2-green.png」",
+      "actual": "找到了 · 元素表",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "包含「img3-blue.png」",
+      "actual": "找到了 · 元素表",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "包含「img3-blue.png」",
+      "actual": "找到了 · 元素表",
+      "pass": true,
+      "kind": "assert"
+    },
+    {
+      "expect": "不包含「MP4」",
+      "actual": "找到了 · 元素表",
+      "pass": false,
+      "kind": "assert"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「MP4」出现（5s 内）",
+      "actual": "0.4s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「MP4」出现（5s 内）",
+      "actual": "5s 内没出现",
+      "pass": false,
+      "kind": "wait"
+    },
+    {
+      "expect": "「MP4」出现（8s 内）",
+      "actual": "0.4s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「MP4」出现（8s 内）",
+      "actual": "8s 内没出现",
+      "pass": false,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "5s 内没出现",
+      "pass": false,
+      "kind": "wait"
+    },
+    {
+      "expect": "「MP4」出现（8s 内）",
+      "actual": "0.3s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「MP4」出现（8s 内）",
+      "actual": "8s 内没出现",
+      "pass": false,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "5s 内没出现",
+      "pass": false,
+      "kind": "wait"
+    },
+    {
+      "expect": "「MP4」出现（8s 内）",
+      "actual": "0.3s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「MP4」出现（8s 内）",
+      "actual": "0.4s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「video120.mp4」出现（8s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「MP4」出现（8s 内）",
+      "actual": "0.4s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「video120.mp4」出现（8s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「MP4」出现（8s 内）",
+      "actual": "0.4s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「video120.mp4」出现（8s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「MP4」出现（8s 内）",
+      "actual": "0.4s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「video120.mp4」出现（8s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「video120.mp4」出现（8s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「MP4」出现（8s 内）",
+      "actual": "0.3s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「video120.mp4」出现（8s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「MP4」出现（8s 内）",
+      "actual": "8s 内没出现",
+      "pass": false,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "5s 内没出现",
+      "pass": false,
+      "kind": "wait"
+    },
+    {
+      "expect": "「MP4」出现（8s 内）",
+      "actual": "0.3s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「MP4」出现（8s 内）",
+      "actual": "8s 内没出现",
+      "pass": false,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "5s 内没出现",
+      "pass": false,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    },
+    {
+      "expect": "「img3-blue.png」出现（5s 内）",
+      "actual": "0.2s 后出现",
+      "pass": true,
+      "kind": "wait"
+    }
+  ],
+  "defects": [
+    {
+      "id": "D-01",
+      "severity": "p1",
+      "title": "手指移动超过 14pt 容差后长按仍触发退出（慢速平移/小幅拖动后停住即退出预览）",
+      "module": "iOS/预览页/长按退出",
+      "input": "放大 2.5x 后慢速平移 40pt（0.8s），或 1x 下慢速拖 30pt（1s）后手指停住",
+      "expect": "手指移动超过 maximumDistance(14pt) 后长按识别失败，不退出预览",
+      "actual": "触摸开始约 0.55s 后预览被 dismiss 回到 Gallery（放大态慢速平移 3/3、1x 慢拖 30pt 3/3、1x 拖 40pt 后停住 3/5、视频拖 40pt 后停住 2/3）；快速大幅拖动（100pt/0.4s）与 seek 拖动 100pt/1s 后停住则不退出",
+      "ground_truth": ".ai/reports/RS-004/ac6-move-then-hold-trials.txt + ac6-zoomed-pan-then-hold-burst.jpg（0.6s 时预览已在滑出，手指仍在移动）",
+      "evidence": [
+        "/Users/ericwang/Documents/GitHub/ReSourcer/.ai/reports/RS-004/ac6-zoomed-pan-then-hold-burst.jpg"
+      ],
+      "repro_rate": "9/17",
+      "case": "RS-004"
+    }
+  ],
+  "phases": [
+    {
+      "name": "",
+      "steps": 1,
+      "duration_ms": 4868
+    },
+    {
+      "name": "AC2 图片预览长按退出",
+      "steps": 8,
+      "duration_ms": 4907
+    },
+    {
+      "name": "回归：单击图片不应退出",
+      "steps": 9,
+      "duration_ms": 5217
+    },
+    {
+      "name": "AC6 按住后移动不退出",
+      "steps": 6,
+      "duration_ms": 2660
+    },
+    {
+      "name": "AC3 视频预览长按退出",
+      "steps": 5,
+      "duration_ms": 2766
+    },
+    {
+      "name": "AC4 长按文件名 Capsule 仍弹快捷操作面板",
+      "steps": 9,
+      "duration_ms": 5246
+    },
+    {
+      "name": "AC5 长按播放模式按钮仍弹播放列表",
+      "steps": 8,
+      "duration_ms": 5780
+    },
+    {
+      "name": "AC7 左上角关闭按钮仍可用",
+      "steps": 5,
+      "duration_ms": 3114
+    },
+    {
+      "name": "回归：放大态平移不退出 + 翻页/底部按钮",
+      "steps": 14,
+      "duration_ms": 6063
+    },
+    {
+      "name": "边界：先移动 40pt 再停住 1s → 不应退出；原地抖动 8pt 长按 → 应退出",
+      "steps": 52,
+      "duration_ms": 62037
+    },
+    {
+      "name": "边界：视频 seek 拖动后手指停住 >0.55s 会不会误退出",
+      "steps": 58,
+      "duration_ms": 58798
+    },
+    {
+      "name": "边界：放大态慢速平移后手指停住",
+      "steps": 10,
+      "duration_ms": 19265
+    }
+  ],
+  "report_html": "report.html"
+}

@@ -1,0 +1,9 @@
+── server-check         PASS  (1s)
+── server-test          PASS  (0s)
+── web-build            PASS  (3s)
+── no-bare-fetch        PASS
+── no-hardcoded-path    PASS  (0s)
+── no-secrets           PASS  (0s)
+── api-doc-sync         PASS  (0s)
+── linecount            PASS  （1 个文件变短了，可刷新基线收紧）
+EXIT: 0

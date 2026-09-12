@@ -1,0 +1,50 @@
+{
+  "task_id": "RS-004",
+  "verdict": "FAIL",
+  "ac_results": ["PASS", "PASS", "PASS", "PASS", "PASS", "FAIL", "PASS", "PASS"],
+  "checks": [
+    {"name": "build-ios", "status": "PASS",
+     "cmd": "cd iOS && xcodebuild -scheme ReSourcer -destination 'id=575B910A-8F00-40D9-A501-C28C7A3199F0' -derivedDataPath /tmp/rs004-dd build",
+     "evidence": ".ai/reports/RS-004/build-sim.log",
+     "notes": "AC1：BUILD SUCCEEDED，LongPressDismissGesture.swift 已进编译（build log 出现 3 次，Objects-normal/arm64 下有 .o）。generic/platform=iOS Simulator 在本机必失败属环境问题（见 knowledge.md），用模拟器 UDID 编译。"},
+    {"name": "unit", "status": "PASS", "cmd": "cargo test --manifest-path server/Cargo.toml",
+     "evidence": ".ai/reports/RS-004/unit.log",
+     "notes": "server 2/2 通过（本任务未动 server）。iOS 工程无测试 target，Tester 不改 pbxproj，手势逻辑只能黑盒实测。"},
+    {"name": "boot", "status": "PASS", "cmd": "bash .ai/reports/RS-004/boot.sh",
+     "evidence": ".ai/reports/RS-004/boot.log",
+     "notes": "RESOURCER_DIR=/tmp/rs004-work/data 冷启动 36s 后 /api/health 200；新构建装入 iPhone 17 Pro 模拟器并启动、自动连上 127.0.0.1:1234，全程无崩溃。"},
+    {"name": "api", "status": "PASS", "cmd": "bash .ai/reports/RS-004/boot.sh（sources/add → indexer/scan → indexer/files → config/state）",
+     "evidence": ".ai/reports/RS-004/boot.log",
+     "notes": "本任务不改 HTTP 接口；这些真实请求只用于准备 4 张图 + 1 个 120s 视频的测试数据，均 200 且字段正确。"},
+    {"name": "ui", "status": "FAIL",
+     "cmd": "tke -d sim:575B910A-... steps …（见 ui.log）+ WDA W3C pointer actions 脚本 .ai/reports/RS-004/wda-*.sh + simctl 连拍",
+     "evidence": ".ai/reports/RS-004/ui/report.html",
+     "expected": "AC6：按住后手指移动超过 14pt 容差再停住/松开 → 长按识别失败，不退出预览（与平移/seek 不冲突）",
+     "actual": "手指慢速/小幅移动（明显超过 14pt）后，触摸开始约 0.55s 仍触发退出回到 Gallery：放大 2.5x 后慢速平移 40pt/0.8s 再停住 → 3/3 退出（ac6-zoomed-pan-then-hold-burst.jpg：0.6s 时预览已在滑出、手指还在移动）；1x 下慢拖 30pt/1s 再停住 → 3/3 退出；1x 拖 40pt/0.3s 再停住 → 3/5 退出（b3-move40-then-hold-burst.jpg）；视频拖 40pt/0.3s 再停住 → 2/3 退出。快速大幅拖动（100pt/0.4s）0/5、seek 拖动 100pt/1s 后停住 0/3、竖向拖 60pt 后停住 0/3 不退出。完整表：ac6-move-then-hold-trials.txt。其余 AC2/3/4/5/7 全部通过（步骤号见 ui.log 与 report.html）。"},
+    {"name": "e2e", "status": "PASS",
+     "cmd": "同 ui（启动 → gallery → 图片预览长按退出 → 视频预览长按退出 → Capsule/播放模式长按 → 关闭按钮 → 翻页/放大/seek）",
+     "evidence": ".ai/reports/RS-004/ui.log",
+     "notes": "主流程全部走通、无崩溃；长按在 0.55s 到达时即退出（不等抬指，ac3-hold-burst.jpg），触觉反馈在模拟器无法观测。"},
+    {"name": "guard", "status": "PASS", "cmd": "./.ai/guard.sh",
+     "evidence": ".ai/reports/RS-004/guard.log",
+     "notes": "AC8：全绿，linecount 绿（FilePreviewView.swift 2157 行 < 基线 2262）。"}
+  ],
+  "repro": "1. bash .ai/reports/RS-004/boot.sh（server 起在 127.0.0.1:1234）；xcodebuild 后 xcrun simctl install 到 iPhone 17 Pro 模拟器并启动 app（已连该 server）  2. Gallery 点第 1 张缩略图（img3-blue.png）进入预览  3. 双指放大到 2.5x（WDA: POST /session/:id/wda/pinch {scale:2.5,velocity:1}）  4. 单指按下后以约 50pt/s 慢速水平平移 40pt，然后手指停住不动（脚本：bash .ai/reports/RS-004/wda-move-hold.sh 201 437 241 437 800 1200，坐标 pt）  5. 期望：因位移已超 14pt 容差，不退出；实际：触摸开始约 0.55s 后预览被 dismiss 回到 Gallery（3/3 复现）。不放大、1x 下 bash wda-move-hold.sh 190 437 220 437 1000 1200（慢拖 30pt）同样 3/3 复现。疑因：longPressToDismiss 挂在 fileContentView 外层，而 PageSwipeGesture/ZoomPanGesture 的 .offset() 在其内部，触点在被修饰视图的局部坐标系里随内容一起移动，LongPressGesture 的 maximumDistance 量不到真实位移；快速拖动能取消大概率只是 offset 动画滞后造成的局部位移。建议改成在固定坐标系（.global/.named）里自己量位移：DragGesture(minimumDistance: 0, coordinateSpace: .global) 记录起点 + 0.55s 计时器，translation 超容差即取消；或换 UILongPressGestureRecognizer(allowableMovement) 挂在不随手指移动的容器上。",
+  "regression_checked": [
+    "单击画面只切换控制栏、不退出（step_014~019）",
+    "短按 0.3s（低于 0.55s 阈值）不退出（step_017~020）",
+    "1x 下按住后连续水平拖 150pt 不退出（翻页，step_022~023）",
+    "视频 seek 拖动 100pt 仍生效且不退出（0:05 → 0:56，step_024~027）",
+    "放大 2.5x 后拖动 150pt 仍是同一张图、不退出（reg-zoomed-pan.jpg，step_062~064）",
+    "双击重置缩放后底部“下一个”按钮与滑动翻页正常（step_065~072）",
+    "文件名 Capsule 长按 → 快捷操作面板；播放模式长按 → 播放列表 popover（AC4/AC5）",
+    "左上角关闭按钮仍可退出（AC7）"
+  ],
+  "notes": "全部在 iPhone 17 Pro 模拟器（iOS 26.2）验证，无真机；tke 报告未上传云端（对外发布未获授权），本地 .ai/reports/RS-004/ui/report.html。AC6 的字面用例（按住后连续移动一段距离再松开）是过的，判 FAIL 是因为 task.md 明确要求『手指移动超过容差就取消退出』且『放大平移 / seek 拖动时不该误触发』，而放大态慢速平移是最常见的用户动作，3/3 被踢出预览，属实际冲突。ui.log 里 step_096/106/108/118/120/177/179/190/192 的 FAIL 是我测试脚本自身的导航失误（单击把控制栏点没了再点关闭按钮点空），紧接着的重试都成功，不影响任何结论。另一个非阻塞观察：长按在 0.55s 到达时立刻 dismiss、不等抬指，用户手指还压在屏幕上时页面已经切走，抬指落在 Gallery 上——本轮没观察到误触缩略图，但换成 onEnded 等抬指或加 0.1s 延迟会更稳。",
+  "learnings": [
+    "2026-09-12 RS-004/tester — SwiftUI LongPressGesture(maximumDistance:) 挂在会被 .offset() 跟手位移的视图上时，容差在局部坐标系里量、会被内容位移抵消，慢速平移照样触发；验位移容差要用 WDA W3C actions 做『慢速 pointerMove 再 pause』（.ai/reports/RS-004/wda-move-hold.sh），快速大幅拖动测不出这个问题。",
+    "2026-09-12 RS-004/tester — 预览页要回 Gallery 的自动化步骤别先 点击 [坐标@(603,1000)] 再点关闭：单击是切换控制栏，控制栏本来就显示时会把它点没、关闭按钮随之点空。先 refresh 看有没有『返回』元素再决定要不要单击，或直接用长按退出。",
+    "2026-09-12 RS-004/tester — tke 的 等待 参数不接受小数（1.5s 报『无法解析等待参数』），用整数秒。",
+    "2026-09-12 RS-004/tester — RS-004 起的 app 沿用了 RS-003 在模拟器里保存的服务器配置；换新的 RESOURCER_DIR 时把旧的 config/secret.json 拷过去即可让 app 免重新配置直接连上（apikey 只从 secret.json 读）。"
+  ]
+}

@@ -30,3 +30,7 @@
 - `2026-09-12` RS-003/tester — 2026-09-12 RS-003/tester — 视频预览页控制栏 10s 自动隐藏（LocalStorageService autoHideDelay 默认 10），隐藏后点顶部返回/底部按钮会点空并把控制栏切出来；每次读时间前先单击画面中部叫出控制栏再 refresh。
 - `2026-09-12` RS-003/tester — 2026-09-12 RS-003/tester — 造测试视频用 ffmpeg lavfi testsrc（自带走秒计数器，seek 后画面里直接能读到秒数），本机 ffmpeg 没编 drawtext 滤镜；图片用 lavfi color= 纯色即可靠标题+颜色区分。
 - `2026-09-12` RS-003/tester — 2026-09-12 RS-003/tester — `xcodebuild -destination 'generic/platform=iOS Simulator'` 在这台 arm64 Mac 上因 libclang_rt.iossim 缺 x86_64 slice 必失败，与代码无关（HEAD~1 同样失败）；验编译用 -destination 'id=<模拟器UDID>'。
+- `2026-09-12` RS-004/tester — 2026-09-12 RS-004/tester — SwiftUI LongPressGesture(maximumDistance:) 挂在会被 .offset() 跟手位移的视图上时，容差在局部坐标系里量、会被内容位移抵消，慢速平移照样触发；验位移容差要用 WDA W3C actions 做『慢速 pointerMove 再 pause』（.ai/reports/RS-004/wda-move-hold.sh），快速大幅拖动测不出这个问题。
+- `2026-09-12` RS-004/tester — 2026-09-12 RS-004/tester — 预览页要回 Gallery 的自动化步骤别先 点击 [坐标@(603,1000)] 再点关闭：单击是切换控制栏，控制栏本来就显示时会把它点没、关闭按钮随之点空。先 refresh 看有没有『返回』元素再决定要不要单击，或直接用长按退出。
+- `2026-09-12` RS-004/tester — 2026-09-12 RS-004/tester — tke 的 等待 参数不接受小数（1.5s 报『无法解析等待参数』），用整数秒。
+- `2026-09-12` RS-004/tester — 2026-09-12 RS-004/tester — RS-004 起的 app 沿用了 RS-003 在模拟器里保存的服务器配置；换新的 RESOURCER_DIR 时把旧的 config/secret.json 拷过去即可让 app 免重新配置直接连上（apikey 只从 secret.json 读）。

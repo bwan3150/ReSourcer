@@ -1,0 +1,20 @@
+{
+  "task_id": "RS-004",
+  "status": "IMPLEMENTATION_DONE",
+  "summary": "修复上一轮 AC6 失败：LongPressDismissGesture 改为在 .global 坐标系用 DragGesture 防抖计时——手指还在动就不断重排 dismiss 定时器，只有真正静止 minimumDuration 才触发；一旦累计位移超过 maximumDistance(14pt) 就永久作废本次按住，不再重新武装。",
+  "changed_files": [
+    "iOS/ReSourcer/Views/Gallery/Gestures/LongPressDismissGesture.swift"
+  ],
+  "how_to_run": "bash .ai/reports/RS-004/boot.sh 起 server（127.0.0.1:1234，临时数据目录 /tmp/rs004-work，含 5 个测试素材：4 图 1 视频）；xcodebuild -scheme ReSourcer -destination 'id=<模拟器UDID>' build 出 iOS/ReSourcer/Views/Gallery/Gestures/... 所在的 ReSourcer.app，simctl install + launch 到已连该 server 的模拟器（沿用旧 config/secret.json 即可免配置直连,见 knowledge.md）。",
+  "how_to_verify": "对应 AC1-AC8。AC1 xcodebuild build 已过。AC2/AC3 图片/视频预览区长按(~0.7s 静止)退出到 Gallery——已用 WDA W3C pointer actions 验证。AC6 是本轮重点：用 .ai/reports/RS-004/wda-move-hold.sh <fromX> <fromY> <toX> <toY> <moveMs> <holdMs> 复现上一轮的失败用例——30pt/1000ms、40pt/800ms（原始 repro 速率）、40pt/300ms 三组慢速拖动再停住，各测 3 次，均不再误触发退出（此前 3/3、3/3、3/5 误退出，现在 0/3）；另测 100pt/300ms 快速大幅拖动仍正确不退出。AC7 左上角关闭按钮已验证仍可用。AC4/AC5（胶囊/播放模式按钮长按不被吞）我这轮没有改动那部分代码，也没能用 WDA 原始 touch 可靠触发（capsule 同时挂了 TapGesture，会和 onLongPressGesture 抢；用真实长按手势的 tke 技能应该没有这个问题），Tester 请用 tke-ui-test 按上一轮已通过的方法复测一遍确认未回归。",
+  "known_risks": [
+    "调试过程中发现 WDA W3C pointerMove(duration) 合成的触摸轨迹是非线性的(先慢后快)，不是恒定速度；真实用户手指的移动曲线可能不同，理论上仍可能存在某种「先极慢后陡增」的移动模式让计时器在越过容差前的短暂静止窗口里意外触发——已通过'每次 onChanged 都重排计时器(防抖)'把这个窗口收窄到「必须真正停止移动 minimumDuration」，而不是「从按下起算固定 0.55s」，大幅降低了这种概率，但没有做形式化证明覆盖所有可能的移动曲线。",
+    "minimumDuration=0.55s、maximumDistance=14pt 沿用原有默认值未调整；如果 Tester 真机测试中仍发现边界情况（比如移动恰好卡在 14pt 附近反复抖动），可能需要调参，不属于本次代码结构性缺陷。"
+  ],
+  "not_verified": [
+    "AC4/AC5（长按文件名胶囊 / 播放模式按钮，确认未被新手势吞掉）——我没有改动这两处代码，理论上不受影响，但没能用 WDA 原始 touch 可靠单独触发验证（tap 手势和 long-press 手势在模拟器合成触摸下会一起触发，导致我这轮看到的是 TapGesture 打开的文件信息面板而非 quick actions；这是原有代码就存在的手势竞争，与本次改动无关）。真机/tke 手势应该没有这个歧义，需要 Tester 用 tke-ui-test 实操确认。",
+    "没有用真实物理设备做手指长按测试，全部验证基于 iOS 模拟器 + WebDriverAgent 合成触摸（项目规则要求手势类改动真机实测，我尽力在模拟器上做了等效验证，但触摸合成的运动曲线与真手指不完全一致）。",
+    "缩放后(2.5x)再做慢速平移然后停住的组合场景（上一轮 handoff 里提到的 ac6-zoomed-pan-then-hold）这轮没有重新跑一次缩放+慢拖组合，只测了 1x 下的慢拖，因为根因（防抖计时器）与是否缩放无关——但建议 Tester 按上一轮的缩放步骤再走一遍确认。"
+  ],
+  "blockers": []
+}
