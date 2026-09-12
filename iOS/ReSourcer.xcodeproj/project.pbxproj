@@ -53,6 +53,7 @@
 		4722C5B50809F21CFE7418C5 /* ZoomPanGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E98FC85C108E1C79FB80460 /* ZoomPanGesture.swift */; };
 		411C18811FB604AEA9A4567D /* PageSwipeGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F289BA7DD08D921EBA0BF02 /* PageSwipeGesture.swift */; };
 		4661598F54CB5F48B53EA135 /* SeekDragGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87CE20BC884CA337F3353244 /* SeekDragGesture.swift */; };
+		D4C943366B984B343AF6FA96 /* LongPressDismissGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BE55D5E71AE36BCE61352D9 /* LongPressDismissGesture.swift */; };
 		A1000075233F0001 /* AuthSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000075233F0000 /* AuthSettingsView.swift */; };
 		A1000076233F0001 /* CacheSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000076233F0000 /* CacheSettingsView.swift */; };
 		A1000077233F0001 /* ThumbnailCacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000077233F0000 /* ThumbnailCacheService.swift */; };
@@ -128,6 +129,7 @@
 		0E98FC85C108E1C79FB80460 /* ZoomPanGesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomPanGesture.swift; sourceTree = "<group>"; };
 		5F289BA7DD08D921EBA0BF02 /* PageSwipeGesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageSwipeGesture.swift; sourceTree = "<group>"; };
 		87CE20BC884CA337F3353244 /* SeekDragGesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeekDragGesture.swift; sourceTree = "<group>"; };
+		2BE55D5E71AE36BCE61352D9 /* LongPressDismissGesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LongPressDismissGesture.swift; sourceTree = "<group>"; };
 		A1000075233F0000 /* AuthSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSettingsView.swift; sourceTree = "<group>"; };
 		A1000076233F0000 /* CacheSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheSettingsView.swift; sourceTree = "<group>"; };
 		A1000077233F0000 /* ThumbnailCacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCacheService.swift; sourceTree = "<group>"; };
@@ -349,6 +351,7 @@
 				0E98FC85C108E1C79FB80460 /* ZoomPanGesture.swift */,
 				5F289BA7DD08D921EBA0BF02 /* PageSwipeGesture.swift */,
 				87CE20BC884CA337F3353244 /* SeekDragGesture.swift */,
+				2BE55D5E71AE36BCE61352D9 /* LongPressDismissGesture.swift */,
 			);
 			path = Gestures;
 			sourceTree = "<group>";
@@ -483,6 +486,7 @@
 				4722C5B50809F21CFE7418C5 /* ZoomPanGesture.swift in Sources */,
 				411C18811FB604AEA9A4567D /* PageSwipeGesture.swift in Sources */,
 				4661598F54CB5F48B53EA135 /* SeekDragGesture.swift in Sources */,
+				D4C943366B984B343AF6FA96 /* LongPressDismissGesture.swift in Sources */,
 				A1000073233F0001 /* SettingsView.swift in Sources */,
 				A1000075233F0001 /* AuthSettingsView.swift in Sources */,
 				A1000076233F0001 /* CacheSettingsView.swift in Sources */,

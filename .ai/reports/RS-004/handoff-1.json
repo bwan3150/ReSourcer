@@ -1,0 +1,22 @@
+{
+  "task_id": "RS-004",
+  "status": "IMPLEMENTATION_DONE",
+  "summary": "iOS 预览页媒体区域接入长按退出手势：新建独立文件 LongPressDismissGesture.swift（LongPressGesture(minimumDuration: 0.55, maximumDistance: 14)），只挂载在 fileContentView 上，不影响文件名 Capsule / 播放模式按钮既有的长按，也不影响缩放/翻页/seek 拖动（超出 maximumDistance 会让长按识别直接失败）。",
+  "changed_files": [
+    "iOS/ReSourcer/Views/Gallery/Gestures/LongPressDismissGesture.swift",
+    "iOS/ReSourcer/Views/Gallery/FilePreviewView.swift",
+    "iOS/ReSourcer.xcodeproj/project.pbxproj"
+  ],
+  "how_to_run": "打开 iOS/ReSourcer.xcodeproj，Scheme ReSourcer，跑在模拟器（例如 xcodebuild build -project iOS/ReSourcer.xcodeproj -scheme ReSourcer -destination 'id=<模拟器UDID>'，本机用的是 iPhone 17 Pro 575B910A-8F00-40D9-A501-C28C7A3199F0；注意 -destination 'generic/platform=iOS Simulator' 在本机因缺 x86_64 slice 会失败，与代码无关，见 .ai/knowledge.md）。需要一台跑着 server 的 NAS/本机后端并在 App 里配好连接。",
+  "how_to_verify": "AC1 已过 xcodebuild BUILD SUCCEEDED。AC2/AC3/AC6/AC7 需要用 tke-ui-test 在模拟器里实测：打开图片/视频预览 → 在画面上长按（不移动手指，约 0.6s）→ 应退出回 Gallery；长按后先明显移动手指（超过约 14pt）再松开 → 不应退出。AC4/AC5：长按顶部文件名 Capsule → 快捷操作面板仍弹出；长按播放模式按钮 → 播放列表 popover 仍弹出（这两处手势代码未改动，理论上不受影响，但按项目规则手势类改动必须真机/模拟器实测，不能只凭读代码判定）。AC8：`./.ai/guard.sh` 已跑过，全绿，linecount 从基线 2262 行降到 2157 行。",
+  "known_risks": [
+    "长按视频画面同时命中 SeekDragGesture 的水平拖动阈值(12pt)时，两个手势的 maximumDistance/minimumDistance 数值接近（14 vs 12），理论上存在极小的时序窗口下两者都不触发或都触发的边界情况，未做专门的边界值单测（Swift 侧本身也没有可用的手势单测基础设施）",
+    "触觉反馈使用 UIImpactFeedbackGenerator(style: .medium)，退出前先震动再 dismiss，没有额外的短动画；如果 Tester/用户认为反馈不够明显可以再加一点，但当前实现满足 AC 里“退出前给一点反馈”的要求"
+  ],
+  "not_verified": [
+    "没有在真实模拟器/真机上用 tke-ui-test 实际操作长按退出、验证触觉反馈和 AC2/3/4/5/6/7 —— 只做了编译验证和代码走查，手势交互的真实体验需要 Tester 用 tke-ui-test 跑一遍",
+    "PDF 预览（PDFPreviewContent 内部是 PDFKitView，UIKit 原生滚动/缩放手势）长按是否会和 PDFView 自身的手势识别器冲突没有实测，task 的 AC 只要求覆盖图片和视频，但长按手势是加在通用的 fileContentView 上、对所有文件类型生效，PDF/音频/其他文件类型的长按退出行为理论上也可用但未逐一验证",
+    "未验证长按发生在放大态（scale > 1.0）下的实际手感，虽然设计上 LongPressGesture 的 maximumDistance 应该会因为双指缩放手势的存在而通常不受影响（缩放是两指，长按识别的是单指位移）"
+  ],
+  "blockers": []
+}

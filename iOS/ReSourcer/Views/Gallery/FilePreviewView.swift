@@ -177,6 +177,7 @@ struct FilePreviewView: View {
                 fileContentView(for: file)
                     .id(file.id)
                     .ignoresSafeArea()
+                    .longPressToDismiss { dismiss() }
 
                 // 顶部 + 底部控制层
                 if showControls {
