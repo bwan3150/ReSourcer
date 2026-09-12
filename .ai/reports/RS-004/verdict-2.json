@@ -1,0 +1,51 @@
+{
+  "task_id": "RS-004",
+  "verdict": "PASS",
+  "ac_results": ["PASS", "PASS", "PASS", "PASS", "PASS", "PASS", "PASS", "PASS"],
+  "checks": [
+    {"name": "build-ios", "status": "PASS",
+     "cmd": "cd iOS && xcodebuild -scheme ReSourcer -destination 'id=575B910A-8F00-40D9-A501-C28C7A3199F0' -derivedDataPath /tmp/rs004-dd build",
+     "evidence": ".ai/reports/RS-004/build-sim.log",
+     "notes": "AC1：BUILD SUCCEEDED（EXIT 0）。产物 13:19:27 晚于 LongPressDismissGesture.swift 的 13:14:51 修改时间，Objects-normal/arm64/LongPressDismissGesture.o 已重新编译，装进模拟器的是本轮代码。"},
+    {"name": "unit", "status": "PASS", "cmd": "cargo test --manifest-path server/Cargo.toml",
+     "evidence": ".ai/reports/RS-004/unit.log",
+     "notes": "server 2/2 通过（本任务未动 server）。iOS 工程无测试 target，Tester 不改 pbxproj，手势逻辑只能黑盒实测。"},
+    {"name": "boot", "status": "PASS", "cmd": "bash .ai/reports/RS-004/boot.sh",
+     "evidence": ".ai/reports/RS-004/boot.log",
+     "notes": "先 kill 掉 Developer 遗留的 server(pid 59024) 再重启，RESOURCER_DIR=/tmp/rs004-work/data 二次启动 2s 后 /api/health 200；新构建 simctl install + launch 到 iPhone 17 Pro 模拟器，自动连上 127.0.0.1:1234，全程无崩溃。"},
+    {"name": "api", "status": "PASS", "cmd": "bash .ai/reports/RS-004/boot.sh（sources/add → indexer/scan → indexer/files → config/state）",
+     "evidence": ".ai/reports/RS-004/boot.log",
+     "notes": "本任务不改 HTTP 接口。sources/add 返回 400『该文件夹已添加』是数据目录复用的预期结果；indexer/files 列出 4 图 + 1 视频，字段正确。"},
+    {"name": "ui", "status": "PASS",
+     "cmd": "tke -d sim:575B910A-... steps …（见 ui-r2.log）+ WDA W3C pointer actions 脚本 .ai/reports/RS-004/ac6-trial.sh → wda-move-hold.sh / wda-press-drag.sh / wda-press-drag-hold.sh",
+     "evidence": ".ai/reports/RS-004/ui-r2/report.html",
+     "notes": "AC2 图片长按 1s → 回 Gallery（step_006~009）；AC3 视频长按 1s → 回 Gallery（step_026~030）；AC4 长按文件名胶囊 → showQuickActions 面板（重命名框 + 取消/确认，step_035~038，与 FilePreviewView.swift:393 一致），未退出；AC5 长按播放模式按钮 → 播放列表 popover（step_043~047），未退出；AC6 见 ac6-r2-trials.txt：上一轮 3/3 误退出的『30pt/1000ms 慢拖后停住』『40pt/800ms 放大 2.5x 慢拖后停住』『40pt/300ms』本轮各 3 次全部 stayed，另 100pt/300ms、竖向 60pt、视频 40pt/300ms 与 30pt/1000ms、按住 0.4s 后拖 100pt 松开、视频 seek 拖 100pt 后停住 1.5s 全部 stayed，合计 0/27 误退出；对照组『原地按住 1.2s 不移动』2/2 DISMISSED，证明 WDA 触摸真实送达、stayed 不是假阴性。AC7 左上角关闭按钮 3 次均回 Gallery（step_051~054、末段）。"},
+    {"name": "e2e", "status": "PASS",
+     "cmd": "同 ui（启动 → Gallery → 图片预览长按退出 → 视频预览长按退出 → 胶囊/播放模式长按 → 关闭按钮 → 翻页/放大/seek → 关闭）",
+     "evidence": ".ai/reports/RS-004/ui-r2.log",
+     "notes": "199 步 OK，2 步 FAIL 均为我对播放列表顺序的错误预期（等 img1-red / img4-orange，实际视频的『上一张』由 server 播放列表决定），紧接着按正确顺序重跑通过，与本次改动无关。触觉反馈在模拟器无法观测。"},
+    {"name": "guard", "status": "PASS", "cmd": "./.ai/guard.sh",
+     "evidence": ".ai/reports/RS-004/guard.log",
+     "notes": "AC8：8 项全绿，EXIT 0；linecount 绿（FilePreviewView.swift 2157 行 < 基线 2262）。"}
+  ],
+  "repro": "",
+  "regression_checked": [
+    "单击画面只切换控制栏、不退出（step_014~016）",
+    "短按 0.3s（低于 0.55s 阈值）不退出（step_017~019）",
+    "左滑 500px 翻页到 img2-green 正常、未退出（step_172~175）",
+    "按住 0.4s 后拖动 100pt 松开：不退出且仍能翻页（3/3，ac6-r2-trials.txt）",
+    "视频 seek 拖动 100pt 后停住：不退出，时间 0:08 → 1:23 seek 生效（step_147~154，r2-seek-drag-then-hold.jpg）",
+    "放大 2.5x（r2-zoomed-2.5x-before-pan.jpg 整屏蓝=已放大）后慢速平移 40pt 再停住：3/3 不退出；双击复位后长按退出仍可用",
+    "每次 stayed 之后用长按退出做清理共 24 次全部成功：位移超容差『永久作废』的状态在抬指后正确复位，不会卡死后续长按",
+    "底部前进/返回按钮在图片间翻页正常（step_190~195）",
+    "文件名 Capsule 长按 → 快捷操作面板；播放模式长按 → 播放列表 popover（AC4/AC5）",
+    "左上角关闭按钮仍可退出（AC7）"
+  ],
+  "notes": "全部在 iPhone 17 Pro 模拟器（iOS 26.2）+ WebDriverAgent 合成触摸验证，无真机（project.md 要求手势改动真机实测，本机无 iOS 真机连接，模拟器等效验证已尽力覆盖 Developer known_risks 提到的『先慢后快』曲线：WDA pointerMove 本身就是非线性的）。tke 报告未上传云端（未获对外发布授权），本地 .ai/reports/RS-004/ui-r2/report.html。非阻塞观察（与本次改动无关、未计入判定）：(1) 长按到 0.55s 静止即 dismiss、不等抬指，手指还压在屏幕上页面已切走，本轮同样未观察到误触 Gallery 缩略图；(2) 在视频页按底部『返回』按钮时，视频从 0:08 重新开始且仍停留在 video120.mp4（step_185），疑是 navigateInPlaylist 在播放列表窗口边缘重新 fetchPlaylist 的既有行为，该函数本次未改动，建议另开任务卡确认。",
+  "learnings": [
+    "2026-09-12 RS-004/tester — bash 3.2 里 \"$i：\" 这种变量后紧跟全角字符会把字节切坏，传给 tke 的指令变成乱码、tke 直接打印 Usage 退出（看起来像导航失败）。shell 脚本里拼中文注释用 ${i} 加空格隔开。",
+    "2026-09-12 RS-004/tester — 用 WDA 做『移动后停住』类的负向断言时一定要跑对照组（同脚本 move 0pt 原地按住），DISMISSED 才能证明触摸真的送到了 app；否则 stayed 可能只是 WDA 会话失效的假阴性。",
+    "2026-09-12 RS-004/tester — 预览页的『上一张/下一张』顺序由 server 播放列表决定，不是 Gallery 网格顺序；从 video120 按『返回』不是 img1 也不是 img4。写翻页断言前先长按播放模式按钮看 popover 里的实际顺序。",
+    "2026-09-12 RS-004/tester — 放大是否生效不用读元素表：纯色测试图 1x 时只有中间一条色带（上下黑边），2.5x 后整屏都是该颜色，simctl 截图缩小到 500px 一眼可辨。"
+  ]
+}

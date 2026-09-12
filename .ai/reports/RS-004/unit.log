@@ -13,7 +13,7 @@ warning: struct `FoldersResponse` is never constructed
    |            ^^^^^^^^^^^^^^^
 
 warning: `re-sourcer` (bin "re-sourcer" test) generated 2 warnings
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.12s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.11s
      Running unittests src/main.rs (server/target/debug/deps/re_sourcer-71b4a35849750ad7)
 
 running 2 tests

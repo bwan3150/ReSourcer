@@ -1,0 +1,31 @@
+# RS-004 round 2 AC6 trials: 坐标 pt，脚本 ac6-trial.sh → wda-move-hold.sh；DISMISSED=误退出到 Gallery, stayed=仍在预览页
+# 注：最初 3 次 NAV-FAIL 是脚本自身 bug（bash 3.2 下 $i 后紧跟全角冒号导致 tke 参数解析失败），已修并重跑；不是产品问题
+1 | image slow 30pt/1000ms | move 1000ms then hold 1200ms | stayed
+2 | image slow 30pt/1000ms | move 1000ms then hold 1200ms | stayed
+3 | image slow 30pt/1000ms | move 1000ms then hold 1200ms | stayed
+1 | CONTROL image hold-in-place (expect DISMISSED) | move 0ms then hold 1200ms | DISMISSED
+2 | CONTROL image hold-in-place (expect DISMISSED) | move 0ms then hold 1200ms | DISMISSED
+1 | image 40pt/300ms | move 300ms then hold 1200ms | stayed
+2 | image 40pt/300ms | move 300ms then hold 1200ms | stayed
+3 | image 40pt/300ms | move 300ms then hold 1200ms | stayed
+1 | image 40pt/800ms | move 800ms then hold 1200ms | stayed
+2 | image 40pt/800ms | move 800ms then hold 1200ms | stayed
+3 | image 40pt/800ms | move 800ms then hold 1200ms | stayed
+1 | image fast 100pt/300ms | move 300ms then hold 1500ms | stayed
+2 | image fast 100pt/300ms | move 300ms then hold 1500ms | stayed
+3 | image fast 100pt/300ms | move 300ms then hold 1500ms | stayed
+1 | image vertical 60pt/500ms | move 500ms then hold 1200ms | stayed
+2 | image vertical 60pt/500ms | move 500ms then hold 1200ms | stayed
+3 | image vertical 60pt/500ms | move 500ms then hold 1200ms | stayed
+1 | video 40pt/300ms | move 300ms then hold 1200ms | stayed
+2 | video 40pt/300ms | move 300ms then hold 1200ms | stayed
+3 | video 40pt/300ms | move 300ms then hold 1200ms | stayed
+1 | video slow 30pt/1000ms | move 1000ms then hold 1200ms | stayed
+2 | video slow 30pt/1000ms | move 1000ms then hold 1200ms | stayed
+3 | video slow 30pt/1000ms | move 1000ms then hold 1200ms | stayed
+1 | image zoomed 2.5x: slow pan 40pt/800ms then hold 1200ms | stayed
+2 | image zoomed 2.5x: slow pan 40pt/800ms then hold 1200ms | stayed
+3 | image zoomed 2.5x: slow pan 40pt/800ms then hold 1200ms | stayed
+1 | image: press-hold 400ms then drag 100pt/300ms then release | stayed
+2 | image: press-hold 400ms then drag 100pt/300ms then release | stayed
+3 | image: press-hold 400ms then drag 100pt/300ms then release | stayed

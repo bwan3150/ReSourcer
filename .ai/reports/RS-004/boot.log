@@ -1,11 +1,11 @@
 48 | pub struct FoldersResponse {
    |            ^^^^^^^^^^^^^^^
 
-server pid=47437
-health 200 after 36000ms
+server pid=61394
+health 200 after 2000ms
 apikey=4f6c797a-281c-49ed-8e48-67532cf5cc63
 -- sources/add
-{"status":"success"} [200]
+{"error":"该文件夹已添加"} [400]
 -- indexer/scan
 {"status":"started"} [200]
 -- indexer/files

@@ -1,0 +1,204 @@
+RS-004 round 2 UI 自动化步骤摘要（tke steps）。完整报告 ui-r2/report.html；截图 ui-r2/screenshots/（jpg）；WDA 复合手势结果见 ac6-r2-trials.txt（无 step 编号）
+设备 iPhone 17 Pro 模拟器 iOS 26.2；server 127.0.0.1:1234 RESOURCER_DIR=/tmp/rs004-work/data
+
+OK   screenshots/step_001.png  启动 [com.resourcer.apple]  # 启动新构建的 app（含 LongPressDismissGesture 防抖版），应自动连上 127.0.0.1:1234 并显示 Gallery
+OK   screenshots/step_002.png  阶段 [AC2 图片预览长按退出]
+OK   screenshots/step_003.png  点击 [坐标@(217,613)]  # 点第 1 张缩略图打开图片预览
+OK   screenshots/step_004.png  等到 [img3-blue.png, 5s]  # 预览页顶部文件名胶囊出现
+OK   screenshots/step_005.png  截图 [AC2 起点：图片预览页已打开]
+OK   screenshots/step_006.png  按压 [坐标@(603,1300), 1000]  # 在画面中部长按 1s，期望退出预览
+OK   screenshots/step_007.png  等到 [MP4, 5s]  # Gallery 的 MP4 标签重新出现 = 已回到列表
+OK   screenshots/step_008.png  断言 [MP4, 包含]  # AC2 验收：回到 Gallery
+OK   screenshots/step_009.png  断言 [img3-blue.png, 不包含]  # 预览页文件名胶囊已消失
+OK   screenshots/step_010.png  截图 [AC2 长按后：回到 Gallery]
+OK   screenshots/step_011.png  阶段 [回归：单击 / 短按不退出]
+OK   screenshots/step_012.png  点击 [坐标@(217,613)]  # 再次打开图片预览
+OK   screenshots/step_013.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_014.png  点击 [坐标@(603,1300)]  # 单击画面：只应切换控制栏，不退出
+OK   screenshots/step_015.png  等待 [1s]
+OK   screenshots/step_016.png  断言 [MP4, 不包含]  # 仍在预览页
+OK   screenshots/step_017.png  按压 [坐标@(603,1300), 300]  # 短按 0.3s（低于 0.55s 阈值）不应退出
+OK   screenshots/step_018.png  等待 [1s]
+OK   screenshots/step_019.png  断言 [MP4, 不包含]  # 仍在预览页
+OK   screenshots/step_020.png  截图 [单击/短按后仍停留在预览页]
+OK   screenshots/step_021.png  阶段 [AC3 视频预览长按退出]
+OK   screenshots/step_022.png  按压 [坐标@(603,1300), 1000]  # 长按退出，回 Gallery 后去开视频
+OK   screenshots/step_023.png  等到 [MP4, 5s]
+OK   screenshots/step_024.png  点击 [坐标@(603,999)]  # 点 MP4 缩略图打开视频预览
+OK   screenshots/step_025.png  等到 [video120.mp4, 5s]  # 视频预览页文件名胶囊
+OK   screenshots/step_026.png  截图 [AC3 起点：video120.mp4 预览页]
+OK   screenshots/step_027.png  按压 [坐标@(603,1300), 1000]  # 在视频画面上长按 1s，期望退出
+OK   screenshots/step_028.png  等到 [MP4, 5s]
+OK   screenshots/step_029.png  断言 [MP4, 包含]  # AC3 验收：回到 Gallery
+OK   screenshots/step_030.png  断言 [video120.mp4, 不包含]
+OK   screenshots/step_031.png  截图 [AC3 长按视频画面后：回到 Gallery]
+OK   screenshots/step_032.png  阶段 [AC4 长按文件名 Capsule 仍弹快捷操作面板]
+OK   screenshots/step_033.png  点击 [坐标@(217,613)]  # 打开图片预览
+OK   screenshots/step_034.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_035.png  按压 [img3-blue.png, 1000]  # 长按顶部文件名胶囊，期望弹出快捷操作面板而不是退出
+OK   screenshots/step_036.png  等到 [确认, 5s]  # 快捷操作面板出现（含确认按钮）
+OK   screenshots/step_037.png  断言 [确认, 包含]  # AC4 验收：快捷操作面板弹出
+OK   screenshots/step_038.png  断言 [MP4, 不包含]  # 没有退出到 Gallery（未被全屏长按吞掉）
+OK   screenshots/step_039.png  截图 [AC4：长按文件名 Capsule 后的快捷操作面板]
+OK   screenshots/step_040.png  点击 [取消]  # 关闭面板
+OK   screenshots/step_041.png  等到 [确认, 消失, 5s]
+OK   screenshots/step_042.png  阶段 [AC5 长按播放模式按钮仍弹播放列表]
+OK   screenshots/step_043.png  按压 [坐标@(1098,270), 1000]  # 长按右上角播放模式按钮，期望弹出播放列表 popover
+OK   screenshots/step_044.png  等到 [video120.mp4, 5s]  # 播放列表里列出其他文件
+OK   screenshots/step_045.png  断言 [video120.mp4, 包含]  # AC5 验收：播放列表出现
+OK   screenshots/step_046.png  断言 [img2-green.png, 包含]  # 列表含其他图片
+OK   screenshots/step_047.png  截图 [AC5：长按播放模式按钮后的播放列表 popover]
+OK   screenshots/step_048.png  点击 [坐标@(603,2000)]  # 点 popover 外侧关闭
+OK   screenshots/step_049.png  等到 [img1-red.png, 消失, 5s]
+OK   screenshots/step_050.png  断言 [img3-blue.png, 包含]  # 仍在预览页，没退出
+OK   screenshots/step_051.png  阶段 [AC7 左上角关闭按钮仍可用]
+OK   screenshots/step_052.png  点击 [坐标@(105,270)]  # 点左上角关闭按钮
+OK   screenshots/step_053.png  等到 [MP4, 5s]
+OK   screenshots/step_054.png  断言 [MP4, 包含]  # AC7 验收：回到 Gallery
+OK   screenshots/step_055.png  截图 [AC7：关闭按钮退出后回到 Gallery]
+OK   screenshots/step_056.png  按压 [坐标@(603,1300), 1000]  # 收尾：长按退出
+OK   screenshots/step_057.png  等到 [MP4, 5s]
+OK   screenshots/step_058.png  点击 [坐标@(217,613)]  # AC6 [image slow 30pt/1000ms] trial 1 - 打开预览
+OK   screenshots/step_059.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_060.png  按压 [坐标@(603,1300), 1000]  # trial 1 收尾：长按退出
+OK   screenshots/step_061.png  等到 [MP4, 5s]
+OK   screenshots/step_062.png  点击 [坐标@(217,613)]  # AC6 [image slow 30pt/1000ms] trial 2 - 打开预览
+OK   screenshots/step_063.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_064.png  按压 [坐标@(603,1300), 1000]  # trial 2 收尾：长按退出
+OK   screenshots/step_065.png  等到 [MP4, 5s]
+OK   screenshots/step_066.png  点击 [坐标@(217,613)]  # AC6 [image slow 30pt/1000ms] trial 3 - 打开预览
+OK   screenshots/step_067.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_068.png  按压 [坐标@(603,1300), 1000]  # trial 3 收尾：长按退出
+OK   screenshots/step_069.png  等到 [MP4, 5s]
+OK   screenshots/step_070.png  点击 [坐标@(217,613)]  # AC6 [CONTROL image hold-in-place (expect DISMISSED)] trial 1 - 打开预览
+OK   screenshots/step_071.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_072.png  点击 [坐标@(217,613)]  # AC6 [CONTROL image hold-in-place (expect DISMISSED)] trial 2 - 打开预览
+OK   screenshots/step_073.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_074.png  点击 [坐标@(217,613)]  # AC6 [image 40pt/300ms] trial 1 - 打开预览
+OK   screenshots/step_075.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_076.png  按压 [坐标@(603,1300), 1000]  # trial 1 收尾：长按退出
+OK   screenshots/step_077.png  等到 [MP4, 5s]
+OK   screenshots/step_078.png  点击 [坐标@(217,613)]  # AC6 [image 40pt/300ms] trial 2 - 打开预览
+OK   screenshots/step_079.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_080.png  按压 [坐标@(603,1300), 1000]  # trial 2 收尾：长按退出
+OK   screenshots/step_081.png  等到 [MP4, 5s]
+OK   screenshots/step_082.png  点击 [坐标@(217,613)]  # AC6 [image 40pt/300ms] trial 3 - 打开预览
+OK   screenshots/step_083.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_084.png  按压 [坐标@(603,1300), 1000]  # trial 3 收尾：长按退出
+OK   screenshots/step_085.png  等到 [MP4, 5s]
+OK   screenshots/step_086.png  点击 [坐标@(217,613)]  # AC6 [image 40pt/800ms] trial 1 - 打开预览
+OK   screenshots/step_087.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_088.png  按压 [坐标@(603,1300), 1000]  # trial 1 收尾：长按退出
+OK   screenshots/step_089.png  等到 [MP4, 5s]
+OK   screenshots/step_090.png  点击 [坐标@(217,613)]  # AC6 [image 40pt/800ms] trial 2 - 打开预览
+OK   screenshots/step_091.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_092.png  按压 [坐标@(603,1300), 1000]  # trial 2 收尾：长按退出
+OK   screenshots/step_093.png  等到 [MP4, 5s]
+OK   screenshots/step_094.png  点击 [坐标@(217,613)]  # AC6 [image 40pt/800ms] trial 3 - 打开预览
+OK   screenshots/step_095.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_096.png  按压 [坐标@(603,1300), 1000]  # trial 3 收尾：长按退出
+OK   screenshots/step_097.png  等到 [MP4, 5s]
+OK   screenshots/step_098.png  点击 [坐标@(217,613)]  # AC6 [image fast 100pt/300ms] trial 1 - 打开预览
+OK   screenshots/step_099.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_100.png  按压 [坐标@(603,1300), 1000]  # trial 1 收尾：长按退出
+OK   screenshots/step_101.png  等到 [MP4, 5s]
+OK   screenshots/step_102.png  点击 [坐标@(217,613)]  # AC6 [image fast 100pt/300ms] trial 2 - 打开预览
+OK   screenshots/step_103.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_104.png  按压 [坐标@(603,1300), 1000]  # trial 2 收尾：长按退出
+OK   screenshots/step_105.png  等到 [MP4, 5s]
+OK   screenshots/step_106.png  点击 [坐标@(217,613)]  # AC6 [image fast 100pt/300ms] trial 3 - 打开预览
+OK   screenshots/step_107.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_108.png  按压 [坐标@(603,1300), 1000]  # trial 3 收尾：长按退出
+OK   screenshots/step_109.png  等到 [MP4, 5s]
+OK   screenshots/step_110.png  点击 [坐标@(217,613)]  # AC6 [image vertical 60pt/500ms] trial 1 - 打开预览
+OK   screenshots/step_111.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_112.png  按压 [坐标@(603,1300), 1000]  # trial 1 收尾：长按退出
+OK   screenshots/step_113.png  等到 [MP4, 5s]
+OK   screenshots/step_114.png  点击 [坐标@(217,613)]  # AC6 [image vertical 60pt/500ms] trial 2 - 打开预览
+OK   screenshots/step_115.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_116.png  按压 [坐标@(603,1300), 1000]  # trial 2 收尾：长按退出
+OK   screenshots/step_117.png  等到 [MP4, 5s]
+OK   screenshots/step_118.png  点击 [坐标@(217,613)]  # AC6 [image vertical 60pt/500ms] trial 3 - 打开预览
+OK   screenshots/step_119.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_120.png  按压 [坐标@(603,1300), 1000]  # trial 3 收尾：长按退出
+OK   screenshots/step_121.png  等到 [MP4, 5s]
+OK   screenshots/step_122.png  点击 [坐标@(603,999)]  # AC6 [video 40pt/300ms] trial 1 - 打开预览
+OK   screenshots/step_123.png  等到 [video120.mp4, 5s]
+OK   screenshots/step_124.png  按压 [坐标@(603,1300), 1000]  # trial 1 收尾：长按退出
+OK   screenshots/step_125.png  等到 [MP4, 5s]
+OK   screenshots/step_126.png  点击 [坐标@(603,999)]  # AC6 [video 40pt/300ms] trial 2 - 打开预览
+OK   screenshots/step_127.png  等到 [video120.mp4, 5s]
+OK   screenshots/step_128.png  按压 [坐标@(603,1300), 1000]  # trial 2 收尾：长按退出
+OK   screenshots/step_129.png  等到 [MP4, 5s]
+OK   screenshots/step_130.png  点击 [坐标@(603,999)]  # AC6 [video 40pt/300ms] trial 3 - 打开预览
+OK   screenshots/step_131.png  等到 [video120.mp4, 5s]
+OK   screenshots/step_132.png  按压 [坐标@(603,1300), 1000]  # trial 3 收尾：长按退出
+OK   screenshots/step_133.png  等到 [MP4, 5s]
+OK   screenshots/step_134.png  点击 [坐标@(603,999)]  # AC6 [video slow 30pt/1000ms] trial 1 - 打开预览
+OK   screenshots/step_135.png  等到 [video120.mp4, 5s]
+OK   screenshots/step_136.png  按压 [坐标@(603,1300), 1000]  # trial 1 收尾：长按退出
+OK   screenshots/step_137.png  等到 [MP4, 5s]
+OK   screenshots/step_138.png  点击 [坐标@(603,999)]  # AC6 [video slow 30pt/1000ms] trial 2 - 打开预览
+OK   screenshots/step_139.png  等到 [video120.mp4, 5s]
+OK   screenshots/step_140.png  按压 [坐标@(603,1300), 1000]  # trial 2 收尾：长按退出
+OK   screenshots/step_141.png  等到 [MP4, 5s]
+OK   screenshots/step_142.png  点击 [坐标@(603,999)]  # AC6 [video slow 30pt/1000ms] trial 3 - 打开预览
+OK   screenshots/step_143.png  等到 [video120.mp4, 5s]
+OK   screenshots/step_144.png  按压 [坐标@(603,1300), 1000]  # trial 3 收尾：长按退出
+OK   screenshots/step_145.png  等到 [MP4, 5s]
+OK   screenshots/step_146.png  阶段 [AC6+回归：视频 seek 拖动后停住不退出、seek 仍生效]
+OK   screenshots/step_147.png  点击 [坐标@(603,999)]  # 打开视频预览
+OK   screenshots/step_148.png  等到 [video120.mp4, 5s]
+OK   screenshots/step_149.png  截图 [seek 前：记录当前播放时间]
+OK   screenshots/step_150.png  断言 [MP4, 不包含]  # seek 拖动后停住 1.5s 未退出预览
+OK   screenshots/step_151.png  截图 [seek 拖动 100pt 后停住：仍在预览页，时间应已前跳]
+OK   screenshots/step_152.png  点击 [坐标@(603,1000)]  # 单击叫出控制栏读时间
+OK   screenshots/step_153.png  等到 [2:00, 5s]
+OK   screenshots/step_154.png  截图 [seek 后控制栏：时间应远大于 0:08]
+OK   screenshots/step_155.png  阶段 [AC6 放大 2.5x 后慢速平移再停住]
+OK   screenshots/step_156.png  按压 [坐标@(603,1300), 1000]  # 长按退出视频预览
+OK   screenshots/step_157.png  等到 [MP4, 5s]
+OK   screenshots/step_158.png  点击 [坐标@(217,613)]  # zoomed trial 1 - 打开图片预览
+OK   screenshots/step_159.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_160.png  按压 [坐标@(603,1300), 1000]  # zoomed trial 1 收尾：双击复位后长按退出
+OK   screenshots/step_161.png  等到 [MP4, 5s]
+OK   screenshots/step_162.png  点击 [坐标@(217,613)]  # zoomed trial 2 - 打开图片预览
+OK   screenshots/step_163.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_164.png  按压 [坐标@(603,1300), 1000]  # zoomed trial 2 收尾：双击复位后长按退出
+OK   screenshots/step_165.png  等到 [MP4, 5s]
+OK   screenshots/step_166.png  点击 [坐标@(217,613)]  # zoomed trial 3 - 打开图片预览
+OK   screenshots/step_167.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_168.png  按压 [坐标@(603,1300), 1000]  # zoomed trial 3 收尾：双击复位后长按退出
+OK   screenshots/step_169.png  等到 [MP4, 5s]
+OK   screenshots/step_170.png  阶段 [回归：翻页滑动 / 底部按钮 / 按住 0.4s 后拖动松开]
+OK   screenshots/step_171.png  点击 [坐标@(217,613)]  # 打开图片预览 img3-blue
+OK   screenshots/step_172.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_173.png  定向滑动 [坐标@(900,1300), 左, 500]  # 左滑翻到下一张
+OK   screenshots/step_174.png  等到 [img2-green.png, 5s]  # 翻页成功
+OK   screenshots/step_175.png  断言 [img2-green.png, 包含]  # 回归：滑动翻页仍正常、未退出
+OK   screenshots/step_176.png  如果没看到 [返回, 0s] 就 点击 [坐标@(603,1300)]  # 控制栏隐藏就单击叫出来
+OK   screenshots/step_177.png  截图 [按住 0.4s 后拖动 3 次后：仍在预览页]
+OK   screenshots/step_178.png  断言 [MP4, 不包含]  # 未退出
+OK   screenshots/step_179.png  阶段 [回归：底部翻页按钮 + 关闭按钮]
+OK   screenshots/step_180.png  点击 [坐标@(144,2478)]  # 底部「返回」按钮翻到上一张
+FAIL screenshots/step_181.png  等到 [img1-red.png, 5s]  !! 脚本执行错误: 等到「img1-red.png」超时（5s）：它没有出现，或者在视口外（先 滚动查找）
+OK   screenshots/step_182.png  点击 [坐标@(603,1300)]  # 控制栏已自动隐藏，单击叫出
+OK   screenshots/step_183.png  等到 [返回, 5s]
+OK   screenshots/step_184.png  点击 [坐标@(144,2478)]  # 底部「返回」按钮翻到上一张（列表顺序：video 的上一张是 img4-orange）
+FAIL screenshots/step_185.png  等到 [img4-orange.png, 5s]  !! 脚本执行错误: 等到「img4-orange.png」超时（5s）：它没有出现，或者在视口外（先 滚动查找）
+OK   screenshots/step_186.png  点击 [坐标@(603,1300)]  # 叫出控制栏
+OK   screenshots/step_187.png  等到 [返回, 5s]
+OK   screenshots/step_188.png  点击 [坐标@(105,270)]  # 关闭视频预览
+OK   screenshots/step_189.png  等到 [MP4, 5s]
+OK   screenshots/step_190.png  点击 [坐标@(217,613)]  # 打开 img3-blue
+OK   screenshots/step_191.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_192.png  点击 [坐标@(1062,2478)]  # 底部「前进」→ img2-green
+OK   screenshots/step_193.png  等到 [img2-green.png, 5s]
+OK   screenshots/step_194.png  断言 [img2-green.png, 包含]  # 回归：底部前进按钮正常
+OK   screenshots/step_195.png  点击 [坐标@(144,2478)]  # 底部「返回」→ img3-blue
+OK   screenshots/step_196.png  等到 [img3-blue.png, 5s]
+OK   screenshots/step_197.png  断言 [img3-blue.png, 包含]  # 回归：底部返回按钮正常
+OK   screenshots/step_198.png  点击 [坐标@(105,270)]  # 左上角关闭
+OK   screenshots/step_199.png  等到 [MP4, 5s]
+OK   screenshots/step_200.png  断言 [MP4, 包含]  # AC7 再次确认
+OK   screenshots/step_201.png  截图 [回归结束：Gallery]
