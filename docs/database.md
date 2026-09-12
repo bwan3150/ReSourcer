@@ -39,6 +39,7 @@ ReSourcer 使用 SQLite（WAL 模式）作为本地数据库，文件位于 `<da
 | `file_index` | 文件索引（核心，每个文件一行） |
 | `tags` | 标签定义（按源文件夹隔离） |
 | `file_tags` | 文件↔标签多对多关联 |
+| `favorites` | 收藏 / 精选标记（每个文件一行） |
 | `download_history` | 下载任务历史 |
 | `upload_history` | 上传任务历史 |
 
@@ -238,6 +239,38 @@ ORDER BY t.name ASC
 
 ---
 
+## 收藏 / 精选系统
+
+### 表结构
+
+```sql
+-- 收藏 / 精选标记：level 取 'favorite' 或 'featured'，一个文件同一时刻只有一个 level
+CREATE TABLE favorites (
+    file_uuid  TEXT PRIMARY KEY,
+    level      TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+```
+
+**索引：**
+```sql
+CREATE INDEX idx_favorites_level ON favorites(level);
+```
+
+### 查询收藏文件（容忍孤儿记录）
+
+文件被删除/移动后 `file_index` 里的 `current_path` 会变为 NULL 或该 uuid 整行消失；
+查询收藏列表时用 `JOIN` + `current_path IS NOT NULL` 过滤，不需要在文件删除时同步清理 `favorites`：
+
+```sql
+SELECT f.* FROM favorites fav
+JOIN file_index f ON f.uuid = fav.file_uuid
+WHERE f.current_path IS NOT NULL AND fav.level = 'favorite'
+ORDER BY fav.created_at DESC
+```
+
+---
+
 ## 索引机制
 
 ### 惰性索引（首次打开文件夹）
@@ -402,4 +435,7 @@ CREATE INDEX idx_folder_source ON folder_index(source_folder);
 CREATE INDEX idx_tags_source ON tags(source_folder);
 CREATE INDEX idx_file_tags_file ON file_tags(file_uuid);
 CREATE INDEX idx_file_tags_tag ON file_tags(tag_id);
+
+-- 收藏 / 精选查询
+CREATE INDEX idx_favorites_level ON favorites(level);
 ```

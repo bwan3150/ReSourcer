@@ -1,0 +1,26 @@
+{
+  "task_id": "RS-002",
+  "status": "IMPLEMENTATION_DONE",
+  "summary": "新增 server/src/favorite 四件套模块，支持收藏/精选切换、分页列表、批量状态查询；新表 favorites；已同步 docs/API.md 与 docs/database.md",
+  "changed_files": [
+    "server/src/favorite/mod.rs",
+    "server/src/favorite/models.rs",
+    "server/src/favorite/storage.rs",
+    "server/src/favorite/handlers.rs",
+    "server/src/database.rs",
+    "server/src/main.rs",
+    "docs/API.md",
+    "docs/database.md"
+  ],
+  "how_to_run": "RESOURCER_DIR=<临时目录> cargo run --manifest-path server/Cargo.toml，服务监听 0.0.0.0:1234；API Key 在 <临时目录>/config/secret.json 里，用 X-API-Key header 认证。要有真实文件才能测 favorite/list：先 POST /api/config/sources/add 加源文件夹，再 POST /api/indexer/scan 扫描（注意 macOS 上 /tmp 会被规范化成 /private/tmp，查询 folder_path 要用规范化后的路径），然后 GET /api/indexer/files?folder_path=... 拿到 uuid。",
+  "how_to_verify": "AC1: cargo check + cargo test 通过（已跑，绿）。AC2: POST /api/favorite/toggle {uuid,level:\"favorite\"} 两次，第一次返回 favorited:true，第二次同一 uuid/level 返回 favorited:false。AC3: GET /api/favorite/list?level=favorite 返回刚标记文件的完整 IndexedFile 字段。AC4: GET /api/favorite/status?uuids=a,b 一次返回多个 uuid 的 level（未收藏的 uuid 不出现在返回体里）。AC5: 标记后 kill 进程再重新起（同一 RESOURCER_DIR），GET /api/favorite/status 里数据仍在——本轮已实测：toggle favorite → pkill 进程 → 重新 cargo run → status 仍返回 favorite。AC6: ./.ai/guard.sh 全绿（已跑）。",
+  "known_risks": [
+    "level 校验目前只在 toggle 和 list 的 query 里做，非法值直接 400；未做 500 兜底之外的更细致错误分类",
+    "favorites 表未加外键约束到 file_index（项目其他表也不用外键，保持一致），孤儿记录靠 list 查询里的 JOIN + current_path IS NOT NULL 过滤，status 接口不过滤（按 uuid 直查，不受影响）"
+  ],
+  "not_verified": [
+    "并发切换同一 uuid 的竞态场景（两个请求同时 toggle）未测试，未加事务/锁，理论上有极小概率的 TOCTOU，但影响仅限收藏状态本身不会脏数据结构",
+    "web/iOS 端未涉及，按任务卡明确不做"
+  ],
+  "blockers": []
+}

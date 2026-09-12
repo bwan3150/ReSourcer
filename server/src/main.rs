@@ -13,6 +13,7 @@ mod indexer;
 mod tag;
 mod metrics;
 mod playlist;
+mod favorite;
 
 // 工具模块
 mod static_files;
@@ -261,6 +262,8 @@ async fn main() -> std::io::Result<()> {
             .service(web::scope("/api/browser").configure(browser::routes))
             // 播放队列 API 路由
             .service(web::scope("/api/playlist").configure(playlist::routes))
+            // 收藏 / 精选 API 路由
+            .service(web::scope("/api/favorite").configure(favorite::routes))
             // 性能指标 API 路由
             .service(web::scope("/api/metrics").configure(metrics::routes))
     })

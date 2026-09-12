@@ -78,6 +78,13 @@ Base URL: `http://localhost:1234`
 | POST | `/api/tag/file` | 设置文件标签 |
 | POST | `/api/tag/files` | 批量获取文件标签 |
 
+### 收藏 API (`/api/favorite`)
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | `/api/favorite/toggle` | 切换收藏 / 精选状态 |
+| GET | `/api/favorite/list` | 获取收藏列表（分页） |
+| GET | `/api/favorite/status` | 批量查询收藏状态 |
+
 ### 配置操作 API (`/api/config`)
 | 方法 | 路径 | 描述 |
 |------|------|------|
@@ -933,6 +940,87 @@ Base URL: `http://localhost:1234`
   }
 ]
 ```
+
+---
+
+## 收藏 API
+
+「收藏」和「精选」是两个独立级别的标记，一个文件同一时刻只属于其中一个级别（再次标记同一级别则取消）。
+
+### POST `/api/favorite/toggle`
+切换文件的收藏 / 精选状态：未标记则标记为指定 level；已是该 level 则取消；已是另一 level 则改为指定 level。
+
+**Request Body:**
+```json
+{
+  "uuid": "file-uuid",
+  "level": "favorite"
+}
+```
+
+| 字段 | 必填 | 描述 |
+|------|------|------|
+| `uuid` | 是 | 文件 UUID |
+| `level` | 是 | `favorite`（收藏）或 `featured`（精选） |
+
+**Response:**
+```json
+{
+  "uuid": "file-uuid",
+  "level": "favorite",
+  "favorited": true
+}
+```
+`favorited` 为 `false` 表示本次调用取消了该标记。
+
+### GET `/api/favorite/list?level=favorite`
+获取收藏文件列表（分页），返回完整文件信息；已从 `file_index` 中消失的孤儿记录会被自动过滤。
+
+**Query Parameters:**
+- `level` (可选): 按 `favorite` / `featured` 筛选，不填则返回全部
+- `offset` (可选): 偏移量，默认 0
+- `limit` (可选): 每页数量，默认 50，最大 200
+
+**Response:**
+```json
+{
+  "files": [
+    {
+      "uuid": "file-uuid",
+      "fingerprint": "hash",
+      "current_path": "/path/to/file.jpg",
+      "folder_path": "/path/to/folder",
+      "file_name": "file.jpg",
+      "file_type": "image",
+      "extension": ".jpg",
+      "file_size": 102400,
+      "created_at": "2025-01-01T12:00:00Z",
+      "modified_at": "2025-01-01T12:00:00Z",
+      "indexed_at": "2025-01-01T12:00:00Z",
+      "source_url": null
+    }
+  ],
+  "total": 1,
+  "offset": 0,
+  "limit": 50,
+  "has_more": false
+}
+```
+
+### GET `/api/favorite/status?uuids=a,b,c`
+批量查询多个文件的收藏状态，避免前端逐个单查。
+
+**Query Parameters:**
+- `uuids` (必填): 逗号分隔的 UUID 列表
+
+**Response:**
+```json
+{
+  "a": "favorite",
+  "c": "featured"
+}
+```
+未收藏的 uuid（如上例的 `b`）不会出现在返回体中。
 
 ---
 
