@@ -317,7 +317,8 @@ struct FilePreviewView: View {
             ImagePreviewContent(
                 file: file,
                 apiService: apiService,
-                onTap: { toggleControls() }
+                onTap: { toggleControls() },
+                onSwipe: { direction in handleImageSwipe(direction: direction) }
             )
         case .video:
             VideoPreviewContent(
@@ -843,6 +844,13 @@ struct FilePreviewView: View {
         } catch {}
     }
 
+    /// 图片左右滑动切页；仅剩一个文件（无处可去）时返回 false，由手势层给出边界反馈
+    private func handleImageSwipe(direction: Int) -> Bool {
+        guard playlist.count > 1 else { return false }
+        navigateInPlaylist(direction: direction)
+        return true
+    }
+
     /// Navigate within the playlist (direction: +1 forward, -1 backward)
     private func navigateInPlaylist(direction: Int) {
         guard playlist.count > 1 else { return }
@@ -1168,11 +1176,10 @@ struct ImagePreviewContent: View {
     let file: FileInfo
     let apiService: APIService
     let onTap: () -> Void
+    /// scale == 1.0 时左右滑动切页；direction: -1 上一张 / +1 下一张，返回 false 表示已到头
+    let onSwipe: (Int) -> Bool
 
     @State private var scale: CGFloat = 1.0
-    @State private var lastScale: CGFloat = 1.0
-    @State private var lastOffset: CGSize = .zero
-    @GestureState private var dragTranslation: CGSize = .zero
     @State private var gifLoaded = false
 
     var body: some View {
@@ -1206,11 +1213,52 @@ struct ImagePreviewContent: View {
     @ViewBuilder
     private func gifPreview(url: URL?, in geometry: GeometryProxy) -> some View {
         ZStack {
-            ZStack {
-                // 加载占位
-                if !gifLoaded {
+            // 加载占位
+            if !gifLoaded {
+                CachedThumbnailView(
+                    url: file.thumbnailURL(apiService: apiService)
+                ) { thumb in
+                    thumb
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .blur(radius: 8)
+                } placeholder: {
+                    Color.clear
+                }
+
+                ProgressView()
+                    .tint(.white)
+                    .scaleEffect(1.2)
+            }
+
+            // 动画 GIF
+            AnimatedGIFView(url: url) {
+                gifLoaded = true
+            }
+            .opacity(gifLoaded ? 1 : 0)
+        }
+        .frame(width: geometry.size.width, height: geometry.size.height)
+        .contentShape(Rectangle())
+        .zoomPanGesture(scale: $scale)
+        .pageSwipeGesture(isEnabled: scale <= 1.0, onSwipe: onSwipe)
+        .onTapGesture(count: 1, perform: onTap)
+    }
+
+    // MARK: - 静态图片预览
+
+    @ViewBuilder
+    private func staticImagePreview(url: URL?, in geometry: GeometryProxy) -> some View {
+        AsyncImage(url: url) { phase in
+            switch phase {
+            case .empty:
+                ZStack {
                     CachedThumbnailView(
-                        url: file.thumbnailURL(apiService: apiService)
+                        url: apiService.preview.getThumbnailURL(
+                            for: file.path,
+                            size: 300,
+                            baseURL: apiService.baseURL,
+                            apiKey: apiService.apiKey
+                        )
                     ) { thumb in
                         thumb
                             .resizable()
@@ -1225,132 +1273,30 @@ struct ImagePreviewContent: View {
                         .scaleEffect(1.2)
                 }
 
-                // 动画 GIF
-                AnimatedGIFView(url: url) {
-                    gifLoaded = true
+            case .success(let image):
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+
+            case .failure:
+                VStack(spacing: AppTheme.Spacing.lg) {
+                    Image(systemName: "photo.badge.exclamationmark")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.white.opacity(0.5))
+                    Text("图片加载失败")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.7))
                 }
-                .opacity(gifLoaded ? 1 : 0)
+
+            @unknown default:
+                EmptyView()
             }
-            .scaleEffect(scale)
-            .offset(currentOffset)
         }
         .frame(width: geometry.size.width, height: geometry.size.height)
         .contentShape(Rectangle())
-        .gesture(pinchGesture)
-        .simultaneousGesture(scale > 1.0 ? dragGesture : nil)
-        .onTapGesture(count: 2) { resetZoom() }
+        .zoomPanGesture(scale: $scale)
+        .pageSwipeGesture(isEnabled: scale <= 1.0, onSwipe: onSwipe)
         .onTapGesture(count: 1, perform: onTap)
-    }
-
-    // MARK: - 静态图片预览
-
-    @ViewBuilder
-    private func staticImagePreview(url: URL?, in geometry: GeometryProxy) -> some View {
-        ZStack {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .empty:
-                    ZStack {
-                        CachedThumbnailView(
-                            url: apiService.preview.getThumbnailURL(
-                                for: file.path,
-                                size: 300,
-                                baseURL: apiService.baseURL,
-                                apiKey: apiService.apiKey
-                            )
-                        ) { thumb in
-                            thumb
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .blur(radius: 8)
-                        } placeholder: {
-                            Color.clear
-                        }
-
-                        ProgressView()
-                            .tint(.white)
-                            .scaleEffect(1.2)
-                    }
-
-                case .success(let image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-
-                case .failure:
-                    VStack(spacing: AppTheme.Spacing.lg) {
-                        Image(systemName: "photo.badge.exclamationmark")
-                            .font(.system(size: 48))
-                            .foregroundStyle(.white.opacity(0.5))
-                        Text("图片加载失败")
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.7))
-                    }
-
-                @unknown default:
-                    EmptyView()
-                }
-            }
-            .scaleEffect(scale)
-            .offset(currentOffset)
-        }
-        .frame(width: geometry.size.width, height: geometry.size.height)
-        .contentShape(Rectangle())
-        .gesture(pinchGesture)
-        .simultaneousGesture(scale > 1.0 ? dragGesture : nil)
-        .onTapGesture(count: 2) { resetZoom() }
-        .onTapGesture(count: 1, perform: onTap)
-    }
-
-    // MARK: - 缩放手势
-
-    private var pinchGesture: some Gesture {
-        MagnifyGesture()
-            .onChanged { value in
-                let newScale = lastScale * value.magnification
-                scale = min(max(newScale, 0.5), 4.0)
-            }
-            .onEnded { _ in
-                lastScale = scale
-                if scale < 1.0 {
-                    withAnimation(AppTheme.Animation.spring) {
-                        scale = 1.0
-                        lastScale = 1.0
-                        lastOffset = .zero
-                    }
-                }
-            }
-    }
-
-    // MARK: - 拖动手势（仅放大时）
-
-    /// 实时偏移 = 上次结束位置 + 当前拖拽距离
-    private var currentOffset: CGSize {
-        CGSize(
-            width: lastOffset.width + dragTranslation.width,
-            height: lastOffset.height + dragTranslation.height
-        )
-    }
-
-    private var dragGesture: some Gesture {
-        DragGesture()
-            .updating($dragTranslation) { value, state, _ in
-                state = value.translation
-            }
-            .onEnded { value in
-                lastOffset = CGSize(
-                    width: lastOffset.width + value.translation.width,
-                    height: lastOffset.height + value.translation.height
-                )
-            }
-    }
-
-    private func resetZoom() {
-        withAnimation(AppTheme.Animation.spring) {
-            scale = scale > 1.0 ? 1.0 : 2.0
-            lastScale = scale
-            lastOffset = .zero
-        }
     }
 }
 
@@ -1489,50 +1435,38 @@ struct VideoPreviewContent: View {
     @State private var isBuffering = true  // 缓冲/转码加载中
     @State private var statusObserver: NSKeyValueObservation?
 
-    // 缩放与拖动
+    // 缩放
     @State private var scale: CGFloat = 1.0
-    @State private var lastScale: CGFloat = 1.0
-    @State private var lastOffset: CGSize = .zero
-    @GestureState private var dragTranslation: CGSize = .zero
-
-    private var currentOffset: CGSize {
-        CGSize(
-            width: lastOffset.width + dragTranslation.width,
-            height: lastOffset.height + dragTranslation.height
-        )
-    }
 
     var body: some View {
         ZStack {
-            ZStack {
-                // 纯视频画面（无内置控制栏）
-                if let player = player {
-                    AVPlayerView(player: player)
-                        .ignoresSafeArea()
-                }
+            // 纯视频画面（无内置控制栏）
+            if let player = player {
+                AVPlayerView(player: player)
+                    .ignoresSafeArea()
+            }
 
-                // 加载指示器：player 未创建或缓冲中时显示
-                if player == nil || isBuffering {
-                    ZStack {
-                        Color.black
-                        VStack(spacing: AppTheme.Spacing.md) {
-                            ProgressView()
-                                .tint(.white)
-                                .scaleEffect(1.5)
-                            Text("加载中...")
-                                .font(.caption)
-                                .foregroundStyle(.white.opacity(0.6))
-                        }
+            // 加载指示器：player 未创建或缓冲中时显示
+            if player == nil || isBuffering {
+                ZStack {
+                    Color.black
+                    VStack(spacing: AppTheme.Spacing.md) {
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(1.5)
+                        Text("加载中...")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.6))
                     }
                 }
             }
-            .scaleEffect(scale)
-            .offset(currentOffset)
         }
         .contentShape(Rectangle())
-        .gesture(pinchGesture)
-        .simultaneousGesture(scale > 1.0 ? dragGesture : nil)
-        .onTapGesture(count: 2) { resetZoom() }
+        .zoomPanGesture(scale: $scale)
+        .seekDragGesture(isEnabled: scale <= 1.0, currentTime: currentTime, duration: duration) { target in
+            currentTime = target
+            player?.seek(to: CMTime(seconds: target, preferredTimescale: 600))
+        }
         .onTapGesture(count: 1) { onTap() }
         .overlay {
 
@@ -1690,46 +1624,6 @@ struct VideoPreviewContent: View {
         return String(format: "%d:%02d", mins, secs)
     }
 
-    // MARK: - 缩放与拖动手势
-
-    private var pinchGesture: some Gesture {
-        MagnifyGesture()
-            .onChanged { value in
-                let newScale = lastScale * value.magnification
-                scale = min(max(newScale, 0.5), 4.0)
-            }
-            .onEnded { _ in
-                lastScale = scale
-                if scale < 1.0 {
-                    withAnimation(AppTheme.Animation.spring) {
-                        scale = 1.0
-                        lastScale = 1.0
-                        lastOffset = .zero
-                    }
-                }
-            }
-    }
-
-    private var dragGesture: some Gesture {
-        DragGesture()
-            .updating($dragTranslation) { value, state, _ in
-                state = value.translation
-            }
-            .onEnded { value in
-                lastOffset = CGSize(
-                    width: lastOffset.width + value.translation.width,
-                    height: lastOffset.height + value.translation.height
-                )
-            }
-    }
-
-    private func resetZoom() {
-        withAnimation(AppTheme.Animation.spring) {
-            scale = scale > 1.0 ? 1.0 : 2.0
-            lastScale = scale
-            lastOffset = .zero
-        }
-    }
 }
 
 // MARK: - AudioPreviewContent
