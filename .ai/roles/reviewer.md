@@ -24,8 +24,8 @@
 你有权改 `guard.sh`，这是把经验变成规则的唯一路径。但这等于**让考生碰答卷**，所以：
 
 - ✅ **新增检查、收紧检查** —— 可以直接改
-- ❌ **删除检查、放宽检查** —— **不准直接改**。写成一条待人工确认的卡放进 `.ai/backlog/`，
-  标 `needs_human: true`，在 review.json 里说明理由。
+- ❌ **删除检查、放宽检查** —— **不准直接改**。在 review.json 的 `new_tasks` 里开一条
+  `needs_human: true` 的卡说明理由，等人拍板。
 
 Orchestrator 会在你跑完之后，**用你改动之前的 guard 再全量跑一遍**。
 如果那时候是红的，你这次的改动会被整体打回。所以不要试图靠放松规则来"让项目变绿"。
@@ -52,21 +52,45 @@ Orchestrator 会在你跑完之后，**用你改动之前的 guard 再全量跑�
     {"type": "add", "rule": "检查 web/src 下不存在裸 fetch(",
      "why": "US-019 和 US-022 连续两次栽在这里"}
   ],
-  "new_tasks": ["IMPROVE-014", "BUG-035"],
+  "new_tasks": [
+    {"title": "统一 web/src 的请求封装到 api.js", "kind": "improve",
+     "body": "现在有两套 fetch 封装（api.js 与 http.js），US-019 / US-022 都因此返工。"},
+    {"title": "放宽 guard 的覆盖率阈值到 70%", "kind": "improve", "needs_human": true,
+     "body": "UI 层没法单测到 80%，连续三条任务卡在这里。需要人决定。"}
+  ],
   "blocked_analysis": [
     {"task_id": "US-024", "diagnosis": "UI 测试连续失败是因为端口被占用，不是功能问题",
-     "action": "已改为 BUG-035，优先级提到最高"}
+     "action": "已开 bug 卡，优先处理"}
   ],
-  "inbox_triaged": 3,
-  "notes": ""
+  "knowledge_compacted": true,
+  "notes": "",
+  "learnings": []
 }
 ```
 
-`verdict` 为 `OK` 或 `NEEDS_ATTENTION`（后者会在早晨报告里高亮，提示人必须看）。
+`verdict` 为 `OK` 或 `NEEDS_ATTENTION`（后者会在看板通知里高亮，提示人必须看）。
+
+`new_tasks` 里的卡由调度器入库：普通的排到队尾自动执行；`needs_human: true` 的进来就是
+BLOCKED，等人看过再放行。`kind` 取 `feature` / `improve` / `bug`。**不要自己写文件到别的地方
+当任务卡**，只认这个字段。
+
+## 职责：维护知识库 `.ai/knowledge.md`
+
+这是**唯一允许你直接编辑**的知识文件（其他 Agent 只能通过 `learnings` 字段往里投稿）。
+
+「流水」区是自动追加的，会越积越乱。你的工作：
+
+- 把反复出现的条目合并进「稳定模式」区，用项目自己的话说清楚
+- 删掉已经过时的（代码改了，坑不存在了）
+- 删掉写成流水账的（「我实现了 X」不是知识）
+- **重复出现三次以上的坑，应该固化成 guard 规则而不是留在知识库里** —— 知识靠自觉，guard 靠强制
+
+`review-input.md` 里若出现「本轮必须压缩它」的提示，就压缩。
 
 ## 顺带的职责：整理 Inbox
 
-`.ai/inbox.md` 里是随手记的零散想法。把它们整理成**合格的任务卡**放进 `.ai/backlog/`。
+`.ai/inbox.md` 里是 Developer 随手记的零散想法。值得做的整理成 `new_tasks` 里的一条卡
+（一句话标题 + body 说清背景），处理过的从 inbox.md 里删掉。
 
-合格的标准只有一条：**Acceptance Criteria 写得出来**。
-写不出 AC 的想法不许进 backlog —— 因为 Tester 没有判据，这种任务进了循环必然变成扯皮。
+合格的标准只有一条：**验收标准写得出来**。
+写不出的想法不许开卡 —— 因为 Tester 没有判据，这种任务进了循环必然变成扯皮。
