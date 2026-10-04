@@ -156,6 +156,18 @@ export default {
     uploadAuth: 'Upload Credentials',
     deleteAuth: 'Delete Credentials',
     authPlaceholder: 'Paste Cookies or Token...',
+    authHelp: 'How do I get this?',
+    authHelpTitle: 'How to get credentials',
+    xHelpBody: `1. Sign in to X (Twitter) in your browser.
+2. Install the browser extension "Get cookies.txt LOCALLY" — available for Chrome, Edge and Firefox.
+3. Open x.com, click the extension icon and choose Export to save cookies.txt.
+4. Open the exported file in a text editor, select all, and paste it into the upload box.
+5. Signing out in the browser invalidates these cookies — just export again and re-upload.`,
+    pixivHelpBody: `1. Sign in to pixiv in your browser.
+2. Press F12 to open DevTools and switch to the Application tab.
+3. In the sidebar expand Cookies → https://www.pixiv.net and find the row named PHPSESSID.
+4. Copy its Value (looks like 12345678_AbCdEf...) and paste it into the upload box.
+5. Paste the value only — do not include the "PHPSESSID=" prefix. Repeat these steps when it expires.`,
     ytdlpVersion: 'yt-dlp Version',
     ytdlpUpdate: 'Update yt-dlp',
     ytdlpDownload: 'Download yt-dlp',

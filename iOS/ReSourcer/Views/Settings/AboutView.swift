@@ -22,6 +22,16 @@ struct AboutView: View {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
     }
 
+    private var buildNumber: String? {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String
+    }
+
+    // 展示用版本号，形如 0.0.34 (18)；版本比对仍只用 appVersion
+    private var displayVersion: String {
+        guard let buildNumber else { return appVersion }
+        return "\(appVersion) (\(buildNumber))"
+    }
+
     private var hasServerUpdate: Bool {
         guard let latest = latestServerVersion else { return false }
         return latest != appConfig?.version
@@ -53,7 +63,7 @@ struct AboutView: View {
                 VStack(spacing: AppTheme.Spacing.md) {
                     versionRow(
                         label: "iOS",
-                        current: appVersion,
+                        current: displayVersion,
                         latest: latestIOSVersion,
                         hasUpdate: hasIOSUpdate,
                         isChecking: isCheckingIOS,
