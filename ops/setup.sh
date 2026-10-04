@@ -149,7 +149,7 @@ download_tools() {
     local arch=$(detect_arch)
 
     # ffmpeg — URL 格式: ffmpeg-linux-x86_64 / ffmpeg-macos
-    local ffmpeg_path="${INSTALL_DIR}/tools/ffmpeg"
+    local ffmpeg_path="${DATA_DIR}/tools/ffmpeg"
     if [ -f "$ffmpeg_path" ]; then
         info "ffmpeg already exists, skipping"
     else
@@ -163,7 +163,7 @@ download_tools() {
     fi
 
     # ffprobe
-    local ffprobe_path="${INSTALL_DIR}/tools/ffprobe"
+    local ffprobe_path="${DATA_DIR}/tools/ffprobe"
     if [ -f "$ffprobe_path" ]; then
         info "ffprobe already exists, skipping"
     else
@@ -180,17 +180,18 @@ download_tools() {
 # 创建目录结构
 create_dirs() {
     info "Creating directory structure..."
-    mkdir -p "${INSTALL_DIR}/tools"
+    mkdir -p "${DATA_DIR}/tools"
     mkdir -p "${INSTALL_DIR}/tmp"
     # config/、sqlite/、backups/ 由程序自己在 DATA_DIR 下创建（含迁移逻辑），这里只是先建好挂载点
     mkdir -p "${DATA_DIR}"
 
     info "  ${INSTALL_DIR}/           # program (safe to wipe/reinstall)"
     info "  ├── re-sourcer           # server binary"
-    info "  └── tools/               # ffmpeg, ffprobe, yt-dlp"
+    info "  └── data.json            # points at the data dir below"
     info "  ${DATA_DIR}/              # persistent data"
     info "  ├── config/              # app.json, secret.json, tools.json (auto-created)"
     info "  ├── sqlite/              # data.db (auto-created)"
+    info "  ├── tools/               # ffmpeg, ffprobe, yt-dlp"
     info "  └── backups/             # periodic data.db snapshots (auto-created)"
 }
 
