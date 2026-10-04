@@ -156,6 +156,18 @@ export default {
     uploadAuth: '上传认证',
     deleteAuth: '删除认证',
     authPlaceholder: '粘贴 Cookies 或 Token...',
+    xAuthTitle: 'X (Twitter) 凭证',
+    xAuthOptional: '仅受保护账号和敏感内容需要;公开内容无需配置',
+    xAuthHow: `在浏览器中登录 x.com，按 F12 打开开发者工具 →「应用 / 存储」→ Cookie → https://x.com，
+找到 auth_token 和 ct0 两行，分别复制它们的值填到下面。`,
+    xAuthSensitiveNote: '下载敏感内容还需该账号已在 x.com/settings/content_you_see 开启「显示敏感内容」。',
+    xAuthPasteFile: '或直接粘贴浏览器扩展导出的 cookies.txt',
+    pixivAuthTitle: 'Pixiv 凭证',
+    pixivAuthRequired: '必需 —— 不配置无法下载 Pixiv 内容',
+    pixivAuthHow: `在浏览器中登录 pixiv，按 F12 打开开发者工具 →「应用 / 存储」→ Cookie → https://www.pixiv.net，
+找到 PHPSESSID 这一行，复制它的值（形如 12345678_AbCdEf...）填到下面，不要带 "PHPSESSID=" 前缀。`,
+    optional: '可选',
+    required: '必需',
     ytdlpVersion: 'yt-dlp 版本',
     ytdlpUpdate: '更新 yt-dlp',
     ytdlpDownload: '下载 yt-dlp',

@@ -56,7 +56,25 @@ pub async fn ensure_ytdlp() -> Result<PathBuf, String> {
     }
 
     eprintln!("[yt-dlp] 下载完成: {}", path.display());
+    invalidate_version_cache();
     Ok(path)
+}
+
+/// 版本号缓存
+/// yt-dlp 是 PyInstaller 单文件包，每次启动都要自解压，`--version` 实测要 7~10 秒。
+/// 版本只在安装或更新后才变，所以按二进制的修改时间做键缓存。
+static VERSION_CACHE: std::sync::Mutex<Option<(std::time::SystemTime, String)>> =
+    std::sync::Mutex::new(None);
+
+/// 使版本号缓存失效（安装 / 更新 yt-dlp 后调用）
+pub fn invalidate_version_cache() {
+    if let Ok(mut cache) = VERSION_CACHE.lock() {
+        *cache = None;
+    }
+}
+
+fn binary_mtime(path: &PathBuf) -> Option<std::time::SystemTime> {
+    std::fs::metadata(path).ok()?.modified().ok()
 }
 
 /// 获取当前 yt-dlp 版本号
@@ -66,13 +84,28 @@ pub async fn get_ytdlp_version() -> Result<String, String> {
         return Err("yt-dlp 未安装".to_string());
     }
 
+    let mtime = binary_mtime(&path);
+    if let (Some(mtime), Ok(cache)) = (mtime, VERSION_CACHE.lock()) {
+        if let Some((cached_mtime, version)) = cache.as_ref() {
+            if *cached_mtime == mtime {
+                return Ok(version.clone());
+            }
+        }
+    }
+
     let output = Command::new(&path)
         .arg("--version")
         .output()
         .await
         .map_err(|e| format!("获取版本失败: {}", e))?;
 
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+    if let (Some(mtime), Ok(mut cache)) = (mtime, VERSION_CACHE.lock()) {
+        *cache = Some((mtime, version.clone()));
+    }
+
+    Ok(version)
 }
 
 /// 更新 yt-dlp（调用 yt-dlp -U 原地更新）
@@ -260,6 +293,10 @@ where
     let mut stderr_lines = stderr_reader.lines();
     let mut error_msg = String::new();
     while let Ok(Some(line)) = stderr_lines.next_line().await {
+        // 同样打到服务端日志：报错只存在 error_msg 里的话，日志中查不到任何线索
+        if !line.trim().is_empty() {
+            eprintln!("[yt-dlp] {}", line);
+        }
         error_msg.push_str(&line);
         error_msg.push('\n');
     }

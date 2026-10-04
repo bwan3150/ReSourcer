@@ -120,6 +120,9 @@
               <span class="badge badge-sm" :class="authStatus[p] ? 'badge-outline' : 'badge-ghost'">
                 {{ authStatus[p] ? $t('downloader.configured') : $t('downloader.notConfigured') }}
               </span>
+              <span class="text-xs text-base-content/40">
+                {{ p === 'x' ? $t('downloader.optional') : $t('downloader.required') }}
+              </span>
             </div>
             <div class="flex gap-1">
               <button class="btn btn-ghost btn-xs" @click="showAuthInput(p)">{{ $t('downloader.uploadAuth') }}</button>
@@ -162,11 +165,46 @@
     <!-- Auth input -->
     <dialog ref="authDialog" class="modal">
       <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">{{ authPlatform }}</h3>
-        <textarea v-model="authContent" :placeholder="$t('downloader.authPlaceholder')" class="textarea textarea-bordered w-full h-32"></textarea>
+        <h3 class="font-bold text-lg mb-1">
+          {{ authPlatform === 'x' ? $t('downloader.xAuthTitle') : $t('downloader.pixivAuthTitle') }}
+        </h3>
+        <p class="text-xs text-base-content/50 mb-3">
+          {{ authPlatform === 'x' ? $t('downloader.xAuthOptional') : $t('downloader.pixivAuthRequired') }}
+        </p>
+
+        <p class="text-sm whitespace-pre-line leading-relaxed text-base-content/80 mb-4">
+          {{ authPlatform === 'x' ? $t('downloader.xAuthHow') : $t('downloader.pixivAuthHow') }}
+        </p>
+
+        <!-- X：两个字段，服务端据此拼出 cookies.txt -->
+        <template v-if="authPlatform === 'x'">
+          <label class="form-control w-full mb-2">
+            <span class="label-text text-xs font-mono">auth_token</span>
+            <input v-model="xAuthToken" type="text" class="input input-bordered w-full font-mono text-sm" />
+          </label>
+          <label class="form-control w-full mb-3">
+            <span class="label-text text-xs font-mono">ct0</span>
+            <input v-model="xCt0" type="text" class="input input-bordered w-full font-mono text-sm" />
+          </label>
+          <p class="text-xs text-base-content/50 mb-2">{{ $t('downloader.xAuthSensitiveNote') }}</p>
+          <details class="text-xs">
+            <summary class="cursor-pointer text-base-content/50">{{ $t('downloader.xAuthPasteFile') }}</summary>
+            <textarea v-model="authContent" :placeholder="$t('downloader.authPlaceholder')"
+              class="textarea textarea-bordered w-full h-24 mt-2 font-mono text-xs"></textarea>
+          </details>
+        </template>
+
+        <!-- Pixiv：单个 PHPSESSID 值 -->
+        <template v-else>
+          <label class="form-control w-full">
+            <span class="label-text text-xs font-mono">PHPSESSID</span>
+            <input v-model="authContent" type="text" class="input input-bordered w-full font-mono text-sm" />
+          </label>
+        </template>
+
         <div class="modal-action">
           <button class="btn" @click="authDialog?.close()">{{ $t('common.cancel') }}</button>
-          <button class="btn btn-neutral" @click="doUploadAuth" :disabled="!authContent.trim()">{{ $t('common.confirm') }}</button>
+          <button class="btn btn-neutral" @click="doUploadAuth" :disabled="!authPayload">{{ $t('common.confirm') }}</button>
         </div>
       </div>
       <form method="dialog" class="modal-backdrop"><button>close</button></form>
@@ -222,6 +260,17 @@ const settingsDialog = ref(null)
 const authDialog = ref(null)
 const authPlatform = ref('')
 const authContent = ref('')
+const xAuthToken = ref('')
+const xCt0 = ref('')
+
+// 提交给服务端的内容：X 优先用两个字段拼，留空则退回手动粘贴的 cookies.txt
+const authPayload = computed(() => {
+  if (authPlatform.value !== 'x') return authContent.value.trim()
+  const token = xAuthToken.value.trim()
+  const ct0 = xCt0.value.trim()
+  if (token && ct0) return `auth_token=${token}; ct0=${ct0}`
+  return authContent.value.trim()
+})
 const ytdlpVersion = ref('')
 const ytdlpInstalled = ref(false)
 const ytdlpUpdating = ref(false)
@@ -348,12 +397,14 @@ async function createNewFolder() {
 function showAuthInput(platform) {
   authPlatform.value = platform
   authContent.value = ''
+  xAuthToken.value = ''
+  xCt0.value = ''
   authDialog.value?.showModal()
 }
 
 async function doUploadAuth() {
   try {
-    await configApi.uploadCredentials(authPlatform.value, authContent.value)
+    await configApi.uploadCredentials(authPlatform.value, authPayload.value)
     authStatus.value[authPlatform.value] = true
     authDialog.value?.close()
   } catch {}
