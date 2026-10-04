@@ -74,8 +74,14 @@ where
             "/api/app",
         ];
 
+        // 网页端静态资源不鉴权。
+        // 它们本来就是公开的构建产物（GitHub 上就能下到），真正要保护的是 /api 后面的数据；
+        // 更关键的是：登录页本身也是静态文件，拦住它用户就永远拿不到 API Key，
+        // 连登录都做不到（以前前端由 nginx 托管，不经过这个中间件）。
+        let is_static = !path.starts_with("/api");
+
         // 检查是否在白名单中
-        let is_whitelisted = whitelist.iter().any(|w| path.starts_with(w));
+        let is_whitelisted = is_static || whitelist.iter().any(|w| path.starts_with(w));
 
         if is_whitelisted {
             let fut = self.service.call(req);
