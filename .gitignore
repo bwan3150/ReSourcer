@@ -20,6 +20,10 @@ app_state.json
 /server/sqlite/
 /server/credentials/
 /server/config/secret.json
+/server/config/preference.json
+/server/backups/
+/server/web/
+/server/uploads_staging/
 
 # ========================================
 # Flutter / Dart

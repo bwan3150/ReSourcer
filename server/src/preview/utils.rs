@@ -6,7 +6,7 @@ use std::process::Command;
 
 /// 获取 tools/ 目录路径（基于 app_dir，与部署目录一致）
 fn tools_dir() -> PathBuf {
-    crate::static_files::app_dir().join("tools")
+    crate::static_files::tools_dir()
 }
 
 /// 获取 ffmpeg 二进制文件路径（从 tools/ 目录查找，不存在则从配置的 URL 下载）

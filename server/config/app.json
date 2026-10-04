@@ -1,7 +1,7 @@
 {
-  "version":"0.3.18-beta",
-  "android_url":"https://github.com/bwan3150/ReSourcer/releases/latest/download/resourcer-android.apk",
-  "ios_url":"https://www.pgyer.com/resourcer-ios",
-  "github_url":"https://github.com/bwan3150/ReSourcer",
-  "upload_chunk_size_mb":30
+  "version": "0.3.18-beta",
+  "android_url": "https://github.com/bwan3150/ReSourcer/releases/latest/download/resourcer-android.apk",
+  "ios_url": "https://github.com/bwan3150/ReSourcer/releases",
+  "github_url": "https://github.com/bwan3150/ReSourcer",
+  "upload_chunk_size_mb": 30
 }

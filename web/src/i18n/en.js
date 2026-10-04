@@ -248,6 +248,7 @@ find the row named PHPSESSID and copy its value (looks like 12345678_AbCdEf...) 
     checkUpdate: 'Check Update',
     upToDate: 'Already up to date',
     updateStarted: 'Updating, server will restart',
+    webUpdated: 'Web UI updated, reloading',
     upload: 'Upload',
     chunkSize: 'Chunk Size (MB)',
     chunkSizeDesc: 'Files larger than this are split into chunks for reliable upload',

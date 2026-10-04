@@ -38,6 +38,19 @@ pub fn data_dir() -> PathBuf {
     app_dir()
 }
 
+/// 工具目录（yt-dlp / ffmpeg / ffprobe）
+///
+/// 放在 data_dir() 下：这些二进制加起来约 200MB，NAS 系统更新清空安装目录后
+/// 重新下载很慢，没有理由每次都重来。
+pub fn tools_dir() -> PathBuf {
+    data_dir().join("tools")
+}
+
+/// 网页端静态文件目录（由服务端直接托管，可在线自更新）
+pub fn web_dir() -> PathBuf {
+    data_dir().join("web")
+}
+
 /// 一次性迁移：早期版本把 sqlite/ 和 config/ 直接放在 app_dir() 下。
 /// 首次配置了 RESOURCER_DATA_DIR 后，如果新数据目录下还没有数据库、而旧位置有，
 /// 就把 sqlite/ 和 config/ 整体搬过去，绝不在旧数据存在时悄悄新建空库。
@@ -59,7 +72,9 @@ pub fn migrate_legacy_data_if_needed() {
         app.display(),
         data.display()
     );
-    for name in ["sqlite", "config"] {
+    // credentials 是用户亲手配的凭证，漏掉它会表现为「凭证莫名其妙没了」；
+    // tools 是上百 MB 的二进制，一并搬过去免得重下
+    for name in ["sqlite", "config", "credentials", "tools"] {
         let src = app.join(name);
         let dst = data.join(name);
         if !src.exists() || dst.exists() {

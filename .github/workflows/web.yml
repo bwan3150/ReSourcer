@@ -11,7 +11,7 @@ jobs:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write   # 需要创建 release 并上传 web-dist.zip
       packages: write
 
     steps:
@@ -49,3 +49,33 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/resourcer-web:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # 服务端会托管网页端并支持在线自更新，所以除了镜像之外
+      # 还要把构建产物作为 release asset 发出去
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build dist for self-update
+        run: |
+          cd web
+          npm ci
+          npm run build
+          # 写入版本号，服务端据此判断有没有新版
+          printf '{"version":"%s"}\n' "${{ steps.version.outputs.version }}" > dist/version.json
+          cd dist && zip -qr ../../web-dist.zip . && cd ..
+          echo "zip: $(du -h ../web-dist.zip | cut -f1)"
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/web-v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF#refs/tags/}" \
+            --title "Web ${{ steps.version.outputs.version }}" \
+            --notes "网页端 ${{ steps.version.outputs.version }}" \
+            web-dist.zip \
+            || gh release upload "${GITHUB_REF#refs/tags/}" web-dist.zip --clobber

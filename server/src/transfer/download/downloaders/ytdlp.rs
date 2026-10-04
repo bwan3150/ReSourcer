@@ -1,15 +1,15 @@
 // yt-dlp 下载器实现：支持 YouTube、Bilibili、X、TikTok 等平台
-// yt-dlp 二进制存放在 app_dir()/tools/yt-dlp，运行时管理，不再编译时内嵌
+// yt-dlp 二进制存放在 tools_dir()/yt-dlp，运行时管理，不再编译时内嵌
 use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use super::super::models::Platform;
 
-/// 获取 yt-dlp 安装路径：app_dir()/tools/yt-dlp
+/// 获取 yt-dlp 安装路径：tools_dir()/yt-dlp
 pub fn get_ytdlp_path() -> PathBuf {
     let binary_name = crate::tools::tool_binary_name("yt-dlp");
-    crate::static_files::app_dir().join("tools").join(binary_name)
+    crate::static_files::tools_dir().join(binary_name)
 }
 
 /// 确保 yt-dlp 存在，首次运行时从配置的 URL 自动下载

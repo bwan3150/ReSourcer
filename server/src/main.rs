@@ -22,6 +22,8 @@ mod logger;
 mod database;
 pub mod tools;
 mod updater;
+mod preferences;
+mod web_static;
 
 use static_files::read_config_file;
 
@@ -111,6 +113,9 @@ fn init_config_files() {
 
     // tools.json — 由 tools 模块的 load_tools_config() 自动处理
     let _ = tools::load_tools_config();
+
+    // preference.json — 运行偏好（是否托管网页端等）
+    preferences::ensure_exists();
 }
 
 #[actix_web::main]
@@ -207,6 +212,19 @@ async fn main() -> std::io::Result<()> {
 
     let api_key_data = web::Data::new(api_key.clone());
 
+    // 网页端由服务端直接托管（静态文件在 data_dir()/web），可用 preference.json 关闭
+    let prefs = preferences::load();
+    let web_root = static_files::web_dir();
+    let serve_web = prefs.enable_web && web_root.join("index.html").exists();
+    if prefs.enable_web && !serve_web {
+        eprintln!(
+            "[web] 已启用网页端，但 {} 下没有 index.html —— 可在「关于」页点击更新拉取，或手动放置构建产物",
+            web_root.display()
+        );
+    } else if !prefs.enable_web {
+        eprintln!("[web] preference.json 中 enable_web = false，仅提供后端 API");
+    }
+
     HttpServer::new(move || {
         // CORS: 允许任意来源访问 API（前端可能部署在不同域/端口）
         let cors = actix_cors::Cors::default()
@@ -239,6 +257,9 @@ async fn main() -> std::io::Result<()> {
                 .route("", web::get().to(get_app_config))
                 .route("/check-update", web::get().to(updater::check_update))
                 .route("/update", web::post().to(updater::do_update))
+                // 网页端自更新（静态文件，无需重启）
+                .route("/web/check-update", web::get().to(updater::check_web_update))
+                .route("/web/update", web::post().to(updater::do_web_update))
             )
             // === 新的API路由 - 面向开发者的系统操作 ===
             // 文件操作 API 路由
@@ -266,6 +287,12 @@ async fn main() -> std::io::Result<()> {
             .service(web::scope("/api/favorite").configure(favorite::routes))
             // 性能指标 API 路由
             .service(web::scope("/api/metrics").configure(metrics::routes))
+            // 网页端静态文件（必须放在所有 /api 路由之后，否则会把 API 请求吃掉）
+            .configure(|cfg| {
+                if serve_web {
+                    web_static::configure(cfg, &web_root);
+                }
+            })
     })
     .bind("0.0.0.0:1234")?
     .run()

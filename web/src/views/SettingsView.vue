@@ -281,8 +281,11 @@
                 <div class="flex items-center gap-2">
                   <span>{{ webVersion }}</span>
                   <span v-if="hasWebUpdate" class="badge badge-outline badge-xs">{{ latestWebVersion }}</span>
-                  <span v-if="hasWebUpdate" class="text-xs text-base-content/40">docker compose pull</span>
-                  <button v-if="!hasWebUpdate" class="btn btn-ghost btn-xs" @click="checkWebUpdateOnly" :disabled="checkingWeb">
+                  <button v-if="hasWebUpdate" class="btn btn-ghost btn-xs" @click="doWebUpdateNow" :disabled="updatingWeb">
+                    <span v-if="updatingWeb" class="loading loading-spinner loading-xs"></span>
+                    <Download v-else :size="14" />
+                  </button>
+                  <button v-else class="btn btn-ghost btn-xs" @click="checkWebUpdateOnly" :disabled="checkingWeb">
                     <span v-if="checkingWeb" class="loading loading-spinner loading-xs"></span>
                     <RefreshCw v-else :size="14" />
                   </button>
@@ -426,6 +429,7 @@ const hasServerUpdate = ref(false)
 const latestWebVersion = ref('')
 const hasWebUpdate = ref(false)
 const checkingWeb = ref(false)
+const updatingWeb = ref(false)
 const checkingServer = ref(false)
 const checking = ref(false)
 const updating = ref(false)
@@ -608,21 +612,42 @@ async function saveToolUrls(name) {
 async function checkWebUpdateOnly() {
   checkingWeb.value = true
   try {
-    const resp = await fetch('https://api.github.com/repos/bwan3150/ReSourcer/tags?per_page=20', {
-      headers: { 'Accept': 'application/vnd.github.v3+json' }
-    })
-    if (resp.ok) {
-      const tags = await resp.json()
-      const webTag = tags.find(t => t.name.startsWith('web-v'))
-      if (webTag) {
-        const latest = webTag.name.replace('web-v', '')
-        latestWebVersion.value = latest
-        hasWebUpdate.value = latest !== webVersion
+    // 问服务端：只有它知道自己托管的那份静态文件是什么版本
+    const { data } = await configApi.checkWebUpdate()
+    latestWebVersion.value = data.latestVersion || ''
+    hasWebUpdate.value = data.hasUpdate || false
+    if (!data.hasUpdate) showToast(t('settings.upToDate'))
+  } catch {
+    // 服务端没托管网页端（独立部署）时退回直接查 GitHub，只提示、不提供更新按钮
+    try {
+      const resp = await fetch('https://api.github.com/repos/bwan3150/ReSourcer/tags?per_page=20', {
+        headers: { 'Accept': 'application/vnd.github.v3+json' }
+      })
+      if (resp.ok) {
+        const tags = await resp.json()
+        const webTag = tags.find(t => t.name.startsWith('web-v'))
+        if (webTag) {
+          const latest = webTag.name.replace('web-v', '')
+          latestWebVersion.value = latest
+          hasWebUpdate.value = latest !== webVersion
+        }
       }
-    }
-    if (!hasWebUpdate.value) showToast(t('settings.upToDate'))
-  } catch {}
+    } catch {}
+  }
   checkingWeb.value = false
+}
+
+async function doWebUpdateNow() {
+  updatingWeb.value = true
+  try {
+    await configApi.doWebUpdate()
+    showToast(t('settings.webUpdated'))
+    hasWebUpdate.value = false
+    // 静态文件已就位，刷新页面即可加载新版本
+    setTimeout(() => window.location.reload(true), 1200)
+  } catch {
+    updatingWeb.value = false
+  }
 }
 
 async function checkServerUpdateOnly() {

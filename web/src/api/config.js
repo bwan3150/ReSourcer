@@ -62,6 +62,14 @@ export function migrateSource(oldPath, newPath) {
   return client.post('/api/config/sources/migrate', { oldPath, newPath })
 }
 
+export function checkWebUpdate() {
+  return client.get('/api/app/web/check-update')
+}
+
+export function doWebUpdate() {
+  return client.post('/api/app/web/update')
+}
+
 export function checkUpdate() {
   return client.get('/api/app/check-update')
 }

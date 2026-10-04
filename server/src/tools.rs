@@ -73,7 +73,7 @@ fn tools_json_path() -> PathBuf {
 }
 
 fn tools_dir() -> PathBuf {
-    crate::static_files::app_dir().join("tools")
+    crate::static_files::tools_dir()
 }
 
 /// 加载工具配置（tools.json 不存在则用默认值创建）
