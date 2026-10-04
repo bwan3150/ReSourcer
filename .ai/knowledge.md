@@ -4,37 +4,103 @@
 > 本文件由 Orchestrator 从各 Agent 的 `learnings` 字段汇总，Reviewer 定期去重压缩。
 > **Agent 不要直接编辑本文件**（Reviewer 除外），把经验写进 outbox 的 `learnings` 里。
 
-## 稳定模式（长期有效，Reviewer 维护）
+## 项目结构
 
-<例：新增 server 模块必须在 main.rs 里挂载 routes，否则接口 404 但编译通过>
+- server 模块是四件套 `mod.rs`/`models.rs`/`storage.rs`/`handlers.rs`。**新模块必须在 `main.rs` 挂载 routes**，
+  否则接口 404 但编译通过 —— 这个组合最容易误判成"代码没生效"。
+- 实际路由与直觉不同，**写 API 测试前先读 mod.rs 不要猜**：目录浏览是 `POST /api/browser/browse`
+  （不是 `GET /list`），配置保存是 `POST /api/config/save`，源文件夹是 `/api/config/sources/add`。
+- 必填参数看 `models.rs` 的 Query struct 里哪些字段不是 `Option`。
+  例：`GET /api/playlist` 要 uuid + folder_path + mode 三个，少给就是 400，**这是既有契约不是回归**。
+- server 是纯二进制 crate（Cargo.toml 无 `[lib]`），`server/tests/` 下的集成测试 import 不到 bin crate 里的函数。
+  内部纯逻辑要写 Rust 单测只能就地 `#[cfg(test)]`；Tester 不改 `src/` 的前提下这类逻辑只能黑盒验。
+- 超阈文件的行数基线在 `.ai/baseline/linecount.txt`，**只许变短**。要加功能先拆文件，不要刷基线。
 
-## 流水（自动追加，Reviewer 定期合并进上面）
-- server 模块是四件套 `mod.rs`/`models.rs`/`storage.rs`/`handlers.rs`，新模块必须在 `main.rs` 挂载 routes，否则接口 404 但编译通过
-- `.ai/guard.sh` 里每个 check 都跑在子 shell 里；写 `cd web && ...` 不会污染后续检查（曾因此让所有检查在错误目录下跑）
-- 超阈文件的行数基线在 `.ai/baseline/linecount.txt`，只许变短。要加功能先拆文件
-- `2026-09-11` RS-001/tester — server 是纯二进制 crate（Cargo.toml 无 [lib]），server/tests/ 下的集成测试无法 import bin crate 里的函数。要给 server 内部纯逻辑写 Rust 单测，只能就地 #[cfg(test)] 或抽 lib target —— Tester 不改 src/ 的前提下，这类逻辑只能黑盒验。
-- `2026-09-11` RS-001/tester — server 硬编码 bind 0.0.0.0:1234，同一时刻只能起一个实例。连续跑多个测试场景必须串行并确保上一个进程已退出，否则第二个静默 AddrInUse 退出、而端口上仍是上一个实例在服务，极易得出「测的是新配置」的假结论（本轮踩过：以为在测新实例，实际是上一个遗留进程在应答）。
-- `2026-09-11` RS-001/tester — debug 版 server 从启动到 /api/health 可达要 16~17 秒（实测 33~34 次 0.5s 探测）。写 API 测试的等待循环要给到 30s 以上，短了会拿到一串 HTTP 000 然后误判成接口全挂。
-- `2026-09-11` RS-001/tester — Bash 工具里用 `&` 起的后台 server 在该次调用结束后不保证存活；要跨调用留着服务，用 nohup + disown，或者把「起服务 + 测 + 杀」写在同一次调用里。
-- `2026-09-11` RS-001/tester — macOS 上路径会被规范化：/tmp -> /private/tmp。拿 API 传进去的路径去 sqlite 里做 folder_path 精确匹配会查不到（本轮误报过一次 FAIL），要用 LIKE '%/子目录名' 或先规范化再比。
-- `2026-09-11` RS-001/tester — 要在 macOS 上造「跨文件系统」场景验证 fs::rename 失败分支：hdiutil attach -nomount ram://40960 拿到 /dev/diskN，再 diskutil eraseVolume HFS+ <名字> <dev> 就会挂到 /Volumes/<名字>，用 df 确认两侧 Filesystem 列不同即可。注意 hdiutil 输出带尾随空白，要用 awk '{print $1}' 取设备名。
-- `2026-09-11` RS-001/tester — 验收 ops 下的交互式安装脚本不必真的执行安装：用 sed -n '/^函数名() {/,/^}/p' 把目标函数抽出来、配上桩 info/warn 单独跑，就能覆盖各分支；交互式「直接回车走默认值」这条路用 script -q /dev/null 配合空 stdin 能真实复现。
-- `2026-09-11` RS-001/tester — ReSourcer 的真实路由与直觉不同，写 API 测试前先看 mod.rs 而不要猜：目录浏览是 POST /api/browser/browse（不是 GET /list），播放队列是 GET /api/playlist 且必须带 uuid 查询参数（不带就是 400，属既有契约），配置保存是 POST /api/config/save、源文件夹是 /api/config/sources/add。
-- `2026-09-12` RS-002/tester — 2026-09-12 RS-002/tester — macOS 自带 bash 3.2 没有 mapfile/readarray，测试脚本要用 arr=( $(cmd) ) 或 while read；否则脚本会在中途以 unbound variable 崩掉、留下没被 kill 的 server。
-- `2026-09-12` RS-002/tester — 2026-09-12 RS-002/tester — 在同一个 shell 里用 & 起 server 再用 & 起一批 curl 后跑裸 `wait`，会连 server 一起等、永远不返回。并发测试要 `wait $curl_pids` 指定 pid，或把 server 放到另一个进程组（nohup … & disown）再 wait。
-- `2026-09-12` RS-002/tester — 2026-09-12 RS-002/tester — GET /api/playlist 的必填参数是 uuid + folder_path + mode 三个，只给 uuid 会 400，这不是回归。写回归脚本前先看 models.rs 的 Query struct 哪些字段不是 Option。
-- `2026-09-12` RS-002/tester — 2026-09-12 RS-002/tester — 首次冷启动（新 RESOURCER_DIR）到 /api/health 可达约 34s，第二次同目录启动只要 1s；等待循环给 45s 够用。
-- `2026-09-12` RS-003/tester — 2026-09-12 RS-003/tester — 在 tke 执行 steps 的同时并发直连 WebDriverAgent(端口 8150)发请求，tke 会判定 WDA 卡死并重启它，把被测 app 挤到后台、会话 ID 全换；tke 与自己的 WDA 调用必须串行。
-- `2026-09-12` RS-003/tester — 2026-09-12 RS-003/tester — WDA 的 /wda/dragfromtoforduration 是『长按 duration 秒再瞬移』，SwiftUI DragGesture 只收到一跳，测不出拖动中的 HUD、甚至可能不触发 onChanged；要慢速插值拖动用 POST /session/:id/actions 的 W3C pointer actions（pointerMove 带 duration），脚本见 .ai/reports/RS-003/wda-drag.sh。tke 的 滑动 [.., .., 毫秒] 在 iOS 模拟器上也是瞬移，只能验最终结果。
-- `2026-09-12` RS-003/tester — 2026-09-12 RS-003/tester — tke 没有 pinch/双击指令；模拟器上可直接打 WDA：POST /wda/pinch {scale, velocity}、POST /wda/doubleTap {x,y}（坐标是 pt，iPhone 17 Pro 是 402x874，tke 元素表给的是 px，除以 3）。拖动过程中的画面用 xcrun simctl io <UDID> screenshot 连拍，不经过 WDA、不会和 tke 打架。
-- `2026-09-12` RS-003/tester — 2026-09-12 RS-003/tester — 视频预览页控制栏 10s 自动隐藏（LocalStorageService autoHideDelay 默认 10），隐藏后点顶部返回/底部按钮会点空并把控制栏切出来；每次读时间前先单击画面中部叫出控制栏再 refresh。
-- `2026-09-12` RS-003/tester — 2026-09-12 RS-003/tester — 造测试视频用 ffmpeg lavfi testsrc（自带走秒计数器，seek 后画面里直接能读到秒数），本机 ffmpeg 没编 drawtext 滤镜；图片用 lavfi color= 纯色即可靠标题+颜色区分。
-- `2026-09-12` RS-003/tester — 2026-09-12 RS-003/tester — `xcodebuild -destination 'generic/platform=iOS Simulator'` 在这台 arm64 Mac 上因 libclang_rt.iossim 缺 x86_64 slice 必失败，与代码无关（HEAD~1 同样失败）；验编译用 -destination 'id=<模拟器UDID>'。
-- `2026-09-12` RS-004/tester — 2026-09-12 RS-004/tester — SwiftUI LongPressGesture(maximumDistance:) 挂在会被 .offset() 跟手位移的视图上时，容差在局部坐标系里量、会被内容位移抵消，慢速平移照样触发；验位移容差要用 WDA W3C actions 做『慢速 pointerMove 再 pause』（.ai/reports/RS-004/wda-move-hold.sh），快速大幅拖动测不出这个问题。
-- `2026-09-12` RS-004/tester — 2026-09-12 RS-004/tester — 预览页要回 Gallery 的自动化步骤别先 点击 [坐标@(603,1000)] 再点关闭：单击是切换控制栏，控制栏本来就显示时会把它点没、关闭按钮随之点空。先 refresh 看有没有『返回』元素再决定要不要单击，或直接用长按退出。
-- `2026-09-12` RS-004/tester — 2026-09-12 RS-004/tester — tke 的 等待 参数不接受小数（1.5s 报『无法解析等待参数』），用整数秒。
-- `2026-09-12` RS-004/tester — 2026-09-12 RS-004/tester — RS-004 起的 app 沿用了 RS-003 在模拟器里保存的服务器配置；换新的 RESOURCER_DIR 时把旧的 config/secret.json 拷过去即可让 app 免重新配置直接连上（apikey 只从 secret.json 读）。
-- `2026-09-12` RS-004/tester — 2026-09-12 RS-004/tester — bash 3.2 里 "$i：" 这种变量后紧跟全角字符会把字节切坏，传给 tke 的指令变成乱码、tke 直接打印 Usage 退出（看起来像导航失败）。shell 脚本里拼中文注释用 ${i} 加空格隔开。
-- `2026-09-12` RS-004/tester — 2026-09-12 RS-004/tester — 用 WDA 做『移动后停住』类的负向断言时一定要跑对照组（同脚本 move 0pt 原地按住），DISMISSED 才能证明触摸真的送到了 app；否则 stayed 可能只是 WDA 会话失效的假阴性。
-- `2026-09-12` RS-004/tester — 2026-09-12 RS-004/tester — 预览页的『上一张/下一张』顺序由 server 播放列表决定，不是 Gallery 网格顺序；从 video120 按『返回』不是 img1 也不是 img4。写翻页断言前先长按播放模式按钮看 popover 里的实际顺序。
-- `2026-09-12` RS-004/tester — 2026-09-12 RS-004/tester — 放大是否生效不用读元素表：纯色测试图 1x 时只有中间一条色带（上下黑边），2.5x 后整屏都是该颜色，simctl 截图缩小到 500px 一眼可辨。
+## 发布与部署
+
+- **仓库里有两条发版线：`server-v*` 和 `web-v*`。任何地方都不准用 `/releases/latest`** ——
+  它只给全仓库最新的那条，两条线会互相抢。实际踩过三处：服务端自更新、`ops/setup.sh` 的
+  `get_latest_version`、以及遗留 Dockerfile，症状都是"在 release 里找不到本平台产物"。
+  正确做法是列出 releases 再按 tag 前缀过滤。
+- `app.json` 是数据文件，存在就不会被覆盖。版本号这类"由程序决定"的字段必须在启动时对账
+  （`reconcile_app_json()`），否则用安装脚本升级二进制后它一直是旧值，关于页显示错版本、
+  自更新还一直提示有新版。
+- 服务端托管静态文件后，**鉴权中间件会把登录页一起拦成 401**，用户永远拿不到 API Key。
+  非 `/api` 路径必须放行。
+- 改了 `data_dir()` 下的目录归属（比如 `tools/`），**要同步改 `ops/setup.sh` 的下载落点**。
+  全新安装没有旧数据库，迁移逻辑不触发，工具会被留在程序目录里，表现为"服务端找不到 ffmpeg"。
+- 测试目录迁移逻辑会**真的把本地开发数据搬走**（sqlite/config/credentials/tools）。
+  跑之前想好怎么搬回来。
+
+## 外部工具
+
+- **yt-dlp 是 PyInstaller 单文件包，每次运行都要自解压**：`--version` 实测 7~10 秒（CPU 只占 10%）。
+  不要在请求路径里直接调，版本号要缓存（按二进制 mtime 失效）。
+- **子进程的 stderr 必须自己打进日志**。yt-dlp 的报错只在 stderr，不打日志的话服务端日志里
+  一行线索都没有，排障只能手动复现。
+- X（Twitter）**公开内容不需要任何凭证**；只有受保护账号和敏感内容才要，而且除了
+  `auth_token` + `ct0` 之外，**那个账号还必须自己开了「显示敏感内容」**，否则 cookies 再对也拿不到。
+  `--extractor-args twitter:api=syndication` 对敏感内容没用（实测三个接口都报 "No video could be found"）。
+- yt-dlp 的 `--cookies` 只认 Netscape 格式（7 个字段用制表符分隔）。网页输入框里打不出制表符，
+  所以服务端接受 `auth_token` / `ct0` 裸值自己拼。
+
+## 前端
+
+- **Vue SFC 里模板在 `<script>` 之前**。扫"未使用的 import"必须扫整份文件；只扫 import 之后的内容
+  会把模板里用着的组件判成未使用。而且**删错了构建不报错** —— Vue 对未注册组件只在运行时告警。
+- 组件里不准裸 `fetch(`/`axios.`（guard 的 no-bare-fetch 棘轮）。要从组件里搬走 HTTP 调用时，
+  记得它可能在 `.ai/baseline/bare-fetch.txt` 的豁免名单里 —— 搬进新文件会变成新违规，
+  正确做法是下沉到 `web/src/api/`，顺带把原文件从名单里摘掉。
+
+## 本地环境与测试
+
+- **server 硬编码 bind `0.0.0.0:1234`，同一时刻只能起一个实例。** 连续跑多个场景必须串行并确认
+  上一个已退出，否则第二个静默 AddrInUse 退出、而端口上仍是上一个实例在应答 ——
+  极易得出"测的是新配置"的假结论（真踩过）。
+- debug 版冷启动（新 `RESOURCER_DIR`）到 `/api/health` 可达要 16~34 秒，同目录第二次只要 1 秒。
+  等待循环给到 45 秒，短了会拿到一串 HTTP 000 然后误判成接口全挂。
+- Bash 工具里用 `&` 起的后台 server 在该次调用结束后不保证存活。要跨调用留着服务用
+  `nohup` + `disown`，或者把"起服务 + 测 + 杀"写在同一次调用里。
+- macOS 路径会被规范化（`/tmp` → `/private/tmp`）。拿 API 传进去的路径去 sqlite 里做精确匹配会查不到，
+  要用 `LIKE '%/子目录名'` 或先规范化。
+- 验收交互式安装脚本不必真的装：用 `sed -n '/^函数名() {/,/^}/p'` 把目标函数抽出来配桩函数单跑即可；
+  "直接回车走默认值"这条路用 `script -q /dev/null` 配空 stdin 能真实复现。
+- 造跨文件系统场景验 `fs::rename` 失败分支：`hdiutil attach -nomount ram://40960` 拿到 `/dev/diskN`，
+  再 `diskutil eraseVolume HFS+ <名字> <dev>`。注意 hdiutil 输出带尾随空白，要 `awk '{print $1}'`。
+
+## shell 陷阱
+
+- `.ai/guard.sh` 里每个 check 跑在子 shell，写 `cd web && ...` 不会污染后续检查。
+- macOS 自带 **bash 3.2 没有 `mapfile`/`readarray`**，用 `arr=( $(cmd) )` 或 `while read`，
+  否则脚本中途以 unbound variable 崩掉、留下没被 kill 的 server。
+- bash 3.2 里 `"$i："` 这种变量后紧跟全角字符会把字节切坏，拼中文注释用 `${i}` 加空格隔开。
+- 同一个 shell 里 `&` 起 server 再 `&` 起一批 curl，然后跑裸 `wait` 会连 server 一起等、永不返回。
+  要 `wait $curl_pids` 指定 pid。
+- `hostname -I` 在部分 NAS 上**成功返回空串**而不是报错，`||` 接不住，要显式判空。
+
+## iOS 自动化（tke / WDA）
+
+- **tke 与自己直连 WDA 的调用必须串行**。并发打 WDA(8150) 会让 tke 判定它卡死并重启，
+  被测 app 被挤到后台、会话 ID 全换。
+- WDA 的 `/wda/dragfromtoforduration` 是"长按 duration 秒再瞬移"，SwiftUI `DragGesture` 只收到一跳，
+  测不出拖动过程。要慢速插值拖动用 `POST /session/:id/actions` 的 W3C pointer actions
+  （见 `.ai/reports/RS-003/wda-drag.sh`）。tke 的 `滑动` 在模拟器上也是瞬移，只能验最终结果。
+- tke 没有 pinch/双击指令，直接打 WDA：`POST /wda/pinch {scale, velocity}`、`POST /wda/doubleTap {x,y}`。
+  **坐标是 pt，tke 元素表给的是 px，要除以 3**（iPhone 17 Pro 是 402x874）。
+  拖动过程连拍用 `xcrun simctl io <UDID> screenshot`，不经过 WDA、不会和 tke 打架。
+- `LongPressGesture(maximumDistance:)` 挂在会被 `.offset()` 跟手位移的视图上时，容差在局部坐标系里量、
+  会被内容位移抵消，慢速平移照样触发。验位移容差要用"慢速 pointerMove 再 pause"，
+  快速大幅拖动测不出来。
+- 做"移动后停住"这类**负向断言一定要跑对照组**（同脚本原地按住），否则 stayed 可能只是会话失效的假阴性。
+- 预览页控制栏 10 秒自动隐藏；隐藏后点返回/底部按钮会点空并把控制栏切出来。
+  每次读时间前先单击画面中部叫出控制栏再 refresh。
+- 预览页"上一张/下一张"的顺序由 server 播放列表决定，**不是 Gallery 网格顺序**。
+  写翻页断言前先长按播放模式按钮看 popover 里的实际顺序。
+- 放大是否生效不用读元素表：纯色测试图 1x 时只有中间一条色带，2.5x 后整屏都是该颜色，
+  截图缩到 500px 一眼可辨。
+- 造测试素材用 ffmpeg `lavfi testsrc`（自带走秒计数器，seek 后画面里直接读得到秒数）；
+  图片用 `lavfi color=` 纯色。本机 ffmpeg 没编 drawtext 滤镜。
+- `xcodebuild -destination 'generic/platform=iOS Simulator'` 在 arm64 Mac 上因
+  libclang_rt.iossim 缺 x86_64 slice 必失败，与代码无关。验编译用 `-destination 'id=<模拟器UDID>'`。
+- 换新 `RESOURCER_DIR` 时把旧的 `config/secret.json` 拷过去，模拟器里的 app 就不用重新配服务器。
+- tke 的 `等待` 参数不接受小数（`1.5s` 报错），用整数秒。

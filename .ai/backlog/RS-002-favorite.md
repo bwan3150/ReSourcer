@@ -2,7 +2,7 @@
 id: RS-002
 type: feature
 priority: 2
-status: READY
+status: DONE
 attempt: 0
 needs_human: false
 created: 2026-09-11
