@@ -81,6 +81,50 @@ async fn get_app_config() -> Result<HttpResponse> {
     }
 }
 
+/// 当前 iOS 分发地址。蒲公英那条链路已停用，内部测试走 TestFlight，
+/// App 内不再提供下载入口，统一指向 Releases 页。
+const DEFAULT_IOS_URL: &str = "https://github.com/bwan3150/ReSourcer/releases";
+const RETIRED_IOS_URL: &str = "https://www.pgyer.com/resourcer-ios";
+
+/// 把 app.json 里由程序决定的字段对齐到当前二进制
+///
+/// app.json 是数据文件，一旦存在就不会被覆盖。但 version 是「当前跑的是哪个版本」，
+/// 而不是用户配置：用 setup.sh 升级二进制时没人去改它，结果关于页显示旧版本，
+/// 自更新还会一直认为有新版可装。
+fn reconcile_app_json() {
+    let path = static_files::data_dir().join("config").join("app.json");
+    let Ok(data) = std::fs::read(&path) else { return };
+    let Ok(mut cfg) = serde_json::from_slice::<serde_json::Value>(&data) else {
+        eprintln!("[init] app.json 解析失败，跳过对账");
+        return;
+    };
+
+    let mut changed = false;
+
+    let running = env!("CARGO_PKG_VERSION");
+    if cfg["version"].as_str() != Some(running) {
+        eprintln!(
+            "[init] app.json 版本 {} 与当前二进制 {} 不一致，已更新",
+            cfg["version"].as_str().unwrap_or("?"),
+            running
+        );
+        cfg["version"] = serde_json::Value::String(running.to_string());
+        changed = true;
+    }
+
+    // 停用的蒲公英地址一次性替换掉；用户自己改成别的地址则不动
+    if cfg["ios_url"].as_str() == Some(RETIRED_IOS_URL) {
+        cfg["ios_url"] = serde_json::Value::String(DEFAULT_IOS_URL.to_string());
+        changed = true;
+    }
+
+    if changed {
+        if let Ok(body) = serde_json::to_string_pretty(&cfg) {
+            let _ = std::fs::write(&path, body);
+        }
+    }
+}
+
 /// 初始化配置文件：缺失的自动生成默认值
 fn init_config_files() {
     use std::fs;
@@ -92,9 +136,9 @@ fn init_config_files() {
     let app_path = config_dir.join("app.json");
     if !app_path.exists() {
         let default = serde_json::json!({
-            "version": "0.3.0-beta",
+            "version": env!("CARGO_PKG_VERSION"),
             "android_url": "",
-            "ios_url": "https://www.pgyer.com/resourcer-ios",
+            "ios_url": DEFAULT_IOS_URL,
             "github_url": "https://github.com/bwan3150/ReSourcer",
             "upload_chunk_size_mb": 30
         });
@@ -116,6 +160,9 @@ fn init_config_files() {
 
     // preference.json — 运行偏好（是否托管网页端等）
     preferences::ensure_exists();
+
+    // app.json 里由程序决定的字段（版本号等）对齐到当前二进制
+    reconcile_app_json();
 }
 
 #[actix_web::main]
