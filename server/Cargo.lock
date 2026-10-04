@@ -1992,7 +1992,7 @@ dependencies = [
 
 [[package]]
 name = "re-sourcer"
-version = "0.3.18-beta"
+version = "0.3.19-beta"
 dependencies = [
  "actix-cors",
  "actix-files",
