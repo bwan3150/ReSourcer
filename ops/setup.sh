@@ -305,7 +305,12 @@ main() {
     info "Setup complete!"
     info "=============================="
     info ""
-    local lan_ip=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
+    # hostname -I 在部分 NAS 上会成功返回空串（不是报错），所以 || 接不住，
+    # 得单独判空；再退一步用 ip route 取出站网卡的地址
+    local lan_ip
+    lan_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    [ -z "$lan_ip" ] && lan_ip=$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1); exit}')
+    [ -z "$lan_ip" ] && lan_ip="localhost"
     info "API Server: http://${lan_ip}:1234"
     show_api_key
     info ""
