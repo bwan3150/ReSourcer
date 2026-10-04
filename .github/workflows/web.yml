@@ -1,5 +1,8 @@
 name: Web Release
 
+# 网页端由服务端（re-sourcer）直接托管，不再单独发 Docker 镜像。
+# 这里只负责构建 dist 并作为 release asset 发布，服务端在设置页点击更新即可拉取。
+
 on:
   workflow_dispatch:
   push:
@@ -7,26 +10,22 @@ on:
       - 'web-v*.*.*'
 
 jobs:
-  build-and-push:
-    name: Build & Push Docker Image
+  release:
+    name: Build & Publish web-dist.zip
     runs-on: ubuntu-latest
     permissions:
       contents: write   # 需要创建 release 并上传 web-dist.zip
-      packages: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
 
       - name: Extract version from tag
         id: version
@@ -39,27 +38,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
 
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: ./web
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/resourcer-web:${{ steps.version.outputs.version }}
-            ghcr.io/${{ github.repository_owner }}/resourcer-web:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # 服务端会托管网页端并支持在线自更新，所以除了镜像之外
-      # 还要把构建产物作为 release asset 发出去
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-
-      - name: Build dist for self-update
+      - name: Build dist
         run: |
           cd web
           npm ci
