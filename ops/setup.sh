@@ -56,6 +56,22 @@ check_deps() {
 #      必须显式输入一个 INSTALL_DIR 之外的路径，不提供安全的“默认值”
 #   3. 都拿不到，或拿到的路径仍在 INSTALL_DIR 内 → 直接装不上（exit 1），
 #      宁可装不上，也不要静默装成一个会被 NAS 系统更新清空的配置
+# 找出上一次装的时候用的是哪个数据目录（重装 / 升级时沿用，不再重复问）
+#   1. INSTALL_DIR/data.json
+#   2. systemd unit 里的 Environment=RESOURCER_DATA_DIR=
+detect_existing_data_dir() {
+    local found=""
+    if [ -f "${INSTALL_DIR}/data.json" ]; then
+        found=$(sed -n 's/.*"data_dir"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+            "${INSTALL_DIR}/data.json" | head -1)
+    fi
+    if [ -z "$found" ] && [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
+        found=$(sed -n 's/^Environment=RESOURCER_DATA_DIR=\(.*\)$/\1/p' \
+            "/etc/systemd/system/${SERVICE_NAME}.service" | head -1)
+    fi
+    echo "$found"
+}
+
 resolve_data_dir() {
     if [ -n "${RESOURCER_DATA_DIR:-}" ]; then
         DATA_DIR="$RESOURCER_DATA_DIR"
@@ -63,6 +79,15 @@ resolve_data_dir() {
             warn "RESOURCER_DATA_DIR (${DATA_DIR}) is inside ${INSTALL_DIR} — a NAS OS update can still wipe your data."
         fi
         info "Persistent data dir (from env): ${DATA_DIR}"
+        return
+    fi
+
+    # 已经装过就直接沿用，升级时不该再追问一遍（答错会把老数据孤立掉）
+    local existing
+    existing=$(detect_existing_data_dir)
+    if [ -n "$existing" ] && [ "$existing" != "$INSTALL_DIR" ] && [[ "$existing" != "$INSTALL_DIR"/* ]]; then
+        DATA_DIR="$existing"
+        info "Persistent data dir (existing install): ${DATA_DIR}"
         return
     fi
 
@@ -84,9 +109,13 @@ resolve_data_dir() {
 }
 
 # 获取最新版本号
+#
+# 不能用 /releases/latest：这个仓库里服务端（server-v*）和网页端（web-v*）
+# 各自发版，latest 只给全仓库最新的那条。取到网页端的 tag 会导致下面
+# 找不到 re-sourcer-linux-* 产物而装不上。
 get_latest_version() {
-    curl -sSL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" \
-        | grep '"tag_name"' | head -1 | cut -d'"' -f4
+    curl -sSL "https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=30" \
+        | grep '"tag_name"' | cut -d'"' -f4 | grep '^server-v' | head -1
 }
 
 # 下载最新二进制
@@ -163,6 +192,19 @@ create_dirs() {
     info "  ├── config/              # app.json, secret.json, tools.json (auto-created)"
     info "  ├── sqlite/              # data.db (auto-created)"
     info "  └── backups/             # periodic data.db snapshots (auto-created)"
+}
+
+# 在程序目录写一份 data.json
+#
+# systemd unit 里的 Environment 只在以服务方式启动时生效；手动运行二进制、
+# macOS、或容器里跑的时候读的就是这个文件。两边写同一个值，谁先生效都一样。
+write_data_pointer() {
+    cat > "${INSTALL_DIR}/data.json" << EOF
+{
+  "data_dir": "${DATA_DIR}"
+}
+EOF
+    info "Wrote ${INSTALL_DIR}/data.json -> ${DATA_DIR}"
 }
 
 # 安装 systemd 服务
@@ -252,6 +294,7 @@ main() {
     fi
 
     create_dirs
+    write_data_pointer
     download_binary
     download_tools
     install_service

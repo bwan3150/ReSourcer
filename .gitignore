@@ -21,6 +21,7 @@ app_state.json
 /server/credentials/
 /server/config/secret.json
 /server/config/preference.json
+/server/data.json
 /server/backups/
 /server/web/
 /server/uploads_staging/

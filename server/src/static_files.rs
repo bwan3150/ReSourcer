@@ -29,13 +29,41 @@ pub fn app_dir() -> PathBuf {
 /// data_dir() 必须指向一个独立、持久化的位置。
 ///
 /// 解析逻辑（按优先级）：
-/// 1. 环境变量 RESOURCER_DATA_DIR（NAS 部署时指定持久化卷，如群晖 /volume1/...）
-/// 2. 回退到 app_dir()（向后兼容：不设置该变量时行为与改动前完全一致）
+/// 1. 环境变量 RESOURCER_DATA_DIR（systemd unit 里就是这么传的）
+/// 2. app_dir()/data.json 里的 data_dir 字段
+///    —— 不经由 systemd 启动时（手动运行、macOS、容器）靠它生效
+/// 3. 回退到 app_dir()（向后兼容：都没有时行为与改动前完全一致）
 pub fn data_dir() -> PathBuf {
     if let Ok(dir) = std::env::var("RESOURCER_DATA_DIR") {
-        return PathBuf::from(dir);
+        let dir = dir.trim();
+        if !dir.is_empty() {
+            return PathBuf::from(dir);
+        }
+    }
+    if let Some(dir) = data_dir_from_pointer() {
+        return dir;
     }
     app_dir()
+}
+
+/// 读取 app_dir()/data.json
+///
+/// 格式：{"data_dir": "/volume1/docker/re-sourcer"}
+/// 文件不存在、解析失败或字段为空都当作没配置，直接回退，不让它挡住启动。
+fn data_dir_from_pointer() -> Option<PathBuf> {
+    let data = std::fs::read(app_dir().join("data.json")).ok()?;
+    let v: serde_json::Value = match serde_json::from_slice(&data) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("[data] data.json 解析失败，忽略: {}", e);
+            return None;
+        }
+    };
+    let dir = v["data_dir"].as_str()?.trim();
+    if dir.is_empty() {
+        return None;
+    }
+    Some(PathBuf::from(dir))
 }
 
 /// 工具目录（yt-dlp / ffmpeg / ffprobe）
