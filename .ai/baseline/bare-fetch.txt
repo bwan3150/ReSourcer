@@ -1,3 +1,3 @@
 # no-bare-fetch 的存量违规，只许减少。
+# 刷新基线 = 认可现状，需要人工确认。不准为了让守卫闭嘴而刷新。
 web/src/composables/useThumbnailCache.js
-web/src/views/SettingsView.vue

@@ -19,30 +19,35 @@ Download, categorize, and browse your creative resources. A local art management
 - Automatic thumbnail generation
 - Batch upload support
 
-## Download
+## Install
 
-Visit [Releases](../../releases) to download the version for your platform:
-- macOS (Apple Silicon): `re-sourcer-macos-aarch64`
-- Linux (x86_64): `re-sourcer-linux-x86_64`
-- Windows (x86_64): `re-sourcer-windows-x86_64.exe`
+Linux / NAS — one line, sets up a systemd service:
 
-## Usage
-
-### macOS / Linux
 ```bash
-chmod +x re-sourcer-macos-aarch64
-./re-sourcer-macos-aarch64
+curl -sSL https://raw.githubusercontent.com/bwan3150/ReSourcer/main/ops/setup.sh | sudo bash
 ```
 
-### Windows
-Double-click `re-sourcer-windows-x86_64.exe`
+Or grab `re-sourcer-linux-x86_64` from the latest `server-v*` [release](../../releases)
+and run it directly. See [docs/deployment.md](docs/deployment.md) for the data directory
+layout, updates and configuration.
 
-Then scan QR code or visit URL on the opened website using any devices under same LAN.
+The server also hosts the web UI — no separate container needed. Open
+`http://<host>:1234` from any device on the same network.
+
+## Updating
+
+| | How |
+|---|---|
+| Server | Settings → About → Server version → download, or re-run the install script |
+| Web UI | Settings → About → Web version → download (no restart) |
+| iOS | TestFlight |
 
 ## Development
 
 ```bash
-./dev.sh
+./dev.sh web     # server + vite dev server
+./dev.sh         # server only
+./ci.sh          # bump versions and push release tags
 ```
 
 ## Acknowledgments

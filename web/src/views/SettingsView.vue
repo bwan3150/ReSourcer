@@ -267,63 +267,7 @@
           </div>
         </div>
 
-        <!-- About -->
-        <div class="collapse collapse-arrow join-item border border-base-300">
-          <input type="radio" name="settings-accordion" />
-          <div class="collapse-title font-medium text-sm flex items-center gap-2">
-            <Info :size="18" class="text-base-content/50" />
-            {{ $t('settings.about') }}
-          </div>
-          <div class="collapse-content">
-            <div class="space-y-2 text-sm">
-              <div class="flex justify-between items-center">
-                <span class="text-base-content/50">{{ $t('settings.webVersion') }}</span>
-                <div class="flex items-center gap-2">
-                  <span>{{ webVersion }}</span>
-                  <span v-if="hasWebUpdate" class="badge badge-outline badge-xs">{{ latestWebVersion }}</span>
-                  <button v-if="hasWebUpdate" class="btn btn-ghost btn-xs" @click="doWebUpdateNow" :disabled="updatingWeb">
-                    <span v-if="updatingWeb" class="loading loading-spinner loading-xs"></span>
-                    <Download v-else :size="14" />
-                  </button>
-                  <button v-else class="btn btn-ghost btn-xs" @click="checkWebUpdateOnly" :disabled="checkingWeb">
-                    <span v-if="checkingWeb" class="loading loading-spinner loading-xs"></span>
-                    <RefreshCw v-else :size="14" />
-                  </button>
-                </div>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-base-content/50">{{ $t('settings.serverVersion') }}</span>
-                <div class="flex items-center gap-2">
-                  <span>{{ serverVersion || '—' }}</span>
-                  <span v-if="hasServerUpdate" class="badge badge-outline badge-xs">{{ latestVersion }}</span>
-                  <button
-                    v-if="hasServerUpdate"
-                    class="btn btn-ghost btn-xs"
-                    @click="doServerUpdate"
-                    :disabled="updating"
-                  >
-                    <span v-if="updating" class="loading loading-spinner loading-xs"></span>
-                    <Download v-else :size="14" />
-                  </button>
-                  <button v-else class="btn btn-ghost btn-xs" @click="checkServerUpdateOnly" :disabled="checkingServer">
-                    <span v-if="checkingServer" class="loading loading-spinner loading-xs"></span>
-                    <RefreshCw v-else :size="14" />
-                  </button>
-                </div>
-              </div>
-              <div class="flex gap-2 mt-4">
-                <a v-if="iosUrl" :href="iosUrl" target="_blank" rel="noopener" class="btn btn-ghost btn-xs gap-1">
-                  <Smartphone :size="16" />
-                  iOS
-                </a>
-                <a v-if="githubUrl" :href="githubUrl" target="_blank" rel="noopener" class="btn btn-ghost btn-xs gap-1">
-                  <Github :size="16" />
-                  GitHub
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
+        <AboutSection @toast="showToast" />
       </div>
     </div>
 
@@ -342,13 +286,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, Info, Github, Download, Smartphone, HardDrive, Trash2, Keyboard, Play, UploadCloud, LockOpen } from 'lucide-vue-next'
+import { FolderCog, Folders, EyeOff, Wrench, RefreshCw, Pencil, HardDrive, Trash2, Keyboard, Play, UploadCloud, LockOpen } from 'lucide-vue-next'
 import { DEFAULTS as SHORTCUT_ACTIONS, getShortcuts, setShortcut, resetShortcuts, formatShortcut, encodeKey } from '../composables/useKeyboardShortcuts'
 import AppLayout from '../components/layout/AppLayout.vue'
 import SourceFolderManager from '../components/settings/SourceFolderManager.vue'
 import CategoryManager from '../components/settings/CategoryManager.vue'
 import IgnoreManager from '../components/settings/IgnoreManager.vue'
 import FileBrowserModal from '../components/settings/FileBrowserModal.vue'
+import AboutSection from '../components/settings/AboutSection.vue'
 import PatternLock from '../components/shared/PatternLock.vue'
 import { usePrivacy } from '../composables/usePrivacy'
 import { getCacheStats, getTotalCacheSize, clearServerCache, clearAllThumbnailCache } from '../composables/useThumbnailCache'
@@ -418,21 +363,6 @@ function onPatternSuccess() {
 const tools = ref([])
 const editingTool = ref('')
 const editUrls = ref({ linux_x86_64: '', linux_aarch64: '', macos: '', windows: '' })
-
-// About & Update
-const webVersion = __APP_VERSION__
-const serverVersion = ref('')
-const githubUrl = ref('')
-const iosUrl = ref('')
-const latestVersion = ref('')
-const hasServerUpdate = ref(false)
-const latestWebVersion = ref('')
-const hasWebUpdate = ref(false)
-const checkingWeb = ref(false)
-const updatingWeb = ref(false)
-const checkingServer = ref(false)
-const checking = ref(false)
-const updating = ref(false)
 
 // Shortcuts
 const shortcutActions = Object.keys(SHORTCUT_ACTIONS)
@@ -507,12 +437,6 @@ onMounted(async () => {
   await loadTools()
   await loadUploadPolicy()
   refreshCacheInfo()
-  try {
-    const { data } = await configApi.getAppInfo()
-    serverVersion.value = data.version || ''
-    githubUrl.value = data.githubUrl || ''
-    iosUrl.value = data.iosUrl || ''
-  } catch {}
 })
 
 async function loadSettings() {
@@ -607,103 +531,6 @@ async function saveToolUrls(name) {
     await loadTools()
     showToast(t('settings.saveSuccess'))
   } catch {}
-}
-
-async function checkWebUpdateOnly() {
-  checkingWeb.value = true
-  try {
-    // 问服务端：只有它知道自己托管的那份静态文件是什么版本
-    const { data } = await configApi.checkWebUpdate()
-    latestWebVersion.value = data.latestVersion || ''
-    hasWebUpdate.value = data.hasUpdate || false
-    if (!data.hasUpdate) showToast(t('settings.upToDate'))
-  } catch {
-    // 服务端没托管网页端（独立部署）时退回直接查 GitHub，只提示、不提供更新按钮
-    try {
-      const resp = await fetch('https://api.github.com/repos/bwan3150/ReSourcer/tags?per_page=20', {
-        headers: { 'Accept': 'application/vnd.github.v3+json' }
-      })
-      if (resp.ok) {
-        const tags = await resp.json()
-        const webTag = tags.find(t => t.name.startsWith('web-v'))
-        if (webTag) {
-          const latest = webTag.name.replace('web-v', '')
-          latestWebVersion.value = latest
-          hasWebUpdate.value = latest !== webVersion
-        }
-      }
-    } catch {}
-  }
-  checkingWeb.value = false
-}
-
-async function doWebUpdateNow() {
-  updatingWeb.value = true
-  try {
-    await configApi.doWebUpdate()
-    showToast(t('settings.webUpdated'))
-    hasWebUpdate.value = false
-    // 静态文件已就位，刷新页面即可加载新版本
-    setTimeout(() => window.location.reload(true), 1200)
-  } catch {
-    updatingWeb.value = false
-  }
-}
-
-async function checkServerUpdateOnly() {
-  checkingServer.value = true
-  try {
-    const { data } = await configApi.checkUpdate()
-    latestVersion.value = data.latestVersion || ''
-    hasServerUpdate.value = data.hasUpdate || false
-    if (!data.hasUpdate) showToast(t('settings.upToDate'))
-  } catch {}
-  checkingServer.value = false
-}
-
-async function doServerUpdate() {
-  updating.value = true
-  try {
-    await configApi.doUpdate()
-    showToast(t('settings.updateStarted'))
-    hasServerUpdate.value = false
-    // Poll health until server is back
-    await waitForRestart()
-    // Refresh version info
-    await loadSettings()
-    updating.value = false
-    showToast(t('settings.upToDate'))
-  } catch {
-    updating.value = false
-  }
-}
-
-async function waitForRestart() {
-  const { getServerUrl } = await import('../composables/useServer')
-  const base = getServerUrl()
-  // Phase 1: wait for server to go down
-  let wentDown = false
-  for (let i = 0; i < 10; i++) {
-    await new Promise(r => setTimeout(r, 500))
-    try {
-      const resp = await fetch(`${base}/api/health`)
-      if (!resp.ok) { wentDown = true; break }
-    } catch {
-      wentDown = true; break
-    }
-  }
-  if (!wentDown) {
-    // Server didn't go down within 5s, wait a bit more
-    await new Promise(r => setTimeout(r, 2000))
-  }
-  // Phase 2: wait for server to come back up
-  for (let i = 0; i < 30; i++) {
-    try {
-      const resp = await fetch(`${base}/api/health`)
-      if (resp.ok) return
-    } catch {}
-    await new Promise(r => setTimeout(r, 1000))
-  }
 }
 
 async function refreshCacheInfo() {

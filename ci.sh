@@ -174,8 +174,8 @@ choice=0
 menu_select choice \
     "${YELLOW}Select release target:${NC}" \
     "Server     → GitHub Release" \
-    "Web        → Docker Image" \
-    "iOS        → Pgyer" \
+    "Web        → GitHub Release" \
+    "iOS        → TestFlight" \
     "All        → All of the above"
 
 BUMP_SERVER=false
@@ -296,7 +296,7 @@ if [ -n "$NEW_WEB_VER" ]; then
 
     git tag "$WEB_TAG"
     git push origin "$WEB_TAG" || { echo -e "${RED}Web tag push failed${NC}"; exit 1; }
-    echo -e "${GREEN}Tag ${WEB_TAG} pushed → CI: Docker image ghcr.io${NC}"
+    echo -e "${GREEN}Tag ${WEB_TAG} pushed → CI: web-dist.zip → GitHub Release${NC}"
 fi
 
 # === iOS release ===
@@ -313,7 +313,7 @@ if [ -n "$NEW_IOS_VER" ]; then
 
     git tag "$IOS_TAG"
     git push origin "$IOS_TAG" || { echo -e "${RED}iOS tag push failed${NC}"; exit 1; }
-    echo -e "${GREEN}Tag ${IOS_TAG} pushed → CI: iOS build + Pgyer${NC}"
+    echo -e "${GREEN}Tag ${IOS_TAG} pushed → CI: iOS build + TestFlight${NC}"
 fi
 
 # === Server release ===

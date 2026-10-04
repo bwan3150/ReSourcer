@@ -21,7 +21,13 @@
   参照 `server/src/playlist/`，不要把 SQL 写进 handlers。
 - 所有表在 `server/src/database.rs` 里 `CREATE TABLE IF NOT EXISTS` 建，不引入迁移框架。
 - 数据库连接一律走 `database::get_connection()`（已配好 WAL + busy_timeout），不要自己 `Connection::open`。
-- 路径一律走 `static_files::app_dir()` 派生，**不准硬编码 `/opt` 之类的绝对路径**。
+- 路径一律从 `static_files` 派生，**不准硬编码 `/opt` 之类的绝对路径**。两者分工不同，别混用：
+  - `app_dir()` —— 程序目录，NAS 系统更新可能被整体清空。只放二进制和临时文件。
+  - `data_dir()` —— 持久化目录（`RESOURCER_DATA_DIR` > `app_dir()/data.json` > `app_dir()`）。
+    `sqlite/` `config/` `credentials/` `backups/` 以及派生的 `tools_dir()` / `web_dir()` 都在它下面。
+  - 新增任何「必须跨重装保留」的目录，要同时加进 `migrate_legacy_data_if_needed()` 的搬迁清单。
+- 网页端由服务端托管（`web_static.rs`，静态文件在 `data_dir()/web`）。
+  新增路由必须挂在 `/api` 下 —— 非 `/api` 路径会被静态托管和 SPA 回退接走，且不经过鉴权。
 
 **web**
 - HTTP 请求一律走 `web/src/api/*.js`，组件里不准出现裸 `fetch(` 或直接 `axios.`。
@@ -60,7 +66,7 @@ guard 里的 `linecount` 用的是**棘轮基线**：超阈文件记住当前行
 |---|---|
 | 编译 | `cargo check --manifest-path server/Cargo.toml`；web `cd web && npm run build` |
 | 单元测试 | `cargo test --manifest-path server/Cargo.toml` |
-| 启动 | `RESOURCER_DIR=<临时目录> cargo run --manifest-path server/Cargo.toml`，默认端口见 `server/src/main.rs` |
+| 启动 | `RESOURCER_DIR=<临时目录> cargo run --manifest-path server/Cargo.toml`，默认端口见 `server/src/main.rs`。要验持久化目录相关的改动，另给 `RESOURCER_DATA_DIR` |
 | API 测试 | 起服务后用 curl/脚本打真实接口，检查状态码 + JSON 字段；**要覆盖重启后数据是否还在** |
 | web UI | `cd web && npm run dev` → http://localhost:5173 ，用 `tke-ui-test` skill 操作真实浏览器 |
 | iOS UI | 用 `tke-ui-test` skill 驱动 iOS 模拟器/真机，**手势类改动必须真机实测并留截图序列**，光编译通过不算数 |
@@ -71,4 +77,5 @@ guard 里的 `linecount` 用的是**棘轮基线**：超阈文件记住当前行
 
 - `docs/API.md` —— 接口约定
 - `docs/database.md` —— 表结构
+- `docs/deployment.md` —— 部署、数据目录、更新机制
 - `README.md` —— 对外功能说明与 To-do

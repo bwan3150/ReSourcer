@@ -12,6 +12,10 @@ Base URL: `http://localhost:1234`
 | GET | `/api/health` | 健康检查（无需认证） |
 | GET | `/api/config` | 获取全局配置 |
 | GET | `/api/app` | 获取应用配置（版本、下载链接） |
+| GET | `/api/app/check-update` | 检查服务端是否有新版本 |
+| POST | `/api/app/update` | 服务端自更新（替换二进制后重启） |
+| GET | `/api/app/web/check-update` | 检查网页端是否有新版本 |
+| POST | `/api/app/web/update` | 更新网页端静态文件（无需重启） |
 
 ### 认证 API (`/api/auth`)
 | 方法 | 路径 | 描述 |
@@ -129,7 +133,28 @@ Base URL: `http://localhost:1234`
 **无需认证的端点**:
 - `GET /api/health`
 - `POST /api/auth/verify`
-- `GET /api/app`
+- `/api/app` 下全部（版本查询与更新）
+
+**网页端静态资源不鉴权**：所有不以 `/api` 开头的路径一律放行。它们是公开的构建产物，
+而且登录页本身就是静态文件 —— 拦住它用户就永远拿不到 API Key。要保护的是 `/api` 后面的数据。
+
+---
+
+## 网页端托管
+
+服务端直接托管网页端，静态文件在 `data_dir()/web`：
+
+| 路径 | 行为 |
+|------|------|
+| `/` | 返回 `index.html`，`Cache-Control: no-cache` |
+| `/assets/*` | 构建产物，文件名带内容 hash，`Cache-Control: immutable`（一年） |
+| 其他非 `/api` 路径 | 磁盘上有文件就返回文件，没有则回退到 `index.html`（SPA 路由） |
+| 不存在的 `/api/*` | 404，不会被 SPA 回退吃掉 |
+
+`index.html` 必须禁缓存：它引用的 assets 文件名带 hash，更新替换目录后旧 assets 会被删掉，
+浏览器若拿着缓存的旧 `index.html` 就会请求已不存在的文件，表现为整页白屏。
+
+在 `config/preference.json` 里设 `enable_web: false` 可关闭托管，只保留后端 API。
 
 ---
 
@@ -160,13 +185,74 @@ Base URL: `http://localhost:1234`
 ### GET `/api/app`
 获取应用配置（版本、下载链接）
 
+`version` 在每次启动时与二进制自身的版本号对齐，所以它反映的是当前真正跑着的版本。
+
 **Response:**
 ```json
 {
-  "version": "0.2.7-beta",
+  "version": "0.3.20-beta",
   "android_url": "https://...",
   "ios_url": "https://...",
   "github_url": "https://..."
+}
+```
+
+### GET `/api/app/check-update`
+检查服务端是否有新版本。只看 `server-v*` 的 release（网页端用的是 `web-v*`，两者各自发版）。
+
+**Response:**
+```json
+{
+  "current_version": "0.3.20-beta",
+  "latest_version": "0.3.21-beta",
+  "has_update": true,
+  "download_url": "https://github.com/.../re-sourcer-linux-x86_64"
+}
+```
+
+拿不到 GitHub 时返回 `has_update: false` 并附带 `error` 字段，不会报错。
+
+### POST `/api/app/update`
+服务端自更新：下载对应平台的二进制，备份旧的（`.bak`）后替换，然后退出进程。
+需要由进程管理器拉起（systemd 的 `Restart=always`）。
+
+更新期间除 `/api/health` 外的所有请求返回 503。
+
+**Response:**
+```json
+{
+  "status": "updating",
+  "message": "Updated to 0.3.21-beta. Server is restarting."
+}
+```
+
+### GET `/api/app/web/check-update`
+检查网页端是否有新版本。只看 `web-v*` 的 release。
+当前版本读自 `data_dir()/web/version.json`；手工放置的构建产物没有这个文件，
+此时 `current_version` 为 `null` 且不会提示更新。
+
+**Response:**
+```json
+{
+  "current_version": "0.3.14-beta",
+  "latest_version": "0.3.15-beta",
+  "has_update": true,
+  "download_url": "https://github.com/.../web-dist.zip"
+}
+```
+
+### POST `/api/app/web/update`
+更新网页端：下载 `web-dist.zip`，解压到临时目录并确认含 `index.html` 后，
+原子替换 `data_dir()/web`。**不重启进程**，下一次请求即生效。
+
+任一步失败都会把原目录换回来，不会留下半套文件。
+
+**Response:**
+```json
+{
+  "status": "success",
+  "version": "0.3.15-beta",
+  "message": "网页端已更新到 0.3.15-beta，刷新页面即可生效"
 }
 ```
 
