@@ -120,9 +120,6 @@
               <span class="badge badge-sm" :class="authStatus[p] ? 'badge-outline' : 'badge-ghost'">
                 {{ authStatus[p] ? $t('downloader.configured') : $t('downloader.notConfigured') }}
               </span>
-              <button class="btn btn-ghost btn-xs btn-circle" :title="$t('downloader.authHelp')" @click="showAuthHelp(p)">
-                <CircleHelp class="w-4 h-4 text-base-content/50" />
-              </button>
             </div>
             <div class="flex gap-1">
               <button class="btn btn-ghost btn-xs" @click="showAuthInput(p)">{{ $t('downloader.uploadAuth') }}</button>
@@ -162,20 +159,6 @@
       <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
-    <!-- Auth help -->
-    <dialog ref="helpDialog" class="modal">
-      <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">
-          {{ helpPlatform === 'x' ? 'X (Twitter)' : 'Pixiv' }} · {{ $t('downloader.authHelpTitle') }}
-        </h3>
-        <p class="text-sm whitespace-pre-line leading-relaxed text-base-content/80">{{ helpBody }}</p>
-        <div class="modal-action">
-          <button class="btn" @click="helpDialog?.close()">{{ $t('common.close') }}</button>
-        </div>
-      </div>
-      <form method="dialog" class="modal-backdrop"><button>close</button></form>
-    </dialog>
-
     <!-- Auth input -->
     <dialog ref="authDialog" class="modal">
       <div class="modal-box">
@@ -194,7 +177,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Download, ChevronRight, Plus, History, Settings2, ListTodo, ClipboardPaste, CircleHelp } from 'lucide-vue-next'
+import { Download, ChevronRight, Plus, History, Settings2, ListTodo, ClipboardPaste } from 'lucide-vue-next'
 import AppLayout from '../components/layout/AppLayout.vue'
 import TaskList from '../components/downloader/TaskList.vue'
 import * as downloadApi from '../api/download'
@@ -237,11 +220,6 @@ const newFolderDialog = ref(null)
 const authStatus = ref({ x: false, pixiv: false })
 const settingsDialog = ref(null)
 const authDialog = ref(null)
-const helpDialog = ref(null)
-const helpPlatform = ref('x')
-const helpBody = computed(() =>
-  t(helpPlatform.value === 'x' ? 'downloader.xHelpBody' : 'downloader.pixivHelpBody')
-)
 const authPlatform = ref('')
 const authContent = ref('')
 const ytdlpVersion = ref('')
@@ -365,11 +343,6 @@ async function createNewFolder() {
     const { data } = await folderApi.listFolders(currentFolder.value || sourceFolder.value)
     folders.value = data
   } catch {}
-}
-
-function showAuthHelp(platform) {
-  helpPlatform.value = platform
-  helpDialog.value?.showModal()
 }
 
 function showAuthInput(platform) {

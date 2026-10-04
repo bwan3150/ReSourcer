@@ -156,18 +156,6 @@ export default {
     uploadAuth: '上传认证',
     deleteAuth: '删除认证',
     authPlaceholder: '粘贴 Cookies 或 Token...',
-    authHelp: '如何获取?',
-    authHelpTitle: '如何获取凭证',
-    xHelpBody: `1. 在浏览器中登录 X(Twitter)。
-2. 安装浏览器扩展「Get cookies.txt LOCALLY」,Chrome、Edge、Firefox 商店均有。
-3. 打开 x.com,点击该扩展图标,选择 Export 导出 cookies.txt。
-4. 用文本编辑器打开导出的文件,全选内容,粘贴到上传框中。
-5. 在浏览器中退出登录会使凭证失效,失效后重新导出并覆盖即可。`,
-    pixivHelpBody: `1. 在浏览器中登录 pixiv。
-2. 按 F12 打开开发者工具,切换到「应用 / Application」标签。
-3. 左侧展开 Cookies → https://www.pixiv.net,找到名为 PHPSESSID 的一行。
-4. 复制它的 Value(形如 12345678_AbCdEf...),粘贴到上传框中。
-5. 只粘贴这个值,不要带 "PHPSESSID=" 前缀。失效后重复以上步骤即可。`,
     ytdlpVersion: 'yt-dlp 版本',
     ytdlpUpdate: '更新 yt-dlp',
     ytdlpDownload: '下载 yt-dlp',

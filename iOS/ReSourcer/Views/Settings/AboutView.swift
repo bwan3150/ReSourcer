@@ -13,10 +13,8 @@ struct AboutView: View {
     let appConfig: AppConfigResponse?
 
     @State private var isCheckingServer = false
-    @State private var isCheckingIOS = false
     @State private var isUpdatingServer = false
     @State private var latestServerVersion: String?
-    @State private var latestIOSVersion: String?
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
@@ -35,11 +33,6 @@ struct AboutView: View {
     private var hasServerUpdate: Bool {
         guard let latest = latestServerVersion else { return false }
         return latest != appConfig?.version
-    }
-
-    private var hasIOSUpdate: Bool {
-        guard let latest = latestIOSVersion else { return false }
-        return latest != appVersion
     }
 
     var body: some View {
@@ -61,19 +54,8 @@ struct AboutView: View {
 
                 // Version cards
                 VStack(spacing: AppTheme.Spacing.md) {
-                    versionRow(
-                        label: "iOS",
-                        current: displayVersion,
-                        latest: latestIOSVersion,
-                        hasUpdate: hasIOSUpdate,
-                        isChecking: isCheckingIOS,
-                        onCheck: { Task { await checkIOSUpdate() } },
-                        onUpdate: {
-                            if let iosUrl = appConfig?.iosUrl, let url = URL(string: iosUrl) {
-                                UIApplication.shared.open(url)
-                            }
-                        }
-                    )
+                    // iOS 新版本由 TestFlight 推送，此处只展示当前版本
+                    staticVersionRow(label: "iOS", current: displayVersion)
 
                     versionRow(
                         label: "Server",
@@ -110,6 +92,25 @@ struct AboutView: View {
         }
         .navigationTitle("关于")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    // MARK: - Static Version Row
+
+    private func staticVersionRow(label: String, current: String) -> some View {
+        HStack(spacing: AppTheme.Spacing.md) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text(current)
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .fontDesign(.monospaced)
+            }
+            Spacer()
+        }
+        .padding(AppTheme.Spacing.md)
+        .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
     }
 
     // MARK: - Version Row
@@ -217,16 +218,6 @@ struct AboutView: View {
 
     // MARK: - Methods
 
-    private func checkIOSUpdate() async {
-        isCheckingIOS = true
-        if let version = await Self.fetchPgyerVersion() {
-            await MainActor.run { latestIOSVersion = version }
-            if version == appVersion {
-                GlassAlertManager.shared.showSuccess("已是最新版本")
-            }
-        }
-        isCheckingIOS = false
-    }
 
     private func checkServerUpdate() async {
         isCheckingServer = true
@@ -280,18 +271,4 @@ struct AboutView: View {
         }
     }
 
-    private static func fetchPgyerVersion() async -> String? {
-        guard let url = URL(string: "https://www.pgyer.com/resourcer-ios") else { return nil }
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            guard let html = String(data: data, encoding: .utf8) else { return nil }
-            let pattern = #"aVersion\s*=\s*'([^']+)'"#
-            guard let regex = try? NSRegularExpression(pattern: pattern),
-                  let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
-                  let range = Range(match.range(at: 1), in: html) else { return nil }
-            return String(html[range])
-        } catch {
-            return nil
-        }
-    }
 }
