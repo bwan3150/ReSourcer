@@ -872,6 +872,8 @@ struct FilePreviewView: View {
             .frame(maxHeight: 280)
         }
         .frame(width: 280)
+        // Keep toggle children discoverable by XCUITest (same pattern as batchActionBar).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("queuePanel")
         .presentationCompactAdaptation(.popover)
     }
