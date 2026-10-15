@@ -15,6 +15,14 @@
         </template>
       </div>
       <span class="text-xs text-base-content/40 shrink-0">{{ total }}</span>
+      <button
+        class="btn btn-ghost btn-sm btn-square"
+        :class="{ 'btn-active': selectMode }"
+        @click="toggleSelectMode"
+        :title="$t('gallery.batchSelect')"
+      >
+        <CheckSquare :size="16" />
+      </button>
       <button class="btn btn-ghost btn-sm btn-square" @click="openNewFolderDialog" :title="$t('gallery.newFolder')">
         <FolderPlus :size="16" />
       </button>
@@ -109,9 +117,45 @@
             :loading="switchingFolder"
             :loading-more="loadingMore"
             :has-more="hasMore"
+            :select-mode="selectMode"
+            :selected-ids="selectedIds"
             @preview="openPreview"
             @load-more="loadMore"
+            @toggle-select="toggleFileSelect"
           />
+          <!-- Batch action bar -->
+          <div
+            v-if="selectMode"
+            class="sticky bottom-0 z-10 flex items-center gap-2 px-4 py-3 bg-base-100/95 backdrop-blur border-t border-base-300"
+          >
+            <span class="text-sm text-base-content/60 shrink-0">
+              {{ $t('gallery.selectedCount', { count: selectedIds.size }) }}
+            </span>
+            <button class="btn btn-ghost btn-sm" @click="selectAllVisible">
+              {{ allVisibleSelected ? $t('gallery.deselectAll') : $t('gallery.selectAll') }}
+            </button>
+            <div class="flex-1" />
+            <button
+              class="btn btn-ghost btn-sm gap-1"
+              :disabled="!selectedIds.size || bulkBusy"
+              @click="startBulkMove"
+            >
+              <FolderInput :size="14" />
+              {{ $t('common.move') }}
+            </button>
+            <button
+              v-if="!isInRecycleBin"
+              class="btn btn-ghost btn-sm gap-1 text-error"
+              :disabled="!selectedIds.size || bulkBusy"
+              @click="confirmBulkDelete"
+            >
+              <Trash2 :size="14" />
+              {{ $t('common.delete') }}
+            </button>
+            <button class="btn btn-ghost btn-sm" @click="exitSelectMode">
+              {{ $t('common.cancel') }}
+            </button>
+          </div>
         </div>
       </div>
     </template>
@@ -188,9 +232,10 @@
     <!-- Delete Confirm Dialog -->
     <ConfirmDialog
       ref="deleteDialog"
-      :title="$t('gallery.deleteConfirmTitle')"
-      :message="$t('gallery.deleteConfirmMsg')"
-      @confirm="doDelete"
+      :title="bulkDeletePending ? $t('gallery.bulkDeleteConfirmTitle', { count: selectedIds.size }) : $t('gallery.deleteConfirmTitle')"
+      :message="bulkDeletePending ? $t('gallery.bulkDeleteConfirmMsg') : $t('gallery.deleteConfirmMsg')"
+      @confirm="bulkDeletePending ? doBulkDelete() : doDelete()"
+      @cancel="bulkDeletePending = false"
     />
 
     <!-- New Folder Dialog -->
@@ -296,7 +341,7 @@ import { useTheme } from '../composables/useTheme'
 import UploadArea from '../components/gallery/UploadArea.vue'
 import TagEditor from '../components/gallery/TagEditor.vue'
 import ConfirmDialog from '../components/shared/ConfirmDialog.vue'
-import { Folder, ChevronRight, X, Pencil, FolderInput, RefreshCw, Info, Download, FolderPlus, Trash2 } from 'lucide-vue-next'
+import { Folder, ChevronRight, X, Pencil, FolderInput, RefreshCw, Info, Download, FolderPlus, Trash2, CheckSquare } from 'lucide-vue-next'
 import { contentUrl, thumbnailUrl } from '../api/preview'
 import { useCurrentFolder } from '../composables/useCurrentFolder'
 import { usePrivacy } from '../composables/usePrivacy'
@@ -443,6 +488,18 @@ const deleteDialog = ref(null)
 const deleteTarget = ref(null)
 const { isPrivate, isUnlocked } = usePrivacy()
 
+// 批量选择
+const selectMode = ref(false)
+const selectedIds = ref(new Set())
+const bulkBusy = ref(false)
+const bulkMoveMode = ref(false)
+const bulkDeletePending = ref(false)
+
+const allVisibleSelected = computed(() => {
+  if (!files.value.length) return false
+  return files.value.every(f => selectedIds.value.has(f.uuid))
+})
+
 // 当前浏览目录是否为回收站（回收站内禁止再次删除）
 const isInRecycleBin = computed(() => {
   const p = currentFolder.value || ''
@@ -484,6 +541,7 @@ onMounted(async () => {
 
 async function navigateTo(path) {
   closePreview()
+  exitSelectMode()
   setCurrentFolder(path)
   switchingFolder.value = true
   offset.value = 0
@@ -742,6 +800,7 @@ async function doRename() {
 }
 
 async function startMove(file) {
+  bulkMoveMode.value = false
   moveTargetFile.value = file
   moveTarget.value = ''
   await browseMoveTo(sourceFolder.value)
@@ -757,20 +816,111 @@ async function browseMoveTo(path) {
       indexerApi.getFolders(path, sourceFolder.value),
       indexerApi.getBreadcrumb(path),
     ])
-    moveFolders.value = foldersRes.status === 'fulfilled' ? foldersRes.value.data : []
+    const folders = foldersRes.status === 'fulfilled' ? foldersRes.value.data : []
+    // 回收站不作为移动目标
+    moveFolders.value = (folders || []).filter(f => f.name !== RECYCLE_BIN_NAME)
     moveBreadcrumbs.value = breadcrumbRes.status === 'fulfilled' ? breadcrumbRes.value.data : []
   } catch {}
   moveLoading.value = false
 }
 
 async function doMove() {
-  if (!moveTargetFile.value || !moveTarget.value) return
+  if (!moveTarget.value) return
+  if (bulkMoveMode.value) {
+    await doBulkMove()
+    return
+  }
+  if (!moveTargetFile.value) return
   try {
     await fileApi.moveFile(moveTargetFile.value.uuid, moveTarget.value)
     moveDialog.value?.close()
     closePreview()
     refreshFiles()
   } catch { alert(t('common.error')) }
+}
+
+function toggleSelectMode() {
+  if (selectMode.value) {
+    exitSelectMode()
+  } else {
+    selectMode.value = true
+    selectedIds.value = new Set()
+  }
+}
+
+function exitSelectMode() {
+  selectMode.value = false
+  selectedIds.value = new Set()
+  bulkMoveMode.value = false
+  bulkDeletePending.value = false
+}
+
+function toggleFileSelect(file) {
+  if (!file?.uuid) return
+  const next = new Set(selectedIds.value)
+  if (next.has(file.uuid)) next.delete(file.uuid)
+  else next.add(file.uuid)
+  selectedIds.value = next
+}
+
+function selectAllVisible() {
+  if (allVisibleSelected.value) {
+    selectedIds.value = new Set()
+  } else {
+    selectedIds.value = new Set(files.value.map(f => f.uuid).filter(Boolean))
+  }
+}
+
+async function startBulkMove() {
+  if (!selectedIds.value.size) return
+  bulkMoveMode.value = true
+  moveTargetFile.value = null
+  moveTarget.value = ''
+  await browseMoveTo(sourceFolder.value)
+  moveDialog.value?.showModal()
+}
+
+async function doBulkMove() {
+  if (!moveTarget.value || !selectedIds.value.size) return
+  bulkBusy.value = true
+  try {
+    const { data } = await fileApi.batchMoveFiles([...selectedIds.value], moveTarget.value)
+    moveDialog.value?.close()
+    if (data.failureCount > 0) {
+      alert(t('gallery.bulkPartialResult', { ok: data.successCount, fail: data.failureCount }))
+    }
+    exitSelectMode()
+    refreshFiles()
+  } catch {
+    alert(t('common.error'))
+  } finally {
+    bulkBusy.value = false
+  }
+}
+
+function confirmBulkDelete() {
+  if (!selectedIds.value.size) return
+  bulkDeletePending.value = true
+  deleteTarget.value = null
+  deleteDialog.value?.show()
+}
+
+async function doBulkDelete() {
+  if (!selectedIds.value.size) return
+  bulkBusy.value = true
+  try {
+    const { data } = await fileApi.batchDeleteFiles([...selectedIds.value])
+    if (data.failureCount > 0) {
+      alert(t('gallery.bulkPartialResult', { ok: data.successCount, fail: data.failureCount }))
+    }
+    exitSelectMode()
+    refreshFiles()
+  } catch {
+    alert(t('common.error'))
+  } finally {
+    bulkBusy.value = false
+    bulkDeletePending.value = false
+  }
 }
 
 // 新建文件夹：在当前浏览目录下创建
@@ -813,6 +963,7 @@ async function doDelete() {
     refreshFiles()
   } catch { alert(t('common.error')) }
   deleteTarget.value = null
+  bulkDeletePending.value = false
 }
 </script>
 

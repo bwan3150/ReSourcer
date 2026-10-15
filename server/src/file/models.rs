@@ -54,6 +54,44 @@ pub struct DeleteFileRequest {
     pub uuid: String,
 }
 
+/// 批量移动文件请求
+#[derive(Debug, Deserialize)]
+pub struct BatchMoveFilesRequest {
+    pub uuids: Vec<String>,
+    pub target_folder: String,
+}
+
+/// 批量删除文件请求（软删除：移入回收站）
+#[derive(Debug, Deserialize)]
+pub struct BatchDeleteFilesRequest {
+    pub uuids: Vec<String>,
+}
+
+/// 批量操作中成功的单项
+#[derive(Debug, Serialize)]
+pub struct BatchFileSuccess {
+    pub uuid: String,
+    pub new_path: String,
+}
+
+/// 批量操作中失败的单项
+#[derive(Debug, Serialize)]
+pub struct BatchFileFailure {
+    pub uuid: String,
+    pub error: String,
+}
+
+/// 批量文件操作响应
+#[derive(Debug, Serialize)]
+pub struct BatchFileOperationResponse {
+    /// success | partial | error
+    pub status: String,
+    pub success_count: usize,
+    pub failure_count: usize,
+    pub succeeded: Vec<BatchFileSuccess>,
+    pub failed: Vec<BatchFileFailure>,
+}
+
 /// 回收站文件夹名称（位于每个源文件夹根部，软删除的文件移动至此）
 /// 使用英文名并加下划线前缀，与普通用户文件夹区分
 pub const RECYCLE_BIN_NAME: &str = "_Recycle";

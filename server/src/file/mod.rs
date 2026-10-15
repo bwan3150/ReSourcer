@@ -3,6 +3,8 @@ pub mod models;
 mod rename;
 mod move_file;
 mod delete;
+mod batch;
+mod ops;
 mod info;
 mod utils;
 
@@ -13,5 +15,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("/rename").route(web::post().to(rename::rename_file)))
        .service(web::resource("/move").route(web::post().to(move_file::move_file)))
        .service(web::resource("/delete").route(web::post().to(delete::delete_file)))
+       .service(web::resource("/batch/move").route(web::post().to(batch::batch_move_files)))
+       .service(web::resource("/batch/delete").route(web::post().to(batch::batch_delete_files)))
        .service(web::resource("/info").route(web::get().to(info::get_file_info)));
 }

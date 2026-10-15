@@ -34,6 +34,8 @@ enum APIEndpoint {
     case fileRename                          // POST /api/file/rename
     case fileMove                            // POST /api/file/move
     case fileDelete                          // POST /api/file/delete（软删除到回收站）
+    case fileBatchMove                       // POST /api/file/batch/move
+    case fileBatchDelete                     // POST /api/file/batch/delete
 
     // MARK: - Folder 文件夹操作
     case folderList(sourceFolder: String?)   // GET  /api/folder/list
@@ -147,6 +149,10 @@ enum APIEndpoint {
             return "/api/file/move"
         case .fileDelete:
             return "/api/file/delete"
+        case .fileBatchMove:
+            return "/api/file/batch/move"
+        case .fileBatchDelete:
+            return "/api/file/batch/delete"
 
         // Folder
         case .folderList(let sourceFolder):

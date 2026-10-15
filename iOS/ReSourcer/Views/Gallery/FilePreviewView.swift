@@ -270,8 +270,9 @@ struct FilePreviewView: View {
                 apiService: apiService,
                 sourceFolder: NavigationState.shared.sourceFolder,
                 file: currentFile,
+                uuids: currentFile?.uuid.map { [$0] } ?? [],
                 onDismiss: { showMoveSheet = false },
-                onMoved: { folderName in
+                onMoved: { folderName, _ in
                     showMoveSheet = false
                     GlassAlertManager.shared.showSuccess("已移动到 \(folderName)")
                     handlePostOperation()

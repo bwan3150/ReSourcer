@@ -57,4 +57,22 @@ actor FileService {
         let response: FileMoveResponse = try await networkManager.request(.fileDelete, body: request)
         return response
     }
+
+    /// 批量移动文件到同一目标文件夹
+    /// - Parameters:
+    ///   - uuids: 文件 UUID 列表
+    ///   - targetFolder: 目标文件夹路径
+    /// - Returns: 批量操作结果（含成功/失败明细）
+    func batchMoveFiles(uuids: [String], to targetFolder: String) async throws -> FileBatchOperationResponse {
+        let request = FileBatchMoveRequest(uuids: uuids, targetFolder: targetFolder)
+        return try await networkManager.request(.fileBatchMove, body: request)
+    }
+
+    /// 批量软删除文件到回收站
+    /// - Parameter uuids: 文件 UUID 列表
+    /// - Returns: 批量操作结果（含成功/失败明细）
+    func batchDeleteFiles(uuids: [String]) async throws -> FileBatchOperationResponse {
+        let request = FileBatchDeleteRequest(uuids: uuids)
+        return try await networkManager.request(.fileBatchDelete, body: request)
+    }
 }

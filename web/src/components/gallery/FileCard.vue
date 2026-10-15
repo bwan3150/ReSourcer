@@ -1,7 +1,8 @@
 <template>
   <div
-    class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer group overflow-hidden"
-    @click="$emit('click', file)"
+    class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer group overflow-hidden relative"
+    :class="{ 'ring-2 ring-primary': selectMode && selected }"
+    @click="onClick"
   >
     <figure class="relative aspect-square bg-base-200 overflow-hidden">
       <img
@@ -25,6 +26,22 @@
         <component :is="fileIconInfo.icon" :size="32" :style="{ color: fileIconInfo.color }" />
       </div>
 
+      <!-- Selection checkbox -->
+      <div
+        v-if="selectMode"
+        class="absolute top-1.5 left-1.5 z-10"
+        @click.stop="$emit('toggle-select', file)"
+      >
+        <div
+          class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors"
+          :class="selected
+            ? 'bg-primary border-primary text-primary-content'
+            : 'bg-base-100/80 border-base-content/40'"
+        >
+          <Check v-if="selected" :size="12" :stroke-width="3" />
+        </div>
+      </div>
+
       <!-- File type badge -->
       <div class="absolute top-1 right-1 badge badge-sm" :class="typeBadgeClass">
         {{ file.extension?.replace('.', '').toUpperCase() }}
@@ -38,15 +55,25 @@
 
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
-import { Play } from 'lucide-vue-next'
+import { Play, Check } from 'lucide-vue-next'
 import { thumbnailUrl } from '../../api/preview'
 import { getCachedThumbnail } from '../../composables/useThumbnailCache'
 import { getFileIcon } from '../../composables/useFileIcon'
 
 const props = defineProps({
   file: { type: Object, required: true },
+  selectMode: { type: Boolean, default: false },
+  selected: { type: Boolean, default: false },
 })
-defineEmits(['click'])
+const emit = defineEmits(['click', 'toggle-select'])
+
+function onClick() {
+  if (props.selectMode) {
+    emit('toggle-select', props.file)
+  } else {
+    emit('click', props.file)
+  }
+}
 
 const isImage = computed(() => props.file.fileType === 'image')
 const isGif = computed(() => props.file.fileType === 'gif')

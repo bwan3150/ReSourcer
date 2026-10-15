@@ -28,6 +28,9 @@ Base URL: `http://localhost:1234`
 |------|------|------|
 | POST | `/api/file/rename` | 重命名文件 |
 | POST | `/api/file/move` | 移动文件 |
+| POST | `/api/file/delete` | 软删除文件（移入回收站） |
+| POST | `/api/file/batch/move` | 批量移动文件 |
+| POST | `/api/file/batch/delete` | 批量软删除文件 |
 | GET | `/api/file/info` | 获取文件信息 |
 
 ### 文件夹操作 API (`/api/folder`)
@@ -337,6 +340,64 @@ Base URL: `http://localhost:1234`
   "new_path": "/path/to/target/file.jpg"
 }
 ```
+
+### POST `/api/file/delete`
+软删除文件：移动到当前源文件夹下的 `_Recycle` 回收站（懒创建）。不做物理删除。
+
+**Request Body:**
+```json
+{
+  "uuid": "file-uuid"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "uuid": "file-uuid",
+  "new_path": "/path/to/source/_Recycle/file.jpg"
+}
+```
+
+### POST `/api/file/batch/move`
+批量移动文件到同一目标文件夹。单项失败不影响其余项。
+
+**Request Body:**
+```json
+{
+  "uuids": ["file-uuid-1", "file-uuid-2"],
+  "target_folder": "/path/to/target"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "success_count": 2,
+  "failure_count": 0,
+  "succeeded": [
+    { "uuid": "file-uuid-1", "new_path": "/path/to/target/a.jpg" },
+    { "uuid": "file-uuid-2", "new_path": "/path/to/target/b.jpg" }
+  ],
+  "failed": []
+}
+```
+
+`status` 为 `success`（全部成功）、`partial`（部分成功）或 `error`（全部失败）。
+
+### POST `/api/file/batch/delete`
+批量软删除：将文件移动到源文件夹回收站。单项失败不影响其余项。回收站内文件会被拒绝。
+
+**Request Body:**
+```json
+{
+  "uuids": ["file-uuid-1", "file-uuid-2"]
+}
+```
+
+**Response:** 同 `/api/file/batch/move`。
 
 ### GET `/api/file/info?folder=<path>`
 获取指定文件夹的所有媒体文件信息
