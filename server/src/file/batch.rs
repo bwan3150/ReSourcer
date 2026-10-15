@@ -7,7 +7,7 @@ use super::models::{
 };
 use super::ops::{delete_one, move_one};
 
-fn batch_status(success_count: usize, failure_count: usize) -> &'static str {
+pub(crate) fn batch_status(success_count: usize, failure_count: usize) -> &'static str {
     if failure_count == 0 {
         "success"
     } else if success_count == 0 {
@@ -98,4 +98,30 @@ pub async fn batch_delete_files(req: web::Json<BatchDeleteFilesRequest>) -> Resu
         succeeded,
         failed,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::batch_status;
+
+    #[test]
+    fn batch_status_all_success() {
+        assert_eq!(batch_status(3, 0), "success");
+    }
+
+    #[test]
+    fn batch_status_all_failed() {
+        assert_eq!(batch_status(0, 2), "error");
+    }
+
+    #[test]
+    fn batch_status_partial() {
+        assert_eq!(batch_status(2, 1), "partial");
+    }
+
+    #[test]
+    fn batch_status_empty_counts_is_success() {
+        // 空列表在 handler 层已拒绝；status 辅助函数本身视作成功
+        assert_eq!(batch_status(0, 0), "success");
+    }
 }

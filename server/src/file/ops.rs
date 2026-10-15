@@ -144,3 +144,118 @@ pub fn delete_one(uuid: &str) -> Result<String, FileOpError> {
 
     Ok(new_path_str)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::indexer::models::IndexedFile;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::sync::Mutex;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    /// 全局锁：ops 测试依赖进程级 RESOURCER_DIR / DB，必须串行
+    static TEST_LOCK: Mutex<()> = Mutex::new(());
+
+    struct TestEnv {
+        _guard: std::sync::MutexGuard<'static, ()>,
+        data_dir: PathBuf,
+        source: PathBuf,
+        dest: PathBuf,
+    }
+
+    impl TestEnv {
+        fn setup() -> Self {
+            let guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+            let nanos = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos();
+            let root = std::env::temp_dir().join(format!("resourcer-ops-{}", nanos));
+            let data_dir = root.join("data");
+            let source = root.join("source");
+            let dest = source.join("Album");
+            fs::create_dir_all(&data_dir).unwrap();
+            fs::create_dir_all(&dest).unwrap();
+            std::env::set_var("RESOURCER_DIR", &data_dir);
+            std::env::remove_var("RESOURCER_DATA_DIR");
+            crate::database::init_db().expect("init_db");
+            crate::config_api::storage::add_source_folder(source.to_str().unwrap())
+                .expect("add_source");
+            Self {
+                _guard: guard,
+                data_dir,
+                source,
+                dest,
+            }
+        }
+
+        fn register_file(&self, name: &str, bytes: &[u8]) -> String {
+            let path = self.source.join(name);
+            fs::write(&path, bytes).unwrap();
+            let uuid = uuid::Uuid::new_v4().to_string();
+            let now = chrono::Utc::now().to_rfc3339();
+            let file = IndexedFile {
+                uuid: uuid.clone(),
+                fingerprint: format!("fp-{}", name),
+                current_path: Some(path.to_string_lossy().to_string()),
+                folder_path: self.source.to_string_lossy().to_string(),
+                file_name: name.to_string(),
+                file_type: "image".to_string(),
+                extension: "png".to_string(),
+                file_size: bytes.len() as i64,
+                created_at: now.clone(),
+                modified_at: now.clone(),
+                indexed_at: now,
+                source_url: None,
+            };
+            crate::indexer::storage::upsert_file(&file).expect("upsert");
+            uuid
+        }
+    }
+
+    impl Drop for TestEnv {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(self.data_dir.parent().unwrap_or(&self.data_dir));
+            std::env::remove_var("RESOURCER_DIR");
+        }
+    }
+
+    #[test]
+    fn move_one_relocates_file_and_updates_index() {
+        let env = TestEnv::setup();
+        let uuid = env.register_file("a.png", b"aaa");
+        let new_path = move_one(&uuid, env.dest.to_str().unwrap(), None).unwrap();
+        assert!(Path::new(&new_path).exists());
+        assert!(!env.source.join("a.png").exists());
+        let indexed = crate::indexer::storage::get_file_by_uuid(&uuid)
+            .unwrap()
+            .unwrap();
+        assert_eq!(indexed.current_path.as_deref(), Some(new_path.as_str()));
+        assert_eq!(
+            indexed.folder_path,
+            env.dest.to_string_lossy().to_string()
+        );
+    }
+
+    #[test]
+    fn delete_one_moves_to_recycle_bin() {
+        let env = TestEnv::setup();
+        let uuid = env.register_file("b.png", b"bbb");
+        let new_path = delete_one(&uuid).unwrap();
+        let recycle = env.source.join(RECYCLE_BIN_NAME);
+        assert!(recycle.exists());
+        assert!(Path::new(&new_path).exists());
+        assert!(new_path.contains(RECYCLE_BIN_NAME));
+        // 回收站内再次删除应失败
+        let err = delete_one(&uuid).unwrap_err();
+        assert!(matches!(err, FileOpError::BadRequest(_)));
+    }
+
+    #[test]
+    fn move_one_unknown_uuid_is_not_found() {
+        let _env = TestEnv::setup();
+        let err = move_one("missing-uuid", "/tmp", None).unwrap_err();
+        assert!(matches!(err, FileOpError::NotFound(_)));
+    }
+}

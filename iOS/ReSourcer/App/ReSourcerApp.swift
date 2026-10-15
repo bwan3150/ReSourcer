@@ -73,6 +73,11 @@ struct ReSourcerApp: App {
 
     /// 检查是否已有登录状态
     private func checkExistingLogin() {
+        // UITest / E2E：通过环境变量注入服务器与 Key，跳过手动登录
+        if applyE2ELoginIfNeeded() {
+            return
+        }
+
         if LocalStorageService.shared.isLoggedIn(),
            let server = LocalStorageService.shared.getCurrentServer(),
            let service = APIService.create(for: server) {
@@ -92,6 +97,23 @@ struct ReSourcerApp: App {
                 }
             }
         }
+    }
+
+    /// 读取 `E2E_SERVER_URL` / `E2E_API_KEY`（由 XCUITest launchEnvironment 注入）
+    @discardableResult
+    private func applyE2ELoginIfNeeded() -> Bool {
+        let env = ProcessInfo.processInfo.environment
+        guard let url = env["E2E_SERVER_URL"], !url.isEmpty,
+              let key = env["E2E_API_KEY"], !key.isEmpty else {
+            return false
+        }
+        let server = Server(name: "E2E", baseURL: url, apiKey: key)
+        _ = LocalStorageService.shared.addServer(server)
+        _ = LocalStorageService.shared.setCurrentServer(server.id)
+        guard let service = APIService.create(for: server) else { return false }
+        self.apiService = service
+        self.isLoggedIn = true
+        return true
     }
 
     /// 处理登出

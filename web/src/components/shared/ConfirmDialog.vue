@@ -1,11 +1,11 @@
 <template>
-  <dialog ref="dialogEl" class="modal" @close="emit('cancel')">
+  <dialog ref="dialogEl" class="modal" data-testid="confirm-dialog" @close="emit('cancel')">
     <div class="modal-box">
-      <h3 class="font-bold text-lg">{{ title }}</h3>
+      <h3 class="font-bold text-lg" data-testid="confirm-title">{{ title }}</h3>
       <p class="py-4">{{ message }}</p>
       <div class="modal-action">
-        <button class="btn" @click="cancel">{{ $t('common.cancel') }}</button>
-        <button class="btn btn-error" @click="confirm">{{ $t('common.confirm') }}</button>
+        <button class="btn" data-testid="confirm-cancel" @click="cancel">{{ $t('common.cancel') }}</button>
+        <button class="btn btn-error" data-testid="confirm-ok" @click="confirm">{{ $t('common.confirm') }}</button>
       </div>
     </div>
     <form method="dialog" class="modal-backdrop"><button>close</button></form>

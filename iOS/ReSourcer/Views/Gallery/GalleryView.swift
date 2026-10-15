@@ -609,6 +609,7 @@ struct GalleryView: View {
                     .foregroundStyle(isSelectMode ? Color.accentColor : .primary)
                     .frame(width: 44, height: 44)
             }
+            .accessibilityIdentifier("batchSelectToggle")
             .interactiveGlassBackground(in: Circle())
 
             // 上传记录
@@ -920,6 +921,7 @@ struct GalleryView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier(file.uuid.map { "fileGridItem-\($0)" } ?? "fileGridItem-\(index)")
             }
 
             // 分页加载哨兵
@@ -1479,11 +1481,13 @@ struct GalleryView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+                .accessibilityIdentifier("batchSelectedCount")
 
             Button(allVisibleSelected ? "取消全选" : "全选") {
                 toggleSelectAllVisible()
             }
             .font(.subheadline)
+            .accessibilityIdentifier("batchSelectAll")
 
             Spacer(minLength: 0)
 
@@ -1493,6 +1497,7 @@ struct GalleryView: View {
                 Label("移动", systemImage: "folder")
             }
             .disabled(selectedUUIDs.isEmpty || isBulkBusy)
+            .accessibilityIdentifier("batchMoveButton")
 
             if !isInRecycleBin {
                 Button(role: .destructive) {
@@ -1501,15 +1506,18 @@ struct GalleryView: View {
                     Label("删除", systemImage: "trash")
                 }
                 .disabled(selectedUUIDs.isEmpty || isBulkBusy)
+                .accessibilityIdentifier("batchDeleteButton")
             }
 
             Button("取消") {
                 exitSelectMode()
             }
+            .accessibilityIdentifier("batchCancelButton")
         }
         .padding(.horizontal, AppTheme.Spacing.md)
         .padding(.vertical, AppTheme.Spacing.sm)
         .glassBackground(in: Capsule())
+        .accessibilityIdentifier("batchActionBar")
     }
 
     private func exitSelectMode() {

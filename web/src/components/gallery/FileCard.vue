@@ -2,6 +2,8 @@
   <div
     class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer group overflow-hidden relative"
     :class="{ 'ring-2 ring-primary': selectMode && selected }"
+    :data-testid="`file-card-${file.uuid}`"
+    :data-selected="selectMode && selected ? 'true' : 'false'"
     @click="onClick"
   >
     <figure class="relative aspect-square bg-base-200 overflow-hidden">

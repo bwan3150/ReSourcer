@@ -18,6 +18,7 @@
       <button
         class="btn btn-ghost btn-sm btn-square"
         :class="{ 'btn-active': selectMode }"
+        data-testid="batch-select-toggle"
         @click="toggleSelectMode"
         :title="$t('gallery.batchSelect')"
       >
@@ -126,17 +127,19 @@
           <!-- Batch action bar -->
           <div
             v-if="selectMode"
+            data-testid="batch-action-bar"
             class="sticky bottom-0 z-10 flex items-center gap-2 px-4 py-3 bg-base-100/95 backdrop-blur border-t border-base-300"
           >
-            <span class="text-sm text-base-content/60 shrink-0">
+            <span class="text-sm text-base-content/60 shrink-0" data-testid="batch-selected-count">
               {{ $t('gallery.selectedCount', { count: selectedIds.size }) }}
             </span>
-            <button class="btn btn-ghost btn-sm" @click="selectAllVisible">
+            <button class="btn btn-ghost btn-sm" data-testid="batch-select-all" @click="selectAllVisible">
               {{ allVisibleSelected ? $t('gallery.deselectAll') : $t('gallery.selectAll') }}
             </button>
             <div class="flex-1" />
             <button
               class="btn btn-ghost btn-sm gap-1"
+              data-testid="batch-move-btn"
               :disabled="!selectedIds.size || bulkBusy"
               @click="startBulkMove"
             >
@@ -146,13 +149,14 @@
             <button
               v-if="!isInRecycleBin"
               class="btn btn-ghost btn-sm gap-1 text-error"
+              data-testid="batch-delete-btn"
               :disabled="!selectedIds.size || bulkBusy"
               @click="confirmBulkDelete"
             >
               <Trash2 :size="14" />
               {{ $t('common.delete') }}
             </button>
-            <button class="btn btn-ghost btn-sm" @click="exitSelectMode">
+            <button class="btn btn-ghost btn-sm" data-testid="batch-cancel-btn" @click="exitSelectMode">
               {{ $t('common.cancel') }}
             </button>
           </div>
@@ -270,7 +274,7 @@
     </dialog>
 
     <!-- Move Dialog (folder browser) -->
-    <dialog ref="moveDialog" class="modal">
+    <dialog ref="moveDialog" class="modal" data-testid="move-dialog">
       <div class="modal-box max-w-sm overflow-hidden">
         <h3 class="font-bold text-lg mb-3">{{ $t('gallery.moveTo') }}</h3>
 
@@ -289,6 +293,7 @@
           <button
             class="btn btn-ghost btn-sm w-full justify-start gap-2 border border-base-300"
             :class="{ 'bg-base-300': moveTarget === moveBrowsePath }"
+            data-testid="move-here-btn"
             @click="moveTarget = moveBrowsePath"
           >
             <Folder :size="16" class="shrink-0" />
@@ -320,7 +325,7 @@
 
         <div class="modal-action">
           <button class="btn" @click="moveDialog?.close()">{{ $t('common.cancel') }}</button>
-          <button class="btn btn-neutral" @click="doMove" :disabled="!moveTarget">{{ $t('common.confirm') }}</button>
+          <button class="btn btn-neutral" data-testid="move-confirm-btn" @click="doMove" :disabled="!moveTarget">{{ $t('common.confirm') }}</button>
         </div>
       </div>
       <form method="dialog" class="modal-backdrop"><button>close</button></form>
