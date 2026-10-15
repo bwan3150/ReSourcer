@@ -50,6 +50,8 @@ The server also hosts the web UI — no separate container needed. Open
 ./ci.sh          # bump versions and push release tags
 ```
 
+Web Playwright E2E (`cd web && npm run test:e2e`) expects **Node 22**. On Mac, use [fnm](https://github.com/Schniz/fnm); `web/.node-version` pins `22`. The `test:e2e` script exits if the active Node major is not 22.
+
 ## Acknowledgments
 
 - [ffmpeg](https://github.com/FFmpeg/FFmpeg): Binary Included
