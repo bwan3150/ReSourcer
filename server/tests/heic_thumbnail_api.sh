@@ -30,6 +30,9 @@ install_tool() {
   local dest="$DATA/tools/$name"
   if [ -x "/tmp/heic-test/${name}-bundled" ]; then
     cp "/tmp/heic-test/${name}-bundled" "$dest"
+  elif [ -x "$ROOT/server/tools/$name" ]; then
+    # Prefer repo-bundled tools on Mac (API script historically hardcoded linux URLs).
+    cp "$ROOT/server/tools/$name" "$dest"
   else
     echo "-- downloading $name ..."
     curl -sSL -o "$dest" "$url"
@@ -37,8 +40,16 @@ install_tool() {
   chmod +x "$dest"
 }
 
-install_tool ffmpeg "https://resourcer-assets.s3.ap-southeast-2.amazonaws.com/binaries/ffmpeg/ffmpeg-linux-x86_64"
-install_tool ffprobe "https://resourcer-assets.s3.ap-southeast-2.amazonaws.com/binaries/ffprobe/ffprobe-linux-x86_64"
+# Platform URL is a last resort; prefer /tmp/heic-test/*-bundled or server/tools/.
+if [ "$(uname -s)" = "Darwin" ]; then
+  FFMPEG_URL="https://resourcer-assets.s3.ap-southeast-2.amazonaws.com/binaries/ffmpeg/ffmpeg-macos"
+  FFPROBE_URL="https://resourcer-assets.s3.ap-southeast-2.amazonaws.com/binaries/ffprobe/ffprobe-macos"
+else
+  FFMPEG_URL="https://resourcer-assets.s3.ap-southeast-2.amazonaws.com/binaries/ffmpeg/ffmpeg-linux-x86_64"
+  FFPROBE_URL="https://resourcer-assets.s3.ap-southeast-2.amazonaws.com/binaries/ffprobe/ffprobe-linux-x86_64"
+fi
+install_tool ffmpeg "$FFMPEG_URL"
+install_tool ffprobe "$FFPROBE_URL"
 
 cp "$FIXTURE" "$SRC/IMG_0792.HEIC"
 

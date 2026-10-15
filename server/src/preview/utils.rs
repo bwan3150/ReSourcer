@@ -385,14 +385,20 @@ pub fn extract_image_frame_ffmpeg(image_path: &Path) -> Result<image::DynamicIma
 /// 用 ffmpeg 将图片直接缩放到目标尺寸后读取
 /// max_size=0 表示不缩放（保留原始分辨率）
 /// 用于 image::open 内存超限时的 fallback，避免把超大图完整载入内存
+///
+/// 缩放走 `-filter_complex` 而非 `-vf`：新版 ffmpeg（含仓库 macos 构建）对 HEIF
+/// tile grid 会自动拼成 complex filtergraph，再叠 `-vf` 会报
+/// "Simple and complex filtering cannot be used together"。
 pub fn extract_image_thumbnail_ffmpeg(image_path: &Path, max_size: u32) -> Result<image::DynamicImage> {
     let ffmpeg_path = get_ffmpeg_path();
 
     let temp_output = std::env::temp_dir().join(format!("img_{}.jpg", uuid::Uuid::new_v4()));
 
-    // 如果指定了目标尺寸，用 scale filter 缩放（保持宽高比）
     let scale_filter = if max_size > 0 {
-        format!("scale={}:{}:force_original_aspect_ratio=decrease", max_size, max_size)
+        format!(
+            "scale={}:{}:force_original_aspect_ratio=decrease",
+            max_size, max_size
+        )
     } else {
         String::new()
     };
@@ -401,10 +407,18 @@ pub fn extract_image_thumbnail_ffmpeg(image_path: &Path, max_size: u32) -> Resul
     let filter_str; // 延长生命周期
     if !scale_filter.is_empty() {
         filter_str = scale_filter;
-        args.extend_from_slice(&["-vf", &filter_str]);
+        args.extend_from_slice(&["-filter_complex", &filter_str]);
     }
-    args.extend_from_slice(&["-frames:v", "1", "-update", "1", "-q:v", "2", "-y",
-        temp_output.to_str().unwrap()]);
+    args.extend_from_slice(&[
+        "-frames:v",
+        "1",
+        "-update",
+        "1",
+        "-q:v",
+        "2",
+        "-y",
+        temp_output.to_str().unwrap(),
+    ]);
 
     let output = Command::new(&ffmpeg_path)
         .args(&args)
@@ -622,21 +636,30 @@ tile_vertical_offset=0
         for name in ["ffmpeg", "ffprobe"] {
             let dest = tools.join(name);
             // Prefer pre-downloaded ReSourcer-bundled builds (HEIF tile aware).
-            // Do NOT copy distro ffmpeg — Ubuntu 6.x cannot assemble HEIC tiles.
+            // Do NOT copy distro ffmpeg — Ubuntu 6.x / Homebrew 9.x behave differently
+            // on tile grids than the binaries we ship under server/tools/.
             let alt = PathBuf::from("/tmp/heic-test").join(if name == "ffmpeg" {
                 "ffmpeg-bundled"
             } else {
                 "ffprobe-bundled"
             });
-            if alt.exists() {
-                let _ = fs::copy(&alt, &dest);
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt;
-                    let mut perms = fs::metadata(&dest).unwrap().permissions();
-                    perms.set_mode(0o755);
-                    fs::set_permissions(&dest, perms).unwrap();
-                }
+            let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("tools")
+                .join(name);
+            let src = if alt.exists() {
+                alt
+            } else if repo.exists() {
+                repo
+            } else {
+                continue;
+            };
+            let _ = fs::copy(&src, &dest);
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let mut perms = fs::metadata(&dest).unwrap().permissions();
+                perms.set_mode(0o755);
+                fs::set_permissions(&dest, perms).unwrap();
             }
         }
     }
@@ -658,22 +681,72 @@ tile_vertical_offset=0
         assert_eq!(img.width(), 300);
         assert_eq!(img.height(), 169);
 
-        // Naive -vf scale path only decodes one tile; assembled frame must differ.
-        let naive = extract_image_thumbnail_ffmpeg(&path, 300).expect("naive");
+        // Force stream 0 only: a single tile (often uniform wall / crop), not the
+        // full derived image. Newer ffmpeg auto-assembles tile grids when no
+        // -map is given, so compare against an explicit single-tile decode.
+        let single = extract_single_tile_thumbnail_ffmpeg(&path, 300).expect("single tile");
         let rgb = img.to_rgb8();
-        let naive_rgb = naive.to_rgb8();
+        let single_rgb = single.to_rgb8();
         let mut diff: u64 = 0;
-        let n = rgb.len().min(naive_rgb.len()) as u64;
-        for (a, b) in rgb.as_raw().iter().zip(naive_rgb.as_raw().iter()) {
+        let n = rgb.len().min(single_rgb.len()) as u64;
+        for (a, b) in rgb.as_raw().iter().zip(single_rgb.as_raw().iter()) {
             diff += (*a as i16 - *b as i16).unsigned_abs() as u64;
         }
         let mad = diff as f64 / n as f64;
         assert!(
             mad > 5.0,
-            "tiled extract should differ from single-tile naive decode (mad={})",
+            "tiled extract should differ from single-tile decode (mad={})",
             mad
         );
 
         let _ = fs::remove_dir_all(&data);
+    }
+
+    /// Decode only HEIF stream 0 (one tile) scaled to `max_size`.
+    fn extract_single_tile_thumbnail_ffmpeg(
+        image_path: &Path,
+        max_size: u32,
+    ) -> Result<image::DynamicImage> {
+        let ffmpeg_path = get_ffmpeg_path();
+        let temp_output = std::env::temp_dir().join(format!("tile0_{}.jpg", uuid::Uuid::new_v4()));
+        let scale = format!(
+            "scale={}:{}:force_original_aspect_ratio=decrease",
+            max_size, max_size
+        );
+        let output = Command::new(&ffmpeg_path)
+            .args([
+                "-i",
+                image_path.to_str().unwrap(),
+                "-map",
+                "0:0",
+                "-vf",
+                &scale,
+                "-frames:v",
+                "1",
+                "-update",
+                "1",
+                "-q:v",
+                "2",
+                "-y",
+                temp_output.to_str().unwrap(),
+            ])
+            .output()
+            .map_err(|e| {
+                actix_web::error::ErrorInternalServerError(format!("FFmpeg 执行失败: {}", e))
+            })?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let _ = fs::remove_file(&temp_output);
+            return Err(actix_web::error::ErrorInternalServerError(format!(
+                "FFmpeg 单 tile 转换失败: {}",
+                stderr
+            )));
+        }
+        let img = image::open(&temp_output).map_err(|e| {
+            let _ = fs::remove_file(&temp_output);
+            actix_web::error::ErrorInternalServerError(format!("无法读取单 tile 图片: {}", e))
+        })?;
+        let _ = fs::remove_file(&temp_output);
+        Ok(img)
     }
 }
