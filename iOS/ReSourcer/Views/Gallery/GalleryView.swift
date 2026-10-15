@@ -1517,6 +1517,9 @@ struct GalleryView: View {
         .padding(.horizontal, AppTheme.Spacing.md)
         .padding(.vertical, AppTheme.Spacing.sm)
         .glassBackground(in: Capsule())
+        // Keep children (全选 / 移动 / 删除) discoverable by XCUITest while
+        // still exposing the bar container via batchActionBar.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("batchActionBar")
     }
 

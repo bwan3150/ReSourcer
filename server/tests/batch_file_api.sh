@@ -92,7 +92,11 @@ for i in $(seq 1 40); do
   sleep 0.25
 done
 files_json=$(curl -s "${H[@]}" "$BASE/api/indexer/files?folder_path=$SRC_REAL")
-mapfile -t UUIDS < <(echo "$files_json" | python3 -c "import sys,json; d=json.load(sys.stdin); [print(f['uuid']) for f in sorted(d.get('files',[]), key=lambda f: f['file_name'])]")
+# Bash 3.2 (macOS /bin/bash) has no mapfile — read UUIDs portably.
+UUIDS=()
+while IFS= read -r line; do
+  [ -n "$line" ] && UUIDS+=("$line")
+done < <(echo "$files_json" | python3 -c "import sys,json; d=json.load(sys.stdin); [print(f['uuid']) for f in sorted(d.get('files',[]), key=lambda f: f['file_name'])]")
 check "indexed 3 files (got ${#UUIDS[@]})" '[ "${#UUIDS[@]}" -eq 3 ]' || { echo "$files_json"; exit 1; }
 A=${UUIDS[0]}; B=${UUIDS[1]}; C=${UUIDS[2]}
 echo "A=$A B=$B C=$C"
