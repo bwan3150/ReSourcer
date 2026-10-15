@@ -119,6 +119,9 @@ actor PreviewService {
         return try await networkManager.downloadData(.previewContent(path: path))
     }
 
+    /// 与 server `THUMBNAIL_VERSION` 对齐；算法变更时递增以使本地磁盘缓存失效。
+    nonisolated static let thumbnailVersion = "2"
+
     /// 获取缩略图 URL（基于文件路径，兼容旧 API 调用方）
     /// - Parameters:
     ///   - path: 文件路径
@@ -129,7 +132,7 @@ actor PreviewService {
     /// - Returns: 完整的缩略图 URL
     nonisolated func getThumbnailURL(for path: String, size: Int = 300, baseURL: URL, apiKey: String, serverId: String? = nil) -> URL? {
         let encodedPath = path.urlEncoded
-        var urlString = "\(baseURL.absoluteString)/api/preview/thumbnail?path=\(encodedPath)&size=\(size)&key=\(apiKey)"
+        var urlString = "\(baseURL.absoluteString)/api/preview/thumbnail?path=\(encodedPath)&size=\(size)&tv=\(Self.thumbnailVersion)&key=\(apiKey)"
         if let sid = serverId {
             urlString += "&sid=\(sid)"
         }
@@ -147,7 +150,7 @@ actor PreviewService {
     /// - Returns: 完整的缩略图 URL
     nonisolated func getThumbnailURL(uuid: String, size: Int = 300, baseURL: URL, apiKey: String, sourceFolder: String? = nil, serverId: String? = nil) -> URL? {
         let encodedUuid = uuid.urlEncoded
-        var urlString = "\(baseURL.absoluteString)/api/preview/thumbnail?uuid=\(encodedUuid)&size=\(size)&key=\(apiKey)"
+        var urlString = "\(baseURL.absoluteString)/api/preview/thumbnail?uuid=\(encodedUuid)&size=\(size)&tv=\(Self.thumbnailVersion)&key=\(apiKey)"
         if let sf = sourceFolder {
             urlString += "&sf=\(sf.urlEncoded)"
         }

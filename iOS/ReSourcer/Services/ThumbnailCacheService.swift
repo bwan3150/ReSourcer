@@ -419,9 +419,10 @@ final class ThumbnailCacheService: @unchecked Sendable {
             return hash.compactMap { String(format: "%02x", $0) }.joined()
         }
 
-        // 只取 uuid/path + size 参数计算哈希（不含 baseURL、key、sid）
+        // 只取 uuid/path + size + tv 参数计算哈希（不含 baseURL、key、sid）
+        // tv = 服务端缩略图算法版本；变更后旧坏图不会继续命中磁盘缓存
         let relevantParts = queryItems
-            .filter { ["uuid", "path", "size"].contains($0.name) }
+            .filter { ["uuid", "path", "size", "tv"].contains($0.name) }
             .sorted { $0.name < $1.name }
             .map { "\($0.name)=\($0.value ?? "")" }
             .joined(separator: "&")

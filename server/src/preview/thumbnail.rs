@@ -4,7 +4,10 @@ use std::path::Path;
 use std::io::Cursor;
 use image::ImageFormat;
 use super::models::*;
-use super::utils::{extract_video_first_frame, extract_audio_cover, extract_clip_thumbnail, extract_image_thumbnail_ffmpeg, extract_pdf_thumbnail};
+use super::utils::{
+    extract_audio_cover, extract_clip_thumbnail, extract_heif_thumbnail,
+    extract_image_thumbnail_ffmpeg, extract_pdf_thumbnail, extract_video_first_frame,
+};
 
 /// GET /api/preview/thumbnail?path=<file_path>&size=<size>
 /// GET /api/preview/thumbnail?uuid=<uuid>&size=<size>
@@ -71,9 +74,13 @@ pub async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, S
                 return Err(actix_web::error::ErrorBadRequest("PDF 缩略图生成失败"));
             }
         }
+    } else if HEIF_EXTENSIONS.contains(&extension.as_str()) {
+        // HEIC/HEIF/AVIF：必须走专用路径。旧版 ffmpeg 对 tile grid 只会输出
+        // 单块 tile（看起来像中心灰块），需探测并 xstack 拼合。
+        extract_heif_thumbnail(path, size)?
     } else {
         // 先尝试 image 库直接打开，失败则 fallback 到 ffmpeg
-        // （用于 HEIC/AVIF 等格式，以及超大图内存超限的情况）
+        // （用于超大图内存超限等情况）
         match image::open(path) {
             Ok(img) => img,
             Err(e) => {
@@ -85,6 +92,7 @@ pub async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, S
     };
 
     // 生成缩略图 (保持宽高比)
+    // HEIF 路径已在 ffmpeg 内缩放过时，这里再 thumbnail 一次是幂等的。
     let thumbnail = img.thumbnail(size, size);
 
     // 将缩略图编码为JPEG格式
@@ -96,8 +104,9 @@ pub async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, S
 
     Ok(HttpResponse::Ok()
         .content_type("image/jpeg")
-        // UUID-based thumbnails are immutable — cache aggressively
-        // Browser won't re-request the same UUID+size combination
+        // UUID-based thumbnails are immutable — cache aggressively.
+        // Clients pass tv=<THUMBNAIL_VERSION> so algorithm bumps invalidate caches.
         .insert_header(("Cache-Control", "public, max-age=31536000, immutable"))
+        .insert_header(("X-Thumbnail-Version", THUMBNAIL_VERSION))
         .body(buffer.into_inner()))
 }

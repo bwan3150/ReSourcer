@@ -79,6 +79,7 @@
 		E0F10391981E71D1AB05829E /* MetricsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 649E6184143302EFD3D570DE /* MetricsModels.swift */; };
 		B1000003233F0001 /* BatchSelectUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001233F0000 /* BatchSelectUITests.swift */; };
 		B1000005233F0001 /* PlaybackModeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000004233F0000 /* PlaybackModeUITests.swift */; };
+		B1000007233F0001 /* HeicThumbnailUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000006233F0000 /* HeicThumbnailUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -157,6 +158,7 @@
 		EF085BEB183121E3B39A0477 /* MetricsService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MetricsService.swift; sourceTree = "<group>"; };
 		B1000001233F0000 /* BatchSelectUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchSelectUITests.swift; sourceTree = "<group>"; };
 		B1000004233F0000 /* PlaybackModeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackModeUITests.swift; sourceTree = "<group>"; };
+		B1000006233F0000 /* HeicThumbnailUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeicThumbnailUITests.swift; sourceTree = "<group>"; };
 		B1000002233F0000 /* ReSourcerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ReSourcerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -385,6 +387,7 @@
 			children = (
 				B1000001233F0000 /* BatchSelectUITests.swift */,
 				B1000004233F0000 /* PlaybackModeUITests.swift */,
+				B1000006233F0000 /* HeicThumbnailUITests.swift */,
 			);
 			path = ReSourcerUITests;
 			sourceTree = "<group>";
@@ -580,6 +583,7 @@
 			files = (
 				B1000003233F0001 /* BatchSelectUITests.swift in Sources */,
 				B1000005233F0001 /* PlaybackModeUITests.swift in Sources */,
+				B1000007233F0001 /* HeicThumbnailUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
