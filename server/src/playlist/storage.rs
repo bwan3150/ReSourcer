@@ -5,6 +5,15 @@ use crate::indexer::storage::{map_file_row, get_file_by_uuid};
 const FILE_COLUMNS: &str = "uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at, source_url";
 const CONTEXT_SIZE: i64 = 3;
 
+/// Sliding playlist window returned to clients.
+#[derive(Debug, Clone)]
+pub struct PlaylistWindow {
+    pub items: Vec<IndexedFile>,
+    pub current_index: usize,
+    pub at_start: bool,
+    pub at_end: bool,
+}
+
 fn fetch_window(
     folder_path: &str,
     file_type: Option<&str>,
@@ -56,13 +65,17 @@ fn ignored_files_clause() -> (String, Vec<String>) {
     }
 }
 
-/// Sequential playlist: find the file's position in sorted order, return 3 before + current + 3 after
+/// Sequential playlist: find the file's position in sorted order, return up to 3 before + current + 3 after.
+///
+/// When `wrap` is true (`list_loop`), edges wrap around the folder.
+/// When `wrap` is false (`sequential`), edges are clipped and `at_start` / `at_end` reflect absolute ends.
 pub fn get_playlist_sequential(
     folder_path: &str,
     uuid: &str,
     file_type: Option<&str>,
     sort: Option<&str>,
-) -> Result<(Vec<IndexedFile>, usize), rusqlite::Error> {
+    wrap: bool,
+) -> Result<PlaylistWindow, rusqlite::Error> {
     let conn = get_connection()?;
     let target = get_file_by_uuid(uuid)?
         .ok_or_else(|| rusqlite::Error::QueryReturnedNoRows)?;
@@ -72,8 +85,6 @@ pub fn get_playlist_sequential(
     let type_clause = if file_type.is_some() { " AND file_type = ?" } else { "" };
 
     // Count files that come before this one in the sorted order
-    // For ASC: count where (col < value) OR (col = value AND uuid < target_uuid)
-    // For DESC: count where (col > value) OR (col = value AND uuid > target_uuid)
     let (cmp_before, cmp_tie) = if dir == "ASC" { ("<", "<") } else { (">", ">") };
 
     let sort_value: String = match col {
@@ -101,7 +112,7 @@ pub fn get_playlist_sequential(
         rows.next()?.map(|r| r.get(0)).transpose()?.unwrap_or(0)
     };
 
-    // Get total count for wrapping
+    // Get total count
     let total_query = format!(
         "SELECT COUNT(*) FROM file_index WHERE folder_path = ? AND current_path IS NOT NULL{}{}",
         type_clause, ignore_clause
@@ -117,33 +128,69 @@ pub fn get_playlist_sequential(
     };
 
     if total == 0 {
-        return Ok((vec![target], 0));
+        return Ok(PlaylistWindow {
+            items: vec![target],
+            current_index: 0,
+            at_start: true,
+            at_end: true,
+        });
     }
 
     let order_by = format!("{} {}, uuid {}", col, dir, dir);
+    let at_start = position == 0;
+    let at_end = position >= total - 1;
 
-    // Build window with wrapping
-    let ctx = CONTEXT_SIZE.min(total - 1);
-
-    let fw = |off: i64, lim: i64| fetch_window(folder_path, file_type, &ignored, &ignore_clause, &type_clause, &order_by, off, lim);
-
-    // Items before (wrapping)
-    let before = if position >= ctx {
-        fw(position - ctx, ctx)?
-    } else {
-        let mut tail = fw(total - (ctx - position), ctx - position)?;
-        tail.extend(fw(0, position)?);
-        tail
+    let fw = |off: i64, lim: i64| {
+        fetch_window(
+            folder_path,
+            file_type,
+            &ignored,
+            &ignore_clause,
+            &type_clause,
+            &order_by,
+            off,
+            lim,
+        )
     };
 
-    // Items after (wrapping)
-    let remaining_after = total - position - 1;
-    let after = if remaining_after >= ctx {
-        fw(position + 1, ctx)?
+    let ctx = CONTEXT_SIZE.min(total - 1).max(0);
+
+    let (before, after) = if wrap {
+        // Items before (wrapping)
+        let before = if position >= ctx {
+            fw(position - ctx, ctx)?
+        } else {
+            let mut tail = fw(total - (ctx - position), ctx - position)?;
+            tail.extend(fw(0, position)?);
+            tail
+        };
+
+        // Items after (wrapping)
+        let remaining_after = total - position - 1;
+        let after = if remaining_after >= ctx {
+            fw(position + 1, ctx)?
+        } else {
+            let mut tail = fw(position + 1, remaining_after)?;
+            tail.extend(fw(0, ctx - remaining_after)?);
+            tail
+        };
+        (before, after)
     } else {
-        let mut tail = fw(position + 1, remaining_after)?;
-        tail.extend(fw(0, ctx - remaining_after)?);
-        tail
+        // No wrap: clip at folder ends
+        let before_count = position.min(ctx);
+        let before = if before_count > 0 {
+            fw(position - before_count, before_count)?
+        } else {
+            vec![]
+        };
+        let remaining_after = (total - position - 1).max(0);
+        let after_count = remaining_after.min(ctx);
+        let after = if after_count > 0 {
+            fw(position + 1, after_count)?
+        } else {
+            vec![]
+        };
+        (before, after)
     };
 
     let current_index = before.len();
@@ -151,21 +198,27 @@ pub fn get_playlist_sequential(
     items.push(target);
     items.extend(after);
 
-    Ok((items, current_index))
+    Ok(PlaylistWindow {
+        items,
+        current_index,
+        at_start,
+        at_end,
+    })
 }
 
-/// Shuffle playlist: current file + 6 random files from the folder
+/// Shuffle playlist: current file + up to 6 random files from the folder.
 ///
-/// `current_queue`: the client's current 7-item queue (UUIDs in order).
-/// If provided, server determines which items stay in the new window
-/// (based on target's position in old queue) and fills the rest with new randoms.
-/// If not provided (initial request), picks 6 fresh randoms.
+/// `current_queue`: the client's current window (UUIDs in play order).
+/// - **Omit** when first entering shuffle so neighbors are freshly random (fixes
+///   "first N still sequential" when the prior sequential window was reused).
+/// - **Provide** while navigating so relative shuffled order is preserved and
+///   only empty edge slots are filled with new randoms.
 pub fn get_playlist_shuffle(
     folder_path: &str,
     uuid: &str,
     file_type: Option<&str>,
     current_queue: Option<&[String]>,
-) -> Result<(Vec<IndexedFile>, usize), rusqlite::Error> {
+) -> Result<PlaylistWindow, rusqlite::Error> {
     let conn = get_connection()?;
     let target = get_file_by_uuid(uuid)?
         .ok_or_else(|| rusqlite::Error::QueryReturnedNoRows)?;
@@ -252,9 +305,14 @@ pub fn get_playlist_shuffle(
         items.extend(after_files);
         items.extend(rand_for_after.to_vec());
 
-        Ok((items, current_index))
+        Ok(PlaylistWindow {
+            items,
+            current_index,
+            at_start: false,
+            at_end: false,
+        })
     } else {
-        // Initial shuffle: pick 6 random files
+        // Fresh shuffle: pick 6 random files — do NOT reuse a sequential window.
         let rand_query = format!(
             "SELECT {} FROM file_index WHERE folder_path = ? AND uuid != ? AND current_path IS NOT NULL{}{} ORDER BY RANDOM() LIMIT 6",
             FILE_COLUMNS, type_clause, ignore_clause
@@ -275,6 +333,181 @@ pub fn get_playlist_shuffle(
         items.push(target);
         items.extend(randoms[split..].to_vec());
 
-        Ok((items, current_index))
+        Ok(PlaylistWindow {
+            items,
+            current_index,
+            at_start: false,
+            at_end: false,
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::indexer::models::IndexedFile;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::sync::Mutex;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    static TEST_LOCK: Mutex<()> = Mutex::new(());
+
+    struct TestEnv {
+        _guard: std::sync::MutexGuard<'static, ()>,
+        data_dir: PathBuf,
+        folder: String,
+        uuids: Vec<String>,
+        names: Vec<String>,
+    }
+
+    impl TestEnv {
+        fn setup(file_count: usize) -> Self {
+            let guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+            let nanos = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos();
+            let root = std::env::temp_dir().join(format!("resourcer-playlist-{}", nanos));
+            let data_dir = root.join("data");
+            let source = root.join("source");
+            fs::create_dir_all(&data_dir).unwrap();
+            fs::create_dir_all(&source).unwrap();
+            std::env::set_var("RESOURCER_DIR", &data_dir);
+            std::env::remove_var("RESOURCER_DATA_DIR");
+            crate::database::init_db().expect("init_db");
+            let folder = source.to_string_lossy().to_string();
+            crate::config_api::storage::add_source_folder(&folder).expect("add_source");
+
+            let mut names = Vec::new();
+            let mut uuids = Vec::new();
+            for i in 0..file_count {
+                let name = format!("file{:02}.png", i);
+                let path = source.join(&name);
+                fs::write(&path, format!("png-{}", i)).unwrap();
+                let uuid = uuid::Uuid::new_v4().to_string();
+                // Distinct modified_at so default sort is stable; name_asc used in tests.
+                let modified = format!("2026-01-01T00:{:02}:00Z", i);
+                let file = IndexedFile {
+                    uuid: uuid.clone(),
+                    fingerprint: format!("fp-{}", name),
+                    current_path: Some(path.to_string_lossy().to_string()),
+                    folder_path: folder.clone(),
+                    file_name: name.clone(),
+                    file_type: "image".to_string(),
+                    extension: "png".to_string(),
+                    file_size: 8,
+                    created_at: modified.clone(),
+                    modified_at: modified.clone(),
+                    indexed_at: modified,
+                    source_url: None,
+                };
+                crate::indexer::storage::upsert_file(&file).expect("upsert");
+                names.push(name);
+                uuids.push(uuid);
+            }
+
+            Self {
+                _guard: guard,
+                data_dir,
+                folder,
+                uuids,
+                names,
+            }
+        }
+    }
+
+    impl Drop for TestEnv {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(self.data_dir.parent().unwrap_or(&self.data_dir));
+            std::env::remove_var("RESOURCER_DIR");
+        }
+    }
+
+    #[test]
+    fn sequential_no_wrap_marks_ends() {
+        let env = TestEnv::setup(7);
+        let mid = &env.uuids[3];
+        let win = get_playlist_sequential(&env.folder, mid, None, Some("name_asc"), false)
+            .expect("sequential mid");
+        assert!(!win.at_start);
+        assert!(!win.at_end);
+        assert_eq!(win.items.len(), 7);
+
+        let first = &env.uuids[0];
+        let win0 = get_playlist_sequential(&env.folder, first, None, Some("name_asc"), false)
+            .expect("sequential first");
+        assert!(win0.at_start);
+        assert!(!win0.at_end);
+        assert_eq!(win0.current_index, 0);
+
+        let last = env.uuids.last().unwrap();
+        let win_last = get_playlist_sequential(&env.folder, last, None, Some("name_asc"), false)
+            .expect("sequential last");
+        assert!(win_last.at_end);
+        assert!(!win_last.at_start);
+        assert_eq!(win_last.current_index, win_last.items.len() - 1);
+    }
+
+    #[test]
+    fn list_loop_wraps_at_edges() {
+        let env = TestEnv::setup(7);
+        let first = &env.uuids[0];
+        let win = get_playlist_sequential(&env.folder, first, None, Some("name_asc"), true)
+            .expect("list_loop first");
+        assert!(win.current_index > 0, "wrap should put prior items before first");
+        let names: Vec<_> = win.items.iter().map(|f| f.file_name.as_str()).collect();
+        assert!(names.contains(&env.names.last().unwrap().as_str()));
+    }
+
+    #[test]
+    fn fresh_shuffle_does_not_keep_sequential_neighbors() {
+        let env = TestEnv::setup(12);
+        let mid = &env.uuids[5];
+
+        let seq = get_playlist_sequential(&env.folder, mid, None, Some("name_asc"), false)
+            .expect("seq");
+        let seq_neighbor_ids: Vec<String> = seq
+            .items
+            .iter()
+            .filter(|f| f.uuid != *mid)
+            .map(|f| f.uuid.clone())
+            .collect();
+
+        let mut differed = false;
+        for _ in 0..20 {
+            let sh = get_playlist_shuffle(&env.folder, mid, None, None).expect("shuffle");
+            let sh_ids: Vec<String> = sh
+                .items
+                .iter()
+                .filter(|f| f.uuid != *mid)
+                .map(|f| f.uuid.clone())
+                .collect();
+            if sh_ids != seq_neighbor_ids {
+                differed = true;
+                break;
+            }
+        }
+        assert!(
+            differed,
+            "fresh shuffle kept identical sequential neighbors for 20 trials"
+        );
+    }
+
+    #[test]
+    fn shuffle_with_queue_preserves_relative_order() {
+        let env = TestEnv::setup(10);
+        let mid = &env.uuids[4];
+        let fresh = get_playlist_shuffle(&env.folder, mid, None, None).expect("fresh");
+        assert!(fresh.current_index + 1 < fresh.items.len());
+        let queue: Vec<String> = fresh.items.iter().map(|f| f.uuid.clone()).collect();
+        let next_uuid = queue[fresh.current_index + 1].clone();
+
+        let moved = get_playlist_shuffle(&env.folder, &next_uuid, None, Some(&queue))
+            .expect("nav");
+        let mid_pos = moved.items.iter().position(|f| f.uuid == *mid);
+        let next_pos = moved.items.iter().position(|f| f.uuid == next_uuid);
+        assert!(mid_pos.is_some() && next_pos.is_some());
+        assert!(mid_pos.unwrap() < next_pos.unwrap());
     }
 }

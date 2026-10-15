@@ -13,8 +13,17 @@ pub async fn playlist(query: web::Query<PlaylistQuery>) -> Result<HttpResponse> 
     let result = tokio::task::spawn_blocking(move || {
         match mode.as_str() {
             "shuffle" => {
-                let queue: Option<Vec<String>> = current_queue_str.map(|s| {
-                    s.split(',').map(|u| u.trim().to_string()).filter(|u| !u.is_empty()).collect()
+                let queue: Option<Vec<String>> = current_queue_str.and_then(|s| {
+                    let parsed: Vec<String> = s
+                        .split(',')
+                        .map(|u| u.trim().to_string())
+                        .filter(|u| !u.is_empty())
+                        .collect();
+                    if parsed.is_empty() {
+                        None
+                    } else {
+                        Some(parsed)
+                    }
                 });
                 storage::get_playlist_shuffle(
                     &folder_path,
@@ -23,13 +32,21 @@ pub async fn playlist(query: web::Query<PlaylistQuery>) -> Result<HttpResponse> 
                     queue.as_deref(),
                 )
             }
+            "list_loop" => storage::get_playlist_sequential(
+                &folder_path,
+                &uuid,
+                file_type.as_deref(),
+                sort.as_deref(),
+                true, // wrap
+            ),
             _ => {
-                // sequential (default)
+                // sequential (default): ordered, no wrap
                 storage::get_playlist_sequential(
                     &folder_path,
                     &uuid,
                     file_type.as_deref(),
                     sort.as_deref(),
+                    false,
                 )
             }
         }
@@ -38,9 +55,12 @@ pub async fn playlist(query: web::Query<PlaylistQuery>) -> Result<HttpResponse> 
     .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?;
 
     match result {
-        Ok((items, current_index)) => {
-            Ok(HttpResponse::Ok().json(PlaylistResponse { items, current_index }))
-        }
+        Ok(window) => Ok(HttpResponse::Ok().json(PlaylistResponse {
+            items: window.items,
+            current_index: window.current_index,
+            at_start: window.at_start,
+            at_end: window.at_end,
+        })),
         Err(e) => {
             if matches!(e, rusqlite::Error::QueryReturnedNoRows) {
                 Ok(HttpResponse::NotFound().json(serde_json::json!({

@@ -25,6 +25,9 @@ final class LocalStorageService: @unchecked Sendable {
         static let isLoggedIn = "is_logged_in"
         static let lastActiveTime = "last_active_time"
         static let appSettings = "app_settings"
+        static let advanceMode = "playback_advance_mode"
+        static let shuffleEnabled = "playback_shuffle"
+        static let listLoopEnabled = "playback_list_loop"
     }
 
     // MARK: - UserDefaults
@@ -258,6 +261,39 @@ final class LocalStorageService: @unchecked Sendable {
         guard let data = try? JSONEncoder().encode(prefs) else { return false }
         defaults.set(data, forKey: Keys.previewPreferences)
         return true
+    }
+
+    // MARK: - Playback mode persistence
+
+    func getAdvanceMode() -> AdvanceMode {
+        guard let raw = defaults.string(forKey: Keys.advanceMode),
+              let mode = AdvanceMode(rawValue: raw) else {
+            return .repeatCurrent
+        }
+        return mode
+    }
+
+    func saveAdvanceMode(_ mode: AdvanceMode) {
+        defaults.set(mode.rawValue, forKey: Keys.advanceMode)
+    }
+
+    func getShuffleEnabled() -> Bool {
+        // unset → false (order queue)
+        defaults.object(forKey: Keys.shuffleEnabled) as? Bool ?? false
+    }
+
+    func saveShuffleEnabled(_ on: Bool) {
+        defaults.set(on, forKey: Keys.shuffleEnabled)
+    }
+
+    func getListLoopEnabled() -> Bool {
+        // unset → true (legacy sequential wrapped)
+        if defaults.object(forKey: Keys.listLoopEnabled) == nil { return true }
+        return defaults.bool(forKey: Keys.listLoopEnabled)
+    }
+
+    func saveListLoopEnabled(_ on: Bool) {
+        defaults.set(on, forKey: Keys.listLoopEnabled)
     }
 
     // MARK: - Utilities

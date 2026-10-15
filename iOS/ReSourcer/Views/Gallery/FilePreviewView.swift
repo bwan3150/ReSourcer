@@ -13,44 +13,40 @@ import Photos
 import MediaPlayer
 import PDFKit
 
-// MARK: - PlaybackMode
+// MARK: - AdvanceMode (chrome tap)
 
-/// 播放模式
-enum PlaybackMode {
-    /// 循环当前 — 视频循环播放，图片/其他文件停留不动
+/// 点按模式键：当前结束后是否前进
+enum AdvanceMode: String, Codable {
+    /// 自动播放下一个
+    case autoNext
+    /// 单曲循环
     case repeatCurrent
-    /// 顺序播放 — 按文件列表顺序自动播放下一个
-    case sequential
-    /// 随机播放 — 随机跳到文件列表中的另一个文件
-    case shuffle
 
-    /// SF Symbol 图标名
     var iconName: String {
         switch self {
         case .repeatCurrent: return "repeat.1"
-        case .sequential:    return "repeat"
-        case .shuffle:       return "shuffle"
+        case .autoNext:      return "repeat"
         }
     }
 
-    /// 描述文字
     var label: String {
         switch self {
-        case .repeatCurrent: return "循环当前"
-        case .sequential:    return "顺序播放"
-        case .shuffle:       return "随机播放"
+        case .repeatCurrent: return "单曲循环"
+        case .autoNext:      return "自动下一个"
         }
     }
 
-    /// 切换到下一个模式
-    var next: PlaybackMode {
+    var toggled: AdvanceMode {
         switch self {
-        case .repeatCurrent: return .sequential
-        case .sequential:    return .shuffle
-        case .shuffle:       return .repeatCurrent
+        case .repeatCurrent: return .autoNext
+        case .autoNext:      return .repeatCurrent
         }
     }
 }
+
+/// Legacy three-way mode kept only so Video/Audio content can compile against
+/// a reduced surface: they only need to know whether to loop the current item.
+typealias PlaybackMode = AdvanceMode
 
 // MARK: - FilePreviewView
 
@@ -100,12 +96,18 @@ struct FilePreviewView: View {
     @State private var volumeAtDragStart: Float = 0.5
     @State private var volumeActivationTask: Task<Void, Never>?
 
-    // 播放模式
-    @State private var playbackMode: PlaybackMode = .repeatCurrent
+    // 播放模式（点按）+ 队列面板开关（长按）— 本地持久化
+    @State private var advanceMode: AdvanceMode = LocalStorageService.shared.getAdvanceMode()
+    @State private var shuffleEnabled: Bool = LocalStorageService.shared.getShuffleEnabled()
+    @State private var listLoopEnabled: Bool = LocalStorageService.shared.getListLoopEnabled()
     @State private var autoAdvanceTask: Task<Void, Never>?
     @State private var showPlaylistSheet = false
+    @State private var playlistAtStart = false
+    @State private var playlistAtEnd = false
+    /// 下次 shuffle 请求省略 current_queue，强制真打乱
+    @State private var shuffleNeedsFresh = true
 
-    // 偏好设置（从本地读取）
+    // 偏好设置（从本地读取）；同类型过滤也在队列面板调整
     @State private var prefs = LocalStorageService.shared.getPreviewPreferences()
 
     // 操作状态
@@ -207,7 +209,8 @@ struct FilePreviewView: View {
             scheduleAutoHide()
         }
         .task {
-            await fetchPlaylist(uuid: initialUuid)
+            if shuffleEnabled { shuffleNeedsFresh = true }
+            await fetchPlaylist(uuid: initialUuid, keepShuffleQueue: false)
         }
         .onDisappear {
             hideControlsTask?.cancel()
@@ -330,7 +333,7 @@ struct FilePreviewView: View {
                 isMuted: $isVideoMuted,
                 currentTime: $videoCurrentTime,
                 showControls: $showControls,
-                playbackMode: playbackMode,
+                playbackMode: advanceMode,
                 onVideoEnd: { advanceToNext() },
                 onTap: { toggleControls() }
             )
@@ -342,7 +345,7 @@ struct FilePreviewView: View {
                 isMuted: $isVideoMuted,
                 currentTime: $videoCurrentTime,
                 showControls: $showControls,
-                playbackMode: playbackMode,
+                playbackMode: advanceMode,
                 onAudioEnd: { advanceToNext() },
                 onTap: { toggleControls() }
             )
@@ -405,25 +408,27 @@ struct FilePreviewView: View {
                 }
             }
 
-            // 播放模式按钮（点击切换模式，长按显示播放列表）
-            Image(systemName: playbackMode.iconName)
+            // 模式键：点按 = 单曲↔自动下一个；长按 = 队列面板
+            Image(systemName: advanceMode.iconName)
                 .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(playbackMode == .repeatCurrent ? .black : .white)
+                .foregroundStyle(advanceMode == .repeatCurrent ? .black : .white)
                 .frame(width: 48, height: 48)
                 .background(
-                    playbackMode == .repeatCurrent
+                    advanceMode == .repeatCurrent
                         ? Color.white.opacity(0.85)
                         : Color.blue.opacity(0.85),
                     in: Circle()
                 )
+                .accessibilityIdentifier("playbackModeButton")
+                .accessibilityLabel(advanceMode.label)
+                .accessibilityHint("长按打开队列面板")
                 .onTapGesture {
-                    let newMode = playbackMode.next
                     withAnimation(AppTheme.Animation.standard) {
-                        playbackMode = newMode
+                        advanceMode = advanceMode.toggled
                     }
-                    if let file = currentFile {
-                        Task { await fetchPlaylist(uuid: file.uuid ?? file.path) }
-                    }
+                    LocalStorageService.shared.saveAdvanceMode(advanceMode)
+                    cancelAutoAdvanceTimer()
+                    startAutoAdvanceTimer()
                 }
                 .onLongPressGesture {
                     showPlaylistSheet = true
@@ -436,11 +441,20 @@ struct FilePreviewView: View {
 
     // MARK: - 底部导航按钮
 
-    private var bottomControls: some View {
-        let canGoPrev = playlist.count > 1
-        let canGoNext = playlist.count > 1
+    private var canGoPrev: Bool {
+        guard playlist.count > 1 else { return false }
+        if shuffleEnabled || listLoopEnabled { return true }
+        return !(playlistAtStart && playlistIndex <= 0)
+    }
 
-        return HStack {
+    private var canGoNext: Bool {
+        guard playlist.count > 1 else { return false }
+        if shuffleEnabled || listLoopEnabled { return true }
+        return !(playlistAtEnd && playlistIndex >= playlist.count - 1)
+    }
+
+    private var bottomControls: some View {
+        HStack {
             // 上一个
             Button {
                 navigateInPlaylist(direction: -1)
@@ -775,60 +789,135 @@ struct FilePreviewView: View {
 
     private var playlistPopoverContent: some View {
         VStack(spacing: 0) {
-            ForEach(Array(playlist.enumerated()), id: \.element.id) { i, file in
-                Button {
-                    jumpToPlaylistFile(file)
-                } label: {
-                    HStack(spacing: 8) {
-                        Text("\(i + 1)")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                            .frame(width: 14, alignment: .trailing)
+            // Independent switches (not a radio group)
+            VStack(spacing: 10) {
+                Toggle(isOn: Binding(
+                    get: { shuffleEnabled },
+                    set: { setShuffleEnabled($0) }
+                )) {
+                    Text("随机播放")
+                        .font(.caption)
+                }
+                .toggleStyle(.switch)
+                .accessibilityIdentifier("queueShuffleToggle")
 
-                        Text(file.name)
-                            .font(.caption)
-                            .foregroundStyle(i == playlistIndex ? .primary : .secondary)
-                            .fontWeight(i == playlistIndex ? .semibold : .regular)
-                            .lineLimit(1)
+                Toggle(isOn: Binding(
+                    get: { listLoopEnabled },
+                    set: { setListLoopEnabled($0) }
+                )) {
+                    Text("列表循环")
+                        .font(.caption)
+                }
+                .toggleStyle(.switch)
+                .accessibilityIdentifier("queueListLoopToggle")
 
-                        Spacer()
+                Toggle(isOn: Binding(
+                    get: { prefs.filterAutoplayByFileType },
+                    set: { setFilterByType($0) }
+                )) {
+                    Text("同类型播放")
+                        .font(.caption)
+                }
+                .toggleStyle(.switch)
+                .accessibilityIdentifier("queueSameTypeToggle")
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
 
-                        Text(file.extension.uppercased())
-                            .font(.system(size: 9))
-                            .foregroundStyle(.tertiary)
+            Divider()
 
-                        if i == playlistIndex {
-                            Image(systemName: "play.fill")
-                                .font(.system(size: 8))
-                                .foregroundStyle(.blue)
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(Array(playlist.enumerated()), id: \.element.id) { i, file in
+                        Button {
+                            jumpToPlaylistFile(file)
+                        } label: {
+                            HStack(spacing: 8) {
+                                Text("\(i + 1)")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                                    .frame(width: 14, alignment: .trailing)
+
+                                Text(file.name)
+                                    .font(.caption)
+                                    .foregroundStyle(i == playlistIndex ? .primary : .secondary)
+                                    .fontWeight(i == playlistIndex ? .semibold : .regular)
+                                    .lineLimit(1)
+
+                                Spacer()
+
+                                Text(file.extension.uppercased())
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.tertiary)
+
+                                if i == playlistIndex {
+                                    Image(systemName: "play.fill")
+                                        .font(.system(size: 8))
+                                        .foregroundStyle(.blue)
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(i == playlistIndex ? Color.blue.opacity(0.08) : Color.clear)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("queueItem-\(file.uuid ?? file.path)")
+
+                        if i < playlist.count - 1 {
+                            Divider().padding(.leading, 34)
                         }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(i == playlistIndex ? Color.blue.opacity(0.08) : Color.clear)
-                }
-                .buttonStyle(.plain)
-
-                if i < playlist.count - 1 {
-                    Divider().padding(.leading, 34)
                 }
             }
+            .frame(maxHeight: 280)
         }
-        .frame(width: 260)
+        .frame(width: 280)
+        .accessibilityIdentifier("queuePanel")
         .presentationCompactAdaptation(.popover)
+    }
+
+    private func setShuffleEnabled(_ on: Bool) {
+        shuffleEnabled = on
+        LocalStorageService.shared.saveShuffleEnabled(on)
+        if on { shuffleNeedsFresh = true }
+        if let file = currentFile {
+            Task { await fetchPlaylist(uuid: file.uuid ?? file.path, keepShuffleQueue: false) }
+        }
+    }
+
+    private func setListLoopEnabled(_ on: Bool) {
+        listLoopEnabled = on
+        LocalStorageService.shared.saveListLoopEnabled(on)
+        if let file = currentFile {
+            Task { await fetchPlaylist(uuid: file.uuid ?? file.path, keepShuffleQueue: !shuffleNeedsFresh) }
+        }
+    }
+
+    private func setFilterByType(_ on: Bool) {
+        prefs.filterAutoplayByFileType = on
+        LocalStorageService.shared.savePreviewPreferences(prefs)
+        if shuffleEnabled { shuffleNeedsFresh = true }
+        if let file = currentFile {
+            Task { await fetchPlaylist(uuid: file.uuid ?? file.path, keepShuffleQueue: false) }
+        }
     }
 
     // MARK: - Playlist Navigation
 
+    private func apiPlaylistMode() -> String {
+        if shuffleEnabled { return "shuffle" }
+        if listLoopEnabled { return "list_loop" }
+        return "sequential"
+    }
+
     /// Fetch playlist from server centered on given UUID
-    private func fetchPlaylist(uuid: String) async {
-        let mode = playbackMode == .repeatCurrent ? "sequential" : (playbackMode == .shuffle ? "shuffle" : "sequential")
+    private func fetchPlaylist(uuid: String, keepShuffleQueue: Bool = true) async {
+        let mode = apiPlaylistMode()
         let fileType = prefs.filterAutoplayByFileType ? currentFile?.fileType.rawValue : nil
 
-        // Shuffle: send current queue so server decides what to keep
-        let queue: [String]? = (playbackMode == .shuffle && !playlist.isEmpty)
-            ? playlist.compactMap(\.uuid)
-            : nil
+        // True shuffle: omit current_queue on first enter / jump so neighbors aren't sequential
+        let sendQueue = mode == "shuffle" && keepShuffleQueue && !shuffleNeedsFresh && !playlist.isEmpty
+        let queue: [String]? = sendQueue ? playlist.compactMap(\.uuid) : nil
 
         do {
             let resp = try await apiService.preview.getPlaylist(
@@ -840,7 +929,10 @@ struct FilePreviewView: View {
                 withAnimation {
                     playlist = files
                     playlistIndex = resp.currentIndex
+                    playlistAtStart = resp.atStart ?? false
+                    playlistAtEnd = resp.atEnd ?? false
                 }
+                if mode == "shuffle" { shuffleNeedsFresh = false }
                 startAutoAdvanceTimer()
             }
         } catch {}
@@ -848,6 +940,8 @@ struct FilePreviewView: View {
 
     /// 图片左右滑动切页；仅剩一个文件（无处可去）时返回 false，由手势层给出边界反馈
     private func handleImageSwipe(direction: Int) -> Bool {
+        if direction < 0 && !canGoPrev { return false }
+        if direction > 0 && !canGoNext { return false }
         guard playlist.count > 1 else { return false }
         navigateInPlaylist(direction: direction)
         return true
@@ -856,49 +950,45 @@ struct FilePreviewView: View {
     /// Navigate within the playlist (direction: +1 forward, -1 backward)
     private func navigateInPlaylist(direction: Int) {
         guard playlist.count > 1 else { return }
+        let wrap = shuffleEnabled || listLoopEnabled
+        var newIndex = playlistIndex + direction
 
-        if playbackMode == .shuffle {
-            // Shuffle: always re-fetch, server decides what to keep from current queue
-            var newIndex = playlistIndex + direction
-            if newIndex < 0 { newIndex = playlist.count - 1 }
-            if newIndex >= playlist.count { newIndex = 0 }
-            let newFile = playlist[newIndex]
-
+        if newIndex >= 0 && newIndex < playlist.count {
             withAnimation { playlistIndex = newIndex }
-            Task { await fetchPlaylist(uuid: newFile.uuid ?? newFile.path) }
-        } else {
-            // Sequential/repeat: move within window, re-fetch only at edges
-            let atEdge = (direction > 0 && playlistIndex >= playlist.count - 1)
-                      || (direction < 0 && playlistIndex <= 0)
-
-            if !atEdge {
-                let newIndex = playlistIndex + direction
-                withAnimation { playlistIndex = newIndex }
-                cancelAutoAdvanceTimer()
-                startAutoAdvanceTimer()
-            } else {
-                let edgeFile = direction > 0 ? playlist.last! : playlist.first!
-                Task { await fetchPlaylist(uuid: edgeFile.uuid ?? edgeFile.path) }
+            cancelAutoAdvanceTimer()
+            startAutoAdvanceTimer()
+            // Refill sliding window at edges for shuffle / list loop
+            if wrap && (newIndex == 0 || newIndex == playlist.count - 1) {
+                let file = playlist[newIndex]
+                Task { await fetchPlaylist(uuid: file.uuid ?? file.path, keepShuffleQueue: shuffleEnabled) }
             }
+            return
         }
+
+        guard wrap else { return }
+        newIndex = direction > 0 ? 0 : playlist.count - 1
+        withAnimation { playlistIndex = newIndex }
+        let file = playlist[newIndex]
+        Task { await fetchPlaylist(uuid: file.uuid ?? file.path, keepShuffleQueue: shuffleEnabled) }
     }
 
     /// Jump to a specific file in the playlist
     private func jumpToPlaylistFile(_ file: FileInfo) {
         showPlaylistSheet = false
-        Task { await fetchPlaylist(uuid: file.uuid ?? file.path) }
+        if shuffleEnabled { shuffleNeedsFresh = true }
+        Task { await fetchPlaylist(uuid: file.uuid ?? file.path, keepShuffleQueue: false) }
     }
 
     /// Called when media playback ends
     private func advanceToNext() {
-        if playbackMode == .repeatCurrent { return }
+        if advanceMode == .repeatCurrent { return }
         navigateInPlaylist(direction: 1)
     }
 
     /// Auto-advance timer for static content (images, PDF, other)
     private func startAutoAdvanceTimer() {
         cancelAutoAdvanceTimer()
-        guard playbackMode != .repeatCurrent else { return }
+        guard advanceMode != .repeatCurrent else { return }
         guard currentFile?.isVideo != true && currentFile?.isAudio != true else { return }
 
         let delay = prefs.imageAutoAdvanceSeconds
@@ -1593,7 +1683,7 @@ struct VideoPreviewContent: View {
                 case .repeatCurrent:
                     avPlayer.seek(to: .zero)
                     avPlayer.play()
-                case .sequential, .shuffle:
+                case .autoNext:
                     isPlaying = false
                     avPlayer.seek(to: .zero)
                     onVideoEnd()
@@ -1813,7 +1903,7 @@ struct AudioPreviewContent: View {
                 case .repeatCurrent:
                     avPlayer.seek(to: .zero)
                     avPlayer.play()
-                case .sequential, .shuffle:
+                case .autoNext:
                     isPlaying = false
                     avPlayer.seek(to: .zero)
                     onAudioEnd()

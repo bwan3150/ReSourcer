@@ -130,13 +130,20 @@
             <span class="text-xs text-white/60 tabular-nums ml-1">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
           </template>
           <div class="flex-1"></div>
-          <!-- Playback mode toggle -->
-          <button v-if="showNav" class="btn btn-ghost btn-xs btn-square text-white" @click="emit('cycle-mode')">
+          <!-- Advance mode: tap = auto-next ↔ repeat-one; long-press = queue panel -->
+          <button
+            v-if="showNav"
+            class="btn btn-ghost btn-xs btn-square text-white"
+            data-testid="playback-mode-btn"
+            :title="advanceMode === 'repeatCurrent' ? '单曲循环（长按打开队列）' : '自动下一个（长按打开队列）'"
+            :aria-label="advanceMode === 'repeatCurrent' ? '单曲循环' : '自动下一个'"
+            @pointerdown="onModePointerDown"
+            @pointerup="onModePointerUp"
+            @pointerleave="onModePointerUp"
+            @pointercancel="onModePointerUp"
+            @contextmenu.prevent
+          >
             <component :is="modeIcon" :size="16" />
-          </button>
-          <!-- Playlist toggle -->
-          <button v-if="showNav" class="btn btn-ghost btn-xs btn-square text-white" @click="emit('toggle-playlist')">
-            <ListMusic :size="16" />
           </button>
           <!-- Reset zoom -->
           <button v-if="scale !== 1" class="btn btn-ghost btn-xs text-white" @click="resetZoom">
@@ -161,7 +168,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-import { Play, Pause, SkipBack, SkipForward, Volume2, Volume1, VolumeX, Music, ListMusic, Repeat, Repeat1, Shuffle } from 'lucide-vue-next'
+import { Play, Pause, SkipBack, SkipForward, Volume2, Volume1, VolumeX, Music, Repeat, Repeat1 } from 'lucide-vue-next'
 import { effectiveTheme } from '../../composables/useTheme'
 import { getFileIcon } from '../../composables/useFileIcon'
 import PdfViewer from './PdfViewer.vue'
@@ -175,10 +182,11 @@ const props = defineProps({
   hasNext: { type: Boolean, default: false },
   autoplay: { type: Boolean, default: true },
   coverUrl: { type: String, default: '' },
-  playbackMode: { type: String, default: 'sequential' },
+  /** 'autoNext' | 'repeatCurrent' — chrome tap toggles this */
+  advanceMode: { type: String, default: 'repeatCurrent' },
 })
 
-const emit = defineEmits(['prev', 'next', 'ended', 'toggle-playlist', 'cycle-mode'])
+const emit = defineEmits(['prev', 'next', 'ended', 'toggle-advance-mode', 'open-queue-panel'])
 
 const videoEl = ref(null)
 const contentArea = ref(null)
@@ -204,11 +212,33 @@ const hasControls = computed(() => ['video', 'audio'].includes(props.type))
 const zoomable = computed(() => ['image', 'gif', 'video'].includes(props.type))
 
 const bgClass = computed(() => effectiveTheme.value === 'dark' ? 'bg-black' : 'bg-white')
-const modeIcon = computed(() => {
-  if (props.playbackMode === 'repeat') return Repeat1
-  if (props.playbackMode === 'shuffle') return Shuffle
-  return Repeat
-})
+const modeIcon = computed(() =>
+  props.advanceMode === 'repeatCurrent' ? Repeat1 : Repeat,
+)
+
+// Tap vs long-press on the single mode button
+let modePressTimer = null
+let modeLongPressFired = false
+const LONG_PRESS_MS = 450
+
+function onModePointerDown(e) {
+  if (e.button != null && e.button !== 0) return
+  modeLongPressFired = false
+  clearTimeout(modePressTimer)
+  modePressTimer = setTimeout(() => {
+    modeLongPressFired = true
+    emit('open-queue-panel')
+  }, LONG_PRESS_MS)
+}
+
+function onModePointerUp() {
+  clearTimeout(modePressTimer)
+  modePressTimer = null
+  if (!modeLongPressFired) {
+    emit('toggle-advance-mode')
+  }
+  modeLongPressFired = false
+}
 const fileIconData = computed(() => getFileIcon(props.type, props.fileName?.split('.').pop() || ''))
 
 const contentTransform = computed(() => ({

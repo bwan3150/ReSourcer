@@ -318,19 +318,13 @@ struct PreferencesView: View {
 
                 Divider()
 
-                // 按文件类型过滤
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("同类型连播")
-                            .font(.body)
-                        Text("自动播放只跳同类文件（图片→图片，视频→视频，音频→音频…）")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Toggle("", isOn: $prefs.filterAutoplayByFileType)
-                        .labelsHidden()
-                        .onChange(of: prefs.filterAutoplayByFileType) { _, _ in savePrefs() }
+                // 同类型播放已迁至预览队列面板（长按模式键），此处仅提示，避免双处打架
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("同类型播放")
+                        .font(.body)
+                    Text("请在预览页长按右上角模式键，于队列面板中随时开关（与随机/列表循环同源）。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
