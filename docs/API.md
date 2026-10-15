@@ -1399,8 +1399,12 @@ Base URL: `http://localhost:1234`
 **Query Parameters:**
 - `path` 或 `uuid`: 文件路径或文件 UUID（二选一）
 - `size` (可选): 缩略图尺寸，默认 300
+- `tv` (可选): 客户端缩略图算法版本（如 `2`）。服务端生成逻辑变更时客户端递增该参数，以绕过 `Cache-Control: immutable` 与本地磁盘/IndexedDB 缓存中的旧坏图。
 
 **Response:** JPEG 图片二进制数据
+
+**Response Headers:**
+- `X-Thumbnail-Version`: 当前服务端缩略图算法版本
 
 ### GET `/api/preview/files?folder=<path>`
 获取文件夹内的文件列表

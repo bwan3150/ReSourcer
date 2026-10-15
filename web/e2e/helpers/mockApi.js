@@ -40,7 +40,8 @@ export const FILES = [
  * Install route mocks for auth + gallery + batch endpoints.
  * Tracks batch move/delete payloads on `calls`.
  */
-export async function installGalleryMocks(page, calls = { move: [], delete: [] }) {
+export async function installGalleryMocks(page, calls = { move: [], delete: [], thumbs: [] }) {
+  if (!calls.thumbs) calls.thumbs = []
   await page.route('**/api/**', async (route) => {
     const req = route.request()
     const url = new URL(req.url())
@@ -97,6 +98,15 @@ export async function installGalleryMocks(page, calls = { move: [], delete: [] }
     }
     if (path === '/api/tag/list') {
       return json(200, [])
+    }
+    if (path === '/api/preview/thumbnail') {
+      calls.thumbs.push(req.url())
+      // Minimal JPEG so <img> decode does not error
+      return route.fulfill({
+        status: 200,
+        contentType: 'image/jpeg',
+        body: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+      })
     }
     if (path.startsWith('/api/preview/')) {
       return route.fulfill({ status: 204, body: '' })

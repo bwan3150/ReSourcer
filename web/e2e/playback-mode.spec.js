@@ -154,14 +154,22 @@ test.describe('Playback mode redesign', () => {
     await page.waitForTimeout(500)
     await btn.dispatchEvent('pointerup', { button: 0 })
 
-    // Default list loop is on; turn off
-    await page.getByTestId('queue-list-loop-toggle').uncheck({ force: true })
-    await page.getByTestId('queue-same-type-toggle').check({ force: true })
+    // Controlled Vue checkboxes: drive via change events (Playwright check/uncheck is flaky)
+    await page.getByTestId('queue-list-loop-toggle').evaluate((el) => {
+      el.checked = false
+      el.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    await page.getByTestId('queue-same-type-toggle').evaluate((el) => {
+      el.checked = true
+      el.dispatchEvent(new Event('change', { bubbles: true }))
+    })
 
-    const loop = await page.evaluate(() => localStorage.getItem('playback_listLoop'))
-    const same = await page.evaluate(() => localStorage.getItem('playlist_filterByType'))
-    expect(loop).toBe('false')
-    expect(same).toBe('true')
+    await expect
+      .poll(() => page.evaluate(() => localStorage.getItem('playback_listLoop')))
+      .toBe('false')
+    await expect
+      .poll(() => page.evaluate(() => localStorage.getItem('playlist_filterByType')))
+      .toBe('true')
 
     const last = calls.playlist[calls.playlist.length - 1]
     expect(last.mode).toBe('sequential') // shuffle off + list loop off

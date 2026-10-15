@@ -223,9 +223,9 @@ enum APIEndpoint {
         case .previewFiles(let folder):
             return "/api/preview/files?folder=\(folder.urlEncoded)"
         case .previewThumbnail(let path, let size):
-            return "/api/preview/thumbnail?path=\(path.urlEncoded)&size=\(size)"
+            return "/api/preview/thumbnail?path=\(path.urlEncoded)&size=\(size)&tv=\(PreviewService.thumbnailVersion)"
         case .previewThumbnailByUuid(let uuid, let size):
-            return "/api/preview/thumbnail?uuid=\(uuid.urlEncoded)&size=\(size)"
+            return "/api/preview/thumbnail?uuid=\(uuid.urlEncoded)&size=\(size)&tv=\(PreviewService.thumbnailVersion)"
         case .previewContent(let path):
             return "/api/preview/content/\(path.urlEncoded)"
         case .previewContentByUuid(let uuid):

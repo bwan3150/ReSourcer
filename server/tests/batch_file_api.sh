@@ -40,6 +40,16 @@ if [ ! -x "$BIN" ]; then
   exit 2
 fi
 
+# Serialize against other API tests that also bind :1234
+LOCK=/tmp/resourcer-api-test-port-1234.lock
+if command -v flock >/dev/null 2>&1; then
+  exec 9>"$LOCK"
+  if ! flock -w 180 9; then
+    echo "!! could not acquire port 1234 test lock"
+    exit 2
+  fi
+fi
+
 if command -v lsof >/dev/null 2>&1 && lsof -iTCP:1234 -sTCP:LISTEN >/dev/null 2>&1; then
   echo "!! port 1234 is in use; stop the other server before running API tests"
   exit 2
