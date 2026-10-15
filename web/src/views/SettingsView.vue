@@ -156,13 +156,9 @@
             {{ $t('settings.playback') }}
           </div>
           <div class="collapse-content space-y-4">
-            <div class="flex items-center justify-between">
-              <div>
-                <div class="text-sm">{{ $t('settings.sameTypeOnly') }}</div>
-                <div class="text-xs text-base-content/40">{{ $t('settings.sameTypeOnlyDesc') }}</div>
-              </div>
-              <input type="checkbox" class="toggle toggle-sm" v-model="playbackFilterByType" @change="savePlaybackSettings" />
-            </div>
+            <p class="text-xs text-base-content/50">
+              {{ $t('settings.sameTypeMovedHint') }}
+            </p>
             <div>
               <div class="text-sm mb-2">{{ $t('settings.autoAdvanceDelay') }}</div>
               <div class="text-xs text-base-content/40 mb-2">{{ $t('settings.autoAdvanceDelayDesc') }}</div>
@@ -391,12 +387,10 @@ function doResetShortcuts() {
   showToast(t('settings.saveSuccess'))
 }
 
-// Playback
-const playbackFilterByType = ref(localStorage.getItem('playlist_filterByType') === 'true')
+// Playback (same-type filter lives in the preview queue panel — single source of truth)
 const playbackAutoAdvance = ref(parseInt(localStorage.getItem('playlist_autoAdvanceSeconds') || '8'))
 
 function savePlaybackSettings() {
-  localStorage.setItem('playlist_filterByType', String(playbackFilterByType.value))
   localStorage.setItem('playlist_autoAdvanceSeconds', String(playbackAutoAdvance.value))
   showToast(t('settings.saveSuccess'))
 }

@@ -237,6 +237,7 @@ find the row named PHPSESSID and copy its value (looks like 12345678_AbCdEf...) 
     playback: 'Playback',
     sameTypeOnly: 'Same type only',
     sameTypeOnlyDesc: 'Auto-play only files of the same type as the current one',
+    sameTypeMovedHint: '“Same type only” now lives in the preview queue panel (long-press the mode button), with shuffle and list loop.',
     autoAdvanceDelay: 'Auto advance delay',
     autoAdvanceDelayDesc: 'Seconds to wait before switching to next file for images and other static content',
     shortcut_panUp: 'Video pan up',

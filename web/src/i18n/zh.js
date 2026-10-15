@@ -237,6 +237,7 @@ export default {
     playback: '播放',
     sameTypeOnly: '仅同类型',
     sameTypeOnlyDesc: '自动播放时只播放与当前文件相同类型的文件',
+    sameTypeMovedHint: '「同类型播放」已移至预览队列面板（长按模式键），与随机/列表循环一并调整。',
     autoAdvanceDelay: '自动切换延迟',
     autoAdvanceDelayDesc: '图片等静态内容自动切换到下一个文件前等待的秒数',
     shortcut_panUp: '视频画面上移',

@@ -12,6 +12,8 @@ import Foundation
 struct PlaylistResponse: Codable {
     let items: [IndexedFile]
     let currentIndex: Int
+    let atStart: Bool?
+    let atEnd: Bool?
 }
 
 // MARK: - Metrics

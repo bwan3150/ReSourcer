@@ -59,26 +59,63 @@
             :type="previewFile.fileType"
             :file-name="previewFile.fileName"
             :cover-url="coverSrc"
-            :playback-mode="playbackMode"
+            :advance-mode="advanceMode"
             :show-nav="true"
-            :has-prev="playlist.length > 1"
-            :has-next="playlist.length > 1"
+            :has-prev="canGoPrev"
+            :has-next="canGoNext"
             @prev="prevFile"
             @next="nextFile"
             @ended="onMediaEnded"
-            @cycle-mode="cyclePlaybackMode"
-            @toggle-playlist="showPlaylistPanel = !showPlaylistPanel"
+            @toggle-advance-mode="toggleAdvanceMode"
+            @open-queue-panel="showPlaylistPanel = true"
           />
           <OsdFeedback ref="osd" />
-          <!-- Playlist popup -->
+          <!-- Queue panel: independent switches + play order -->
           <transition name="slide-up">
-            <div v-if="showPlaylistPanel && !previewUIHidden" class="absolute bottom-16 right-4 w-72 bg-black/60 backdrop-blur-md rounded-xl shadow-xl z-20 overflow-hidden">
+            <div
+              v-if="showPlaylistPanel && !previewUIHidden"
+              class="absolute bottom-16 right-4 w-80 bg-black/70 backdrop-blur-md rounded-xl shadow-xl z-20 overflow-hidden"
+              data-testid="queue-panel"
+            >
+              <div class="px-3 py-2 border-b border-white/10 space-y-2">
+                <label class="flex items-center justify-between gap-2 text-xs text-white/90 cursor-pointer">
+                  <span>随机播放</span>
+                  <input
+                    type="checkbox"
+                    class="toggle toggle-xs"
+                    data-testid="queue-shuffle-toggle"
+                    :checked="shuffleEnabled"
+                    @change="setShuffleEnabled($event.target.checked)"
+                  />
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-white/90 cursor-pointer">
+                  <span>列表循环</span>
+                  <input
+                    type="checkbox"
+                    class="toggle toggle-xs"
+                    data-testid="queue-list-loop-toggle"
+                    :checked="listLoopEnabled"
+                    @change="setListLoopEnabled($event.target.checked)"
+                  />
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-white/90 cursor-pointer">
+                  <span>同类型播放</span>
+                  <input
+                    type="checkbox"
+                    class="toggle toggle-xs"
+                    data-testid="queue-same-type-toggle"
+                    :checked="filterByType"
+                    @change="setFilterByType($event.target.checked)"
+                  />
+                </label>
+              </div>
               <div class="py-1 max-h-64 overflow-y-auto">
                 <button
                   v-for="(item, i) in playlist"
                   :key="item.uuid"
                   class="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left transition-colors"
                   :class="i === playlistIndex ? 'bg-white/15 text-white font-medium' : 'text-white/70 hover:bg-white/10'"
+                  :data-testid="`queue-item-${item.uuid}`"
                   @click="jumpToPlaylistItem(item.uuid)"
                 >
                   <span class="text-white/30 w-3 text-right shrink-0">{{ i + 1 }}</span>
@@ -379,11 +416,59 @@ const uploadArea = ref(null)
 const previewFile = ref(null)
 const playlist = ref([])
 const playlistIndex = ref(0)
-const playbackMode = ref('repeat') // repeat | sequential | shuffle
+const playlistAtStart = ref(false)
+const playlistAtEnd = ref(false)
+
+// Two-axis playback state (persisted). Migrate legacy single-mode key once.
+const advanceMode = ref(loadAdvanceMode()) // 'autoNext' | 'repeatCurrent'
+const shuffleEnabled = ref(localStorage.getItem('playback_shuffle') === 'true')
+const listLoopEnabled = ref(loadListLoopEnabled())
 const filterByType = ref(localStorage.getItem('playlist_filterByType') === 'true')
 const autoAdvanceSeconds = ref(parseInt(localStorage.getItem('playlist_autoAdvanceSeconds') || '8'))
 const showPlaylistPanel = ref(false)
 let autoAdvanceTimer = null
+/** When true, next shuffle fetch omits current_queue (fresh true shuffle). */
+let shuffleNeedsFresh = shuffleEnabled.value
+
+function loadAdvanceMode() {
+  const saved = localStorage.getItem('playback_advanceMode')
+  if (saved === 'autoNext' || saved === 'repeatCurrent') return saved
+  const legacy = localStorage.getItem('playbackMode') || localStorage.getItem('playback_mode')
+  if (legacy === 'repeat' || legacy === 'repeatCurrent') return 'repeatCurrent'
+  if (legacy === 'sequential' || legacy === 'shuffle') return 'autoNext'
+  return 'repeatCurrent'
+}
+
+function loadListLoopEnabled() {
+  const saved = localStorage.getItem('playback_listLoop')
+  if (saved === 'true' || saved === 'false') return saved === 'true'
+  // Legacy sequential always wrapped; default on for first-time users.
+  return true
+}
+
+function persistPlaybackPrefs() {
+  localStorage.setItem('playback_advanceMode', advanceMode.value)
+  localStorage.setItem('playback_shuffle', String(shuffleEnabled.value))
+  localStorage.setItem('playback_listLoop', String(listLoopEnabled.value))
+  localStorage.setItem('playlist_filterByType', String(filterByType.value))
+}
+
+const canGoPrev = computed(() => {
+  if (playlist.value.length <= 1) return false
+  if (shuffleEnabled.value || listLoopEnabled.value) return true
+  return !(playlistAtStart.value && playlistIndex.value <= 0)
+})
+const canGoNext = computed(() => {
+  if (playlist.value.length <= 1) return false
+  if (shuffleEnabled.value || listLoopEnabled.value) return true
+  return !(playlistAtEnd.value && playlistIndex.value >= playlist.value.length - 1)
+})
+
+function apiPlaylistMode() {
+  if (shuffleEnabled.value) return 'shuffle'
+  if (listLoopEnabled.value) return 'list_loop'
+  return 'sequential'
+}
 const contentSrc = computed(() => previewFile.value ? contentUrl(previewFile.value) : '')
 const coverSrc = computed(() => previewFile.value ? thumbnailUrl(previewFile.value, 600) : '')
 const mediaPlayer = ref(null)
@@ -622,7 +707,9 @@ async function openPreview(file) {
   savedScrollTop = gridScrollContainer.value?.scrollTop || 0
   previewFile.value = file
   loadFileTags(file.uuid)
-  await fetchPlaylist(file.uuid)
+  // Opening preview with shuffle on always starts a fresh shuffled queue
+  if (shuffleEnabled.value) shuffleNeedsFresh = true
+  await fetchPlaylist(file.uuid, { keepShuffleQueue: false })
 }
 
 async function loadFileTags(uuid) {
@@ -661,45 +748,41 @@ function closePreview() {
 }
 
 function prevFile() {
-  if (playlist.value.length <= 1) return
-  if (playbackMode.value === 'shuffle') {
-    // Shuffle: always re-fetch with current queue
-    const newIndex = playlistIndex.value > 0 ? playlistIndex.value - 1 : playlist.value.length - 1
-    const file = playlist.value[newIndex]
-    previewFile.value = file
-    loadFileTags(file.uuid)
-    fetchPlaylist(file.uuid)
-  } else {
-    // Sequential/repeat: move within window, re-fetch only at edges
-    if (playlistIndex.value > 0) {
-      moveWithinPlaylist(playlistIndex.value - 1)
-    } else {
-      const file = playlist.value[0]
-      previewFile.value = file
-      loadFileTags(file.uuid)
-      fetchPlaylist(file.uuid)
-    }
-  }
+  if (!canGoPrev.value) return
+  navigatePlaylist(-1)
 }
 
 function nextFile() {
+  if (!canGoNext.value) return
+  navigatePlaylist(1)
+}
+
+function navigatePlaylist(direction) {
   if (playlist.value.length <= 1) return
-  if (playbackMode.value === 'shuffle') {
-    const newIndex = playlistIndex.value < playlist.value.length - 1 ? playlistIndex.value + 1 : 0
-    const file = playlist.value[newIndex]
-    previewFile.value = file
-    loadFileTags(file.uuid)
-    fetchPlaylist(file.uuid)
-  } else {
-    if (playlistIndex.value < playlist.value.length - 1) {
-      moveWithinPlaylist(playlistIndex.value + 1)
-    } else {
-      const file = playlist.value[playlist.value.length - 1]
-      previewFile.value = file
-      loadFileTags(file.uuid)
-      fetchPlaylist(file.uuid)
+  const wrap = shuffleEnabled.value || listLoopEnabled.value
+  let newIndex = playlistIndex.value + direction
+
+  if (newIndex >= 0 && newIndex < playlist.value.length) {
+    // Stay inside current window — preserves shuffled order without refetch
+    moveWithinPlaylist(newIndex)
+    // Refetch at edges for shuffle/list_loop to refill the sliding window
+    if (shuffleEnabled.value || listLoopEnabled.value) {
+      if (newIndex === 0 || newIndex === playlist.value.length - 1) {
+        const file = playlist.value[newIndex]
+        fetchPlaylist(file.uuid, { keepShuffleQueue: shuffleEnabled.value })
+      }
     }
+    return
   }
+
+  if (!wrap) return
+
+  // Wrap within window then refetch centered on the new item
+  newIndex = direction > 0 ? 0 : playlist.value.length - 1
+  const file = playlist.value[newIndex]
+  previewFile.value = file
+  loadFileTags(file.uuid)
+  fetchPlaylist(file.uuid, { keepShuffleQueue: shuffleEnabled.value })
 }
 
 function moveWithinPlaylist(index) {
@@ -713,57 +796,76 @@ function moveWithinPlaylist(index) {
 }
 
 function jumpToPlaylistItem(uuid) {
-  // Jump = no keep, full re-fetch
   const file = playlist.value.find(f => f.uuid === uuid)
   if (file) {
     previewFile.value = file
     loadFileTags(file.uuid)
   }
-  fetchPlaylist(uuid, 'jump')
+  // Jump: reshuffle if shuffle on (don't reuse stale neighbors around jump target)
+  if (shuffleEnabled.value) shuffleNeedsFresh = true
+  fetchPlaylist(uuid, { keepShuffleQueue: false })
 }
 
-async function fetchPlaylist(uuid) {
+async function fetchPlaylist(uuid, { keepShuffleQueue = !shuffleNeedsFresh } = {}) {
   clearAutoAdvance()
-  const mode = playbackMode.value === 'repeat' ? 'sequential' : playbackMode.value
+  const mode = apiPlaylistMode()
   const opts = { sort: undefined }
   if (filterByType.value && previewFile.value) {
     opts.fileType = previewFile.value.fileType
   }
-  // Shuffle: send current queue so server can decide what to keep
-  if (mode === 'shuffle' && playlist.value.length > 0) {
+  // True shuffle: omit current_queue on first enter / jump so server builds a fresh random queue
+  if (mode === 'shuffle' && keepShuffleQueue && playlist.value.length > 0 && !shuffleNeedsFresh) {
     opts.currentQueue = playlist.value.map(f => f.uuid)
   }
   try {
     const { data } = await playlistApi.getPlaylist(uuid, currentFolder.value, mode, opts)
     playlist.value = data.items
     playlistIndex.value = data.currentIndex
+    playlistAtStart.value = !!data.atStart
+    playlistAtEnd.value = !!data.atEnd
     if (data.items[data.currentIndex]) {
       previewFile.value = data.items[data.currentIndex]
     }
+    if (mode === 'shuffle') shuffleNeedsFresh = false
     startAutoAdvance()
   } catch {}
 }
 
-function switchPlaybackMode(mode) {
-  playbackMode.value = mode
+function toggleAdvanceMode() {
+  advanceMode.value = advanceMode.value === 'repeatCurrent' ? 'autoNext' : 'repeatCurrent'
+  persistPlaybackPrefs()
+  clearAutoAdvance()
+  startAutoAdvance()
+}
+
+function setShuffleEnabled(on) {
+  shuffleEnabled.value = !!on
+  if (on) shuffleNeedsFresh = true
+  persistPlaybackPrefs()
+  if (previewFile.value) fetchPlaylist(previewFile.value.uuid, { keepShuffleQueue: false })
+}
+
+function setListLoopEnabled(on) {
+  listLoopEnabled.value = !!on
+  persistPlaybackPrefs()
+  if (previewFile.value) fetchPlaylist(previewFile.value.uuid, { keepShuffleQueue: !shuffleNeedsFresh })
+}
+
+function setFilterByType(on) {
+  filterByType.value = !!on
+  persistPlaybackPrefs()
   if (previewFile.value) {
-    fetchPlaylist(previewFile.value.uuid)
+    if (shuffleEnabled.value) shuffleNeedsFresh = true
+    fetchPlaylist(previewFile.value.uuid, { keepShuffleQueue: false })
   }
 }
 
-function cyclePlaybackMode() {
-  const modes = ['sequential', 'shuffle', 'repeat']
-  const next = modes[(modes.indexOf(playbackMode.value) + 1) % modes.length]
-  switchPlaybackMode(next)
-}
-
-// Auto-advance for sequential/shuffle modes
+// Auto-advance when advanceMode is autoNext (non-media uses timer; media uses onEnded)
 function startAutoAdvance() {
   clearAutoAdvance()
-  if (playbackMode.value === 'repeat') return
-  // For non-media types, auto-advance after a delay
+  if (advanceMode.value === 'repeatCurrent') return
   const type = previewFile.value?.fileType
-  if (['video', 'audio'].includes(type)) return // media auto-advances via onEnded
+  if (['video', 'audio'].includes(type)) return
   autoAdvanceTimer = setTimeout(() => {
     nextFile()
   }, autoAdvanceSeconds.value * 1000)
@@ -777,8 +879,7 @@ function clearAutoAdvance() {
 }
 
 function onMediaEnded() {
-  if (playbackMode.value === 'repeat') {
-    // Loop current
+  if (advanceMode.value === 'repeatCurrent') {
     mediaPlayer.value?.seekBy(-999999)
     nextTick(() => mediaPlayer.value?.togglePlay())
   } else {
