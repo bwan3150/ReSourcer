@@ -100,6 +100,13 @@ export default {
     deleteConfirmTitle: '删除此文件？',
     deleteConfirmMsg: '文件将被移动到回收站，可稍后在回收站中还原。',
     deletedToRecycle: '已移到回收站',
+    batchSelect: '批量选择',
+    selectedCount: '已选 {count} 项',
+    selectAll: '全选',
+    deselectAll: '取消全选',
+    bulkDeleteConfirmTitle: '删除选中的 {count} 个文件？',
+    bulkDeleteConfirmMsg: '选中的文件将被移动到回收站，可稍后在回收站中还原。',
+    bulkPartialResult: '完成 {ok} 项，失败 {fail} 项',
   },
   classifier: {
     title: '分类器',

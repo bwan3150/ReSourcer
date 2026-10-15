@@ -73,6 +73,12 @@ struct GalleryView: View {
     @State private var fileInfoTags: [Tag] = []
     @State private var showTagEditor = false
 
+    // 批量选择
+    @State private var isSelectMode = false
+    @State private var selectedUUIDs: Set<String> = []
+    @State private var bulkMoveUUIDs: [String] = []
+    @State private var isBulkBusy = false
+
     // 上传相关
     @State private var isUploadMenuExpanded = false            // 右下角上传按钮是否展开
     @State private var showPhotoPicker = false
@@ -137,9 +143,18 @@ struct GalleryView: View {
                     Spacer()
                 }
             }
-            // 右下角悬浮上传按钮（展开后为三种上传来源）
+            // 右下角悬浮上传按钮（展开后为三种上传来源）；批量选择时改为底部操作栏
+            .overlay(alignment: .bottom) {
+                if isSelectMode {
+                    batchActionBar
+                        .padding(.horizontal, AppTheme.Spacing.lg)
+                        .padding(.bottom, AppTheme.Spacing.md)
+                }
+            }
             .overlay(alignment: .bottomTrailing) {
-                uploadFloatingMenu
+                if !isSelectMode {
+                    uploadFloatingMenu
+                }
             }
             .navigationBarHidden(true)
             .navigationDestination(for: Int.self) { index in
@@ -227,19 +242,32 @@ struct GalleryView: View {
             }
             .padding(.vertical, AppTheme.Spacing.md)
         }
-        // 移动面板（使用标准 sheet 确保生命周期正确）
+        // 移动面板（使用标准 sheet 确保生命周期正确；支持单文件与批量）
         .sheet(isPresented: $showMoveSheet) {
             MoveSheetView(
                 apiService: apiService,
                 sourceFolder: sourceFolder,
-                file: selectedFile,
-                onDismiss: { showMoveSheet = false },
-                onMoved: { folderName in
+                file: bulkMoveUUIDs.isEmpty ? selectedFile : nil,
+                uuids: bulkMoveUUIDs.isEmpty
+                    ? (selectedFile?.uuid.map { [$0] } ?? [])
+                    : bulkMoveUUIDs,
+                onDismiss: {
                     showMoveSheet = false
+                    bulkMoveUUIDs = []
+                },
+                onMoved: { folderName, movedUUIDs in
+                    showMoveSheet = false
+                    bulkMoveUUIDs = []
                     // 立即从本地数组移除被移动的文件（即时反馈）
-                    if let movedFile = selectedFile {
+                    if !movedUUIDs.isEmpty {
+                        files.removeAll { file in
+                            guard let uuid = file.uuid else { return false }
+                            return movedUUIDs.contains(uuid)
+                        }
+                    } else if let movedFile = selectedFile {
                         files.removeAll { $0.id == movedFile.id }
                     }
+                    exitSelectMode()
                     GlassAlertManager.shared.showSuccess("已移动到 \(folderName)")
                     await refreshFiles()
                 }
@@ -565,6 +593,25 @@ struct GalleryView: View {
                     }
             )
 
+            // 批量选择
+            Button {
+                withAnimation {
+                    if isSelectMode {
+                        exitSelectMode()
+                    } else {
+                        isSelectMode = true
+                        selectedUUIDs = []
+                    }
+                }
+            } label: {
+                Image(systemName: isSelectMode ? "checkmark.circle.fill" : "checkmark.circle")
+                    .font(.system(size: 18))
+                    .foregroundStyle(isSelectMode ? Color.accentColor : .primary)
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityIdentifier("batchSelectToggle")
+            .interactiveGlassBackground(in: Circle())
+
             // 上传记录
             Button {
                 showUploadTaskList = true
@@ -859,11 +906,22 @@ struct GalleryView: View {
         return LazyVGrid(columns: columns, spacing: spacing) {
             ForEach(Array(files.enumerated()), id: \.element.id) { index, file in
                 Button {
-                    openFilePreview(at: index)
+                    if isSelectMode {
+                        toggleSelection(for: file)
+                    } else {
+                        openFilePreview(at: index)
+                    }
                 } label: {
-                    GalleryGridItem(file: file, apiService: apiService, sourceFolder: sourceFolder)
+                    GalleryGridItem(
+                        file: file,
+                        apiService: apiService,
+                        sourceFolder: sourceFolder,
+                        isSelectMode: isSelectMode,
+                        isSelected: file.uuid.map { selectedUUIDs.contains($0) } ?? false
+                    )
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier(file.uuid.map { "fileGridItem-\($0)" } ?? "fileGridItem-\(index)")
             }
 
             // 分页加载哨兵
@@ -886,7 +944,15 @@ struct GalleryView: View {
                     file: file,
                     apiService: apiService,
                     sourceFolder: sourceFolder,
-                    onTap: { openFilePreview(at: index) },
+                    isSelectMode: isSelectMode,
+                    isSelected: file.uuid.map { selectedUUIDs.contains($0) } ?? false,
+                    onTap: {
+                        if isSelectMode {
+                            toggleSelection(for: file)
+                        } else {
+                            openFilePreview(at: index)
+                        }
+                    },
                     onInfoTap: {
                         selectedFile = file
                         fileInfoTags = []
@@ -1158,6 +1224,7 @@ struct GalleryView: View {
 
     /// 统一导航方法：切换到指定文件夹路径
     private func navigateToFolder(path: String) async {
+        exitSelectMode()
         currentFolderFullPath = path
         NavigationState.shared.setCurrentFolder(path)
         files = []
@@ -1396,6 +1463,142 @@ struct GalleryView: View {
     }
 
 
+    // MARK: - 批量选择
+
+    private var isInRecycleBin: Bool {
+        currentFolderPath == recycleBinPath
+            || currentFolderPath.hasSuffix("/\(IndexedFolder.recycleBinName)")
+    }
+
+    private var allVisibleSelected: Bool {
+        let uuids = files.compactMap(\.uuid)
+        return !uuids.isEmpty && uuids.allSatisfy { selectedUUIDs.contains($0) }
+    }
+
+    private var batchActionBar: some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            Text("已选 \(selectedUUIDs.count)")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .accessibilityIdentifier("batchSelectedCount")
+
+            Button(allVisibleSelected ? "取消全选" : "全选") {
+                toggleSelectAllVisible()
+            }
+            .font(.subheadline)
+            .accessibilityIdentifier("batchSelectAll")
+
+            Spacer(minLength: 0)
+
+            Button {
+                startBulkMove()
+            } label: {
+                Label("移动", systemImage: "folder")
+            }
+            .disabled(selectedUUIDs.isEmpty || isBulkBusy)
+            .accessibilityIdentifier("batchMoveButton")
+
+            if !isInRecycleBin {
+                Button(role: .destructive) {
+                    promptBulkDelete()
+                } label: {
+                    Label("删除", systemImage: "trash")
+                }
+                .disabled(selectedUUIDs.isEmpty || isBulkBusy)
+                .accessibilityIdentifier("batchDeleteButton")
+            }
+
+            Button("取消") {
+                exitSelectMode()
+            }
+            .accessibilityIdentifier("batchCancelButton")
+        }
+        .padding(.horizontal, AppTheme.Spacing.md)
+        .padding(.vertical, AppTheme.Spacing.sm)
+        .glassBackground(in: Capsule())
+        // Keep children (全选 / 移动 / 删除) discoverable by XCUITest while
+        // still exposing the bar container via batchActionBar.
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("batchActionBar")
+    }
+
+    private func exitSelectMode() {
+        isSelectMode = false
+        selectedUUIDs = []
+        bulkMoveUUIDs = []
+    }
+
+    private func toggleSelection(for file: FileInfo) {
+        guard let uuid = file.uuid else { return }
+        if selectedUUIDs.contains(uuid) {
+            selectedUUIDs.remove(uuid)
+        } else {
+            selectedUUIDs.insert(uuid)
+        }
+    }
+
+    private func toggleSelectAllVisible() {
+        let uuids = files.compactMap(\.uuid)
+        if allVisibleSelected {
+            selectedUUIDs = []
+        } else {
+            selectedUUIDs = Set(uuids)
+        }
+    }
+
+    private func startBulkMove() {
+        guard !selectedUUIDs.isEmpty else { return }
+        bulkMoveUUIDs = Array(selectedUUIDs)
+        selectedFile = nil
+        showMoveSheet = true
+    }
+
+    private func promptBulkDelete() {
+        let count = selectedUUIDs.count
+        guard count > 0 else { return }
+        GlassConfirmManager.shared.show(
+            config: GlassConfirmConfig(
+                title: "删除选中的 \(count) 个文件？",
+                message: "选中的文件将被移动到回收站，可稍后在回收站中还原。",
+                icon: "trash.fill",
+                iconColor: .red,
+                confirmTitle: "删除",
+                confirmStyle: .destructive,
+                cancelTitle: "取消"
+            ),
+            onConfirm: {
+                Task { @MainActor in await performBulkDelete() }
+            }
+        )
+    }
+
+    private func performBulkDelete() async {
+        let uuids = Array(selectedUUIDs)
+        guard !uuids.isEmpty else { return }
+        isBulkBusy = true
+        do {
+            let result = try await apiService.file.batchDeleteFiles(uuids: uuids)
+            files.removeAll { file in
+                guard let uuid = file.uuid else { return false }
+                return result.succeeded.contains(where: { $0.uuid == uuid })
+            }
+            if result.failureCount > 0 {
+                GlassAlertManager.shared.showWarning(
+                    "部分完成",
+                    message: "成功 \(result.successCount) 项，失败 \(result.failureCount) 项"
+                )
+            } else {
+                GlassAlertManager.shared.showSuccess("已移到回收站")
+            }
+            exitSelectMode()
+            await refreshFiles()
+        } catch {
+            GlassAlertManager.shared.showError("删除失败", message: error.localizedDescription)
+        }
+        isBulkBusy = false
+    }
+
     // MARK: - 文件操作
 
 
@@ -1513,17 +1716,27 @@ enum GalleryViewMode {
 
 // MARK: - Move Sheet View（标准 .sheet，生命周期可靠）
 
-/// 文件移动面板 — 多级文件夹导航
+/// 文件移动面板 — 多级文件夹导航（支持单文件与批量）
 struct MoveSheetView: View {
     let apiService: APIService
     let sourceFolder: String
     let file: FileInfo?
+    /// 待移动的 UUID 列表；为空时回退到 `file.uuid`
+    var uuids: [String] = []
     let onDismiss: () -> Void
-    let onMoved: (String) async -> Void
+    /// folderName, movedUUIDs
+    let onMoved: (String, [String]) async -> Void
 
     @State private var currentPath: String = ""
     @State private var subfolders: [IndexedFolder] = []
     @State private var isLoading = false
+    @State private var isMoving = false
+
+    private var targetUUIDs: [String] {
+        if !uuids.isEmpty { return uuids }
+        if let uuid = file?.uuid { return [uuid] }
+        return []
+    }
 
     private var displayName: String {
         if currentPath.isEmpty || currentPath == sourceFolder {
@@ -1623,14 +1836,21 @@ struct MoveSheetView: View {
                 Button {
                     Task { await moveToPath(currentPath.isEmpty ? sourceFolder : currentPath, name: displayName) }
                 } label: {
-                    Text("移动至此")
-                        .font(.body)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, AppTheme.Spacing.md)
-                        .background(.blue, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+                    HStack {
+                        if isMoving {
+                            ProgressView()
+                                .tint(.white)
+                        }
+                        Text(targetUUIDs.count > 1 ? "移动 \(targetUUIDs.count) 项至此" : "移动至此")
+                            .font(.body)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.white)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, AppTheme.Spacing.md)
+                    .background(.blue, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
                 }
+                .disabled(targetUUIDs.isEmpty || isMoving)
                 .padding(.horizontal, AppTheme.Spacing.lg)
                 .padding(.vertical, AppTheme.Spacing.md)
             }
@@ -1662,10 +1882,27 @@ struct MoveSheetView: View {
     }
 
     private func moveToPath(_ path: String, name: String) async {
-        guard let file, let uuid = file.uuid else { return }
+        let ids = targetUUIDs
+        guard !ids.isEmpty else { return }
+        isMoving = true
+        defer { isMoving = false }
+
         do {
-            _ = try await apiService.file.moveFile(uuid: uuid, to: path)
-            await onMoved(name)
+            if ids.count == 1, let uuid = ids.first {
+                _ = try await apiService.file.moveFile(uuid: uuid, to: path)
+                await onMoved(name, ids)
+            } else {
+                let result = try await apiService.file.batchMoveFiles(uuids: ids, to: path)
+                let moved = result.succeeded.map(\.uuid)
+                if result.failureCount > 0 {
+                    GlassAlertManager.shared.showWarning(
+                        "部分完成",
+                        message: "成功 \(result.successCount) 项，失败 \(result.failureCount) 项"
+                    )
+                }
+                guard !moved.isEmpty else { return }
+                await onMoved(name, moved)
+            }
         } catch {
             GlassAlertManager.shared.showError("移动失败", message: error.localizedDescription)
         }
@@ -1678,6 +1915,8 @@ struct GalleryGridItem: View {
     let file: FileInfo
     let apiService: APIService
     var sourceFolder: String?
+    var isSelectMode: Bool = false
+    var isSelected: Bool = false
 
     var body: some View {
         // 用 Color.clear 占住正方形尺寸，图片用 overlay 填充后裁切
@@ -1702,7 +1941,7 @@ struct GalleryGridItem: View {
                 }
             .overlay {
                 // 视频播放图标（居中，液态玻璃风格）
-                if file.isVideo {
+                if file.isVideo && !isSelectMode {
                     Image(systemName: "play.fill")
                         .font(.system(size: 24))
                         .foregroundStyle(.white.opacity(0.9))
@@ -1710,12 +1949,27 @@ struct GalleryGridItem: View {
                         .glassBackground(in: Circle())
                 }
                 // 音频音符图标（居中，与视频播放按钮同尺寸）
-                if file.isAudio {
+                if file.isAudio && !isSelectMode {
                     Image(systemName: "music.note")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(.white.opacity(0.9))
                         .frame(width: 44, height: 44)
                         .background(.black.opacity(0.4), in: Circle())
+                }
+            }
+            .overlay(alignment: .topLeading) {
+                if isSelectMode {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 22))
+                        .foregroundStyle(isSelected ? Color.accentColor : .white.opacity(0.9))
+                        .shadow(color: .black.opacity(0.35), radius: 2, x: 0, y: 1)
+                        .padding(8)
+                }
+            }
+            .overlay {
+                if isSelectMode && isSelected {
+                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md)
+                        .stroke(Color.accentColor, lineWidth: 3)
                 }
             }
             .overlay(alignment: .bottomTrailing) {
@@ -1759,16 +2013,24 @@ struct GalleryListItem: View {
     let file: FileInfo
     let apiService: APIService
     var sourceFolder: String?
+    var isSelectMode: Bool = false
+    var isSelected: Bool = false
     var onTap: (() -> Void)?
     var onInfoTap: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 0) {
-            // 主内容区域 — 点击进入预览
+            // 主内容区域 — 点击进入预览 / 批量选择
             Button {
                 onTap?()
             } label: {
                 HStack(spacing: AppTheme.Spacing.md) {
+                    if isSelectMode {
+                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 22))
+                            .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                    }
+
                     // 缩略图
                     CachedThumbnailView(
                         url: file.thumbnailURL(apiService: apiService, sourceFolder: sourceFolder)
@@ -1815,19 +2077,27 @@ struct GalleryListItem: View {
             }
             .buttonStyle(.plain)
 
-            // 更多按钮 — 点击弹出文件信息
-            Button {
-                onInfoTap?()
-            } label: {
-                Image(systemName: "ellipsis")
-                    .foregroundStyle(.tertiary)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
+            // 更多按钮 — 点击弹出文件信息（批量选择时隐藏）
+            if !isSelectMode {
+                Button {
+                    onInfoTap?()
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundStyle(.tertiary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(AppTheme.Spacing.md)
         .clearGlassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+        .overlay {
+            if isSelectMode && isSelected {
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md)
+                    .stroke(Color.accentColor, lineWidth: 2)
+            }
+        }
     }
 
     /// 列表占位图标

@@ -100,6 +100,13 @@ export default {
     deleteConfirmTitle: 'Delete this file?',
     deleteConfirmMsg: 'The file will be moved to the recycle bin and can be restored later.',
     deletedToRecycle: 'Moved to recycle bin',
+    batchSelect: 'Batch select',
+    selectedCount: '{count} selected',
+    selectAll: 'Select all',
+    deselectAll: 'Deselect all',
+    bulkDeleteConfirmTitle: 'Delete {count} selected files?',
+    bulkDeleteConfirmMsg: 'Selected files will be moved to the recycle bin and can be restored later.',
+    bulkPartialResult: '{ok} succeeded, {fail} failed',
   },
   classifier: {
     title: 'Classifier',

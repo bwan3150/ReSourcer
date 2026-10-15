@@ -14,3 +14,13 @@ export function moveFile(uuid, targetFolder, newName) {
 export function deleteFile(uuid) {
   return client.post('/api/file/delete', { uuid })
 }
+
+/** 批量移动到同一目标文件夹 */
+export function batchMoveFiles(uuids, targetFolder) {
+  return client.post('/api/file/batch/move', { uuids, targetFolder })
+}
+
+/** 批量软删除到回收站 */
+export function batchDeleteFiles(uuids) {
+  return client.post('/api/file/batch/delete', { uuids })
+}

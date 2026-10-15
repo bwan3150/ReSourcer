@@ -2,7 +2,15 @@
   <div class="relative h-full">
     <!-- Grid content -->
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 p-4">
-      <FileCard v-for="file in files" :key="file.uuid" :file="file" @click="$emit('preview', file)" />
+      <FileCard
+        v-for="file in files"
+        :key="file.uuid"
+        :file="file"
+        :select-mode="selectMode"
+        :selected="selectedIds.has(file.uuid)"
+        @click="$emit('preview', file)"
+        @toggle-select="$emit('toggle-select', $event)"
+      />
     </div>
 
     <!-- Bottom: load more spinner (pagination) -->
@@ -36,9 +44,11 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   loadingMore: { type: Boolean, default: false },
   hasMore: { type: Boolean, default: false },
+  selectMode: { type: Boolean, default: false },
+  selectedIds: { type: Object, default: () => new Set() },
 })
 
-const emit = defineEmits(['preview', 'loadMore'])
+const emit = defineEmits(['preview', 'loadMore', 'toggle-select'])
 const loadTrigger = ref(null)
 let observer = null
 

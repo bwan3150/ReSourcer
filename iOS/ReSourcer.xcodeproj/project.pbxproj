@@ -77,6 +77,7 @@
 		A10000A0233F0001 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000FE233F0000 /* PreferencesView.swift */; };
 		D622607EE8CDA1C4914D147B /* FileIconHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = E34B9BA63E3E064E0D5F8F08 /* FileIconHelper.swift */; };
 		E0F10391981E71D1AB05829E /* MetricsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 649E6184143302EFD3D570DE /* MetricsModels.swift */; };
+		B1000003233F0001 /* BatchSelectUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001233F0000 /* BatchSelectUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -153,6 +154,8 @@
 		A10000FE233F0000 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		E34B9BA63E3E064E0D5F8F08 /* FileIconHelper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileIconHelper.swift; sourceTree = "<group>"; };
 		EF085BEB183121E3B39A0477 /* MetricsService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MetricsService.swift; sourceTree = "<group>"; };
+		B1000001233F0000 /* BatchSelectUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchSelectUITests.swift; sourceTree = "<group>"; };
+		B1000002233F0000 /* ReSourcerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ReSourcerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -171,6 +174,7 @@
 			children = (
 				A10000A1233F0000 /* ReSourcer */,
 				A10000A2233F0000 /* Products */,
+				B10000G0233F0000 /* ReSourcerUITests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -196,6 +200,7 @@
 			isa = PBXGroup;
 			children = (
 				A1000000233F0000 /* ReSourcer.app */,
+				B1000002233F0000 /* ReSourcerUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -373,6 +378,14 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
+		B10000G0233F0000 /* ReSourcerUITests */ = {
+			isa = PBXGroup;
+			children = (
+				B1000001233F0000 /* BatchSelectUITests.swift */,
+			);
+			path = ReSourcerUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -393,6 +406,24 @@
 			productReference = A1000000233F0000 /* ReSourcer.app */;
 			productType = "com.apple.product-type.application";
 		};
+		B10000D1233F0000 /* ReSourcerUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B10000E0233F0000 /* Build configuration list for PBXNativeTarget "ReSourcerUITests" */;
+			buildPhases = (
+				B10000E1233F0000 /* Sources */,
+				B10000F0233F0000 /* Frameworks */,
+				B10000R0233F0000 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B10000C1233F0000 /* PBXTargetDependency */,
+			);
+			name = ReSourcerUITests;
+			productName = ReSourcerUITests;
+			productReference = B1000002233F0000 /* ReSourcerUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -405,6 +436,10 @@
 				TargetAttributes = {
 					A10000D0233F0000 = {
 						CreatedOnToolsVersion = 16.0;
+					};
+					B10000D1233F0000 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = A10000D0233F0000;
 					};
 				};
 			};
@@ -423,9 +458,28 @@
 			projectRoot = "";
 			targets = (
 				A10000D0233F0000 /* ReSourcer */,
+				B10000D1233F0000 /* ReSourcerUITests */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXContainerItemProxy section */
+		B10000C0233F0000 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000E1233F0000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A10000D0233F0000;
+			remoteInfo = ReSourcer;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		B10000C1233F0000 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A10000D0233F0000 /* ReSourcer */;
+			targetProxy = B10000C0233F0000 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXResourcesBuildPhase section */
 		A10000D2233F0000 /* Resources */ = {
@@ -516,6 +570,35 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+/* Begin PBXSourcesBuildPhase section for UITests */
+		B10000E1233F0000 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1000003233F0001 /* BatchSelectUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section for UITests */
+/* Begin PBXFrameworksBuildPhase section for UITests */
+		B10000F0233F0000 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section for UITests */
+/* Begin PBXResourcesBuildPhase section for UITests */
+		B10000R0233F0000 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section for UITests */
+
 
 /* Begin XCBuildConfiguration section */
 		A10000E3233F0000 /* Debug */ = {
@@ -719,6 +802,46 @@
 			};
 			name = Release;
 		};
+		B10000E5233F0000 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 925YHK2R4K;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 0.0.34;
+				PRODUCT_BUNDLE_IDENTIFIER = app.resourcer.apple.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = ReSourcer;
+			};
+			name = Debug;
+		};
+		B10000E6233F0000 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 925YHK2R4K;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 0.0.34;
+				PRODUCT_BUNDLE_IDENTIFIER = app.resourcer.apple.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = ReSourcer;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -736,6 +859,15 @@
 			buildConfigurations = (
 				A10000E3233F0000 /* Debug */,
 				A10000E4233F0000 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B10000E0233F0000 /* Build configuration list for PBXNativeTarget "ReSourcerUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B10000E5233F0000 /* Debug */,
+				B10000E6233F0000 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

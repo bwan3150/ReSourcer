@@ -193,6 +193,38 @@ struct FileDeleteRequest: Codable {
     let uuid: String
 }
 
+/// 批量移动文件请求
+struct FileBatchMoveRequest: Codable {
+    let uuids: [String]
+    let targetFolder: String
+}
+
+/// 批量删除文件请求（软删除到回收站）
+struct FileBatchDeleteRequest: Codable {
+    let uuids: [String]
+}
+
+/// 批量操作成功单项
+struct FileBatchSuccessItem: Codable {
+    let uuid: String
+    let newPath: String
+}
+
+/// 批量操作失败单项
+struct FileBatchFailureItem: Codable {
+    let uuid: String
+    let error: String
+}
+
+/// 批量文件操作响应
+struct FileBatchOperationResponse: Codable {
+    let status: String
+    let successCount: Int
+    let failureCount: Int
+    let succeeded: [FileBatchSuccessItem]
+    let failed: [FileBatchFailureItem]
+}
+
 // MARK: - 索引系统模型
 
 /// 服务端 IndexedFile（索引 API 原始返回格式）

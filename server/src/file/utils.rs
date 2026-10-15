@@ -40,3 +40,49 @@ pub fn get_unique_path(dir: &Path, filename: &str) -> PathBuf {
 
     candidate(lo)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(label: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("resourcer-unique-{}-{}", label, nanos));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn unique_path_returns_original_when_free() {
+        let dir = temp_dir("free");
+        let path = get_unique_path(&dir, "photo.jpg");
+        assert_eq!(path, dir.join("photo.jpg"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn unique_path_appends_counter_on_collision() {
+        let dir = temp_dir("collide");
+        fs::write(dir.join("photo.jpg"), b"a").unwrap();
+        let path = get_unique_path(&dir, "photo.jpg");
+        assert_eq!(path, dir.join("photo(1).jpg"));
+        fs::write(&path, b"b").unwrap();
+        let path2 = get_unique_path(&dir, "photo.jpg");
+        assert_eq!(path2, dir.join("photo(2).jpg"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn unique_path_handles_files_without_extension() {
+        let dir = temp_dir("noext");
+        fs::write(dir.join("README"), b"a").unwrap();
+        let path = get_unique_path(&dir, "README");
+        assert_eq!(path, dir.join("README(1)"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+}
