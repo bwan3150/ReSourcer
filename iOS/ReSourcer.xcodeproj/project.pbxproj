@@ -24,6 +24,7 @@
 		C2000041233F0001 /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000041233F0000 /* APIError.swift */; };
 		C2000042233F0001 /* NetworkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000042233F0000 /* NetworkManager.swift */; };
 		C200005A233F0001 /* UploadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100005A233F0000 /* UploadService.swift */; };
+		C20000A3233F0001 /* BackgroundUploadSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000A3233F0000 /* BackgroundUploadSession.swift */; };
 		C1000010233F0001 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000010233F0000 /* ShareViewController.swift */; };
 		C1000011233F0001 /* ShareUploadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000011233F0000 /* ShareUploadView.swift */; };
 		C10000E2233F0000 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C1000020233F0000 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -726,6 +727,7 @@
 				C2000041233F0001 /* APIError.swift in Sources */,
 				C2000042233F0001 /* NetworkManager.swift in Sources */,
 				C200005A233F0001 /* UploadService.swift in Sources */,
+				C20000A3233F0001 /* BackgroundUploadSession.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
