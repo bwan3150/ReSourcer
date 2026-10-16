@@ -75,9 +75,10 @@ struct FilePreviewView: View {
     @State private var fileMetadata: FileMetadata? = nil
     @State private var showTagEditor = false
 
-    // 重命名
+    // 重命名（pin target — playlistIndex can change while the overlay is open）
     @State private var showRenameAlert = false
     @State private var renameText = ""
+    @State private var renameTarget: FileInfo?
 
     // 移动
     @State private var showMoveSheet = false
@@ -281,7 +282,7 @@ struct FilePreviewView: View {
                                 .autocorrectionDisabled()
                                 .textInputAutocapitalization(.never)
                                 .accessibilityIdentifier("renameTextField")
-                            Text(currentFile.map { $0.extension.isEmpty ? "" : ".\($0.extension)" } ?? "")
+                            Text((renameTarget ?? currentFile).map { $0.extension.isEmpty ? "" : ".\($0.extension)" } ?? "")
                                 .foregroundStyle(.tertiary)
                         }
                         .padding(AppTheme.Spacing.md)
@@ -298,7 +299,7 @@ struct FilePreviewView: View {
                                 showRenameAlert = false
                                 Task { await performRename() }
                             }
-                            .disabled(renameText.isEmpty || renameText == currentFile?.baseName)
+                            .disabled(renameText.isEmpty || renameText == (renameTarget ?? currentFile)?.baseName)
                             .frame(maxWidth: .infinity)
                             .accessibilityIdentifier("renameConfirmButton")
                             .accessibilityLabel("确认")
@@ -690,10 +691,12 @@ struct FilePreviewView: View {
                     }
                 } : nil,
                 onRename: {
+                    let target = file
+                    renameTarget = target
                     showInfoSheet = false
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(300))
-                        renameText = file.baseName
+                        renameText = target.baseName
                         showRenameAlert = true
                     }
                 },
@@ -1359,15 +1362,15 @@ struct FilePreviewView: View {
 
 
     private func performRename() async {
-        guard let file = currentFile, let uuid = file.uuid, !renameText.isEmpty else { return }
+        guard let file = renameTarget ?? currentFile, let uuid = file.uuid, !renameText.isEmpty else { return }
         let newName = file.extension.isEmpty ? renameText : renameText + "." + file.extension
 
         isOperating = true
         do {
             _ = try await apiService.file.renameFile(uuid: uuid, to: newName)
-            // 重命名成功后只更新当前文件的名字，不从列表移除
+            // 重命名成功后只更新目标项（可能不是 current playlistIndex）
             let ext = file.extension
-            playlist[playlistIndex] = FileInfo(
+            let updated = FileInfo(
                 uuid: file.uuid,
                 name: newName,
                 path: (file.path as NSString).deletingLastPathComponent + "/" + newName,
@@ -1381,6 +1384,12 @@ struct FilePreviewView: View {
                 duration: file.duration,
                 sourceUrl: file.sourceUrl
             )
+            if let idx = playlist.firstIndex(where: { $0.uuid == uuid }) {
+                playlist[idx] = updated
+            } else if playlist.indices.contains(playlistIndex) {
+                playlist[playlistIndex] = updated
+            }
+            renameTarget = nil
             GlassAlertManager.shared.showSuccess("重命名成功")
         } catch {
             GlassAlertManager.shared.showError("重命名失败", message: error.localizedDescription)
