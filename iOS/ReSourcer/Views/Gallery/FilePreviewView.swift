@@ -148,14 +148,19 @@ struct FilePreviewView: View {
     }
 
     // MARK: - Body
+    // Split into sub-trees so Release + SWIFT_STRICT_CONCURRENCY can type-check.
 
     var body: some View {
+        previewWithSheets
+            .environmentObject(logger)
+    }
+
+    @ViewBuilder
+    private var previewStack: some View {
         ZStack {
-            // 黑色背景
             Color.black.ignoresSafeArea()
 
             if playlist.isEmpty {
-                // Loading state — show spinner and back button
                 VStack(spacing: AppTheme.Spacing.lg) {
                     ProgressView()
                         .tint(.white)
@@ -163,7 +168,6 @@ struct FilePreviewView: View {
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.5))
                 }
-                // Back button overlay
                 VStack {
                     HStack {
                         Button { dismiss() } label: {
@@ -179,13 +183,11 @@ struct FilePreviewView: View {
                     Spacer()
                 }
             } else if let file = currentFile {
-                // 直接显示当前文件
                 fileContentView(for: file)
                     .id(file.id)
                     .ignoresSafeArea()
                     .longPressToDismiss { dismiss() }
 
-                // 顶部 + 底部控制层
                 if showControls {
                     VStack {
                         topControls
@@ -198,179 +200,190 @@ struct FilePreviewView: View {
                 }
             }
         }
-        .ignoresSafeArea(edges: .bottom)
-        .navigationBarBackButtonHidden(true)
-        .toolbarVisibility(.hidden, for: .navigationBar)
-        .toolbar(.hidden, for: .tabBar)
-        .statusBarHidden(!showControls)
-        .animation(AppTheme.Animation.standard, value: showControls)
-        .onChange(of: playlistIndex) { _, _ in
-            handlePlaylistIndexChanged()
-        }
-        .onChange(of: playlist.count) { _, _ in
-            publishE2EPlaylistMeta()
-        }
-        .onChange(of: shuffleEnabled) { _, _ in
-            refreshNowPlayingSkipAvailability()
-        }
-        .onChange(of: listLoopEnabled) { _, _ in
-            refreshNowPlayingSkipAvailability()
-        }
-        .onChange(of: playlistAtStart) { _, _ in
-            refreshNowPlayingSkipAvailability()
-        }
-        .onChange(of: playlistAtEnd) { _, _ in
-            refreshNowPlayingSkipAvailability()
-        }
-        .onAppear {
-            NavigationState.shared.hideTabBar = true
-            scheduleAutoHide()
-            refreshNowPlayingSkipAvailability()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemotePlay)) { _ in
-            isVideoPlaying = true
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemotePause)) { _ in
-            isVideoPlaying = false
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemoteToggle)) { _ in
-            isVideoPlaying.toggle()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemoteNext)) { _ in
-            guard canGoNext else { return }
-            // 锁屏 / 控制中心：跳过图片等非音视频，保持后台连播
-            navigateInPlaylist(direction: 1, skipNonPlayable: true)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemotePrevious)) { _ in
-            guard canGoPrev else { return }
-            navigateInPlaylist(direction: -1, skipNonPlayable: true)
-        }
-        .task {
-            // UITest：在拉播放列表前同步冷启动注入的模式，避免上一测 UserDefaults 残留
-            if ProcessInfo.processInfo.environment["E2E_NOWPLAYING_PROBE"] == "1" {
-                listLoopEnabled = LocalStorageService.shared.getListLoopEnabled()
-                shuffleEnabled = LocalStorageService.shared.getShuffleEnabled()
-                prefs = LocalStorageService.shared.getPreviewPreferences()
-                advanceMode = LocalStorageService.shared.getAdvanceMode()
+    }
+
+    private var previewWithLifecycle: some View {
+        previewStack
+            .ignoresSafeArea(edges: .bottom)
+            .navigationBarBackButtonHidden(true)
+            .toolbarVisibility(.hidden, for: .navigationBar)
+            .toolbar(.hidden, for: .tabBar)
+            .statusBarHidden(!showControls)
+            .animation(AppTheme.Animation.standard, value: showControls)
+            .onChange(of: playlistIndex) { _, _ in
+                handlePlaylistIndexChanged()
             }
-            if shuffleEnabled { shuffleNeedsFresh = true }
-            await fetchPlaylist(uuid: initialUuid, keepShuffleQueue: false)
-            refreshNowPlayingSkipAvailability()
-        }
-        .onDisappear {
-            hideControlsTask?.cancel()
-            cancelAutoAdvanceTimer()
-            NowPlayingController.shared.clear()
-            NavigationState.shared.hideTabBar = false
-        }
-        // 文件信息面板
-        .glassBottomSheet(
-            isPresented: $showInfoSheet,
-            title: "文件信息",
-            stickyFooter: { fileInfoActions }
-        ) {
-            fileInfoModules
-        }
-        // 重命名浮窗（overlay 避免被输入法遮挡）
-        .overlay {
-            if showRenameAlert {
-                ZStack {
-                    Color.black.opacity(0.5)
-                        .ignoresSafeArea()
-                        .onTapGesture { showRenameAlert = false }
-
-                    VStack(spacing: AppTheme.Spacing.lg) {
-                        HStack {
-                            TextField("文件名", text: $renameText)
-                                .textFieldStyle(.plain)
-                                .autocorrectionDisabled()
-                                .textInputAutocapitalization(.never)
-                                .accessibilityIdentifier("renameTextField")
-                            Text((renameTarget ?? currentFile).map { $0.extension.isEmpty ? "" : ".\($0.extension)" } ?? "")
-                                .foregroundStyle(.tertiary)
-                        }
-                        .padding(AppTheme.Spacing.md)
-                        .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
-
-                        HStack(spacing: AppTheme.Spacing.md) {
-                            GlassButton(icon: "trash", style: .secondary, size: .medium) {
-                                renameText = ""
-                            }
-                            .frame(maxWidth: .infinity)
-                            .accessibilityLabel("清空")
-
-                            GlassButton(icon: "checkmark", style: .primary, size: .medium) {
-                                showRenameAlert = false
-                                Task { await performRename() }
-                            }
-                            .disabled(renameText.isEmpty || renameText == (renameTarget ?? currentFile)?.baseName)
-                            .frame(maxWidth: .infinity)
-                            .accessibilityIdentifier("renameConfirmButton")
-                            .accessibilityLabel("确认")
-
-                            GlassButton(icon: "xmark", style: .secondary, size: .medium) {
-                                showRenameAlert = false
-                            }
-                            .frame(maxWidth: .infinity)
-                            .accessibilityLabel("取消")
-                        }
-                    }
-                    .padding(AppTheme.Spacing.xxl)
-                    .frame(maxWidth: 340)
-                    .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
-                }
-                .transition(.opacity.combined(with: .scale(scale: 0.92)))
+            .onChange(of: playlist.count) { _, _ in
+                publishE2EPlaylistMeta()
             }
-        }
-        .animation(AppTheme.Animation.spring, value: showRenameAlert)
-        // 移动面板（复用 GalleryView 的 MoveSheetView）
-        .sheet(isPresented: $showMoveSheet) {
-            MoveSheetView(
-                apiService: apiService,
-                sourceFolder: NavigationState.shared.sourceFolder,
-                file: moveTarget ?? currentFile,
-                uuids: (moveTarget ?? currentFile)?.uuid.map { [$0] } ?? [],
-                onDismiss: {
-                    showMoveSheet = false
-                    moveTarget = nil
-                },
-                onMoved: { folderName, _ in
-                    showMoveSheet = false
-                    moveTarget = nil
-                    GlassAlertManager.shared.showSuccess("已移动到 \(folderName)")
-                    handlePostOperation()
+            .onChange(of: shuffleEnabled) { _, _ in
+                refreshNowPlayingSkipAvailability()
+            }
+            .onChange(of: listLoopEnabled) { _, _ in
+                refreshNowPlayingSkipAvailability()
+            }
+            .onChange(of: playlistAtStart) { _, _ in
+                refreshNowPlayingSkipAvailability()
+            }
+            .onChange(of: playlistAtEnd) { _, _ in
+                refreshNowPlayingSkipAvailability()
+            }
+            .onChange(of: showInfoSheet) { _, isOpen in
+                if isOpen {
+                    cancelAutoAdvanceTimer()
+                } else {
+                    startAutoAdvanceTimer()
                 }
-            )
-            .presentationDetents([.medium, .large])
-        }
-        // 标签编辑器
-        .sheet(isPresented: $showTagEditor) {
-            if let file = currentFile, let uuid = file.uuid {
-                TagEditorView(
+            }
+            .onAppear {
+                NavigationState.shared.hideTabBar = true
+                scheduleAutoHide()
+                refreshNowPlayingSkipAvailability()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemotePlay)) { _ in
+                isVideoPlaying = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemotePause)) { _ in
+                isVideoPlaying = false
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemoteToggle)) { _ in
+                isVideoPlaying.toggle()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemoteNext)) { _ in
+                guard canGoNext else { return }
+                navigateInPlaylist(direction: 1, skipNonPlayable: true)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemotePrevious)) { _ in
+                guard canGoPrev else { return }
+                navigateInPlaylist(direction: -1, skipNonPlayable: true)
+            }
+            .task {
+                if ProcessInfo.processInfo.environment["E2E_NOWPLAYING_PROBE"] == "1" {
+                    listLoopEnabled = LocalStorageService.shared.getListLoopEnabled()
+                    shuffleEnabled = LocalStorageService.shared.getShuffleEnabled()
+                    prefs = LocalStorageService.shared.getPreviewPreferences()
+                    advanceMode = LocalStorageService.shared.getAdvanceMode()
+                }
+                if shuffleEnabled { shuffleNeedsFresh = true }
+                await fetchPlaylist(uuid: initialUuid, keepShuffleQueue: false)
+                refreshNowPlayingSkipAvailability()
+            }
+            .onDisappear {
+                hideControlsTask?.cancel()
+                cancelAutoAdvanceTimer()
+                NowPlayingController.shared.clear()
+                NavigationState.shared.hideTabBar = false
+            }
+    }
+
+    private var previewWithSheets: some View {
+        previewWithLifecycle
+            .glassBottomSheet(
+                isPresented: $showInfoSheet,
+                title: "文件信息",
+                stickyFooter: { fileInfoActions }
+            ) {
+                fileInfoModules
+            }
+            .overlay {
+                if showRenameAlert {
+                    renameAlertOverlay
+                }
+            }
+            .animation(AppTheme.Animation.spring, value: showRenameAlert)
+            .sheet(isPresented: $showMoveSheet) {
+                MoveSheetView(
                     apiService: apiService,
                     sourceFolder: NavigationState.shared.sourceFolder,
-                    fileUuid: uuid,
-                    onDismiss: { updatedTags in
-                        fileInfoTags = updatedTags
+                    file: moveTarget ?? currentFile,
+                    uuids: (moveTarget ?? currentFile)?.uuid.map { [$0] } ?? [],
+                    onDismiss: {
+                        showMoveSheet = false
+                        moveTarget = nil
+                    },
+                    onMoved: { folderName, _ in
+                        showMoveSheet = false
+                        moveTarget = nil
+                        GlassAlertManager.shared.showSuccess("已移动到 \(folderName)")
+                        handlePostOperation()
                     }
                 )
                 .presentationDetents([.medium, .large])
             }
-        }
-        // 调试日志面板
-        .sheet(isPresented: $showDebugLog) {
-            DebugLogSheet(logger: logger, fileName: currentFile?.name ?? "")
-                .presentationDetents([.medium, .large])
-        }
-        // 长按快捷编辑浮窗
-        .overlay {
-            if showQuickActions {
-                quickEditPopup
-                    .transition(.opacity.combined(with: .scale(scale: 0.92)))
+            .sheet(isPresented: $showTagEditor) {
+                if let file = currentFile, let uuid = file.uuid {
+                    TagEditorView(
+                        apiService: apiService,
+                        sourceFolder: NavigationState.shared.sourceFolder,
+                        fileUuid: uuid,
+                        onDismiss: { updatedTags in
+                            fileInfoTags = updatedTags
+                        }
+                    )
+                    .presentationDetents([.medium, .large])
+                }
             }
+            .sheet(isPresented: $showDebugLog) {
+                DebugLogSheet(logger: logger, fileName: currentFile?.name ?? "")
+                    .presentationDetents([.medium, .large])
+            }
+            .overlay {
+                if showQuickActions {
+                    quickEditPopup
+                        .transition(.opacity.combined(with: .scale(scale: 0.92)))
+                }
+            }
+            .animation(AppTheme.Animation.spring, value: showQuickActions)
+    }
+
+    @ViewBuilder
+    private var renameAlertOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.5)
+                .ignoresSafeArea()
+                .onTapGesture { showRenameAlert = false }
+
+            VStack(spacing: AppTheme.Spacing.lg) {
+                HStack {
+                    TextField("文件名", text: $renameText)
+                        .textFieldStyle(.plain)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .accessibilityIdentifier("renameTextField")
+                    Text((renameTarget ?? currentFile).map { $0.extension.isEmpty ? "" : ".\($0.extension)" } ?? "")
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(AppTheme.Spacing.md)
+                .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+
+                HStack(spacing: AppTheme.Spacing.md) {
+                    GlassButton(icon: "trash", style: .secondary, size: .medium) {
+                        renameText = ""
+                    }
+                    .frame(maxWidth: .infinity)
+                    .accessibilityLabel("清空")
+
+                    GlassButton(icon: "checkmark", style: .primary, size: .medium) {
+                        showRenameAlert = false
+                        Task { await performRename() }
+                    }
+                    .disabled(renameText.isEmpty || renameText == (renameTarget ?? currentFile)?.baseName)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("renameConfirmButton")
+                    .accessibilityLabel("确认")
+
+                    GlassButton(icon: "xmark", style: .secondary, size: .medium) {
+                        showRenameAlert = false
+                    }
+                    .frame(maxWidth: .infinity)
+                    .accessibilityLabel("取消")
+                }
+            }
+            .padding(AppTheme.Spacing.xxl)
+            .frame(maxWidth: 340)
+            .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
         }
-        .animation(AppTheme.Animation.spring, value: showQuickActions)
-        .environmentObject(logger)
+        .transition(.opacity.combined(with: .scale(scale: 0.92)))
     }
 
     // MARK: - 文件内容路由
