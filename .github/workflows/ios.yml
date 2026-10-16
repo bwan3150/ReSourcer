@@ -65,14 +65,13 @@ jobs:
               exit 1
             fi
             echo "IOS_APPSTORE_SHARE_PROFILE_BASE64 未设置，通过 App Store Connect API 拉取 $SHARE_BUNDLE_ID App Store profile…"
+            python3 -m venv "$RUNNER_TEMP/asc-venv"
+            # shellcheck disable=SC1091
+            source "$RUNNER_TEMP/asc-venv/bin/activate"
+            pip install --quiet PyJWT cryptography
             python3 - <<'PY'
           import base64, json, os, sys, time, urllib.error, urllib.parse, urllib.request
-          try:
-              import jwt
-          except ImportError:
-              import subprocess
-              subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", "PyJWT", "cryptography"])
-              import jwt
+          import jwt
 
           key_id = os.environ["ASC_API_KEY_ID"]
           issuer = os.environ["ASC_API_ISSUER_ID"]
