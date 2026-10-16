@@ -3,7 +3,7 @@
 //  ReSourcer
 //
 //  后台 URLSession：App 被杀后系统继续传文件；同 identifier 恢复任务。
-//  与 Share Extension 可共用 identifier 约定，但本 PR 仅覆盖主 App 上传路径。
+//  主 App 与 Share Extension 共用编译（UploadService 依赖本类型）。
 //
 
 import Foundation
