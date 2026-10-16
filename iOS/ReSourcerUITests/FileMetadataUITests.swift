@@ -215,22 +215,6 @@ final class FileMetadataUITests: XCTestCase {
         // Preview rename overlay opens after ~300ms sheet dismiss
         RunLoop.current.run(until: Date().addingTimeInterval(0.8))
 
-        // #region agent log
-        uiTestAgentLog(
-            hypothesisId: "A",
-            location: "FileMetadataUITests.swift:rename",
-            message: "after tap 重命名 + 0.8s",
-            data: [
-                "renameBtn": app.buttons["重命名"].exists,
-                "infoTitle": app.staticTexts["文件信息"].exists,
-                "renameTitle": app.staticTexts["重命名"].exists,
-                "textFieldCount": app.textFields.count,
-                "renameTextField": app.descendants(matching: .any)["renameTextField"].exists,
-                "runId": "post-fix"
-            ]
-        )
-        // #endregion
-
         var nameField = app.descendants(matching: .any)["renameTextField"].firstMatch
         if !nameField.waitForExistence(timeout: 3) {
             nameField = app.textFields["文件名"].firstMatch
@@ -238,22 +222,6 @@ final class FileMetadataUITests: XCTestCase {
         if !nameField.waitForExistence(timeout: 3) {
             nameField = app.textFields.firstMatch
         }
-        // #region agent log
-        if !nameField.exists {
-            let btnLabels = (0..<min(app.buttons.count, 12)).map { app.buttons.element(boundBy: $0).label }
-            uiTestAgentLog(
-                hypothesisId: "D",
-                location: "FileMetadataUITests.swift:rename",
-                message: "rename TextField missing; hierarchy snapshot",
-                data: [
-                    "textFieldCount": app.textFields.count,
-                    "renameTitle": app.staticTexts["重命名"].exists,
-                    "infoTitle": app.staticTexts["文件信息"].exists,
-                    "buttonLabels": btnLabels
-                ]
-            )
-        }
-        // #endregion
         XCTAssertTrue(nameField.waitForExistence(timeout: 8), "rename TextField")
         nameField.tap()
         if let current = nameField.value as? String, !current.isEmpty {
@@ -411,36 +379,15 @@ final class FileMetadataUITests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.3))
         }
 
-        var strategy: String
-        let hittable = btn.isHittable
-        if hittable {
-            strategy = "tap"
+        if btn.isHittable {
             btn.tap()
         } else if btn.accessibilityActivate() {
-            strategy = "accessibilityActivate"
+            // Activated via accessibility API when clipped but present.
         } else {
             // Do NOT coordinate-tap clipped controls near the tab bar — that switches tabs.
-            strategy = "notHittable"
             XCTFail("\(label) action not hittable after \(scrolls) sheet scrolls (frame may be under tab bar)")
             return
         }
-
-        // #region agent log
-        uiTestAgentLog(
-            hypothesisId: "A",
-            location: "FileMetadataUITests.swift:tapActionButton",
-            message: "activated action button",
-            data: [
-                "label": label,
-                "actionId": actionId ?? "",
-                "hittableBeforeTap": hittable,
-                "scrolls": scrolls,
-                "sheetScrollExists": sheetScroll.exists,
-                "strategy": strategy,
-                "runId": "post-fix-scroll"
-            ]
-        )
-        // #endregion
         RunLoop.current.run(until: Date().addingTimeInterval(0.5))
     }
 
@@ -739,39 +686,4 @@ final class FileMetadataUITests: XCTestCase {
         let s = total % 60
         return String(format: "%d:%02d", m, s)
     }
-
-    // #region agent log
-    private func uiTestAgentLog(hypothesisId: String, location: String, message: String, data: [String: Any]) {
-        var payload: [String: Any] = [
-            "hypothesisId": hypothesisId,
-            "location": location,
-            "message": message,
-            "timestamp": Int(Date().timeIntervalSince1970 * 1000),
-            "data": data,
-            "runId": "uitest"
-        ]
-        guard JSONSerialization.isValidJSONObject(payload),
-              let json = try? JSONSerialization.data(withJSONObject: payload),
-              var line = String(data: json, encoding: .utf8) else { return }
-        line += "\n"
-        let paths = [
-            "/tmp/cursor-logs/debug.log",
-            "/Users/ericwang/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/bc-4ed54bed-c0eb-54c2-bd0a-3c585eab4c6e/files/artifacts/debug.log"
-        ]
-        for path in paths {
-            let dir = (path as NSString).deletingLastPathComponent
-            try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
-            if !FileManager.default.fileExists(atPath: path) {
-                FileManager.default.createFile(atPath: path, contents: nil)
-            }
-            guard let handle = FileHandle(forWritingAtPath: path) else { continue }
-            defer { try? handle.close() }
-            _ = try? handle.seekToEnd()
-            if let bytes = line.data(using: .utf8) {
-                try? handle.write(contentsOf: bytes)
-            }
-        }
-        print("AGENT_DEBUG \(line)", terminator: "")
-    }
-    // #endregion
 }
