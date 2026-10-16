@@ -356,29 +356,84 @@ final class FileMetadataUITests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: recyclePath), "fs \(recyclePath)")
     }
 
-    /// Tap info-panel action without swiping the whole app (swipes dismiss glass sheets).
-    /// Prefer real activation over coordinate taps: coordinate hits nested SF Symbol
-    /// nodes and never fires GlassButton's action (rename sheet never opens).
+    /// Info-sheet action ids (prefer over label — icon-only GlassButtons).
+    private static let fileInfoActionIds: [String: String] = [
+        "重命名": "fileInfoRenameButton",
+        "移动": "fileInfoMoveButton",
+        "删除": "fileInfoDeleteButton",
+        "下载": "fileInfoDownloadButton",
+        "分享": "fileInfoShareButton"
+    ]
+
+    /// Tap info-panel action without app-level swipes (those dismiss glass sheets).
+    /// Tall EXIF sheets clip the action row — scroll the sheet ScrollView until hittable.
     private func tapActionButton(labeled label: String) {
-        let btn = app.buttons[label].firstMatch
-        XCTAssertTrue(btn.waitForExistence(timeout: 10), "\(label) action")
+        let actionId = Self.fileInfoActionIds[label]
+        let btn: XCUIElement
+        if let actionId {
+            btn = app.buttons[actionId].firstMatch
+            if !btn.waitForExistence(timeout: 3) {
+                // Fallback to label for older builds
+                let byLabel = app.buttons[label].firstMatch
+                XCTAssertTrue(byLabel.waitForExistence(timeout: 10), "\(label) action")
+                return tapActionButton(element: byLabel, label: label, actionId: actionId)
+            }
+            return tapActionButton(element: btn, label: label, actionId: actionId)
+        }
+        let byLabel = app.buttons[label].firstMatch
+        XCTAssertTrue(byLabel.waitForExistence(timeout: 10), "\(label) action")
+        tapActionButton(element: byLabel, label: label, actionId: nil)
+    }
+
+    private func tapActionButton(element btn: XCUIElement, label: String, actionId: String?) {
+        XCTAssertTrue(btn.exists, "\(label) action exists")
+
+        let sheetScroll = app.scrollViews["glassSheetScroll-文件信息"].firstMatch
+        var scrolls = 0
+        while !btn.isHittable && scrolls < 12 {
+            if sheetScroll.exists {
+                sheetScroll.swipeUp()
+            } else {
+                // Mid-sheet drag up (avoid handle / dimmed chrome that dismisses).
+                let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72))
+                let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42))
+                start.press(forDuration: 0.05, thenDragTo: end)
+            }
+            scrolls += 1
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+        }
+
+        var strategy: String
         let hittable = btn.isHittable
-        var strategy = "tap"
         if hittable {
+            strategy = "tap"
             btn.tap()
         } else if btn.accessibilityActivate() {
             strategy = "accessibilityActivate"
+        } else if btn.exists {
+            // Last resort on the identified Button (icons are accessibilityHidden).
+            strategy = "coordinate"
+            btn.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         } else {
-            // Short press still hits the control's activation path; avoid coordinate.
-            strategy = "press"
-            btn.press(forDuration: 0.05)
+            strategy = "missing"
+            XCTFail("\(label) action not found after scrolling")
+            return
         }
+
         // #region agent log
         uiTestAgentLog(
             hypothesisId: "A",
             location: "FileMetadataUITests.swift:tapActionButton",
             message: "activated action button",
-            data: ["label": label, "hittable": hittable, "strategy": strategy]
+            data: [
+                "label": label,
+                "actionId": actionId ?? "",
+                "hittableBeforeTap": hittable,
+                "scrolls": scrolls,
+                "sheetScrollExists": sheetScroll.exists,
+                "strategy": strategy,
+                "runId": "post-fix-scroll"
+            ]
         )
         // #endregion
         RunLoop.current.run(until: Date().addingTimeInterval(0.5))

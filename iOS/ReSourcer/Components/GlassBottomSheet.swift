@@ -147,6 +147,8 @@ struct GlassBottomSheet<Content: View>: View {
                         }
                     )
             }
+            // XCUITest scrolls this (not app-level swipe) so tall info sheets stay open.
+            .accessibilityIdentifier(title.map { "glassSheetScroll-\($0)" } ?? "glassSheetScroll")
             .scrollBounceBehavior(.basedOnSize)
 
             // 固定在 ScrollView 外部的安全区域间距
