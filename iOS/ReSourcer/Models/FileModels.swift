@@ -181,6 +181,17 @@ struct FileMetadata: Codable, Equatable {
     let gps: FileGpsCoords?
     let created: String?
     let modified: String?
+    let make: String?
+    let model: String?
+    let lens: String?
+    let focalLengthMm: Double?
+    let focalLength35mm: UInt32?
+    let aperture: Double?
+    let iso: UInt32?
+    let shutterSpeed: String?
+    let exposureCompensation: Double?
+    let megapixels: Double?
+    let codec: String?
 
     var formattedSize: String {
         ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)

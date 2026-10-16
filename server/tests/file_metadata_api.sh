@@ -119,6 +119,11 @@ check "jpeg has gps.lat" '[ "$(echo "$body" | J "d.get(\"gps\",{}).get(\"lat\") 
 check "jpeg has width" '[ "$(echo "$body" | J "d.get(\"width\")")" = "1200" ]'
 check "jpeg has height" '[ "$(echo "$body" | J "d.get(\"height\")")" = "800" ]'
 check "jpeg omits null duration key" '[ "$(echo "$body" | J "\"duration\" in d")" = "False" ]'
+if command -v exiftool >/dev/null 2>&1; then
+  check "jpeg make=Apple" '[ "$(echo "$body" | J "d.get(\"make\")")" = "Apple" ]'
+  check "jpeg model=iPhone 15 Pro" '[ "$(echo "$body" | J "d.get(\"model\")")" = "iPhone 15 Pro" ]'
+  check "jpeg iso=50" '[ "$(echo "$body" | J "d.get(\"iso\")")" = "50" ]'
+fi
 
 echo; echo "===== sparse PNG hides GPS/capture ====="
 body=$(curl -s "${H[@]}" "$BASE/api/file/metadata?path=$(enc "$SRC_REAL/plain.png")")
@@ -126,6 +131,9 @@ echo "$body" | python3 -m json.tool | head -30
 check "png format=PNG" '[ "$(echo "$body" | J "d.get(\"format\")")" = "PNG" ]'
 check "png no gps key" '[ "$(echo "$body" | J "\"gps\" in d")" = "False" ]'
 check "png no capture_time key" '[ "$(echo "$body" | J "\"capture_time\" in d")" = "False" ]'
+check "png no make key" '[ "$(echo "$body" | J "\"make\" in d")" = "False" ]'
+check "png no model key" '[ "$(echo "$body" | J "\"model\" in d")" = "False" ]'
+check "png no iso key" '[ "$(echo "$body" | J "\"iso\" in d")" = "False" ]'
 check "png has filename" '[ "$(echo "$body" | J "d.get(\"filename\")")" = "plain.png" ]'
 check "png has size" '[ "$(echo "$body" | J "int(d.get(\"size\") or 0) > 0")" = "True" ]'
 
@@ -134,10 +142,13 @@ body=$(curl -s "${H[@]}" "$BASE/api/file/metadata?path=$(enc "$SRC_REAL/IMG_4821
 echo "$body" | python3 -m json.tool | head -40
 check "heic format=HEIC" '[ "$(echo "$body" | J "d.get(\"format\")")" = "HEIC" ]'
 check "heic has filename" '[ "$(echo "$body" | J "d.get(\"filename\")")" = "IMG_4821.HEIC" ]'
-# capture/gps depend on exiftool being on PATH — soft assert when present
+# capture/gps/camera depend on exiftool being on PATH — soft assert when present
 if command -v exiftool >/dev/null 2>&1; then
   check "heic has capture_time (exiftool)" '[ -n "$(echo "$body" | J "d.get(\"capture_time\") or \"\"")" ]'
   check "heic has gps (exiftool)" '[ "$(echo "$body" | J "d.get(\"gps\") is not None")" = "True" ]'
+  check "heic make=Apple" '[ "$(echo "$body" | J "d.get(\"make\")")" = "Apple" ]'
+  check "heic model=iPhone 15 Pro" '[ "$(echo "$body" | J "d.get(\"model\")")" = "iPhone 15 Pro" ]'
+  check "heic iso=50" '[ "$(echo "$body" | J "d.get(\"iso\")")" = "50" ]'
 else
   ok "heic exiftool soft-skip (not installed)"
 fi

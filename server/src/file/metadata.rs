@@ -42,6 +42,28 @@ pub struct FileMetadata {
     pub created: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub modified: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub make: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lens: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub focal_length_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub focal_length_35mm: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub aperture: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub iso: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shutter_speed: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exposure_compensation: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub megapixels: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub codec: Option<String>,
 }
 
 /// GET /api/file/metadata?path=<abs>
@@ -92,6 +114,16 @@ pub fn extract_metadata(path: &Path) -> std::result::Result<FileMetadata, String
     let mut duration: Option<f64> = None;
     let mut capture_time: Option<String> = None;
     let mut gps: Option<GpsCoords> = None;
+    let mut make: Option<String> = None;
+    let mut model: Option<String> = None;
+    let mut lens: Option<String> = None;
+    let mut focal_length_mm: Option<f64> = None;
+    let mut focal_length_35mm: Option<u32> = None;
+    let mut aperture: Option<f64> = None;
+    let mut iso: Option<u32> = None;
+    let mut shutter_speed: Option<String> = None;
+    let mut exposure_compensation: Option<f64> = None;
+    let mut codec: Option<String> = None;
 
     // Raster images (JPEG/PNG/…) via `image` crate — also feeds EXIF for JPEG.
     if matches!(
@@ -116,7 +148,7 @@ pub fn extract_metadata(path: &Path) -> std::result::Result<FileMetadata, String
         }
     }
 
-    // HEIC / video / anything still missing dims → ffprobe
+    // HEIC / video / anything still missing dims → ffprobe (also codec/duration).
     let needs_probe = matches!(
         extension.as_str(),
         "heic" | "heif" | "avif" | "mp4" | "mov" | "m4v" | "avi" | "mkv" | "webm" | "flv" | "wmv"
@@ -141,13 +173,17 @@ pub fn extract_metadata(path: &Path) -> std::result::Result<FileMetadata, String
             if gps.is_none() {
                 gps = probe.gps;
             }
+            if codec.is_none() {
+                codec = probe.codec;
+            }
         }
     }
 
-    // HEIC / HEIF EXIF often invisible to ffprobe — try exiftool when present.
-    if matches!(extension.as_str(), "heic" | "heif" | "avif")
-        && (capture_time.is_none() || gps.is_none())
-    {
+    // Camera / EXIF enrichment via exiftool (HEIC/JPEG and other EXIF-capable images).
+    if matches!(
+        extension.as_str(),
+        "jpg" | "jpeg" | "heic" | "heif" | "avif" | "tiff" | "tif" | "png" | "webp"
+    ) {
         if let Some(et) = probe_with_exiftool(path) {
             if capture_time.is_none() {
                 capture_time = et.capture_time;
@@ -161,8 +197,40 @@ pub fn extract_metadata(path: &Path) -> std::result::Result<FileMetadata, String
             if height.is_none() {
                 height = et.height;
             }
+            if make.is_none() {
+                make = et.make;
+            }
+            if model.is_none() {
+                model = et.model;
+            }
+            if lens.is_none() {
+                lens = et.lens;
+            }
+            if focal_length_mm.is_none() {
+                focal_length_mm = et.focal_length_mm;
+            }
+            if focal_length_35mm.is_none() {
+                focal_length_35mm = et.focal_length_35mm;
+            }
+            if aperture.is_none() {
+                aperture = et.aperture;
+            }
+            if iso.is_none() {
+                iso = et.iso;
+            }
+            if shutter_speed.is_none() {
+                shutter_speed = et.shutter_speed;
+            }
+            if exposure_compensation.is_none() {
+                exposure_compensation = et.exposure_compensation;
+            }
         }
     }
+
+    let megapixels = match (width, height) {
+        (Some(w), Some(h)) => Some((w as f64 * h as f64) / 1_000_000.0),
+        _ => None,
+    };
 
     Ok(FileMetadata {
         path: path.to_string_lossy().to_string(),
@@ -182,6 +250,17 @@ pub fn extract_metadata(path: &Path) -> std::result::Result<FileMetadata, String
         gps,
         created,
         modified,
+        make,
+        model,
+        lens,
+        focal_length_mm,
+        focal_length_35mm,
+        aperture,
+        iso,
+        shutter_speed,
+        exposure_compensation,
+        megapixels,
+        codec,
     })
 }
 
@@ -235,6 +314,16 @@ struct ProbeFields {
     duration: Option<f64>,
     capture_time: Option<String>,
     gps: Option<GpsCoords>,
+    make: Option<String>,
+    model: Option<String>,
+    lens: Option<String>,
+    focal_length_mm: Option<f64>,
+    focal_length_35mm: Option<u32>,
+    aperture: Option<f64>,
+    iso: Option<u32>,
+    shutter_speed: Option<String>,
+    exposure_compensation: Option<f64>,
+    codec: Option<String>,
 }
 
 fn probe_with_ffprobe(path: &Path) -> Option<ProbeFields> {
@@ -275,10 +364,16 @@ fn parse_ffprobe_json(json: &Value) -> ProbeFields {
                     .and_then(|v| v.as_u64())
                     .map(|v| v as u32);
             }
+            if out.codec.is_none() {
+                out.codec = stream
+                    .get("codec_name")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+            }
             if let Some(tags) = stream.get("tags") {
                 merge_tags_into(&mut out, tags);
             }
-            if out.width.is_some() && out.height.is_some() {
+            if out.width.is_some() && out.height.is_some() && out.codec.is_some() {
                 break;
             }
         }
@@ -409,6 +504,15 @@ fn probe_with_exiftool(path: &Path) -> Option<ProbeFields> {
             "-GPSLongitude",
             "-ImageWidth",
             "-ImageHeight",
+            "-Make",
+            "-Model",
+            "-LensModel",
+            "-FocalLength",
+            "-FocalLengthIn35mmFormat",
+            "-FNumber",
+            "-ISO",
+            "-ExposureTime",
+            "-ExposureCompensation",
         ])
         .arg(path)
         .output()
@@ -418,6 +522,10 @@ fn probe_with_exiftool(path: &Path) -> Option<ProbeFields> {
     }
     let arr: Value = serde_json::from_slice(&output.stdout).ok()?;
     let obj = arr.as_array()?.first()?;
+    Some(parse_exiftool_json(obj))
+}
+
+fn parse_exiftool_json(obj: &Value) -> ProbeFields {
     let mut out = ProbeFields::default();
     if let Some(v) = obj.get("DateTimeOriginal").or_else(|| obj.get("CreateDate")) {
         if let Some(s) = v.as_str() {
@@ -432,15 +540,79 @@ fn probe_with_exiftool(path: &Path) -> Option<ProbeFields> {
     if let (Some(lat), Some(lon)) = (lat, lon) {
         out.gps = Some(GpsCoords { lat, lon });
     }
-    out.width = obj
-        .get("ImageWidth")
-        .and_then(|v| v.as_u64())
-        .map(|v| v as u32);
-    out.height = obj
-        .get("ImageHeight")
-        .and_then(|v| v.as_u64())
-        .map(|v| v as u32);
-    Some(out)
+    out.width = json_as_u32(obj.get("ImageWidth"));
+    out.height = json_as_u32(obj.get("ImageHeight"));
+    out.make = json_as_nonempty_string(obj.get("Make"));
+    out.model = json_as_nonempty_string(obj.get("Model"));
+    out.lens = json_as_nonempty_string(obj.get("LensModel"));
+    out.focal_length_mm = json_as_f64(obj.get("FocalLength"));
+    out.focal_length_35mm = json_as_u32(obj.get("FocalLengthIn35mmFormat"));
+    out.aperture = json_as_f64(obj.get("FNumber"));
+    out.iso = json_as_u32(obj.get("ISO"));
+    if let Some(t) = json_as_f64(obj.get("ExposureTime")) {
+        out.shutter_speed = Some(format_shutter_speed(t));
+    } else if let Some(s) = json_as_nonempty_string(obj.get("ExposureTime")) {
+        out.shutter_speed = Some(s);
+    }
+    out.exposure_compensation = json_as_f64(obj.get("ExposureCompensation"));
+    out
+}
+
+fn json_as_nonempty_string(v: Option<&Value>) -> Option<String> {
+    let s = v?.as_str()?.trim();
+    if s.is_empty() {
+        None
+    } else {
+        Some(s.to_string())
+    }
+}
+
+fn json_as_f64(v: Option<&Value>) -> Option<f64> {
+    let v = v?;
+    if let Some(n) = v.as_f64() {
+        return Some(n);
+    }
+    v.as_str()?.trim().parse().ok()
+}
+
+fn json_as_u32(v: Option<&Value>) -> Option<u32> {
+    let v = v?;
+    if let Some(n) = v.as_u64() {
+        return Some(n as u32);
+    }
+    if let Some(n) = v.as_f64() {
+        if n >= 0.0 && n <= u32::MAX as f64 {
+            return Some(n.round() as u32);
+        }
+    }
+    v.as_str()?.trim().parse().ok()
+}
+
+/// Format exposure time seconds as a shutter string like `"1/144"`.
+fn format_shutter_speed(seconds: f64) -> String {
+    if !seconds.is_finite() || seconds <= 0.0 {
+        return seconds.to_string();
+    }
+    if seconds >= 1.0 {
+        if (seconds - seconds.round()).abs() < 1e-6 {
+            return format!("{}", seconds.round() as i64);
+        }
+        return format!("{seconds:.3}")
+            .trim_end_matches('0')
+            .trim_end_matches('.')
+            .to_string();
+    }
+    let denom = (1.0 / seconds).round();
+    if denom >= 1.0 && denom <= u32::MAX as f64 {
+        let reconstructed = 1.0 / denom;
+        if (reconstructed - seconds).abs() / seconds < 0.08 {
+            return format!("1/{}", denom as u32);
+        }
+    }
+    format!("{seconds:.6}")
+        .trim_end_matches('0')
+        .trim_end_matches('.')
+        .to_string()
 }
 
 fn which_exiftool() -> Option<PathBuf> {
@@ -779,12 +951,21 @@ mod tests {
         assert_eq!(meta.format, "PNG");
         assert!(meta.gps.is_none());
         assert!(meta.capture_time.is_none());
+        assert!(meta.make.is_none());
+        assert!(meta.model.is_none());
+        assert!(meta.iso.is_none());
+        assert!(meta.lens.is_none());
+        assert!(meta.aperture.is_none());
+        assert!(meta.shutter_speed.is_none());
         assert_eq!(meta.width, Some(1));
         assert_eq!(meta.height, Some(1));
-        // JSON omits null optionals
+        // JSON omits null optionals (camera + gps)
         let json = serde_json::to_value(&meta).unwrap();
         assert!(json.get("gps").is_none());
         assert!(json.get("capture_time").is_none());
+        assert!(json.get("make").is_none());
+        assert!(json.get("model").is_none());
+        assert!(json.get("iso").is_none());
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -823,6 +1004,40 @@ mod tests {
         let gps = meta.gps.unwrap();
         assert!(gps.lat < 0.0, "Sydney should be southern hemisphere");
         assert!(gps.lon > 0.0);
+        if which_exiftool().is_some() {
+            assert_eq!(meta.make.as_deref(), Some("Apple"));
+            assert_eq!(meta.model.as_deref(), Some("iPhone 15 Pro"));
+            assert_eq!(meta.iso, Some(50));
+            assert!(meta.megapixels.is_some());
+            assert_eq!(meta.shutter_speed.as_deref(), Some("1/144"));
+        }
+    }
+
+    #[test]
+    fn extract_heic_with_camera_fields_when_exiftool_present() {
+        let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/meta_with_exif.heic");
+        if !fixture.is_file() {
+            return;
+        }
+        let meta = extract_metadata(&fixture).unwrap();
+        assert_eq!(meta.format, "HEIC");
+        if which_exiftool().is_none() {
+            return;
+        }
+        assert_eq!(meta.make.as_deref(), Some("Apple"));
+        assert_eq!(meta.model.as_deref(), Some("iPhone 15 Pro"));
+        assert_eq!(meta.iso, Some(50));
+        assert!(meta.capture_time.is_some());
+        assert!(meta.gps.is_some());
+        assert!(meta.megapixels.is_some());
+    }
+
+    #[test]
+    fn format_shutter_speed_fraction() {
+        assert_eq!(format_shutter_speed(0.006944444444), "1/144");
+        assert_eq!(format_shutter_speed(1.0), "1");
+        assert_eq!(format_shutter_speed(0.5), "1/2");
     }
 
     #[test]
@@ -834,7 +1049,13 @@ mod tests {
     #[test]
     fn ffprobe_json_location_and_creation() {
         let json: Value = serde_json::json!({
-            "streams": [{"codec_type":"video","width":100,"height":50,"tags":{}}],
+            "streams": [{
+                "codec_type":"video",
+                "codec_name":"hevc",
+                "width":100,
+                "height":50,
+                "tags":{}
+            }],
             "format": {
                 "duration": "12.5",
                 "tags": {
@@ -847,6 +1068,7 @@ mod tests {
         assert_eq!(p.width, Some(100));
         assert_eq!(p.height, Some(50));
         assert_eq!(p.duration, Some(12.5));
+        assert_eq!(p.codec.as_deref(), Some("hevc"));
         assert_eq!(p.capture_time.as_deref(), Some("2024-06-15 14:32:01"));
         let g = p.gps.unwrap();
         assert!((g.lat + 33.8688).abs() < 1e-6);
