@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CryptoKit
 
 @main
 struct ReSourcerApp: App {
@@ -32,6 +33,16 @@ struct ReSourcerApp: App {
     /// UITest：Share 上传路径（foreground multipart + background 会话 sharedContainer）
     @State private var e2eShareUploadProbeText: String = ""
 
+    /// UITest：Share HEIC/视频原样上传探针
+    @State private var e2eShareOriginalUploadProbeText: String = ""
+
+    /// UITest：分享交接结果探针（server/source/unlock）
+    @State private var e2eShareHandoffProbeText: String = ""
+
+    /// Share 链接进入私密源时的手势解锁
+    @State private var showSharePrivacyUnlock = false
+    @State private var pendingShareHandoff: SharePendingDownloadHandoff?
+
     // MARK: - Body
 
     var body: some Scene {
@@ -50,7 +61,9 @@ struct ReSourcerApp: App {
                             Self.resumeBackgroundUploadsIfAppropriate(using: service)
                             runE2EShareSourcesProbeIfNeeded()
                             runE2EShareUploadProbeIfNeeded()
+                            runE2EShareOriginalUploadProbeIfNeeded()
                             runE2EHarnessIfNeeded(using: service)
+                            Task { await consumePendingDownloadHandoffAsync() }
                         }
                     )
                 }
@@ -73,6 +86,22 @@ struct ReSourcerApp: App {
                             .accessibilityValue(e2eShareUploadProbeText)
                             .allowsHitTesting(false)
                     }
+                    if !e2eShareOriginalUploadProbeText.isEmpty {
+                        Text(e2eShareOriginalUploadProbeText)
+                            .font(.system(size: 1))
+                            .foregroundStyle(.clear)
+                            .accessibilityIdentifier("e2eShareOriginalUploadProbe")
+                            .accessibilityValue(e2eShareOriginalUploadProbeText)
+                            .allowsHitTesting(false)
+                    }
+                    if !e2eShareHandoffProbeText.isEmpty {
+                        Text(e2eShareHandoffProbeText)
+                            .font(.system(size: 1))
+                            .foregroundStyle(.clear)
+                            .accessibilityIdentifier("e2eShareHandoffProbe")
+                            .accessibilityValue(e2eShareHandoffProbeText)
+                            .allowsHitTesting(false)
+                    }
                     let env = ProcessInfo.processInfo.environment
                     let np = env["E2E_NOWPLAYING_PROBE"] == "1"
                     let up = env["E2E_KILL_UPLOAD"] == "1" || env["E2E_UPLOAD_RESUME_CHECK"] == "1"
@@ -85,20 +114,46 @@ struct ReSourcerApp: App {
                     }
                 }
             }
+            .overlay {
+                if showSharePrivacyUnlock {
+                    PatternLockView(
+                        purpose: .verify,
+                        onCancel: { handleSharePrivacyUnlockCancel() },
+                        onSuccess: { handleSharePrivacyUnlockSuccess() }
+                    )
+                    .transition(.opacity)
+                    .zIndex(1000)
+                    .onAppear {
+                        // UITest：九宫格绘制不稳定，用环境变量自动成功/取消
+                        let auto = ProcessInfo.processInfo.environment["E2E_SHARE_PRIVACY_AUTO"] ?? ""
+                        guard auto == "success" || auto == "cancel" else { return }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            guard showSharePrivacyUnlock else { return }
+                            if auto == "success" {
+                                handleSharePrivacyUnlockSuccess()
+                            } else {
+                                handleSharePrivacyUnlockCancel()
+                            }
+                        }
+                    }
+                }
+            }
             .withGlassAlerts()
             .preferredColorScheme(colorSchemeForPreference)
             .animation(AppTheme.Animation.standard, value: isLoggedIn)
             .onAppear {
                 // E2E 播放偏好必须在预览打开前写入，且每次冷启动都覆盖上次测试残留
                 applyE2EPlaybackPrefsIfNeeded()
+                applyE2EPrivacySetupIfNeeded()
                 themePreference = LocalStorageService.shared.getAppSettings().darkModePreference
                 LocalStorageService.shared.syncServersToAppGroupIfNeeded()
                 BackgroundUploadManager.shared.resumePendingFinalizations()
                 checkExistingLogin()
                 applyE2EPendingDownloadIfNeeded()
-                consumePendingDownloadHandoff()
+                Task { await consumePendingDownloadHandoffAsync() }
                 runE2EShareSourcesProbeIfNeeded()
                 runE2EShareUploadProbeIfNeeded()
+                runE2EShareOriginalUploadProbeIfNeeded()
                 if let service = apiService {
                     runE2EHarnessIfNeeded(using: service)
                 }
@@ -328,11 +383,39 @@ struct ReSourcerApp: App {
         }
     }
 
-    /// UITest：`E2E_PENDING_DOWNLOAD_URL` 注入待预填链接（模拟 Share Extension 交接）
+    /// UITest：注入分享链接交接（URL + 可选 serverId / sourceFolder）
     private func applyE2EPendingDownloadIfNeeded() {
         let env = ProcessInfo.processInfo.environment
-        if let pending = env["E2E_PENDING_DOWNLOAD_URL"], !pending.isEmpty {
-            ShareBridge.setPendingDownloadURL(pending)
+        guard let pending = env["E2E_PENDING_DOWNLOAD_URL"], !pending.isEmpty else { return }
+        let serverId = env["E2E_SHARE_HANDOFF_SERVER_ID"]
+        let source = env["E2E_SHARE_HANDOFF_SOURCE"]
+        ShareBridge.setPendingDownload(
+            SharePendingDownloadHandoff(
+                url: pending,
+                serverId: (serverId?.isEmpty == false) ? serverId : nil,
+                sourceFolder: (source?.isEmpty == false) ? source : nil
+            )
+        )
+    }
+
+    /// UITest：标记私密源 / 写入手势图案（模拟已设置隐私）
+    private func applyE2EPrivacySetupIfNeeded() {
+        let env = ProcessInfo.processInfo.environment
+        if let path = env["E2E_PRIVATE_SOURCE_FOLDER"], !path.isEmpty {
+            PrivacyManager.shared.setPrivate(path, true)
+            PrivacyManager.shared.isUnlocked = false
+        } else if let path = env["E2E_SHARE_HANDOFF_SOURCE"], !path.isEmpty {
+            // 普通交接用例：清掉该源上可能残留的私密标记，避免串测
+            PrivacyManager.shared.setPrivate(path, false)
+        }
+        if let pattern = env["E2E_PRIVACY_PATTERN"], !pattern.isEmpty {
+            let dots = pattern.split(separator: "-").compactMap { Int($0) }
+            if dots.count >= 4 {
+                PrivacyManager.shared.setPattern(dots)
+            }
+        }
+        if env["E2E_PRIVACY_UNLOCKED"] == "1" {
+            PrivacyManager.shared.isUnlocked = true
         }
     }
 
@@ -340,17 +423,199 @@ struct ReSourcerApp: App {
         if E2EHarness.handleNowPlayingDeepLink(url) {
             return
         }
-        if let pending = ShareBridge.parseDownloadDeepLink(url) {
-            ShareBridge.setPendingDownloadURL(pending)
-            consumePendingDownloadHandoff()
+        if let handoff = ShareBridge.parseDownloadDeepLink(url) {
+            ShareBridge.setPendingDownload(handoff)
+            Task { await consumePendingDownloadHandoffAsync() }
         }
     }
 
-    /// 切到下载 Tab，并通知 DownloadView 预填（不自动 detect / 不自动下载）
-    private func consumePendingDownloadHandoff() {
-        guard ShareBridge.peekPendingDownloadURL() != nil else { return }
+    /// Share 链接交接：切服务器 / 源文件夹；私密源先手势解锁
+    @MainActor
+    private func consumePendingDownloadHandoffAsync() async {
+        guard let handoff = ShareBridge.peekPendingDownload() else { return }
+        guard isLoggedIn, apiService != nil else { return }
+
+        // 1) 切换服务器（若指定且不同）
+        if let serverId = handoff.serverId, !serverId.isEmpty,
+           LocalStorageService.shared.getCurrentServerId() != serverId,
+           let server = LocalStorageService.shared.getServer(by: serverId),
+           let service = APIService.create(for: server) {
+            _ = LocalStorageService.shared.setCurrentServer(serverId)
+            apiService = service
+        }
+
+        guard let service = apiService else { return }
+
+        // 2) 私密源且未解锁 → 弹出图案锁，暂不消费 pending
+        if let source = handoff.sourceFolder, !source.isEmpty,
+           PrivacyManager.shared.isPrivate(source),
+           !PrivacyManager.shared.isUnlocked {
+            // 尚未设置图案时无法校验：安全起见取消交接
+            guard PrivacyManager.shared.hasPattern else {
+                ShareBridge.clearPendingDownload()
+                e2eShareHandoffProbeText = "CANCELLED:no-pattern|\(source)"
+                return
+            }
+            pendingShareHandoff = handoff
+            showSharePrivacyUnlock = true
+            e2eShareHandoffProbeText = "WAITING_UNLOCK:\(source)"
+            return
+        }
+
+        await finishShareHandoff(handoff, using: service)
+    }
+
+    @MainActor
+    private func finishShareHandoff(_ handoff: SharePendingDownloadHandoff, using service: APIService) async {
+        // 确保 pending URL 仍在（DownloadView 会 consume）
+        ShareBridge.setPendingDownload(handoff)
+
+        if let source = handoff.sourceFolder, !source.isEmpty {
+            do {
+                try await service.config.switchSourceFolder(to: source)
+                NavigationState.shared.setSourceFolder(source)
+                NotificationCenter.default.post(name: .sourceFolderDidChange, object: nil)
+            } catch {
+                e2eShareHandoffProbeText =
+                    "ERROR:switch-source \(error.localizedDescription)"
+                // 仍尝试进入下载预填（用户可看到链接），但不谎称源已切换
+            }
+        }
+
+        let currentId = LocalStorageService.shared.getCurrentServerId() ?? ""
+        let sourceNow = handoff.sourceFolder ?? NavigationState.shared.sourceFolder
+        e2eShareHandoffProbeText = "OK:\(currentId)|\(sourceNow)|\(handoff.url)"
+
         selectedTab = .download
         NotificationCenter.default.post(name: .shareDownloadPrefillRequested, object: nil)
+    }
+
+    @MainActor
+    private func handleSharePrivacyUnlockSuccess() {
+        showSharePrivacyUnlock = false
+        PrivacyManager.shared.isUnlocked = true
+        guard let handoff = pendingShareHandoff else { return }
+        pendingShareHandoff = nil
+        Task {
+            guard let service = apiService else { return }
+            await finishShareHandoff(handoff, using: service)
+        }
+    }
+
+    @MainActor
+    private func handleSharePrivacyUnlockCancel() {
+        showSharePrivacyUnlock = false
+        let source = pendingShareHandoff?.sourceFolder ?? ""
+        pendingShareHandoff = nil
+        // 取消：清空 pending，不切换到私密源，不进入该源的下载预填流
+        ShareBridge.clearPendingDownload()
+        e2eShareHandoffProbeText = "CANCELLED:unlock|\(source)"
+    }
+
+    /// UITest：沿 Share 上传客户端直传真实 HEIC / MOV，校验魔数与哈希（原样字节）
+    private func runE2EShareOriginalUploadProbeIfNeeded() {
+        let env = ProcessInfo.processInfo.environment
+        guard env["E2E_SHARE_ORIGINAL_UPLOAD_PROBE"] == "1" else { return }
+        LocalStorageService.shared.syncServersToAppGroupIfNeeded()
+        Task {
+            guard let server = ShareBridge.currentServer() else {
+                await MainActor.run { e2eShareOriginalUploadProbeText = "ERROR:no-server" }
+                return
+            }
+            do {
+                let client = try ShareUploadClient(server: server)
+                let sources = try await ShareUploadClient.loadSourceFoldersTryingCandidates(for: server)
+                guard let target = sources.first else {
+                    await MainActor.run { e2eShareOriginalUploadProbeText = "ERROR:no-source" }
+                    return
+                }
+
+                let heicPath = env["E2E_HEIC_SAMPLE_PATH"]
+                    ?? Bundle.main.path(forResource: "tiled_heic_c007", ofType: "heic")
+                let movPath = env["E2E_MOV_SAMPLE_PATH"]
+
+                var parts: [String] = []
+
+                if let heicPath, let heicData = try? Data(contentsOf: URL(fileURLWithPath: heicPath)) {
+                    let name = "e2e-share-orig-\(Int(Date().timeIntervalSince1970)).heic"
+                    let hash = Self.sha256Hex(heicData)
+                    _ = try await client.uploadDirect(
+                        fileName: name,
+                        data: heicData,
+                        mimeType: "image/heic",
+                        to: target
+                    )
+                    let stored = URL(fileURLWithPath: target).appendingPathComponent(name)
+                    // 上传任务异步落盘；轮询短暂等待
+                    var matched = false
+                    var storedHash = ""
+                    var magic = ""
+                    for _ in 0..<40 {
+                        try? await Task.sleep(nanoseconds: 250_000_000)
+                        if let storedData = try? Data(contentsOf: stored) {
+                            storedHash = Self.sha256Hex(storedData)
+                            magic = Self.bmffBrand(storedData) ?? "unknown"
+                            matched = (storedHash == hash)
+                            if matched { break }
+                        }
+                    }
+                    parts.append(
+                        "HEIC:\(matched ? "OK" : "FAIL")|ext=heic|magic=\(magic)|hash=\(hash)|stored=\(storedHash)|file=\(name)"
+                    )
+                } else {
+                    parts.append("HEIC:SKIP:no-sample")
+                }
+
+                if let movPath, let movData = try? Data(contentsOf: URL(fileURLWithPath: movPath)) {
+                    let name = "e2e-share-orig-\(Int(Date().timeIntervalSince1970)).mov"
+                    let hash = Self.sha256Hex(movData)
+                    _ = try await client.uploadDirect(
+                        fileName: name,
+                        data: movData,
+                        mimeType: "video/quicktime",
+                        to: target
+                    )
+                    let stored = URL(fileURLWithPath: target).appendingPathComponent(name)
+                    var matched = false
+                    var storedHash = ""
+                    var magic = ""
+                    for _ in 0..<40 {
+                        try? await Task.sleep(nanoseconds: 250_000_000)
+                        if let storedData = try? Data(contentsOf: stored) {
+                            storedHash = Self.sha256Hex(storedData)
+                            magic = Self.bmffBrand(storedData) ?? "unknown"
+                            matched = (storedHash == hash)
+                            if matched { break }
+                        }
+                    }
+                    parts.append(
+                        "MOV:\(matched ? "OK" : "FAIL")|ext=mov|magic=\(magic)|hash=\(hash)|stored=\(storedHash)|file=\(name)"
+                    )
+                } else {
+                    parts.append("MOV:SKIP:no-sample")
+                }
+
+                await MainActor.run {
+                    e2eShareOriginalUploadProbeText = parts.joined(separator: ";")
+                }
+            } catch {
+                await MainActor.run {
+                    e2eShareOriginalUploadProbeText = "ERROR:\(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    private static func sha256Hex(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// ISO BMFF `ftyp` brand（HEIC/MOV/MP4）
+    private static func bmffBrand(_ data: Data) -> String? {
+        guard data.count >= 12 else { return nil }
+        let ftyp = data.subdata(in: 4..<8)
+        guard String(data: ftyp, encoding: .ascii) == "ftyp" else { return nil }
+        return String(data: data.subdata(in: 8..<12), encoding: .ascii)
     }
 
     /// 处理登出
