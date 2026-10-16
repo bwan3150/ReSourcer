@@ -205,23 +205,7 @@ struct FilePreviewView: View {
         .statusBarHidden(!showControls)
         .animation(AppTheme.Animation.standard, value: showControls)
         .onChange(of: playlistIndex) { _, _ in
-            scheduleAutoHide()
-            startAutoAdvanceTimer()
-            logger.clear()
-            refreshNowPlayingSkipAvailability()
-            publishE2EPlaylistMeta()
-            // 切曲时若信息面板仍开着，必须同步 metadata，否则会出现
-            // 顶栏 clip.mp4、面板却仍是上一张 HEIC EXIF 的错配（TF 041 用户截图）。
-            if showInfoSheet {
-                reloadFileMetadataForCurrentFile()
-            }
-        }
-        .onChange(of: showInfoSheet) { _, isOpen in
-            if isOpen {
-                cancelAutoAdvanceTimer()
-            } else {
-                startAutoAdvanceTimer()
-            }
+            handlePlaylistIndexChanged()
         }
         .onChange(of: playlist.count) { _, _ in
             publishE2EPlaylistMeta()
@@ -470,10 +454,7 @@ struct FilePreviewView: View {
             .accessibilityValue(currentFile?.name ?? "")
             .accessibilityAddTraits(.isButton)
             .simultaneousGesture(TapGesture().onEnded {
-                showInfoSheet = true
-                cancelAutoAdvanceTimer()
-                reloadFileMetadataForCurrentFile()
-                Task { await resolveUuidAndLoadTags() }
+                openInfoSheetForCurrentFile()
             })
             .onLongPressGesture {
                 if let file = currentFile {
@@ -693,6 +674,26 @@ struct FilePreviewView: View {
     }
 
     // MARK: - 文件信息面板内容
+
+    private func handlePlaylistIndexChanged() {
+        scheduleAutoHide()
+        startAutoAdvanceTimer()
+        logger.clear()
+        refreshNowPlayingSkipAvailability()
+        publishE2EPlaylistMeta()
+        // 切曲时若信息面板仍开着，必须同步 metadata，否则会出现
+        // 顶栏 clip.mp4、面板却仍是上一张 HEIC EXIF 的错配（TF 041 用户截图）。
+        if showInfoSheet {
+            reloadFileMetadataForCurrentFile()
+        }
+    }
+
+    private func openInfoSheetForCurrentFile() {
+        showInfoSheet = true
+        cancelAutoAdvanceTimer()
+        reloadFileMetadataForCurrentFile()
+        Task { await resolveUuidAndLoadTags() }
+    }
 
     /// 按当前曲目刷新 metadata；用 path 校验丢弃过期响应，避免顶栏/面板文件名错配。
     private func reloadFileMetadataForCurrentFile() {
