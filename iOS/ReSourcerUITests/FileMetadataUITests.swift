@@ -592,15 +592,30 @@ final class FileMetadataUITests: XCTestCase {
         )
     }
 
-    private func assertPreviewFileNameContains(_ needle: String) {
+    /// Video auto-hides chrome; tap center to bring controls + filename capsule back.
+    private func revealPreviewChromeIfNeeded() {
         let capsule = app.descendants(matching: .any)["previewFileNameCapsule"]
-        XCTAssertTrue(capsule.waitForExistence(timeout: 8))
+        if capsule.exists { return }
+        // Avoid top chrome / bottom tab — tap content center
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45)).tap()
+        _ = capsule.waitForExistence(timeout: 3)
+        if !capsule.exists {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.55)).tap()
+            _ = capsule.waitForExistence(timeout: 3)
+        }
+    }
+
+    private func assertPreviewFileNameContains(_ needle: String) {
+        revealPreviewChromeIfNeeded()
+        let capsule = app.descendants(matching: .any)["previewFileNameCapsule"]
+        XCTAssertTrue(capsule.waitForExistence(timeout: 8), "previewFileNameCapsule for '\(needle)'")
         // Prefer accessibilityValue (filename); label is the generic "文件信息"
         var value = capsule.value as? String ?? ""
         let deadline = Date().addingTimeInterval(6)
         while Date() < deadline {
             value = capsule.value as? String ?? ""
             if value.contains(needle) { break }
+            revealPreviewChromeIfNeeded()
             RunLoop.current.run(until: Date().addingTimeInterval(0.25))
         }
         XCTAssertTrue(
@@ -610,6 +625,7 @@ final class FileMetadataUITests: XCTestCase {
     }
 
     private func openInfoSheet() {
+        revealPreviewChromeIfNeeded()
         let capsule = app.descendants(matching: .any)["previewFileNameCapsule"]
         XCTAssertTrue(capsule.waitForExistence(timeout: 12), "preview filename capsule")
         capsule.tap()
@@ -742,6 +758,7 @@ final class FileMetadataUITests: XCTestCase {
             if close.exists, close.isHittable { close.tap() }
             RunLoop.current.run(until: Date().addingTimeInterval(0.3))
         }
+        revealPreviewChromeIfNeeded()
         XCTAssertTrue(
             app.descendants(matching: .any)["previewFileNameCapsule"].waitForExistence(timeout: 5),
             "preview must remain after closing info sheet"
@@ -749,6 +766,7 @@ final class FileMetadataUITests: XCTestCase {
     }
 
     private func tapPlaylistNext() {
+        revealPreviewChromeIfNeeded()
         let next = app.descendants(matching: .any)["previewNextButton"]
         XCTAssertTrue(next.waitForExistence(timeout: 5), "previewNextButton")
         if next.isHittable {
@@ -762,6 +780,7 @@ final class FileMetadataUITests: XCTestCase {
     private func advancePreviewUntilFileNameContains(_ needle: String) {
         let deadline = Date().addingTimeInterval(25)
         while Date() < deadline {
+            revealPreviewChromeIfNeeded()
             let capsule = app.descendants(matching: .any)["previewFileNameCapsule"]
             guard capsule.waitForExistence(timeout: 5) else {
                 XCTFail("previewFileNameCapsule missing while advancing toward '\(needle)'")
