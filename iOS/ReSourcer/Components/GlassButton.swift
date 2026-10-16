@@ -139,7 +139,10 @@ struct GlassButton: View {
         } else {
             HStack(spacing: AppTheme.Spacing.sm) {
                 if let icon = icon {
+                    // Decorative: keep a single Button a11y node so XCUITest
+                    // activates the control (not a nested "pencil"/SF Symbol).
                     Image(systemName: icon)
+                        .accessibilityHidden(true)
                 }
                 if let title = title {
                     Text(title)

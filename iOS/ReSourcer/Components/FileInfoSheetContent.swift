@@ -443,16 +443,19 @@ struct FileInfoSheetContent: View {
                     GlassButton(icon: "arrow.down.circle", style: .secondary, size: .medium, action: onDownload)
                         .frame(maxWidth: .infinity)
                         .accessibilityLabel("下载")
+                        .accessibilityIdentifier("fileInfoDownloadButton")
                 }
                 if let onShare {
                     GlassButton(icon: "square.and.arrow.up", style: .secondary, size: .medium, action: onShare)
                         .frame(maxWidth: .infinity)
                         .accessibilityLabel("分享")
+                        .accessibilityIdentifier("fileInfoShareButton")
                 }
                 if let onMove {
                     GlassButton(icon: "folder", style: .secondary, size: .medium, action: onMove)
                         .frame(maxWidth: .infinity)
                         .accessibilityLabel("移动")
+                        .accessibilityIdentifier("fileInfoMoveButton")
                 }
                 if let onRename {
                     GlassButton(icon: "pencil", style: .secondary, size: .medium) {
@@ -468,11 +471,13 @@ struct FileInfoSheetContent: View {
                     }
                         .frame(maxWidth: .infinity)
                         .accessibilityLabel("重命名")
+                        .accessibilityIdentifier("fileInfoRenameButton")
                 }
                 if let onDelete {
                     GlassButton(icon: "trash", style: .destructive, size: .medium, action: onDelete)
                         .frame(maxWidth: .infinity)
                         .accessibilityLabel("删除")
+                        .accessibilityIdentifier("fileInfoDeleteButton")
                 }
             }
             .padding(.top, AppTheme.Spacing.xs)

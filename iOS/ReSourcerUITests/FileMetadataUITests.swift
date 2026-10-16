@@ -355,11 +355,30 @@ final class FileMetadataUITests: XCTestCase {
     }
 
     /// Tap info-panel action without swiping the whole app (swipes dismiss glass sheets).
+    /// Prefer real activation over coordinate taps: coordinate hits nested SF Symbol
+    /// nodes and never fires GlassButton's action (rename sheet never opens).
     private func tapActionButton(labeled label: String) {
         let btn = app.buttons[label].firstMatch
         XCTAssertTrue(btn.waitForExistence(timeout: 10), "\(label) action")
-        // Glass / clipped rows often report !isHittable — coordinate tap is reliable.
-        btn.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let hittable = btn.isHittable
+        var strategy = "tap"
+        if hittable {
+            btn.tap()
+        } else if btn.accessibilityActivate() {
+            strategy = "accessibilityActivate"
+        } else {
+            // Short press still hits the control's activation path; avoid coordinate.
+            strategy = "press"
+            btn.press(forDuration: 0.05)
+        }
+        // #region agent log
+        uiTestAgentLog(
+            hypothesisId: "A",
+            location: "FileMetadataUITests.swift:tapActionButton",
+            message: "activated action button",
+            data: ["label": label, "hittable": hittable, "strategy": strategy]
+        )
+        // #endregion
         RunLoop.current.run(until: Date().addingTimeInterval(0.5))
     }
 
