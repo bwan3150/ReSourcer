@@ -570,6 +570,10 @@ struct GalleryView: View {
                     .padding(.trailing, 16)
             }
             .contentShape(Capsule())
+            .accessibilityIdentifier("galleryFolderDropdown")
+            .accessibilityLabel("当前文件夹")
+            .accessibilityValue(currentFolderDisplayName)
+            .accessibilityAddTraits(.isButton)
             .onTapGesture {
                 if !isDropdownOpen {
                     Task { await browseInDropdown(path: currentFolderFullPath.isEmpty ? sourceFolder : currentFolderFullPath) }
@@ -879,6 +883,8 @@ struct GalleryView: View {
                                         .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityIdentifier("folderNavigate-\(folder.name)")
+                                .accessibilityLabel("打开 \(folder.name)")
                             }
                             .padding(.horizontal, AppTheme.Spacing.md)
                             .padding(.vertical, AppTheme.Spacing.sm)

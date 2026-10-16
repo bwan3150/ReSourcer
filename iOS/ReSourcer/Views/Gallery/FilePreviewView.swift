@@ -80,8 +80,9 @@ struct FilePreviewView: View {
     @State private var renameText = ""
     @State private var renameTarget: FileInfo?
 
-    // 移动
+    // 移动（pin target — same playlist race as rename）
     @State private var showMoveSheet = false
+    @State private var moveTarget: FileInfo?
 
     // 长按快捷编辑
     @State private var showQuickActions = false
@@ -324,11 +325,15 @@ struct FilePreviewView: View {
             MoveSheetView(
                 apiService: apiService,
                 sourceFolder: NavigationState.shared.sourceFolder,
-                file: currentFile,
-                uuids: currentFile?.uuid.map { [$0] } ?? [],
-                onDismiss: { showMoveSheet = false },
+                file: moveTarget ?? currentFile,
+                uuids: (moveTarget ?? currentFile)?.uuid.map { [$0] } ?? [],
+                onDismiss: {
+                    showMoveSheet = false
+                    moveTarget = nil
+                },
                 onMoved: { folderName, _ in
                     showMoveSheet = false
+                    moveTarget = nil
                     GlassAlertManager.shared.showSuccess("已移动到 \(folderName)")
                     handlePostOperation()
                 }
@@ -705,6 +710,8 @@ struct FilePreviewView: View {
                     shareFile(file)
                 },
                 onMove: {
+                    let target = file
+                    moveTarget = target
                     showInfoSheet = false
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(300))

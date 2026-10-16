@@ -329,13 +329,8 @@ final class FileMetadataUITests: XCTestCase {
         app.launchEnvironment["E2E_API_KEY"] = apiKey
         app.launch()
 
-        // Enter Album folder then open preview info
-        let albumFolder = app.staticTexts["Album"].firstMatch
-        if albumFolder.waitForExistence(timeout: 8) {
-            albumFolder.tap()
-            RunLoop.current.run(until: Date().addingTimeInterval(1.2))
-        }
-
+        // Gallery grid only lists files in the current folder — enter Album via dropdown.
+        navigateToSubfolder(named: "Album")
         openGridItem(uuid: uuid!)
         openInfoSheet()
         tapActionButton(labeled: "删除")
@@ -506,6 +501,38 @@ final class FileMetadataUITests: XCTestCase {
     }
 
     // MARK: - Navigation helpers
+
+    /// Open folder dropdown and navigate into a named subfolder (e.g. Album).
+    private func navigateToSubfolder(named name: String) {
+        let dropdown = app.descendants(matching: .any)["galleryFolderDropdown"].firstMatch
+        XCTAssertTrue(dropdown.waitForExistence(timeout: 15), "gallery folder dropdown")
+        dropdown.tap()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+
+        let nav = app.descendants(matching: .any)["folderNavigate-\(name)"].firstMatch
+        if nav.waitForExistence(timeout: 5) {
+            if nav.isHittable {
+                nav.tap()
+            } else {
+                nav.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
+        } else {
+            // Fallback: tap the folder name row (browse) then the "前往" affordance if present.
+            let folderLabel = app.staticTexts[name].firstMatch
+            XCTAssertTrue(folderLabel.waitForExistence(timeout: 8), "dropdown should list \(name)")
+            folderLabel.tap()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+            let go = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", name)).firstMatch
+            if go.waitForExistence(timeout: 3) {
+                go.tap()
+            } else {
+                // browse already entered; use "前往当前浏览文件夹" row if shown
+                let goHere = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "前往")).firstMatch
+                if goHere.waitForExistence(timeout: 3) { goHere.tap() }
+            }
+        }
+        RunLoop.current.run(until: Date().addingTimeInterval(1.5))
+    }
 
     private func openGridItem(uuid: String) {
         let item = app.descendants(matching: .any)["fileGridItem-\(uuid)"]
