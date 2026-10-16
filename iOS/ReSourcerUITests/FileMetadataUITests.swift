@@ -714,11 +714,13 @@ final class FileMetadataUITests: XCTestCase {
     }
 
     private func closeInfoSheet() {
-        let close = app.buttons.matching(NSPredicate(format: "label == %@", "Close")).firstMatch
-        if close.exists, close.isHittable {
+        let close = app.descendants(matching: .any)["glassSheetCloseButton"]
+        if close.waitForExistence(timeout: 3), close.isHittable {
             close.tap()
+        } else if app.buttons["关闭"].exists {
+            app.buttons["关闭"].tap()
         } else {
-            // Sheet close is often an unlabeled xmark — tap top-right of sheet
+            // Fallback: tap top-right of sheet
             app.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.28)).tap()
         }
         RunLoop.current.run(until: Date().addingTimeInterval(0.5))
