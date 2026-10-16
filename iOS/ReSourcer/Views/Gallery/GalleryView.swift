@@ -1003,11 +1003,16 @@ struct GalleryView: View {
                         fileInfoMetadata = nil
                         isLoadingFileInfoMetadata = true
                         fileInfoToShow = file
+                        let path = file.path
+                        let uuid = file.uuid
                         Task {
-                            if let uuid = file.uuid {
+                            if let uuid {
                                 fileInfoTags = (try? await apiService.tag.getFileTags(fileUuid: uuid)) ?? []
                             }
-                            fileInfoMetadata = try? await apiService.file.getMetadata(path: file.path)
+                            let meta = try? await apiService.file.getMetadata(path: path)
+                            // 丢弃过期响应（用户已关掉面板或换了另一条）
+                            guard fileInfoToShow?.path == path else { return }
+                            fileInfoMetadata = meta
                             isLoadingFileInfoMetadata = false
                         }
                     }

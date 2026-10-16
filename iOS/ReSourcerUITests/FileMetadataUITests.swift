@@ -49,16 +49,19 @@ final class FileMetadataUITests: XCTestCase {
     // MARK: - (1) Module content vs live metadata
 
     func testRichHEICShowsTimeDeviceGPSMatchingServer() throws {
-        let uuid = try requireUUID(named: "IMG_4821.HEIC")
-        let meta = try fetchMetadata(named: "IMG_4821.HEIC")
+        let fileName = "IMG_4821.HEIC"
+        let uuid = try requireUUID(named: fileName)
+        let meta = try fetchMetadata(named: fileName)
 
         openGridItem(uuid: uuid)
         assertTabBarHidden(reason: "playback / preview")
-        // Real Simulator screenshots (not HTML mocks) — playback first, then info modules
-        saveE2EScreenshot(named: "01-playback-tabbar-hidden")
+        assertPreviewFileNameContains(fileName)
+        // Full-frame playback (no info sheet) — TabBar hidden
+        saveFullScreenShot(named: "01-playback-tabbar-hidden")
 
         openInfoSheet()
         assertTabBarHidden(reason: "file info sheet")
+        assertChromeMatchesPanel(expectedFileName: fileName)
 
         let time = app.descendants(matching: .any)["meta-module-time"]
         let device = app.descendants(matching: .any)["meta-module-device"]
@@ -70,21 +73,15 @@ final class FileMetadataUITests: XCTestCase {
         XCTAssertTrue(gps.waitForExistence(timeout: 5), "地图定位 module visible")
         XCTAssertTrue(actions.waitForExistence(timeout: 5), "action icon row visible")
 
-        saveE2EScreenshot(named: "02-info-modules-full")
-        saveE2EScreenshot(named: "03-module-time")
-        // Bring device / EXIF into the upper half of the sheet
-        time.swipeUp()
-        RunLoop.current.run(until: Date().addingTimeInterval(0.5))
-        saveE2EScreenshot(named: "04-module-device-exif")
-        device.swipeUp()
-        RunLoop.current.run(until: Date().addingTimeInterval(0.5))
-        saveE2EScreenshot(named: "05-module-map-gps")
-        if basics.exists {
-            basics.swipeUp()
-            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+        // Distinct element screenshots (not duplicate full-frame copies)
+        saveFullScreenShot(named: "02-heic-info-modules-full")
+        saveElementShot(time, named: "03-heic-module-time")
+        saveElementShot(device, named: "04-heic-module-device-exif")
+        saveElementShot(gps, named: "05-heic-module-map-gps")
+        if basics.waitForExistence(timeout: 3) {
+            saveElementShot(basics, named: "06-heic-module-basics-deduped")
         }
-        saveE2EScreenshot(named: "06-module-basics-deduped")
-        saveE2EScreenshot(named: "07-actions-row")
+        saveElementShot(actions, named: "07-heic-actions-row")
 
         // Capture time — Photos-style zh_CN header from capture_time
         let capture = meta["capture_time"] as? String ?? ""
@@ -134,6 +131,42 @@ final class FileMetadataUITests: XCTestCase {
         assertKeyStringNotDuplicatedAcrossModules(expectedGPS)
     }
 
+    /// Playlist 切曲后重开信息面板：顶栏文件名必须与面板 metadata 一致（回归 clip.mp4 vs HEIC 错配）。
+    func testInfoPanelTracksPlaylistSwitchVideoThenHEIC() throws {
+        let video = "clip.mp4"
+        let heic = "IMG_4821.HEIC"
+        let videoUUID = try requireUUID(named: video)
+        _ = try requireUUID(named: heic)
+
+        openGridItem(uuid: videoUUID)
+        assertPreviewFileNameContains(video)
+        openInfoSheet()
+        assertChromeMatchesPanel(expectedFileName: video)
+        XCTAssertTrue(
+            app.descendants(matching: .any)["meta-module-basics"].waitForExistence(timeout: 10)
+        )
+        XCTAssertFalse(app.descendants(matching: .any)["meta-module-gps"].exists)
+
+        closeInfoSheet()
+        advancePreviewUntilFileNameContains(heic)
+        openInfoSheet()
+        let time = app.descendants(matching: .any)["meta-module-time"]
+        XCTAssertTrue(time.waitForExistence(timeout: 12), "HEIC time module after switch")
+        assertChromeMatchesPanel(expectedFileName: heic)
+        XCTAssertTrue(app.descendants(matching: .any)["meta-module-device"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["meta-module-gps"].waitForExistence(timeout: 5))
+
+        // Reverse: HEIC → video
+        closeInfoSheet()
+        advancePreviewUntilFileNameContains(video)
+        openInfoSheet()
+        assertChromeMatchesPanel(expectedFileName: video)
+        XCTAssertTrue(
+            app.descendants(matching: .any)["meta-module-basics"].waitForExistence(timeout: 10)
+        )
+        XCTAssertFalse(app.descendants(matching: .any)["meta-module-time"].exists)
+    }
+
     /// Assert a distinctive string is not copied into 基础信息 when a richer module owns it.
     private func assertKeyStringNotDuplicatedAcrossModules(_ needle: String) {
         let basics = app.descendants(matching: .any)["meta-module-basics"]
@@ -153,14 +186,17 @@ final class FileMetadataUITests: XCTestCase {
     }
 
     func testSparsePNGHidesTimeDeviceGPSModules() throws {
-        let uuid = try requireUUID(named: "plain.png")
-        let meta = try fetchMetadata(named: "plain.png")
+        let fileName = "plain.png"
+        let uuid = try requireUUID(named: fileName)
+        let meta = try fetchMetadata(named: fileName)
         XCTAssertNil(meta["capture_time"], "fixture must lack capture_time")
         XCTAssertNil(meta["gps"], "fixture must lack gps")
         XCTAssertNil(meta["make"], "fixture must lack make")
 
         openGridItem(uuid: uuid)
+        assertPreviewFileNameContains(fileName)
         openInfoSheet()
+        assertChromeMatchesPanel(expectedFileName: fileName)
 
         // Wait for basics (always present for sparse)
         let basics = app.descendants(matching: .any)["meta-module-basics"]
@@ -175,22 +211,28 @@ final class FileMetadataUITests: XCTestCase {
         // Filename lives in 基础信息 when 时间 is hidden
         let filename = app.descendants(matching: .any)["meta-basics-filename"]
         if filename.waitForExistence(timeout: 3) {
-            XCTAssertTrue(filename.label.contains("plain.png"))
+            XCTAssertTrue(filename.label.contains(fileName))
         } else {
-            XCTAssertTrue(app.staticTexts["plain.png"].exists || app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "plain.png")).count > 0)
+            XCTAssertTrue(app.staticTexts[fileName].exists || app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", fileName)).count > 0)
         }
+
+        saveFullScreenShot(named: "08-sparse-png-basics-only")
+        saveElementShot(basics, named: "09-sparse-png-module-basics")
     }
 
     func testVideoShowsDurationAndCodecInBasics() throws {
-        let uuid = try requireUUID(named: "clip.mp4")
-        let meta = try fetchMetadata(named: "clip.mp4")
+        let fileName = "clip.mp4"
+        let uuid = try requireUUID(named: fileName)
+        let meta = try fetchMetadata(named: fileName)
         let duration = meta["duration"] as? Double ?? 0
         let codec = (meta["codec"] as? String ?? "").uppercased()
         XCTAssertGreaterThan(duration, 0)
         XCTAssertFalse(codec.isEmpty)
 
         openGridItem(uuid: uuid)
+        assertPreviewFileNameContains(fileName)
         openInfoSheet()
+        assertChromeMatchesPanel(expectedFileName: fileName)
 
         let basics = app.descendants(matching: .any)["meta-module-basics"]
         XCTAssertTrue(basics.waitForExistence(timeout: 12))
@@ -213,6 +255,11 @@ final class FileMetadataUITests: XCTestCase {
         // Video without capture EXIF should not show time/device/gps modules
         XCTAssertFalse(app.descendants(matching: .any)["meta-module-time"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["meta-module-gps"].exists)
+
+        let actions = app.descendants(matching: .any)["fileInfoActionsRow"]
+        XCTAssertTrue(actions.waitForExistence(timeout: 5))
+        saveFullScreenShot(named: "10-video-info-basics")
+        saveElementShot(actions, named: "11-video-actions-row")
     }
 
     // MARK: - (2) Action mutations vs live server
@@ -593,19 +640,44 @@ final class FileMetadataUITests: XCTestCase {
         }
     }
 
-    private func saveE2EScreenshot(named name: String) {
-        let shot = XCUIScreen.main.screenshot()
+    private var screenshotDigests = Set<String>()
+
+    private func screenshotOutputDir() -> String {
         let env = ProcessInfo.processInfo.environment
-        let dir = env["E2E_SCREENSHOT_DIR"]
+        return env["E2E_SCREENSHOT_DIR"]
             ?? env["TEST_RUNNER_E2E_SCREENSHOT_DIR"]
             ?? NSTemporaryDirectory()
+    }
+
+    private func saveFullScreenShot(named name: String) {
+        saveShotData(XCUIScreen.main.screenshot().pngRepresentation, named: name)
+    }
+
+    private func saveElementShot(_ element: XCUIElement, named name: String) {
+        XCTAssertTrue(element.exists, "element for screenshot \(name) must exist")
+        // Prefer element crop so module shots are content-unique (not duplicate full frames).
+        let data = element.screenshot().pngRepresentation
+        saveShotData(data, named: name)
+    }
+
+    private func saveShotData(_ data: Data, named name: String) {
+        let dir = screenshotOutputDir()
         let fm = FileManager.default
         try? fm.createDirectory(atPath: dir, withIntermediateDirectories: true)
         let url = URL(fileURLWithPath: dir).appendingPathComponent("\(name).png")
+        let digest = data.reduce(into: UInt64(5381)) { hash, byte in
+            hash = ((hash << 5) &+ hash) &+ UInt64(byte)
+        }
+        let key = "\(digest)-\(data.count)"
+        XCTAssertFalse(
+            screenshotDigests.contains(key),
+            "screenshot \(name) must be unique — duplicate PNG content is forbidden"
+        )
+        screenshotDigests.insert(key)
         do {
-            try shot.pngRepresentation.write(to: url)
+            try data.write(to: url)
             XCTContext.runActivity(named: "screenshot \(name)") { activity in
-                let attachment = XCTAttachment(screenshot: shot)
+                let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.png")
                 attachment.name = name
                 attachment.lifetime = .keepAlways
                 activity.add(attachment)
@@ -613,6 +685,77 @@ final class FileMetadataUITests: XCTestCase {
         } catch {
             XCTFail("failed to write screenshot \(name): \(error)")
         }
+    }
+
+    /// 顶栏 capsule 与面板文件名必须一致（防 clip.mp4 chrome + HEIC 面板错配）。
+    private func assertChromeMatchesPanel(expectedFileName: String) {
+        assertPreviewFileNameContains(expectedFileName)
+        // Prefer metadata filename id; fall back to basics filename when 时间模块隐藏
+        let metaName = app.descendants(matching: .any)["meta-filename"]
+        let basicsName = app.descendants(matching: .any)["meta-basics-filename"]
+        let deadline = Date().addingTimeInterval(10)
+        var matched = false
+        while Date() < deadline {
+            if metaName.exists, metaName.label.contains(expectedFileName) {
+                matched = true
+                break
+            }
+            if basicsName.exists, basicsName.label.contains(expectedFileName) {
+                matched = true
+                break
+            }
+            // Loading placeholder may still be up
+            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+        }
+        XCTAssertTrue(
+            matched,
+            "panel filename must contain '\(expectedFileName)' (chrome matched); meta='\(metaName.label)' basics='\(basicsName.label)'"
+        )
+    }
+
+    private func closeInfoSheet() {
+        let close = app.buttons.matching(NSPredicate(format: "label == %@", "Close")).firstMatch
+        if close.exists, close.isHittable {
+            close.tap()
+        } else {
+            // Sheet close is often an unlabeled xmark — tap top-right of sheet
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.28)).tap()
+        }
+        RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        // Ensure sheet modules gone
+        let deadline = Date().addingTimeInterval(4)
+        while Date() < deadline {
+            let sheetBits = app.descendants(matching: .any).matching(
+                NSPredicate(format: "identifier IN %@", [
+                    "meta-module-time", "meta-module-basics", "meta-module-device", "fileInfoActionsRow"
+                ])
+            ).firstMatch
+            if !sheetBits.exists { break }
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).tap()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+        }
+    }
+
+    private func tapPlaylistNext() {
+        let next = app.descendants(matching: .any)["previewNextButton"]
+        XCTAssertTrue(next.waitForExistence(timeout: 5), "previewNextButton")
+        if next.isHittable {
+            next.tap()
+        } else {
+            next.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+    }
+
+    private func advancePreviewUntilFileNameContains(_ needle: String) {
+        let deadline = Date().addingTimeInterval(25)
+        while Date() < deadline {
+            let capsule = app.descendants(matching: .any)["previewFileNameCapsule"]
+            let value = capsule.value as? String ?? ""
+            if value.contains(needle) { return }
+            tapPlaylistNext()
+        }
+        XCTFail("preview did not reach file containing '\(needle)'")
     }
 
     private func triggerScan() throws {

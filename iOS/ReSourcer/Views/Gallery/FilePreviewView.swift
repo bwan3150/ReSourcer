@@ -210,6 +210,18 @@ struct FilePreviewView: View {
             logger.clear()
             refreshNowPlayingSkipAvailability()
             publishE2EPlaylistMeta()
+            // 切曲时若信息面板仍开着，必须同步 metadata，否则会出现
+            // 顶栏 clip.mp4、面板却仍是上一张 HEIC EXIF 的错配（TF 041 用户截图）。
+            if showInfoSheet {
+                reloadFileMetadataForCurrentFile()
+            }
+        }
+        .onChange(of: showInfoSheet) { _, isOpen in
+            if isOpen {
+                cancelAutoAdvanceTimer()
+            } else {
+                startAutoAdvanceTimer()
+            }
         }
         .onChange(of: playlist.count) { _, _ in
             publishE2EPlaylistMeta()
@@ -458,17 +470,10 @@ struct FilePreviewView: View {
             .accessibilityValue(currentFile?.name ?? "")
             .accessibilityAddTraits(.isButton)
             .simultaneousGesture(TapGesture().onEnded {
-                fileInfoTags = []
-                fileMetadata = nil
-                isLoadingFileMetadata = true
                 showInfoSheet = true
-                Task {
-                    await resolveUuidAndLoadTags()
-                    if let path = currentFile?.path {
-                        fileMetadata = try? await apiService.file.getMetadata(path: path)
-                    }
-                    isLoadingFileMetadata = false
-                }
+                cancelAutoAdvanceTimer()
+                reloadFileMetadataForCurrentFile()
+                Task { await resolveUuidAndLoadTags() }
             })
             .onLongPressGesture {
                 if let file = currentFile {
@@ -688,6 +693,27 @@ struct FilePreviewView: View {
     }
 
     // MARK: - 文件信息面板内容
+
+    /// 按当前曲目刷新 metadata；用 path 校验丢弃过期响应，避免顶栏/面板文件名错配。
+    private func reloadFileMetadataForCurrentFile() {
+        let path = currentFile?.path
+        fileInfoTags = []
+        fileMetadata = nil
+        isLoadingFileMetadata = path != nil
+        guard let path else {
+            isLoadingFileMetadata = false
+            return
+        }
+        Task {
+            let meta = try? await apiService.file.getMetadata(path: path)
+            await MainActor.run {
+                // 仅当仍停留在同一 path 时采纳（切曲 / 快速连点会作废旧请求）
+                guard currentFile?.path == path else { return }
+                fileMetadata = meta
+                isLoadingFileMetadata = false
+            }
+        }
+    }
 
     @ViewBuilder
     private var fileInfoModules: some View {
@@ -1116,6 +1142,7 @@ struct FilePreviewView: View {
     /// Auto-advance timer for static content (images, PDF, other)
     private func startAutoAdvanceTimer() {
         cancelAutoAdvanceTimer()
+        guard !showInfoSheet else { return }
         guard advanceMode != .repeatCurrent else { return }
         guard currentFile?.isVideo != true && currentFile?.isAudio != true else { return }
 
@@ -1123,7 +1150,10 @@ struct FilePreviewView: View {
         autoAdvanceTask = Task {
             try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled else { return }
-            advanceToNext()
+            await MainActor.run {
+                guard !showInfoSheet else { return }
+                advanceToNext()
+            }
         }
     }
 
