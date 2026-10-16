@@ -32,6 +32,7 @@ Base URL: `http://localhost:1234`
 | POST | `/api/file/batch/move` | 批量移动文件 |
 | POST | `/api/file/batch/delete` | 批量软删除文件 |
 | GET | `/api/file/info` | 获取文件信息 |
+| GET | `/api/file/metadata` | 按路径读取文件元数据（缺省字段省略） |
 
 ### 文件夹操作 API (`/api/folder`)
 | 方法 | 路径 | 描述 |
@@ -398,6 +399,31 @@ Base URL: `http://localhost:1234`
 ```
 
 **Response:** 同 `/api/file/batch/move`。
+
+### GET `/api/file/metadata?path=<abs>`
+按绝对路径读取单文件元数据。缺省字段（如 `capture_time`、`gps`、`width`/`height`、`duration`）由服务端省略，客户端应隐藏对应行。
+
+**Query Parameters:**
+- `path`: 文件绝对路径（必填）
+
+**Response（示例，字段按实际有无出现）:**
+```json
+{
+  "path": "/path/to/IMG_4821.HEIC",
+  "filename": "IMG_4821.HEIC",
+  "format": "HEIC",
+  "size": 2996,
+  "file_type": "image",
+  "width": 512,
+  "height": 512,
+  "capture_time": "2024-06-15 14:32:01",
+  "gps": { "lat": -33.8688, "lon": 151.2093 },
+  "created": "2026-10-16 06:21:36",
+  "modified": "2026-10-16 06:21:36"
+}
+```
+
+---
 
 ### GET `/api/file/info?folder=<path>`
 获取指定文件夹的所有媒体文件信息

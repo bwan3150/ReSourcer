@@ -37,7 +37,7 @@ enum GlassBottomSheetHeight {
 // MARK: - GlassBottomSheet
 
 /// 液态玻璃风格底部抽屉
-struct GlassBottomSheet<Content: View>: View {
+struct GlassBottomSheet<Content: View, Footer: View>: View {
 
     // MARK: - Properties
 
@@ -48,9 +48,11 @@ struct GlassBottomSheet<Content: View>: View {
     let showCloseButton: Bool
     let onDismiss: (() -> Void)?
     let content: () -> Content
+    let stickyFooter: () -> Footer
 
     @State private var offset: CGFloat = 0
     @State private var contentHeight: CGFloat = 0
+    @State private var footerHeight: CGFloat = 0
     @GestureState private var dragOffset: CGFloat = 0
 
     // MARK: - Initialization
@@ -62,6 +64,7 @@ struct GlassBottomSheet<Content: View>: View {
         title: String? = nil,
         showCloseButton: Bool = true,
         onDismiss: (() -> Void)? = nil,
+        @ViewBuilder stickyFooter: @escaping () -> Footer,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self._isPresented = isPresented
@@ -70,6 +73,7 @@ struct GlassBottomSheet<Content: View>: View {
         self.title = title
         self.showCloseButton = showCloseButton
         self.onDismiss = onDismiss
+        self.stickyFooter = stickyFooter
         self.content = content
     }
 
@@ -131,7 +135,22 @@ struct GlassBottomSheet<Content: View>: View {
                         }
                     )
             }
+            // XCUITest scrolls this (not app-level swipe) so tall info sheets stay open.
+            .accessibilityIdentifier(title.map { "glassSheetScroll-\($0)" } ?? "glassSheetScroll")
             .scrollBounceBehavior(.basedOnSize)
+
+            // 固定操作栏：不被 ScrollView 裁切，始终在 safe area 之上可点
+            stickyFooter()
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.top, AppTheme.Spacing.xs)
+                .background(
+                    GeometryReader { footerGeometry in
+                        Color.clear.preference(
+                            key: FooterHeightPreferenceKey.self,
+                            value: footerGeometry.size.height
+                        )
+                    }
+                )
 
             // 固定在 ScrollView 外部的安全区域间距
             // 不参与滚动，确保内容永远不被 home indicator 遮挡
@@ -146,6 +165,9 @@ struct GlassBottomSheet<Content: View>: View {
         .gesture(dragGesture(sheetHeight: sheetHeight))
         .onPreferenceChange(ContentHeightPreferenceKey.self) { height in
             contentHeight = height
+        }
+        .onPreferenceChange(FooterHeightPreferenceKey.self) { height in
+            footerHeight = height
         }
     }
 
@@ -201,8 +223,12 @@ struct GlassBottomSheet<Content: View>: View {
         let safeBottom = max(geometry.safeAreaInsets.bottom, AppTheme.Spacing.lg)
         switch height {
         case .fit:
-            // 内容高度 + 标题栏 + 手柄/间距 + 外部安全区域间距
-            let calculatedHeight = contentHeight + AppTheme.BottomSheet.headerHeight + 40 + safeBottom
+            // 内容高度 + 标题栏 + 手柄/间距 + sticky footer + 外部安全区域间距
+            let calculatedHeight = contentHeight
+                + footerHeight
+                + AppTheme.BottomSheet.headerHeight
+                + 40
+                + safeBottom
             let maxHeight = geometry.size.height * AppTheme.BottomSheet.maxHeightRatio
             return min(calculatedHeight, maxHeight)
         default:
@@ -241,6 +267,29 @@ struct GlassBottomSheet<Content: View>: View {
     }
 }
 
+extension GlassBottomSheet where Footer == EmptyView {
+    init(
+        isPresented: Binding<Bool>,
+        height: GlassBottomSheetHeight = .fit,
+        showHandle: Bool = true,
+        title: String? = nil,
+        showCloseButton: Bool = true,
+        onDismiss: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.init(
+            isPresented: isPresented,
+            height: height,
+            showHandle: showHandle,
+            title: title,
+            showCloseButton: showCloseButton,
+            onDismiss: onDismiss,
+            stickyFooter: { EmptyView() },
+            content: content
+        )
+    }
+}
+
 // MARK: - Content Height Preference Key
 
 private struct ContentHeightPreferenceKey: PreferenceKey {
@@ -250,10 +299,17 @@ private struct ContentHeightPreferenceKey: PreferenceKey {
     }
 }
 
+private struct FooterHeightPreferenceKey: PreferenceKey {
+    nonisolated(unsafe) static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 // MARK: - View Modifier
 
 /// Bottom Sheet Modifier
-struct GlassBottomSheetModifier<SheetContent: View>: ViewModifier {
+struct GlassBottomSheetModifier<SheetContent: View, Footer: View>: ViewModifier {
 
     @Binding var isPresented: Bool
     let height: GlassBottomSheetHeight
@@ -261,6 +317,7 @@ struct GlassBottomSheetModifier<SheetContent: View>: ViewModifier {
     let title: String?
     let showCloseButton: Bool
     let onDismiss: (() -> Void)?
+    let stickyFooter: () -> Footer
     let sheetContent: () -> SheetContent
 
     func body(content: Content) -> some View {
@@ -273,6 +330,7 @@ struct GlassBottomSheetModifier<SheetContent: View>: ViewModifier {
                     title: title,
                     showCloseButton: showCloseButton,
                     onDismiss: onDismiss,
+                    stickyFooter: stickyFooter,
                     content: sheetContent
                 )
             }
@@ -300,6 +358,30 @@ extension View {
             title: title,
             showCloseButton: showCloseButton,
             onDismiss: onDismiss,
+            stickyFooter: { EmptyView() },
+            sheetContent: content
+        ))
+    }
+
+    /// 添加底部抽屉（带固定操作栏，不被滚动裁切、不被 TabBar 挡住）
+    func glassBottomSheet<Content: View, Footer: View>(
+        isPresented: Binding<Bool>,
+        height: GlassBottomSheetHeight = .fit,
+        showHandle: Bool = true,
+        title: String? = nil,
+        showCloseButton: Bool = true,
+        onDismiss: (() -> Void)? = nil,
+        @ViewBuilder stickyFooter: @escaping () -> Footer,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        modifier(GlassBottomSheetModifier(
+            isPresented: isPresented,
+            height: height,
+            showHandle: showHandle,
+            title: title,
+            showCloseButton: showCloseButton,
+            onDismiss: onDismiss,
+            stickyFooter: stickyFooter,
             sheetContent: content
         ))
     }

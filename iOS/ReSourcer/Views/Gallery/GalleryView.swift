@@ -67,6 +67,7 @@ struct GalleryView: View {
     // 文件信息弹窗
     @State private var selectedFile: FileInfo?       // 用于重命名/移动操作
     @State private var fileInfoToShow: FileInfo?     // 驱动弹窗显示 + 数据（单一状态源）
+    @State private var fileInfoMetadata: FileMetadata? = nil
     @State private var showRenameAlert = false
     @State private var renameText = ""
     @State private var showMoveSheet = false
@@ -198,50 +199,71 @@ struct GalleryView: View {
                 NavigationState.shared.setCurrentFolder(currentFolderPath)
             }
         }
-        // 文件信息面板
+        // 信息 / 重命名 sheet 打开时隐藏 TabBar，避免挡住操作栏
+        .toolbar(hidesTabBarForSheets ? .hidden : .automatic, for: .tabBar)
+        // 文件信息面板（操作栏 sticky，不被滚动裁切 / TabBar 挡住）
         .glassBottomSheet(
             isPresented: Binding(
                 get: { fileInfoToShow != nil },
                 set: { if !$0 { fileInfoToShow = nil } }
             ),
-            title: "文件信息"
+            title: "文件信息",
+            stickyFooter: { galleryFileInfoActions }
         ) {
-            galleryFileInfoContent
+            galleryFileInfoModules
         }
-        // 重命名面板
-        .glassBottomSheet(isPresented: $showRenameAlert, title: "重命名") {
-            VStack(spacing: AppTheme.Spacing.lg) {
-                HStack {
-                    TextField("文件名", text: $renameText)
-                        .textFieldStyle(.plain)
-                    Text(selectedFile?.extension ?? "")
-                        .foregroundStyle(.tertiary)
+        // 重命名浮窗（overlay，避免底部 sheet 被输入法挡住确认按钮）
+        .overlay {
+            if showRenameAlert {
+                ZStack {
+                    Color.black.opacity(0.5)
+                        .ignoresSafeArea()
+                        .onTapGesture { showRenameAlert = false }
+
+                    VStack(spacing: AppTheme.Spacing.lg) {
+                        HStack {
+                            TextField("文件名", text: $renameText)
+                                .textFieldStyle(.plain)
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.never)
+                                .accessibilityIdentifier("renameTextField")
+                            Text(selectedFile?.extension ?? "")
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(AppTheme.Spacing.md)
+                        .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+
+                        HStack(spacing: AppTheme.Spacing.md) {
+                            GlassButton(icon: "trash", style: .secondary, size: .medium) {
+                                renameText = ""
+                            }
+                            .frame(maxWidth: .infinity)
+                            .accessibilityLabel("清空")
+
+                            GlassButton(icon: "checkmark", style: .primary, size: .medium) {
+                                showRenameAlert = false
+                                Task { await performRename() }
+                            }
+                            .disabled(renameText.isEmpty || renameText == selectedFile?.baseName)
+                            .frame(maxWidth: .infinity)
+                            .accessibilityIdentifier("renameConfirmButton")
+                            .accessibilityLabel("确认")
+
+                            GlassButton(icon: "xmark", style: .secondary, size: .medium) {
+                                showRenameAlert = false
+                            }
+                            .frame(maxWidth: .infinity)
+                            .accessibilityLabel("取消")
+                        }
+                    }
+                    .padding(AppTheme.Spacing.xxl)
+                    .frame(maxWidth: 340)
+                    .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
                 }
-                .padding(AppTheme.Spacing.md)
-                .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
-
-                HStack(spacing: AppTheme.Spacing.md) {
-                    GlassButton(icon: "trash", style: .secondary, size: .medium) {
-                        renameText = ""
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    GlassButton(icon: "checkmark", style: .primary, size: .medium) {
-                        Task { await performRename() }
-                    }
-                    .disabled(renameText.isEmpty || renameText == selectedFile?.baseName)
-                    .frame(maxWidth: .infinity)
-
-                    GlassButton(icon: "xmark", style: .secondary, size: .medium) {
-                        showRenameAlert = false
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-
-                Spacer().frame(height: 60)
+                .transition(.opacity.combined(with: .scale(scale: 0.92)))
             }
-            .padding(.vertical, AppTheme.Spacing.md)
         }
+        .animation(AppTheme.Animation.spring, value: showRenameAlert)
         // 移动面板（使用标准 sheet 确保生命周期正确；支持单文件与批量）
         .sheet(isPresented: $showMoveSheet) {
             MoveSheetView(
@@ -533,6 +555,10 @@ struct GalleryView: View {
                     .padding(.trailing, 16)
             }
             .contentShape(Capsule())
+            .accessibilityIdentifier("galleryFolderDropdown")
+            .accessibilityLabel("当前文件夹")
+            .accessibilityValue(currentFolderDisplayName)
+            .accessibilityAddTraits(.isButton)
             .onTapGesture {
                 if !isDropdownOpen {
                     Task { await browseInDropdown(path: currentFolderFullPath.isEmpty ? sourceFolder : currentFolderFullPath) }
@@ -634,6 +660,8 @@ struct GalleryView: View {
                     .foregroundStyle(.primary)
                     .frame(width: 44, height: 44)
             }
+            .accessibilityIdentifier("galleryViewModeToggle")
+            .accessibilityLabel(viewMode == .grid ? "列表视图" : "网格视图")
             .interactiveGlassBackground(in: Circle())
         }
     }
@@ -840,6 +868,8 @@ struct GalleryView: View {
                                         .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityIdentifier("folderNavigate-\(folder.name)")
+                                .accessibilityLabel("打开 \(folder.name)")
                             }
                             .padding(.horizontal, AppTheme.Spacing.md)
                             .padding(.vertical, AppTheme.Spacing.sm)
@@ -956,11 +986,13 @@ struct GalleryView: View {
                     onInfoTap: {
                         selectedFile = file
                         fileInfoTags = []
+                        fileInfoMetadata = nil
                         fileInfoToShow = file
-                        if let uuid = file.uuid {
-                            Task {
+                        Task {
+                            if let uuid = file.uuid {
                                 fileInfoTags = (try? await apiService.tag.getFileTags(fileUuid: uuid)) ?? []
                             }
+                            fileInfoMetadata = try? await apiService.file.getMetadata(path: file.path)
                         }
                     }
                 )
@@ -1425,39 +1457,72 @@ struct GalleryView: View {
 
     // MARK: - 文件信息面板内容
 
+    private var hidesTabBarForSheets: Bool {
+        fileInfoToShow != nil || showRenameAlert
+    }
+
     @ViewBuilder
-    private var galleryFileInfoContent: some View {
+    private var galleryFileInfoModules: some View {
         if let file = fileInfoToShow {
             FileInfoSheetContent(
                 file: file,
+                metadata: fileInfoMetadata,
+                showsActions: false,
                 tags: fileInfoTags,
                 onAddTag: file.uuid != nil ? {
+                    selectedFile = file
                     fileInfoToShow = nil
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(300))
                         showTagEditor = true
                     }
-                } : nil,
-                onRename: {
+                } : nil
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var galleryFileInfoActions: some View {
+        if let file = fileInfoToShow {
+            FileInfoActionsRow(
+                onDownload: {
+                    let fileCopy = file
                     fileInfoToShow = nil
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(300))
-                        renameText = selectedFile?.baseName ?? ""
-                        showRenameAlert = true
-                    }
+                    saveFileToDevice(fileCopy)
+                },
+                onShare: {
+                    let fileCopy = file
+                    fileInfoToShow = nil
+                    shareFile(fileCopy)
                 },
                 onMove: {
+                    selectedFile = file
+                    bulkMoveUUIDs = []
                     fileInfoToShow = nil
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(300))
                         showMoveSheet = true
                     }
                 },
-                onDownload: {
-                    let fileCopy = file
+                onRename: {
+                    let target = file
+                    selectedFile = target
                     fileInfoToShow = nil
-                    saveFileToDevice(fileCopy)
-                }
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        renameText = target.baseName
+                        showRenameAlert = true
+                    }
+                },
+                onDelete: (file.uuid != nil && !isInRecycleBin) ? {
+                    let target = file
+                    selectedFile = target
+                    fileInfoToShow = nil
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        promptDeleteFile(target)
+                    }
+                } : nil
             )
         }
     }
@@ -1601,16 +1666,102 @@ struct GalleryView: View {
 
     // MARK: - 文件操作
 
+    private func promptDeleteFile(_ file: FileInfo) {
+        GlassConfirmManager.shared.show(
+            config: GlassConfirmConfig(
+                title: "删除此文件？",
+                message: "文件将被移动到回收站，可稍后在回收站中还原。",
+                icon: "trash.fill",
+                iconColor: .red,
+                confirmTitle: "删除",
+                confirmStyle: .destructive,
+                cancelTitle: "取消"
+            ),
+            onConfirm: {
+                Task { @MainActor in await performDeleteFile(file) }
+            }
+        )
+    }
+
+    private func performDeleteFile(_ file: FileInfo) async {
+        guard let uuid = file.uuid else { return }
+        do {
+            _ = try await apiService.file.deleteFile(uuid: uuid)
+            files.removeAll { $0.id == file.id }
+            GlassAlertManager.shared.showSuccess("已移到回收站")
+            await refreshFiles()
+        } catch {
+            GlassAlertManager.shared.showError("删除失败", message: error.localizedDescription)
+        }
+    }
 
     private func performRename() async {
         guard let file = selectedFile, let uuid = file.uuid, !renameText.isEmpty else { return }
-        let newName = renameText + file.extension
+        // extension 可能带/不带前导点；统一拼成 basename.ext
+        let ext = file.extension.trimmingCharacters(in: CharacterSet(charactersIn: "."))
+        let newName = ext.isEmpty ? renameText : "\(renameText).\(ext)"
         do {
             _ = try await apiService.file.renameFile(uuid: uuid, to: newName)
             GlassAlertManager.shared.showSuccess("重命名成功")
             await refreshFiles()
         } catch {
             GlassAlertManager.shared.showError("重命名失败", message: error.localizedDescription)
+        }
+    }
+
+    /// Info 面板「分享」：拉取到临时文件并弹出系统分享面板
+    private func shareFile(_ file: FileInfo) {
+        let contentURL: URL? = if let uuid = file.uuid {
+            apiService.preview.getContentURL(
+                uuid: uuid,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        } else {
+            apiService.preview.getContentURL(
+                for: file.path,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        }
+        guard let contentURL else {
+            GlassAlertManager.shared.showError("无法获取文件地址")
+            return
+        }
+
+        GlassAlertManager.shared.showQuickLoading()
+        Task.detached {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: contentURL)
+                let tempURL = FileManager.default.temporaryDirectory
+                    .appendingPathComponent(file.name)
+                try data.write(to: tempURL)
+                await MainActor.run {
+                    GlassAlertManager.shared.hideQuickLoading()
+                    let activityVC = UIActivityViewController(
+                        activityItems: [tempURL],
+                        applicationActivities: nil
+                    )
+                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                       let rootVC = windowScene.windows.first?.rootViewController {
+                        activityVC.popoverPresentationController?.sourceView = rootVC.view
+                        activityVC.popoverPresentationController?.sourceRect = CGRect(
+                            x: rootVC.view.bounds.midX,
+                            y: rootVC.view.bounds.midY,
+                            width: 0, height: 0
+                        )
+                        activityVC.popoverPresentationController?.permittedArrowDirections = []
+                        rootVC.present(activityVC, animated: true)
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    GlassAlertManager.shared.hideQuickLoading()
+                    if !error.isCancelledRequest {
+                        GlassAlertManager.shared.showError("分享失败", message: error.localizedDescription)
+                    }
+                }
+            }
         }
     }
 
@@ -1850,6 +2001,7 @@ struct MoveSheetView: View {
                     .padding(.vertical, AppTheme.Spacing.md)
                     .background(.blue, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
                 }
+                .accessibilityIdentifier("moveHereButton")
                 .disabled(targetUUIDs.isEmpty || isMoving)
                 .padding(.horizontal, AppTheme.Spacing.lg)
                 .padding(.vertical, AppTheme.Spacing.md)
@@ -2088,10 +2240,15 @@ struct GalleryListItem: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier(file.uuid.map { "fileInfoButton-\($0)" } ?? "fileInfoButton")
+                .accessibilityLabel("文件信息")
             }
         }
         .padding(AppTheme.Spacing.md)
         .clearGlassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+        // Keep children (esp. fileInfoButton-*) independently addressable for XCUITest
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(file.uuid.map { "fileListItem-\($0)" } ?? "fileListItem")
         .overlay {
             if isSelectMode && isSelected {
                 RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md)

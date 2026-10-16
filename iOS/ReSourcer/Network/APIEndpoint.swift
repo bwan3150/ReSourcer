@@ -31,6 +31,7 @@ enum APIEndpoint {
 
     // MARK: - File 文件操作
     case fileInfo(folder: String)            // GET  /api/file/info?folder=
+    case fileMetadata(path: String)          // GET  /api/file/metadata?path=
     case fileRename                          // POST /api/file/rename
     case fileMove                            // POST /api/file/move
     case fileDelete                          // POST /api/file/delete（软删除到回收站）
@@ -143,6 +144,8 @@ enum APIEndpoint {
         // File
         case .fileInfo(let folder):
             return "/api/file/info?folder=\(folder.urlEncoded)"
+        case .fileMetadata(let path):
+            return "/api/file/metadata?path=\(path.urlEncoded)"
         case .fileRename:
             return "/api/file/rename"
         case .fileMove:
@@ -325,7 +328,7 @@ enum APIEndpoint {
         switch self {
         // GET 请求
         case .authCheck, .health, .config, .appConfig, .appCheckUpdate,
-             .fileInfo, .folderList,
+             .fileInfo, .fileMetadata, .folderList,
              .downloadTasks, .downloadTaskStatus, .downloadHistory, .downloaderYtdlpVersion,
              .uploadTasks, .uploadTaskStatus, .uploadHistory,
              .uploadPolicy, .uploadChunkStatus,

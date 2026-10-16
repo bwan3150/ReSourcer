@@ -72,14 +72,17 @@ struct FilePreviewView: View {
     // 文件信息面板
     @State private var showInfoSheet = false
     @State private var fileInfoTags: [Tag] = []
+    @State private var fileMetadata: FileMetadata? = nil
     @State private var showTagEditor = false
 
-    // 重命名
+    // 重命名（pin target — playlistIndex can change while the overlay is open）
     @State private var showRenameAlert = false
     @State private var renameText = ""
+    @State private var renameTarget: FileInfo?
 
-    // 移动
+    // 移动（pin target — same playlist race as rename）
     @State private var showMoveSheet = false
+    @State private var moveTarget: FileInfo?
 
     // 长按快捷编辑
     @State private var showQuickActions = false
@@ -262,8 +265,12 @@ struct FilePreviewView: View {
             NowPlayingController.shared.clear()
         }
         // 文件信息面板
-        .glassBottomSheet(isPresented: $showInfoSheet, title: "文件信息") {
-            fileInfoContent
+        .glassBottomSheet(
+            isPresented: $showInfoSheet,
+            title: "文件信息",
+            stickyFooter: { fileInfoActions }
+        ) {
+            fileInfoModules
         }
         // 重命名浮窗（overlay 避免被输入法遮挡）
         .overlay {
@@ -279,7 +286,8 @@ struct FilePreviewView: View {
                                 .textFieldStyle(.plain)
                                 .autocorrectionDisabled()
                                 .textInputAutocapitalization(.never)
-                            Text(currentFile.map { $0.extension.isEmpty ? "" : ".\($0.extension)" } ?? "")
+                                .accessibilityIdentifier("renameTextField")
+                            Text((renameTarget ?? currentFile).map { $0.extension.isEmpty ? "" : ".\($0.extension)" } ?? "")
                                 .foregroundStyle(.tertiary)
                         }
                         .padding(AppTheme.Spacing.md)
@@ -290,18 +298,22 @@ struct FilePreviewView: View {
                                 renameText = ""
                             }
                             .frame(maxWidth: .infinity)
+                            .accessibilityLabel("清空")
 
                             GlassButton(icon: "checkmark", style: .primary, size: .medium) {
                                 showRenameAlert = false
                                 Task { await performRename() }
                             }
-                            .disabled(renameText.isEmpty || renameText == currentFile?.baseName)
+                            .disabled(renameText.isEmpty || renameText == (renameTarget ?? currentFile)?.baseName)
                             .frame(maxWidth: .infinity)
+                            .accessibilityIdentifier("renameConfirmButton")
+                            .accessibilityLabel("确认")
 
                             GlassButton(icon: "xmark", style: .secondary, size: .medium) {
                                 showRenameAlert = false
                             }
                             .frame(maxWidth: .infinity)
+                            .accessibilityLabel("取消")
                         }
                     }
                     .padding(AppTheme.Spacing.xxl)
@@ -317,11 +329,15 @@ struct FilePreviewView: View {
             MoveSheetView(
                 apiService: apiService,
                 sourceFolder: NavigationState.shared.sourceFolder,
-                file: currentFile,
-                uuids: currentFile?.uuid.map { [$0] } ?? [],
-                onDismiss: { showMoveSheet = false },
+                file: moveTarget ?? currentFile,
+                uuids: (moveTarget ?? currentFile)?.uuid.map { [$0] } ?? [],
+                onDismiss: {
+                    showMoveSheet = false
+                    moveTarget = nil
+                },
                 onMoved: { folderName, _ in
                     showMoveSheet = false
+                    moveTarget = nil
                     GlassAlertManager.shared.showSuccess("已移动到 \(folderName)")
                     handlePostOperation()
                 }
@@ -434,10 +450,20 @@ struct FilePreviewView: View {
             .frame(height: 48)
             .background(.white.opacity(0.85), in: Capsule())
             .contentShape(Capsule())
+            .accessibilityIdentifier("previewFileNameCapsule")
+            .accessibilityLabel("文件信息")
+            .accessibilityValue(currentFile?.name ?? "")
+            .accessibilityAddTraits(.isButton)
             .simultaneousGesture(TapGesture().onEnded {
                 fileInfoTags = []
+                fileMetadata = nil
                 showInfoSheet = true
-                Task { await resolveUuidAndLoadTags() }
+                Task {
+                    await resolveUuidAndLoadTags()
+                    if let path = currentFile?.path {
+                        fileMetadata = try? await apiService.file.getMetadata(path: path)
+                    }
+                }
             })
             .onLongPressGesture {
                 if let file = currentFile {
@@ -659,43 +685,19 @@ struct FilePreviewView: View {
     // MARK: - 文件信息面板内容
 
     @ViewBuilder
-    private var fileInfoContent: some View {
+    private var fileInfoModules: some View {
         if let file = currentFile {
             FileInfoSheetContent(
                 file: file,
+                metadata: fileMetadata,
                 position: "\(playlistIndex + 1) / \(playlist.count)",
+                showsActions: false,
                 tags: fileInfoTags,
                 onAddTag: file.uuid != nil ? {
                     showInfoSheet = false
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(300))
                         showTagEditor = true
-                    }
-                } : nil,
-                onRename: {
-                    showInfoSheet = false
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(300))
-                        renameText = file.baseName
-                        showRenameAlert = true
-                    }
-                },
-                onMove: {
-                    showInfoSheet = false
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(300))
-                        showMoveSheet = true
-                    }
-                },
-                onDownload: {
-                    showInfoSheet = false
-                    saveFileToDevice(file)
-                },
-                onDelete: (file.uuid != nil && !isInRecycleBin) ? {
-                    showInfoSheet = false
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(300))
-                        promptDelete(file: file)
                     }
                 } : nil,
                 onShowDebugLog: {
@@ -705,6 +707,48 @@ struct FilePreviewView: View {
                         showDebugLog = true
                     }
                 }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var fileInfoActions: some View {
+        if let file = currentFile {
+            FileInfoActionsRow(
+                onDownload: {
+                    showInfoSheet = false
+                    saveFileToDevice(file)
+                },
+                onShare: {
+                    showInfoSheet = false
+                    shareFile(file)
+                },
+                onMove: {
+                    let target = file
+                    moveTarget = target
+                    showInfoSheet = false
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        showMoveSheet = true
+                    }
+                },
+                onRename: {
+                    let target = file
+                    renameTarget = target
+                    showInfoSheet = false
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        renameText = target.baseName
+                        showRenameAlert = true
+                    }
+                },
+                onDelete: (file.uuid != nil && !isInRecycleBin) ? {
+                    showInfoSheet = false
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        promptDelete(file: file)
+                    }
+                } : nil
             )
         }
     }
@@ -1185,6 +1229,66 @@ struct FilePreviewView: View {
 
     // MARK: - 文件操作
 
+    /// 拉取文件到临时目录并弹出系统分享面板（Info 面板「分享」）
+    private func shareFile(_ file: FileInfo) {
+        let contentURL: URL? = if let uuid = file.uuid {
+            apiService.preview.getContentURL(
+                uuid: uuid,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        } else {
+            apiService.preview.getContentURL(
+                for: file.path,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        }
+        guard let contentURL else {
+            GlassAlertManager.shared.showError("无法获取文件地址")
+            return
+        }
+
+        GlassAlertManager.shared.showQuickLoading()
+        Task.detached {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: contentURL)
+                let tempURL = FileManager.default.temporaryDirectory
+                    .appendingPathComponent(file.name)
+                try data.write(to: tempURL)
+                await MainActor.run {
+                    GlassAlertManager.shared.hideQuickLoading()
+                    presentShareSheet(items: [tempURL])
+                }
+            } catch {
+                await MainActor.run {
+                    GlassAlertManager.shared.hideQuickLoading()
+                    if !error.isCancelledRequest {
+                        GlassAlertManager.shared.showError("分享失败", message: error.localizedDescription)
+                    }
+                }
+            }
+        }
+    }
+
+    private func presentShareSheet(items: [Any]) {
+        let activityVC = UIActivityViewController(
+            activityItems: items,
+            applicationActivities: nil
+        )
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootVC = windowScene.windows.first?.rootViewController {
+            activityVC.popoverPresentationController?.sourceView = rootVC.view
+            activityVC.popoverPresentationController?.sourceRect = CGRect(
+                x: rootVC.view.bounds.midX,
+                y: rootVC.view.bounds.midY,
+                width: 0, height: 0
+            )
+            activityVC.popoverPresentationController?.permittedArrowDirections = []
+            rootVC.present(activityVC, animated: true)
+        }
+    }
+
     private func saveFileToDevice(_ file: FileInfo) {
         let contentURL: URL? = if let uuid = file.uuid {
             apiService.preview.getContentURL(
@@ -1278,15 +1382,15 @@ struct FilePreviewView: View {
 
 
     private func performRename() async {
-        guard let file = currentFile, let uuid = file.uuid, !renameText.isEmpty else { return }
+        guard let file = renameTarget ?? currentFile, let uuid = file.uuid, !renameText.isEmpty else { return }
         let newName = file.extension.isEmpty ? renameText : renameText + "." + file.extension
 
         isOperating = true
         do {
             _ = try await apiService.file.renameFile(uuid: uuid, to: newName)
-            // 重命名成功后只更新当前文件的名字，不从列表移除
+            // 重命名成功后只更新目标项（可能不是 current playlistIndex）
             let ext = file.extension
-            playlist[playlistIndex] = FileInfo(
+            let updated = FileInfo(
                 uuid: file.uuid,
                 name: newName,
                 path: (file.path as NSString).deletingLastPathComponent + "/" + newName,
@@ -1300,6 +1404,12 @@ struct FilePreviewView: View {
                 duration: file.duration,
                 sourceUrl: file.sourceUrl
             )
+            if let idx = playlist.firstIndex(where: { $0.uuid == uuid }) {
+                playlist[idx] = updated
+            } else if playlist.indices.contains(playlistIndex) {
+                playlist[playlistIndex] = updated
+            }
+            renameTarget = nil
             GlassAlertManager.shared.showSuccess("重命名成功")
         } catch {
             GlassAlertManager.shared.showError("重命名失败", message: error.localizedDescription)

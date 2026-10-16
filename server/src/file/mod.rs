@@ -6,6 +6,7 @@ mod delete;
 mod batch;
 mod ops;
 mod info;
+mod metadata;
 mod utils;
 
 use actix_web::web;
@@ -17,5 +18,6 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
        .service(web::resource("/delete").route(web::post().to(delete::delete_file)))
        .service(web::resource("/batch/move").route(web::post().to(batch::batch_move_files)))
        .service(web::resource("/batch/delete").route(web::post().to(batch::batch_delete_files)))
-       .service(web::resource("/info").route(web::get().to(info::get_file_info)));
+       .service(web::resource("/info").route(web::get().to(info::get_file_info)))
+       .service(web::resource("/metadata").route(web::get().to(metadata::get_file_metadata)));
 }

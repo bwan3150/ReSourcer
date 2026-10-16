@@ -155,6 +155,143 @@ struct FileListResponse: Codable {
     let files: [FileInfo]
 }
 
+/// GPS 坐标（小数度，南纬/西经为负）
+struct FileGpsCoords: Codable, Equatable {
+    let lat: Double
+    let lon: Double
+
+    var formatted: String {
+        let latHem = lat >= 0 ? "N" : "S"
+        let lonHem = lon >= 0 ? "E" : "W"
+        return String(format: "%.5f° %@, %.5f° %@", abs(lat), latHem, abs(lon), lonHem)
+    }
+}
+
+/// 按路径读取的文件元数据（缺省字段由服务端省略，客户端隐藏）
+struct FileMetadata: Codable, Equatable {
+    let path: String
+    let filename: String
+    let format: String
+    let size: UInt64
+    let fileType: String?
+    let width: UInt32?
+    let height: UInt32?
+    let duration: Double?
+    let captureTime: String?
+    let gps: FileGpsCoords?
+    let created: String?
+    let modified: String?
+    let make: String?
+    let model: String?
+    let lens: String?
+    let focalLengthMm: Double?
+    let focalLength35mm: UInt32?
+    let aperture: Double?
+    let iso: UInt32?
+    let shutterSpeed: String?
+    let exposureCompensation: Double?
+    let megapixels: Double?
+    let codec: String?
+
+    var formattedSize: String {
+        ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)
+    }
+
+    var formattedDimensions: String? {
+        guard let width, let height else { return nil }
+        return "\(width) × \(height)"
+    }
+
+    var formattedDuration: String? {
+        guard let duration else { return nil }
+        let total = Int(duration)
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
+        if h > 0 {
+            return String(format: "%d:%02d:%02d", h, m, s)
+        }
+        return String(format: "%d:%02d", m, s)
+    }
+
+    /// e.g. "Apple iPhone 15 Pro"
+    var deviceLabel: String? {
+        switch (make, model) {
+        case let (m?, d?) where !m.isEmpty && !d.isEmpty:
+            if d.lowercased().hasPrefix(m.lowercased()) { return d }
+            return "\(m) \(d)"
+        case let (m?, nil) where !m.isEmpty: return m
+        case let (nil, d?) where !d.isEmpty: return d
+        default: return nil
+        }
+    }
+
+    /// Photos-style lens line, e.g. "Main Camera — 24 mm ƒ1.78"
+    var lensLine: String? {
+        var parts: [String] = []
+        if let lens, !lens.isEmpty {
+            let short = Self.shortenLens(lens)
+            if !short.isEmpty { parts.append(short) }
+        }
+        var optics: [String] = []
+        if let fl = focalLength35mm ?? focalLengthMm.map({ UInt32($0.rounded()) }) {
+            optics.append("\(fl) mm")
+        }
+        if let aperture {
+            optics.append(String(format: "ƒ%.2g", aperture))
+        }
+        if parts.isEmpty && optics.isEmpty { return nil }
+        if parts.isEmpty { return optics.joined(separator: " ") }
+        if optics.isEmpty { return parts[0] }
+        return "\(parts[0]) — \(optics.joined(separator: " "))"
+    }
+
+    /// e.g. "24 MP • 5712 × 4284 • 3.6 MB"
+    var resolutionSummary: String? {
+        var parts: [String] = []
+        if let megapixels {
+            let mp = megapixels >= 10
+                ? String(format: "%.0f MP", megapixels)
+                : String(format: "%.1f MP", megapixels)
+            parts.append(mp)
+        }
+        if let dims = formattedDimensions { parts.append(dims) }
+        parts.append(formattedSize)
+        return parts.isEmpty ? nil : parts.joined(separator: " • ")
+    }
+
+    var exifStripItems: [(label: String, value: String)] {
+        var items: [(String, String)] = []
+        if let iso { items.append(("ISO", "ISO\(iso)")) }
+        if let fl = focalLength35mm ?? focalLengthMm.map({ UInt32($0.rounded()) }) {
+            items.append(("Focal", "\(fl)mm"))
+        }
+        if let exposureCompensation {
+            let v = exposureCompensation
+            if abs(v) < 0.05 { items.append(("EV", "0ev")) }
+            else { items.append(("EV", String(format: "%+.0fev", v))) }
+        }
+        if let aperture {
+            items.append(("Aperture", String(format: "ƒ%.1f", aperture)))
+        }
+        if let shutterSpeed, !shutterSpeed.isEmpty {
+            items.append(("Shutter", shutterSpeed.hasSuffix("s") ? shutterSpeed : "\(shutterSpeed)s"))
+        }
+        return items
+    }
+
+    private static func shortenLens(_ raw: String) -> String {
+        let lower = raw.lowercased()
+        if lower.contains("ultra") && lower.contains("wide") { return "Ultra Wide Camera" }
+        if lower.contains("tele") { return "Telephoto Camera" }
+        if lower.contains("front") || lower.contains("selfie") { return "Front Camera" }
+        if lower.contains("back") || lower.contains("main") || lower.contains("wide") {
+            return "Main Camera"
+        }
+        return raw
+    }
+}
+
 /// 文件重命名请求
 struct FileRenameRequest: Codable {
     let uuid: String

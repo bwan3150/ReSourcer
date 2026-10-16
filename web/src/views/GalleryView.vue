@@ -47,12 +47,19 @@
           </button>
           <span class="text-sm truncate flex-1">{{ previewFile.fileName }}</span>
           <span class="text-xs text-base-content/40">{{ playlistIndex + 1 }} / {{ playlist.length }}</span>
-          <button class="btn btn-ghost btn-xs btn-square" @click="fileInfoDialog?.showModal()" :title="$t('gallery.fileInfo')">
+          <button
+            class="btn btn-ghost btn-xs btn-square"
+            data-testid="file-info-btn"
+            :class="{ 'btn-active': showInfoPanel }"
+            @click="toggleFileInfo()"
+            :title="$t('gallery.fileInfo') + ' (I)'"
+          >
             <Info :size="16" />
           </button>
         </div>
-        <!-- Player fills remaining space -->
-        <div class="flex-1 min-h-0">
+        <!-- Player + optional desktop info side panel -->
+        <div class="flex flex-1 min-h-0 relative">
+          <div class="flex-1 min-w-0 min-h-0 relative">
           <MediaPlayer
             ref="mediaPlayer"
             :src="contentSrc"
@@ -125,6 +132,118 @@
               </div>
             </div>
           </transition>
+          </div>
+
+          <!-- Desktop info side panel (feature parity with iOS; not phone Photos chrome) -->
+          <aside
+            v-if="showInfoPanel && !previewUIHidden"
+            class="w-[22rem] shrink-0 border-l border-base-300 bg-base-100 flex flex-col overflow-hidden"
+            data-testid="file-info-dialog"
+          >
+            <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-base-300 shrink-0">
+              <h3 class="font-semibold text-sm">{{ $t('gallery.fileInfo') }}</h3>
+              <kbd class="kbd kbd-xs opacity-50">I</kbd>
+              <button class="btn btn-ghost btn-xs btn-square ml-auto" @click="showInfoPanel = false" title="Close">
+                <X :size="14" />
+              </button>
+            </div>
+            <div class="flex-1 overflow-y-auto px-4 py-3 space-y-3 text-sm" data-testid="file-metadata-panel">
+              <!-- 时间：capture → 星期•日期•时间 + filename -->
+              <section v-if="photosDateHeader" class="rounded-xl bg-base-200/60 p-3" data-testid="meta-module-time">
+                <div class="font-semibold" data-testid="meta-capture-time">{{ photosDateHeader }}</div>
+                <div class="mt-1 text-xs text-base-content/60 flex items-center gap-1.5" data-testid="meta-filename">
+                  <span class="truncate">{{ fileMeta?.filename || previewFile.fileName }}</span>
+                  <span v-if="playlist.length" class="opacity-50">· {{ playlistIndex + 1 }} / {{ playlist.length }}</span>
+                </div>
+              </section>
+
+              <!-- 拍摄设备 -->
+              <section v-if="showDeviceModule" class="rounded-xl bg-base-200/60 p-3" data-testid="meta-module-device">
+                <div class="flex items-baseline justify-between gap-2">
+                  <div class="font-semibold" data-testid="meta-device">{{ deviceLabel || $t('gallery.device') }}</div>
+                  <span v-if="fileMeta?.format" class="badge badge-ghost badge-sm font-semibold" data-testid="meta-format">{{ fileMeta.format }}</span>
+                </div>
+                <div v-if="fileMeta?.lens" class="mt-1 text-xs text-base-content/60 truncate" data-testid="meta-lens" :title="fileMeta.lens">{{ fileMeta.lens }}</div>
+                <div v-if="deviceSummaryLine" class="mt-1 text-xs text-base-content/60" data-testid="meta-dimensions">{{ deviceSummaryLine }}</div>
+                <div v-if="exifStrip.length" class="mt-2 flex flex-wrap gap-1" data-testid="meta-exif-strip">
+                  <span v-for="item in exifStrip" :key="item" class="badge badge-ghost badge-sm font-mono">{{ item }}</span>
+                </div>
+              </section>
+
+              <!-- 地图定位 -->
+              <section v-if="fileMeta?.gps" class="rounded-xl bg-base-200/60 overflow-hidden" data-testid="meta-gps">
+                <div class="h-24 bg-base-300/80 flex items-center justify-center text-xs text-base-content/50 px-3 text-center">
+                  {{ formatGps(fileMeta.gps) }}
+                </div>
+                <div class="px-3 py-2 text-xs text-base-content/60">{{ formatGps(fileMeta.gps) }}</div>
+              </section>
+
+              <!-- 基础信息：仅剩余字段 -->
+              <section class="rounded-xl bg-base-200/60 p-3 space-y-2" data-testid="meta-module-basics">
+                <div class="font-semibold text-xs uppercase tracking-wide text-base-content/50">{{ $t('gallery.basicInfo') }}</div>
+                <div v-for="row in basicsRows" :key="row.id" class="flex justify-between gap-3" :data-testid="row.testId || undefined">
+                  <span class="text-base-content/50 shrink-0">{{ row.label }}</span>
+                  <span class="text-right truncate max-w-[60%]">
+                    <a v-if="row.href" :href="row.href" target="_blank" rel="noopener" class="underline">{{ row.value }}</a>
+                    <template v-else>{{ row.value }}</template>
+                  </span>
+                </div>
+                <div class="pt-1">
+                  <div class="text-xs text-base-content/50 mb-1">{{ $t('gallery.tags') }}</div>
+                  <TagEditor
+                    :file-tags="fileTags"
+                    :all-tags="allTags"
+                    @update="onUpdateTags"
+                    @create="onCreateTag"
+                  />
+                </div>
+              </section>
+            </div>
+
+            <!-- Single action row: download / share / move / rename / delete -->
+            <div class="shrink-0 border-t border-base-300 p-2 flex gap-1" data-testid="file-info-actions">
+              <a
+                :href="contentSrc"
+                download
+                class="btn btn-ghost btn-sm btn-square flex-1"
+                data-testid="file-info-download"
+                :title="$t('common.download')"
+              >
+                <Download :size="16" />
+              </a>
+              <button
+                class="btn btn-ghost btn-sm btn-square flex-1"
+                data-testid="file-info-share"
+                :title="$t('common.share')"
+                @click="sharePreviewFile()"
+              >
+                <Share2 :size="16" />
+              </button>
+              <button
+                class="btn btn-ghost btn-sm btn-square flex-1"
+                :title="$t('common.move')"
+                @click="showInfoPanel = false; startMove(previewFile)"
+              >
+                <FolderInput :size="16" />
+              </button>
+              <button
+                class="btn btn-ghost btn-sm btn-square flex-1"
+                :title="$t('common.rename')"
+                @click="showInfoPanel = false; startRename(previewFile)"
+              >
+                <Pencil :size="16" />
+              </button>
+              <button
+                v-if="!isInRecycleBin"
+                class="btn btn-ghost btn-sm btn-square flex-1 text-error"
+                data-testid="file-info-delete"
+                :title="$t('common.delete')"
+                @click="showInfoPanel = false; confirmDelete(previewFile)"
+              >
+                <Trash2 :size="16" />
+              </button>
+            </div>
+          </aside>
         </div>
       </div>
     </template>
@@ -200,75 +319,6 @@
         </div>
       </div>
     </template>
-
-    <!-- File Info Dialog -->
-    <dialog ref="fileInfoDialog" class="modal">
-      <div class="modal-box" v-if="previewFile">
-        <h3 class="font-bold text-lg mb-4">{{ $t('gallery.fileInfo') }}</h3>
-        <div class="space-y-2 text-sm">
-          <div class="flex justify-between">
-            <span class="text-base-content/50">{{ $t('gallery.fileName') }}</span>
-            <span class="truncate ml-4 text-right max-w-[60%]">{{ previewFile.fileName }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-base-content/50">{{ $t('gallery.fileType') }}</span>
-            <span>{{ previewFile.extension?.replace('.', '').toUpperCase() }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-base-content/50">{{ $t('gallery.fileSize') }}</span>
-            <span>{{ formatSize(previewFile.fileSize) }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-base-content/50">{{ $t('gallery.created') }}</span>
-            <span>{{ formatDate(previewFile.createdAt) }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-base-content/50">{{ $t('gallery.modified') }}</span>
-            <span>{{ formatDate(previewFile.modifiedAt) }}</span>
-          </div>
-          <div v-if="previewFile.sourceUrl" class="flex justify-between">
-            <span class="text-base-content/50">{{ $t('gallery.sourceUrl') }}</span>
-            <a :href="previewFile.sourceUrl" target="_blank" rel="noopener" class="truncate ml-4 text-right max-w-[60%] underline">{{ previewFile.sourceUrl }}</a>
-          </div>
-        </div>
-
-        <!-- Tags -->
-        <div class="mt-4 pt-4 border-t border-base-300">
-          <div class="text-xs text-base-content/50 mb-2">{{ $t('gallery.tags') }}</div>
-          <TagEditor
-            :file-tags="fileTags"
-            :all-tags="allTags"
-            @update="onUpdateTags"
-            @create="onCreateTag"
-          />
-        </div>
-
-        <div class="flex gap-2 mt-6">
-          <button class="btn btn-ghost btn-sm flex-1 gap-1" @click="fileInfoDialog?.close(); startRename(previewFile)">
-            <Pencil :size="14" />
-            {{ $t('common.rename') }}
-          </button>
-          <button class="btn btn-ghost btn-sm flex-1 gap-1" @click="fileInfoDialog?.close(); startMove(previewFile)">
-            <FolderInput :size="14" />
-            {{ $t('common.move') }}
-          </button>
-          <a :href="contentSrc" download class="btn btn-ghost btn-sm flex-1 gap-1">
-            <Download :size="14" />
-            {{ $t('common.download') }}
-          </a>
-        </div>
-        <!-- 删除按钮（软删除到回收站；回收站内文件不显示，防止彻底删除） -->
-        <button
-          v-if="!isInRecycleBin"
-          class="btn btn-ghost btn-sm w-full gap-1 mt-2 text-error"
-          @click="fileInfoDialog?.close(); confirmDelete(previewFile)"
-        >
-          <Trash2 :size="14" />
-          {{ $t('common.delete') }}
-        </button>
-      </div>
-      <form method="dialog" class="modal-backdrop"><button>close</button></form>
-    </dialog>
 
     <!-- Delete Confirm Dialog -->
     <ConfirmDialog
@@ -383,7 +433,7 @@ import { useTheme } from '../composables/useTheme'
 import UploadArea from '../components/gallery/UploadArea.vue'
 import TagEditor from '../components/gallery/TagEditor.vue'
 import ConfirmDialog from '../components/shared/ConfirmDialog.vue'
-import { Folder, ChevronRight, X, Pencil, FolderInput, RefreshCw, Info, Download, FolderPlus, Trash2, CheckSquare } from 'lucide-vue-next'
+import { Folder, ChevronRight, X, Pencil, FolderInput, RefreshCw, Info, Download, FolderPlus, Trash2, CheckSquare, Share2 } from 'lucide-vue-next'
 import { contentUrl, thumbnailUrl } from '../api/preview'
 import { useCurrentFolder } from '../composables/useCurrentFolder'
 import { usePrivacy } from '../composables/usePrivacy'
@@ -414,6 +464,7 @@ const dragOver = ref(false)
 const uploadArea = ref(null)
 
 const previewFile = ref(null)
+const fileMeta = ref(null)
 const playlist = ref([])
 const playlistIndex = ref(0)
 const playlistAtStart = ref(false)
@@ -519,13 +570,8 @@ useKeyboardShortcuts({
     osd.value?.show(wasMuted ? 'Volume2' : 'VolumeX')
   },
   fileInfo: () => {
-    const dialog = fileInfoDialog.value
-    if (dialog?.open) {
-      dialog.close()
-    } else {
-      dialog?.showModal()
-      osd.value?.show('Info')
-    }
+    toggleFileInfo()
+    osd.value?.show('Info')
   },
   exitPreview: () => { closePreview() },
   zoomIn: () => { mediaPlayer.value?.zoomBy(0.2); osd.value?.show('ZoomIn') },
@@ -554,7 +600,7 @@ useKeyboardShortcuts({
   },
 }, () => !!previewFile.value)
 
-const fileInfoDialog = ref(null)
+const showInfoPanel = ref(false)
 const gridScrollContainer = ref(null)
 let savedScrollTop = 0
 const allTags = ref([])
@@ -666,6 +712,230 @@ async function loadMore() {
 
 function refreshFiles() { navigateTo(currentFolder.value) }
 
+function formatGps(gps) {
+  if (!gps || gps.lat == null || gps.lon == null) return ''
+  const latHem = gps.lat >= 0 ? 'N' : 'S'
+  const lonHem = gps.lon >= 0 ? 'E' : 'W'
+  return `${Math.abs(gps.lat).toFixed(5)}° ${latHem}, ${Math.abs(gps.lon).toFixed(5)}° ${lonHem}`
+}
+
+function formatDuration(seconds) {
+  if (seconds == null || Number.isNaN(seconds)) return ''
+  const s = Math.floor(seconds)
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+  return `${m}:${String(sec).padStart(2, '0')}`
+}
+
+async function loadFileMetadata() {
+  fileMeta.value = null
+  const file = previewFile.value
+  if (!file) return
+  const path = file.currentPath || file.path
+  if (!path) return
+  try {
+    const { data } = await fileApi.getFileMetadata(path)
+    fileMeta.value = data
+  } catch {
+    fileMeta.value = null
+  }
+}
+
+function toggleFileInfo() {
+  if (showInfoPanel.value) {
+    showInfoPanel.value = false
+    return
+  }
+  showInfoPanel.value = true
+  loadFileMetadata()
+}
+
+function openFileInfo() {
+  showInfoPanel.value = true
+  loadFileMetadata()
+}
+
+async function sharePreviewFile() {
+  const file = previewFile.value
+  if (!file) return
+  const url = contentSrc.value
+  const title = file.fileName || fileMeta.value?.filename || 'file'
+  try {
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      await navigator.share({ title, url, text: title })
+      return
+    }
+  } catch (e) {
+    // User cancel or share unsupported — fall through to clipboard
+    if (e && (e.name === 'AbortError' || e.name === 'NotAllowedError')) return
+  }
+  try {
+    await navigator.clipboard.writeText(url)
+    osd.value?.show('Share2')
+  } catch {
+    // Last resort: open in new tab so user can copy from address bar
+    window.open(url, '_blank', 'noopener')
+  }
+}
+
+const deviceLabel = computed(() => {
+  const m = fileMeta.value
+  if (!m) return null
+  if (m.make && m.model) {
+    if (String(m.model).toLowerCase().startsWith(String(m.make).toLowerCase())) return m.model
+    return `${m.make} ${m.model}`
+  }
+  return m.model || m.make || null
+})
+
+const hasCaptureContext = computed(() => {
+  const m = fileMeta.value
+  if (!m) return false
+  return !!(deviceLabel.value || m.lens || m.iso != null || m.aperture != null || m.shutterSpeed || m.captureTime)
+})
+
+const showDeviceModule = computed(() => {
+  const m = fileMeta.value
+  if (!m) return false
+  return !!(
+    deviceLabel.value
+    || m.lens
+    || m.iso != null
+    || m.aperture != null
+    || m.shutterSpeed
+    || (hasCaptureContext.value && m.format)
+  )
+})
+
+const photosDateHeader = computed(() => {
+  const raw = fileMeta.value?.captureTime
+  if (!raw) return ''
+  try {
+    const d = new Date(raw.includes('T') ? raw : raw.replace(' ', 'T'))
+    if (Number.isNaN(d.getTime())) return ''
+    return d.toLocaleString(undefined, {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return ''
+  }
+})
+
+const deviceSummaryLine = computed(() => {
+  if (!showDeviceModule.value) return ''
+  const m = fileMeta.value
+  const parts = []
+  if (m?.megapixels != null) {
+    const mp = Number(m.megapixels)
+    parts.push(`${mp >= 10 ? mp.toFixed(0) : mp.toFixed(1)} MP`)
+  }
+  if (m?.width && m?.height) parts.push(`${m.width} × ${m.height}`)
+  parts.push(formatSize(m?.size ?? previewFile.value?.fileSize))
+  return parts.join(' • ')
+})
+
+const exifStrip = computed(() => {
+  const m = fileMeta.value
+  if (!m || !showDeviceModule.value) return []
+  const items = []
+  if (m.iso != null) items.push(`ISO${m.iso}`)
+  const fl = m.focalLength35mm ?? m.focalLengthMm
+  if (fl != null) items.push(`${Math.round(Number(fl))}mm`)
+  if (m.exposureCompensation != null) {
+    const v = Number(m.exposureCompensation)
+    items.push(Math.abs(v) < 0.05 ? '0ev' : `${v > 0 ? '+' : ''}${Math.round(v)}ev`)
+  }
+  if (m.aperture != null) items.push(`ƒ${Number(m.aperture).toFixed(1)}`)
+  if (m.shutterSpeed) items.push(String(m.shutterSpeed).endsWith('s') ? m.shutterSpeed : `${m.shutterSpeed}s`)
+  return items
+})
+
+function calendarDayKey(raw) {
+  if (!raw) return null
+  try {
+    const d = new Date(String(raw).includes('T') ? raw : String(raw).replace(' ', 'T'))
+    if (Number.isNaN(d.getTime())) return null
+    return d.toISOString().slice(0, 10)
+  } catch {
+    return null
+  }
+}
+
+const basicsRows = computed(() => {
+  const m = fileMeta.value
+  const file = previewFile.value
+  if (!file) return []
+  const rows = []
+
+  // Filename lives in 时间 subtitle when capture time module shows; otherwise 基础信息
+  if (!photosDateHeader.value) {
+    rows.push({
+      id: 'filename',
+      label: t('gallery.fileName'),
+      value: m?.filename || file.fileName,
+      testId: 'meta-filename',
+    })
+  }
+
+  const path = file.currentPath || file.path || ''
+  const folder = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''
+  if (folder) {
+    rows.push({ id: 'path', label: t('gallery.path'), value: folder, testId: 'meta-path' })
+  }
+
+  if (!showDeviceModule.value) {
+    const format = m?.format || file.extension?.replace('.', '').toUpperCase()
+    if (format) rows.push({ id: 'format', label: t('gallery.format'), value: format, testId: 'meta-format' })
+    if (m?.width && m?.height) {
+      rows.push({ id: 'dims', label: t('gallery.dimensions'), value: `${m.width} × ${m.height}`, testId: 'meta-dimensions' })
+    }
+    rows.push({
+      id: 'size',
+      label: t('gallery.fileSize'),
+      value: formatSize(m?.size ?? file.fileSize),
+      testId: 'meta-size',
+    })
+  }
+
+  if (m?.duration) {
+    rows.push({ id: 'duration', label: t('gallery.duration'), value: formatDuration(m.duration), testId: 'meta-duration' })
+  }
+  if (m?.codec) {
+    rows.push({ id: 'codec', label: t('gallery.codec'), value: String(m.codec).toUpperCase(), testId: 'meta-codec' })
+  }
+
+  const captureDay = calendarDayKey(m?.captureTime)
+  const createdRaw = m?.created || file.createdAt
+  const modifiedRaw = m?.modified || file.modifiedAt
+  const createdDay = calendarDayKey(createdRaw)
+  if (createdRaw && !(photosDateHeader.value && captureDay && createdDay === captureDay)) {
+    rows.push({ id: 'created', label: t('gallery.created'), value: formatDate(createdRaw) })
+  }
+  if (modifiedRaw && String(modifiedRaw).slice(0, 19) !== String(createdRaw || '').slice(0, 19)) {
+    const modifiedDay = calendarDayKey(modifiedRaw)
+    if (!(photosDateHeader.value && captureDay && modifiedDay === captureDay)) {
+      rows.push({ id: 'modified', label: t('gallery.modified'), value: formatDate(modifiedRaw) })
+    }
+  }
+
+  if (file.sourceUrl) {
+    rows.push({
+      id: 'source',
+      label: t('gallery.sourceUrl'),
+      value: file.sourceUrl,
+      href: file.sourceUrl,
+    })
+  }
+
+  return rows
+})
+
 function formatSize(bytes) {
   if (!bytes) return '—'
   if (bytes < 1024) return bytes + ' B'
@@ -739,6 +1009,8 @@ function closePreview() {
   previewFile.value = null
   previewUIHidden.value = false
   showPlaylistPanel.value = false
+  showInfoPanel.value = false
+  fileMeta.value = null
   clearAutoAdvance()
   nextTick(() => {
     if (gridScrollContainer.value) {
