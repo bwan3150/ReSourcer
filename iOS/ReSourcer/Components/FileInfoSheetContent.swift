@@ -140,7 +140,7 @@ struct FileInfoSheetContent: View {
             }
 
             HStack(spacing: 6) {
-                Image(systemName: file.isVideo ? "video" : "photo")
+                Image(systemName: (metadata?.fileType == "video" || (metadata?.fileType == nil && file.isVideo)) ? "video" : "photo")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)

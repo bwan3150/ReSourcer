@@ -54,6 +54,9 @@ final class FileMetadataUITests: XCTestCase {
 
         openGridItem(uuid: uuid)
         assertTabBarHidden(reason: "playback / preview")
+        // Real Simulator screenshots (not HTML mocks) — playback first, then info modules
+        saveE2EScreenshot(named: "01-playback-tabbar-hidden")
+
         openInfoSheet()
         assertTabBarHidden(reason: "file info sheet")
 
@@ -61,22 +64,27 @@ final class FileMetadataUITests: XCTestCase {
         let device = app.descendants(matching: .any)["meta-module-device"]
         let gps = app.descendants(matching: .any)["meta-module-gps"]
         let actions = app.descendants(matching: .any)["fileInfoActionsRow"]
+        let basics = app.descendants(matching: .any)["meta-module-basics"]
         XCTAssertTrue(time.waitForExistence(timeout: 12), "时间 module visible for EXIF HEIC")
         XCTAssertTrue(device.waitForExistence(timeout: 5), "拍摄设备 module visible")
         XCTAssertTrue(gps.waitForExistence(timeout: 5), "地图定位 module visible")
         XCTAssertTrue(actions.waitForExistence(timeout: 5), "action icon row visible")
 
-        // Real Simulator screenshots for the gate report (not HTML mocks)
-        saveE2EScreenshot(named: "01-playback-tabbar-hidden")
         saveE2EScreenshot(named: "02-info-modules-full")
-        // Scroll modules into view for per-module crops (full-frame still proves real app UI)
+        saveE2EScreenshot(named: "03-module-time")
+        // Bring device / EXIF into the upper half of the sheet
         time.swipeUp()
-        RunLoop.current.run(until: Date().addingTimeInterval(0.4))
-        saveE2EScreenshot(named: "03-device-exif-strip")
+        RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        saveE2EScreenshot(named: "04-module-device-exif")
         device.swipeUp()
-        RunLoop.current.run(until: Date().addingTimeInterval(0.4))
-        saveE2EScreenshot(named: "04-map-gps-module")
-        saveE2EScreenshot(named: "05-actions-row")
+        RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        saveE2EScreenshot(named: "05-module-map-gps")
+        if basics.exists {
+            basics.swipeUp()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+        }
+        saveE2EScreenshot(named: "06-module-basics-deduped")
+        saveE2EScreenshot(named: "07-actions-row")
 
         // Capture time — Photos-style zh_CN header from capture_time
         let capture = meta["capture_time"] as? String ?? ""
@@ -565,21 +573,22 @@ final class FileMetadataUITests: XCTestCase {
     }
 
     private func assertTabBarHidden(reason: String) {
+        // Only inspect the system TabBar container — do NOT use app.buttons["下载"],
+        // which also matches FileInfoActionsRow's download action.
         let tabBar = app.tabBars.firstMatch
         if tabBar.exists {
             XCTAssertFalse(
                 tabBar.isHittable,
                 "TabBar must not be hittable over \(reason)"
             )
-        }
-        // iOS 26 Tab API may expose tab buttons without a classic tabBars container
-        for label in ["画廊", "分类", "下载", "设置"] {
-            let tab = app.buttons[label].firstMatch
-            if tab.exists {
-                XCTAssertFalse(
-                    tab.isHittable,
-                    "Tab '\(label)' must not be hittable during \(reason)"
-                )
+            for label in ["画廊", "分类", "下载", "设置"] {
+                let tab = tabBar.buttons[label].firstMatch
+                if tab.exists {
+                    XCTAssertFalse(
+                        tab.isHittable,
+                        "TabBar button '\(label)' must not be hittable during \(reason)"
+                    )
+                }
             }
         }
     }
