@@ -942,7 +942,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.37;
+				MARKETING_VERSION = 0.0.38;
 				PRODUCT_BUNDLE_IDENTIFIER = app.resourcer.apple;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -983,7 +983,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.37;
+				MARKETING_VERSION = 0.0.38;
 				PRODUCT_BUNDLE_IDENTIFIER = app.resourcer.apple;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1004,7 +1004,7 @@
 				DEVELOPMENT_TEAM = 925YHK2R4K;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				MARKETING_VERSION = 0.0.37;
+				MARKETING_VERSION = 0.0.38;
 				PRODUCT_BUNDLE_IDENTIFIER = app.resourcer.apple.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -1024,7 +1024,7 @@
 				DEVELOPMENT_TEAM = 925YHK2R4K;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				MARKETING_VERSION = 0.0.37;
+				MARKETING_VERSION = 0.0.38;
 				PRODUCT_BUNDLE_IDENTIFIER = app.resourcer.apple.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -1054,7 +1054,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.0.37;
+				MARKETING_VERSION = 0.0.38;
 				PRODUCT_BUNDLE_IDENTIFIER = app.resourcer.apple.helper;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1083,7 +1083,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.0.37;
+				MARKETING_VERSION = 0.0.38;
 				PRODUCT_BUNDLE_IDENTIFIER = app.resourcer.apple.helper;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
