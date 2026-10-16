@@ -216,6 +216,16 @@ struct GalleryView: View {
                     TextField("文件名", text: $renameText)
                         .textFieldStyle(.plain)
                         .accessibilityIdentifier("renameTextField")
+                        // #region agent log
+                        .onAppear {
+                            AgentDebugLog.write(
+                                hypothesisId: "D",
+                                location: "GalleryView.swift:renameTextField",
+                                message: "renameTextField onAppear",
+                                data: ["renameText": renameText]
+                            )
+                        }
+                        // #endregion
                     Text(selectedFile?.extension ?? "")
                         .foregroundStyle(.tertiary)
                 }
@@ -248,6 +258,27 @@ struct GalleryView: View {
             }
             .padding(.vertical, AppTheme.Spacing.md)
         }
+        // #region agent log
+        .onChange(of: showRenameAlert) { _, value in
+            AgentDebugLog.write(
+                hypothesisId: "E",
+                location: "GalleryView.swift:onChange(showRenameAlert)",
+                message: "showRenameAlert changed",
+                data: ["value": value, "fileInfoShowing": fileInfoToShow != nil]
+            )
+        }
+        .onChange(of: fileInfoToShow?.id) { _, newId in
+            AgentDebugLog.write(
+                hypothesisId: "E",
+                location: "GalleryView.swift:onChange(fileInfoToShow)",
+                message: "fileInfoToShow id changed",
+                data: [
+                    "newId": newId ?? "nil",
+                    "showRenameAlert": showRenameAlert
+                ]
+            )
+        }
+        // #endregion
         // 移动面板（使用标准 sheet 确保生命周期正确；支持单文件与批量）
         .sheet(isPresented: $showMoveSheet) {
             MoveSheetView(
@@ -1450,13 +1481,53 @@ struct GalleryView: View {
                     }
                 } : nil,
                 onRename: {
+                    // #region agent log
+                    AgentDebugLog.write(
+                        hypothesisId: "A",
+                        location: "GalleryView.swift:onRename",
+                        message: "onRename entered",
+                        data: [
+                            "fileName": file.name,
+                            "showRenameAlert": showRenameAlert,
+                            "fileInfoShowing": fileInfoToShow != nil
+                        ]
+                    )
+                    // #endregion
                     let target = file
                     selectedFile = target
                     fileInfoToShow = nil
+                    // #region agent log
+                    AgentDebugLog.write(
+                        hypothesisId: "B",
+                        location: "GalleryView.swift:onRename",
+                        message: "fileInfo dismissed; scheduling rename sheet",
+                        data: ["baseName": target.baseName]
+                    )
+                    // #endregion
                     Task { @MainActor in
+                        // #region agent log
+                        AgentDebugLog.write(
+                            hypothesisId: "B",
+                            location: "GalleryView.swift:onRename.Task",
+                            message: "rename Task started (pre-sleep)",
+                            data: ["showRenameAlert": showRenameAlert]
+                        )
+                        // #endregion
                         try? await Task.sleep(for: .milliseconds(300))
                         renameText = target.baseName
                         showRenameAlert = true
+                        // #region agent log
+                        AgentDebugLog.write(
+                            hypothesisId: "C",
+                            location: "GalleryView.swift:onRename.Task",
+                            message: "set showRenameAlert=true after sleep",
+                            data: [
+                                "showRenameAlert": showRenameAlert,
+                                "renameText": renameText,
+                                "selectedExt": selectedFile?.extension ?? ""
+                            ]
+                        )
+                        // #endregion
                     }
                 },
                 onShare: {

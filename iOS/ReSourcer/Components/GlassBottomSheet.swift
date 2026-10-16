@@ -95,6 +95,22 @@ struct GlassBottomSheet<Content: View>: View {
                 }
             }
             .animation(AppTheme.Animation.spring, value: isPresented)
+            // #region agent log
+            .onChange(of: isPresented) { _, presented in
+                AgentDebugLog.write(
+                    hypothesisId: "C",
+                    location: "GlassBottomSheet.swift:body",
+                    message: "isPresented changed",
+                    data: [
+                        "title": title ?? "(nil)",
+                        "isPresented": presented,
+                        "contentHeight": contentHeight,
+                        "geoH": geometry.size.height,
+                        "geoW": geometry.size.width
+                    ]
+                )
+            }
+            // #endregion
         }
         .ignoresSafeArea(edges: .bottom)
     }
@@ -500,4 +516,41 @@ extension View {
     }
 
     return PreviewWrapper()
+}
+
+// MARK: - Agent debug NDJSON (UITest rename-sheet investigation)
+
+enum AgentDebugLog {
+    static func write(hypothesisId: String, location: String, message: String, data: [String: Any] = [:]) {
+        var payload: [String: Any] = [
+            "hypothesisId": hypothesisId,
+            "location": location,
+            "message": message,
+            "timestamp": Int(Date().timeIntervalSince1970 * 1000),
+            "data": data
+        ]
+        guard JSONSerialization.isValidJSONObject(payload),
+              let json = try? JSONSerialization.data(withJSONObject: payload),
+              var line = String(data: json, encoding: .utf8) else { return }
+        line += "\n"
+        let paths = [
+            "/tmp/cursor-logs/debug.log",
+            "/Users/ericwang/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/bc-4ed54bed-c0eb-54c2-bd0a-3c585eab4c6e/files/artifacts/debug.log",
+            "/opt/cursor/logs/debug.log"
+        ]
+        for path in paths {
+            let dir = (path as NSString).deletingLastPathComponent
+            try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+            if !FileManager.default.fileExists(atPath: path) {
+                FileManager.default.createFile(atPath: path, contents: nil)
+            }
+            guard let handle = FileHandle(forWritingAtPath: path) else { continue }
+            defer { try? handle.close() }
+            _ = try? handle.seekToEnd()
+            if let bytes = line.data(using: .utf8) {
+                try? handle.write(contentsOf: bytes)
+            }
+        }
+        print("AGENT_DEBUG \(line)", terminator: "")
+    }
 }

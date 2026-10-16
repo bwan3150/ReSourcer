@@ -455,7 +455,17 @@ struct FileInfoSheetContent: View {
                         .accessibilityLabel("移动")
                 }
                 if let onRename {
-                    GlassButton(icon: "pencil", style: .secondary, size: .medium, action: onRename)
+                    GlassButton(icon: "pencil", style: .secondary, size: .medium) {
+                        // #region agent log
+                        AgentDebugLog.write(
+                            hypothesisId: "A",
+                            location: "FileInfoSheetContent.swift:actionsRow",
+                            message: "rename GlassButton action fired",
+                            data: ["fileName": file.name]
+                        )
+                        // #endregion
+                        onRename()
+                    }
                         .frame(maxWidth: .infinity)
                         .accessibilityLabel("重命名")
                 }
