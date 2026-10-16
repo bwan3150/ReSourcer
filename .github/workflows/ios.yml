@@ -78,6 +78,7 @@ jobs:
           bundle = os.environ["SHARE_BUNDLE_ID"]
           out_path = os.environ["SHARE_PROVISION_PATH"]
           private_key = os.environ["ASC_API_KEY_P8"]
+          app_group = "group.app.resourcer.apple"
           now = int(time.time())
           token = jwt.encode(
               {"iss": issuer, "iat": now, "exp": now + 20 * 60, "aud": "appstoreconnect-v1"},
@@ -88,33 +89,80 @@ jobs:
           if isinstance(token, bytes):
               token = token.decode()
 
-          def asc_get(path_query: str):
+          def asc_request(method: str, path_query: str, body=None):
+              data = None if body is None else json.dumps(body).encode()
               req = urllib.request.Request(
                   f"https://api.appstoreconnect.apple.com{path_query}",
-                  headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+                  data=data,
+                  method=method,
+                  headers={
+                      "Authorization": f"Bearer {token}",
+                      "Accept": "application/json",
+                      **({"Content-Type": "application/json"} if body is not None else {}),
+                  },
               )
               try:
                   with urllib.request.urlopen(req) as resp:
-                      return json.load(resp)
+                      raw = resp.read()
+                      return json.loads(raw) if raw else {}
               except urllib.error.HTTPError as e:
-                  body = e.read().decode("utf-8", errors="replace")
-                  print(f"::error::ASC API {e.code} for {path_query}: {body}", file=sys.stderr)
+                  err_body = e.read().decode("utf-8", errors="replace")
+                  print(f"::error::ASC API {e.code} {method} {path_query}: {err_body}", file=sys.stderr)
                   sys.exit(1)
 
-          q = urllib.parse.urlencode({
-              "filter[identifier]": bundle,
-              "filter[platform]": "IOS",
-          })
+          def asc_get(path_query: str):
+              return asc_request("GET", path_query)
+
+          q = urllib.parse.urlencode({"filter[identifier]": bundle})
           bundles = asc_get(f"/v1/bundleIds?{q}").get("data") or []
           if not bundles:
-              print(
-                  f"::error::ASC 中找不到 Bundle ID {bundle}。"
-                  "请先在 Apple Developer 创建 App ID（含 App Groups），"
-                  "或设置 environment secret IOS_APPSTORE_SHARE_PROFILE_BASE64。",
-                  file=sys.stderr,
+              print(f"Creating Bundle ID {bundle}…")
+              created = asc_request(
+                  "POST",
+                  "/v1/bundleIds",
+                  {
+                      "data": {
+                          "type": "bundleIds",
+                          "attributes": {
+                              "identifier": bundle,
+                              "name": "ReSourcer Share Extension",
+                              "platform": "IOS",
+                          },
+                      }
+                  },
               )
-              sys.exit(1)
+              bundles = [created["data"]]
           bundle_id = bundles[0]["id"]
+          print(f"Share Bundle ID resource: {bundle_id}")
+
+          # Ensure App Groups capability (needed for entitlements)
+          caps = asc_get(f"/v1/bundleIds/{bundle_id}/bundleIdCapabilities").get("data") or []
+          has_groups = any(
+              (c.get("attributes") or {}).get("capabilityType") == "APP_GROUPS" for c in caps
+          )
+          if not has_groups:
+              print(f"Enabling APP_GROUPS ({app_group}) on Share Bundle ID…")
+              asc_request(
+                  "POST",
+                  "/v1/bundleIdCapabilities",
+                  {
+                      "data": {
+                          "type": "bundleIdCapabilities",
+                          "attributes": {
+                              "capabilityType": "APP_GROUPS",
+                              "settings": [
+                                  {
+                                      "key": "APP_GROUP_IDENTIFIERS",
+                                      "options": [{"key": app_group, "enabled": True}],
+                                  }
+                              ],
+                          },
+                          "relationships": {
+                              "bundleId": {"data": {"type": "bundleIds", "id": bundle_id}}
+                          },
+                      }
+                  },
+              )
 
           profiles = asc_get(f"/v1/bundleIds/{bundle_id}/profiles?limit=50").get("data") or []
           store = [
@@ -124,13 +172,45 @@ jobs:
           active = [p for p in store if (p.get("attributes") or {}).get("profileState") == "ACTIVE"]
           candidates = active or store
           if not candidates:
-              print(
-                  f"::error::ASC 中没有 {bundle} 的 IOS_APP_STORE 描述文件。"
-                  "请在 developer.apple.com → Profiles 创建 App Store 类型 profile，"
-                  "或设置 secret IOS_APPSTORE_SHARE_PROFILE_BASE64（base64 of .mobileprovision）。",
-                  file=sys.stderr,
+              print("No App Store profile for Share Extension; creating one…")
+              certs = asc_get(
+                  "/v1/certificates?filter[certificateType]=DISTRIBUTION&limit=50"
+              ).get("data") or []
+              # Also try IOS_DISTRIBUTION naming used by some accounts
+              if not certs:
+                  certs = asc_get(
+                      "/v1/certificates?filter[certificateType]=IOS_DISTRIBUTION&limit=50"
+                  ).get("data") or []
+              if not certs:
+                  print(
+                      "::error::找不到 Apple Distribution 证书，无法自动创建 Share Extension profile。"
+                      "请在 developer.apple.com 创建 App Store profile，"
+                      "并设置 secret IOS_APPSTORE_SHARE_PROFILE_BASE64。",
+                      file=sys.stderr,
+                  )
+                  sys.exit(1)
+              cert_id = certs[0]["id"]
+              created_profile = asc_request(
+                  "POST",
+                  "/v1/profiles",
+                  {
+                      "data": {
+                          "type": "profiles",
+                          "attributes": {
+                              "name": "ReSourcer Share App Store",
+                              "profileType": "IOS_APP_STORE",
+                          },
+                          "relationships": {
+                              "bundleId": {"data": {"type": "bundleIds", "id": bundle_id}},
+                              "certificates": {
+                                  "data": [{"type": "certificates", "id": cert_id}]
+                              },
+                          },
+                      }
+                  },
               )
-              sys.exit(1)
+              candidates = [created_profile["data"]]
+
           candidates.sort(
               key=lambda p: (p.get("attributes") or {}).get("createdDate") or "",
               reverse=True,
@@ -149,6 +229,7 @@ jobs:
           name = (profile.get("attributes") or {}).get("name")
           print(f"Downloaded Share profile via ASC: {name} ({len(raw)} bytes)")
           PY
+            deactivate || true
           fi
 
           security create-keychain -p "$IOS_KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
