@@ -1,9 +1,7 @@
 /**
- * Aesthetic preview screenshots for file-metadata feature.
- * - iOS: original label/value info sheet + extended fields; GlassButton row (SF Symbols)
- * - Web: desktop side panel with original rows + extended fields; lucide icon action row
- * - No emoji. Video = playback controls only.
- * - Also emits before-comparison shots of the pre-change detail UI.
+ * Screenshots: modules-only info panel + single action row.
+ * iOS: 时间 / 拍摄设备 / 地图定位 / 基础信息 (strict dedupe)
+ * Web: same ownership, desktop sidebar
  */
 import { chromium } from 'playwright'
 import { mkdirSync, writeFileSync, copyFileSync } from 'fs'
@@ -22,7 +20,6 @@ mkdirSync(REPO_OUT, { recursive: true })
 mkdirSync(STORE_OUT, { recursive: true })
 mkdirSync(SELF_STORE, { recursive: true })
 
-/* Minimal inline SVG icons (lucide-like) — no emoji */
 const I = {
   photo: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>`,
   pin: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
@@ -59,7 +56,7 @@ const css = `
     padding: 0 28px 8px; font-size: 14px; font-weight: 600;
   }
   .sheet {
-    position: absolute; left: 0; right: 0; bottom: 0; max-height: 72%;
+    position: absolute; left: 0; right: 0; bottom: 0; max-height: 78%;
     background: rgba(242,242,247,.94); backdrop-filter: blur(40px) saturate(180%);
     border-radius: 16px 16px 0 0; padding: 10px 16px 28px; color: #111;
     display: flex; flex-direction: column;
@@ -67,22 +64,11 @@ const css = `
   .grab { width: 36px; height: 5px; border-radius: 99px; background: #c7c7cc; margin: 0 auto 10px; flex-shrink: 0; }
   .sheet-title { font-size: 17px; font-weight: 650; text-align: center; margin-bottom: 12px; }
   .rows { overflow: auto; flex: 1; padding-bottom: 8px; }
-  .row { margin-bottom: 12px; }
-  .row .lab { font-size: 12px; color: #6c6c70; margin-bottom: 2px; }
-  .row .val { font-size: 16px; color: #111; word-break: break-all; }
-  .actions {
-    display: flex; gap: 8px; padding-top: 8px; flex-shrink: 0;
-  }
-  .abtn {
-    flex: 1; height: 44px; border: 0; border-radius: 12px;
-    background: rgba(120,120,128,.16); color: #111;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .abtn.danger { background: rgba(255,59,48,.18); color: #d70015; }
   .mod {
     background: rgba(255,255,255,.55); border-radius: 14px; padding: 14px; margin-bottom: 10px;
     backdrop-filter: blur(12px);
   }
+  .mod-title { font-size: 13px; font-weight: 650; margin-bottom: 8px; }
   .mod-date { font-size: 17px; font-weight: 650; letter-spacing: -0.2px; }
   .mod-fname { margin-top: 6px; font-size: 13px; color: #6c6c70; display: flex; align-items: center; gap: 6px; }
   .mod-device { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
@@ -109,6 +95,16 @@ const css = `
     background: #ff3b30; box-shadow: 0 0 0 3px rgba(255,59,48,.25);
   }
   .coords { margin-top: 8px; font-size: 13px; color: #6c6c70; display: flex; align-items: center; gap: 6px; }
+  .brow { margin-bottom: 10px; }
+  .brow .lab { font-size: 12px; color: #6c6c70; margin-bottom: 2px; }
+  .brow .val { font-size: 15px; color: #111; word-break: break-all; }
+  .actions { display: flex; gap: 8px; padding-top: 8px; flex-shrink: 0; }
+  .abtn {
+    flex: 1; height: 44px; border: 0; border-radius: 12px;
+    background: rgba(120,120,128,.16); color: #111;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .abtn.danger { background: rgba(255,59,48,.18); color: #d70015; }
   .desktop {
     width: 1280px; height: 800px; background: #121214; color: #eee;
     display: flex; flex-direction: column; overflow: hidden; border-radius: 12px;
@@ -140,10 +136,19 @@ const css = `
     border-bottom: 1px solid #2a2a2e; font-size: 13px; font-weight: 600;
   }
   .kbd { font-size: 10px; opacity: .45; border: 1px solid #444; border-radius: 4px; padding: 1px 5px; }
-  .side-body { flex: 1; overflow: auto; padding: 14px 16px; font-size: 13px; }
-  .wrow { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; }
+  .side-body { flex: 1; overflow: auto; padding: 12px 14px; font-size: 13px; display: flex; flex-direction: column; gap: 10px; }
+  .wmod { background: #252528; border-radius: 12px; padding: 12px; }
+  .wmod .ht { font-size: 15px; font-weight: 650; }
+  .wmod .sub { margin-top: 4px; font-size: 12px; color: #9a9aa0; }
+  .wmod .muted { margin-top: 6px; font-size: 12px; color: #9a9aa0; }
+  .wrow { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; }
   .wrow .k { color: #8b8b93; flex-shrink: 0; }
   .wrow .v { text-align: right; color: #e8e8ea; max-width: 60%; word-break: break-all; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px; background: #2a2a30; border-radius: 999px; padding: 4px 8px; color: #d4d4d8;
+  }
   .side-actions {
     border-top: 1px solid #2a2a2e; padding: 8px; display: flex; gap: 4px;
   }
@@ -172,14 +177,6 @@ const css = `
   .vmeta { display: flex; justify-content: space-between; font-size: 12px; opacity: .85; }
 `
 
-function rowsHTML(items) {
-  return items.map(([k, v]) => `<div class="row"><div class="lab">${k}</div><div class="val">${v}</div></div>`).join('')
-}
-
-function wrowsHTML(items) {
-  return items.map(([k, v]) => `<div class="wrow"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('')
-}
-
 function actionRowIOS() {
   return `<div class="actions">
     <button class="abtn" title="下载">${I.download}</button>
@@ -200,20 +197,13 @@ function actionRowWeb() {
   </div>`
 }
 
-function iosPhotosModules({ rich }) {
-  if (!rich) {
-    // Sparse: only time module if we have created time; no device EXIF / no map
-    return `
-      <div class="mod">
-        <div class="mod-date">星期五 • 10月16日 • 06:21</div>
-        <div class="mod-fname">${I.photo} plain.png · 2 / 12</div>
-      </div>
-      <div class="mod">
-        <div class="mod-device"><div class="name">PNG 图像</div><div class="pill">PNG</div></div>
-        <div class="mod-muted">640 × 480 • 1.9 KB</div>
-      </div>`
-  }
-  return `
+function brow(lab, val) {
+  return `<div class="brow"><div class="lab">${lab}</div><div class="val">${val}</div></div>`
+}
+
+function iosHTML({ rich }) {
+  const modules = rich
+    ? `
     <div class="mod">
       <div class="mod-date">星期六 • 6月15日 • 14:32</div>
       <div class="mod-fname">${I.photo} IMG_4821.HEIC · 1 / 12</div>
@@ -233,60 +223,22 @@ function iosPhotosModules({ rich }) {
     <div class="mod">
       <div class="map"></div>
       <div class="coords">${I.pin} 33.86880° S, 151.20930° E</div>
+    </div>
+    <div class="mod">
+      <div class="mod-title">基础信息</div>
+      ${brow('路径', '/data/source')}
+      ${brow('修改时间', '2026-10-16 06:21:36')}
     </div>`
-}
-
-function iosHTML({ rich, before }) {
-  const items = before
-    ? [
-        ['文件名', rich ? 'IMG_4821.HEIC' : 'plain.png'],
-        ['格式', rich ? 'HEIC' : 'PNG'],
-        ['位置', '1 / 12'],
-        ['大小', rich ? '2.9 KB' : '1.9 KB'],
-        ['分辨率', rich ? '512 × 512' : '640 × 480'],
-        ...(rich
-          ? [
-              ['拍摄时间', '2024-06-15 14:32:01'],
-              ['GPS', '33.86880° S, 151.20930° E'],
-            ]
-          : []),
-        ['创建时间', '2026-10-16 06:21:36'],
-      ]
-    : [
-        ['文件名', rich ? 'IMG_4821.HEIC' : 'plain.png'],
-        ['格式', rich ? 'HEIC' : 'PNG'],
-        ['位置', '1 / 12'],
-        ['大小', rich ? '2.9 KB' : '1.9 KB'],
-        ['分辨率', rich ? '5712 × 4284' : '640 × 480'],
-        ...(rich
-          ? [
-              ['拍摄时间', '2024-06-15 14:32:01'],
-              ['GPS', '33.86880° S, 151.20930° E'],
-              ['设备', 'Apple iPhone 15 Pro'],
-              ['镜头', 'Main Camera 6.86mm f/1.78'],
-              ['像素', '24.5 MP'],
-              ['焦距', '24 mm'],
-              ['光圈', 'ƒ1.8'],
-              ['ISO', '50'],
-              ['快门', '1/144'],
-              ['曝光补偿', '0 EV'],
-            ]
-          : []),
-        ['创建时间', '2026-10-16 06:21:36'],
-      ]
-
-  const actions = before
-    ? `<div class="actions">
-        <button class="abtn" title="重命名">${I.pencil}</button>
-        <button class="abtn" title="移动">${I.folder}</button>
-        <button class="abtn" title="下载">${I.download}</button>
-      </div>
-      <div class="actions" style="margin-top:8px">
-        <button class="abtn danger" title="删除">${I.trash}</button>
-      </div>`
-    : actionRowIOS()
-
-  const modules = before ? '' : iosPhotosModules({ rich })
+    : `
+    <div class="mod">
+      <div class="mod-title">基础信息</div>
+      ${brow('文件名', 'plain.png')}
+      ${brow('路径', '/data/source')}
+      ${brow('格式', 'PNG')}
+      ${brow('分辨率', '640 × 480')}
+      ${brow('大小', '1.9 KB')}
+      ${brow('创建时间', '2026-10-16 06:21:36')}
+    </div>`
 
   return `<!doctype html><html><head><meta charset="utf-8"><style>${css}
     body { display:flex; align-items:center; justify-content:center; min-height:100vh; background:#1c1c1e; }
@@ -298,63 +250,51 @@ function iosHTML({ rich, before }) {
       <div class="sheet">
         <div class="grab"></div>
         <div class="sheet-title">文件信息</div>
-        <div class="rows">
-          ${modules}
-          ${rowsHTML(items)}
-        </div>
-        ${actions}
+        <div class="rows">${modules}</div>
+        ${actionRowIOS()}
       </div>
     </div>
   </body></html>`
 }
 
-function webHTML({ rich, before }) {
-  const items = before
-    ? [
-        ['Name', rich ? 'IMG_4821.HEIC' : 'plain.png'],
-        ['Format', rich ? 'HEIC' : 'PNG'],
-        ['Size', rich ? '2.9 KB' : '1.9 KB'],
-        ['Dimensions', rich ? '512 × 512' : '640 × 480'],
-        ...(rich
-          ? [
-              ['Captured', '2024-06-15 14:32:01'],
-              ['GPS', '33.86880° S, 151.20930° E'],
-            ]
-          : []),
-        ['Created', '2026-10-16 06:21:36'],
-        ['Modified', '2026-10-16 06:21:36'],
-      ]
-    : [
-        ['Name', rich ? 'IMG_4821.HEIC' : 'plain.png'],
-        ['Format', rich ? 'HEIC' : 'PNG'],
-        ['Size', rich ? '2.9 KB' : '1.9 KB'],
-        ['Dimensions', rich ? '5712 × 4284' : '640 × 480'],
-        ...(rich
-          ? [
-              ['Captured', '2024-06-15 14:32:01'],
-              ['GPS', '33.86880° S, 151.20930° E'],
-              ['Device', 'Apple iPhone 15 Pro'],
-              ['Lens', 'Main Camera 6.86mm f/1.78'],
-              ['Megapixels', '24.5 MP'],
-              ['Focal length', '24 mm'],
-              ['Aperture', 'ƒ1.8'],
-              ['ISO', '50'],
-              ['Shutter', '1/144'],
-              ['Exposure', '0 EV'],
-            ]
-          : []),
-        ['Created', '2026-10-16 06:21:36'],
-        ['Modified', '2026-10-16 06:21:36'],
-      ]
-
-  const actions = before
-    ? `<div class="side-actions">
-        <button class="sbtn" title="Rename">${I.pencil}</button>
-        <button class="sbtn" title="Move">${I.folder}</button>
-        <button class="sbtn" title="Download">${I.download}</button>
-        <button class="sbtn danger" title="Delete">${I.trash}</button>
+function webHTML({ rich }) {
+  const body = rich
+    ? `
+      <div class="wmod">
+        <div class="ht">Saturday, Jun 15 · 14:32</div>
+        <div class="sub">IMG_4821.HEIC · 1 / 12</div>
+      </div>
+      <div class="wmod">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div class="ht">Apple iPhone 15 Pro</div>
+          <span class="pill" style="color:#111">HEIC</span>
+        </div>
+        <div class="muted">Main Camera — 24 mm ƒ1.78</div>
+        <div class="muted">24.5 MP • 5712 × 4284 • 2.9 KB</div>
+        <div class="chips">
+          <span class="chip">ISO50</span><span class="chip">24mm</span><span class="chip">0ev</span>
+          <span class="chip">ƒ1.8</span><span class="chip">1/144s</span>
+        </div>
+      </div>
+      <div class="wmod">
+        <div style="height:72px;border-radius:8px;background:linear-gradient(135deg,#2d3b2f,#2a3548)"></div>
+        <div class="muted" style="margin-top:8px">33.86880° S, 151.20930° E</div>
+      </div>
+      <div class="wmod">
+        <div class="sub" style="margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Basics</div>
+        <div class="wrow"><span class="k">Path</span><span class="v">/data/source</span></div>
+        <div class="wrow"><span class="k">Modified</span><span class="v">2026-10-16 06:21:36</span></div>
       </div>`
-    : actionRowWeb()
+    : `
+      <div class="wmod">
+        <div class="sub" style="margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Basics</div>
+        <div class="wrow"><span class="k">Name</span><span class="v">plain.png</span></div>
+        <div class="wrow"><span class="k">Path</span><span class="v">/data/source</span></div>
+        <div class="wrow"><span class="k">Format</span><span class="v">PNG</span></div>
+        <div class="wrow"><span class="k">Dimensions</span><span class="v">640 × 480</span></div>
+        <div class="wrow"><span class="k">Size</span><span class="v">1.9 KB</span></div>
+        <div class="wrow"><span class="k">Created</span><span class="v">2026-10-16 06:21:36</span></div>
+      </div>`
 
   return `<!doctype html><html><head><meta charset="utf-8"><style>${css}
     body { display:flex; align-items:center; justify-content:center; min-height:100vh; background:#0a0a0b; }
@@ -370,8 +310,8 @@ function webHTML({ rich, before }) {
         <div class="media"></div>
         <aside class="side">
           <div class="side-h">File info <span class="kbd">I</span></div>
-          <div class="side-body">${wrowsHTML(items)}</div>
-          ${actions}
+          <div class="side-body">${body}</div>
+          ${actionRowWeb()}
         </aside>
       </div>
     </div>
@@ -403,7 +343,6 @@ function videoHTML({ platform }) {
       <div class="topbar">
         <button class="iconbtn">${I.x}</button>
         <div class="title">clip.mp4</div>
-        <div style="font-size:11px;opacity:.45">3 / 12</div>
         <button class="iconbtn">${I.info}</button>
       </div>
       <div class="stage">
@@ -431,8 +370,6 @@ async function shot(page, html, name, size) {
 
 const browser = await chromium.launch()
 const page = await browser.newPage()
-await shot(page, iosHTML({ rich: true, before: true }), 'ios-before-detail.png', { width: 430, height: 900 })
-await shot(page, webHTML({ rich: true, before: true }), 'web-before-detail.png', { width: 1360, height: 860 })
 await shot(page, iosHTML({ rich: true }), 'ios-with-metadata.png', { width: 430, height: 900 })
 await shot(page, iosHTML({ rich: false }), 'ios-without-metadata.png', { width: 430, height: 900 })
 await shot(page, webHTML({ rich: true }), 'web-with-metadata.png', { width: 1360, height: 860 })
@@ -445,12 +382,16 @@ writeFileSync(
   join(STORE_OUT, 'README.md'),
   `# File metadata screenshots
 
-- **Original design language** kept (label/value rows); new camera fields appended.
-- **No emoji** — SF Symbol / lucide-style icons only.
-- **Single action row**: download · share · move · rename · delete.
-- iOS uses native \`GlassButton\` (system Liquid Glass / bordered).
-- Web: desktop side panel; video = playback controls only.
-- Before comparison: \`ios-before-detail.png\`, \`web-before-detail.png\`.
+Info panel = **modules only** + single action row.
+
+| Module | Owns |
+|--------|------|
+| 时间 | capture → 星期•日期•时间 + filename |
+| 拍摄设备 | device, format pill, lens, MP•dims•size, EXIF strip |
+| 地图定位 | GPS map |
+| 基础信息 | path, leftover format/dims/size, codec/duration, FS times (deduped) |
+
+Never duplicate a fact across modules. No emoji. Share on one icon row.
 `,
 )
 console.log('done')

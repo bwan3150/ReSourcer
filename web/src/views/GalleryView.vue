@@ -147,101 +147,57 @@
                 <X :size="14" />
               </button>
             </div>
-            <div class="flex-1 overflow-y-auto px-4 py-3 text-sm" data-testid="file-metadata-panel">
-              <!-- Original label/value rows, then extended camera fields -->
-              <div class="space-y-2">
-                <div class="flex justify-between gap-3" data-testid="meta-filename">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.fileName') }}</span>
-                  <span class="truncate ml-4 text-right max-w-[60%]">{{ fileMeta?.filename || previewFile.fileName }}</span>
+            <div class="flex-1 overflow-y-auto px-4 py-3 space-y-3 text-sm" data-testid="file-metadata-panel">
+              <!-- 时间：capture → 星期•日期•时间 + filename -->
+              <section v-if="photosDateHeader" class="rounded-xl bg-base-200/60 p-3" data-testid="meta-module-time">
+                <div class="font-semibold" data-testid="meta-capture-time">{{ photosDateHeader }}</div>
+                <div class="mt-1 text-xs text-base-content/60 flex items-center gap-1.5" data-testid="meta-filename">
+                  <span class="truncate">{{ fileMeta?.filename || previewFile.fileName }}</span>
+                  <span v-if="playlist.length" class="opacity-50">· {{ playlistIndex + 1 }} / {{ playlist.length }}</span>
                 </div>
-                <div v-if="fileMeta?.format" class="flex justify-between gap-3" data-testid="meta-format">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.format') }}</span>
-                  <span>{{ fileMeta.format }}</span>
-                </div>
-                <div v-else class="flex justify-between gap-3">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.fileType') }}</span>
-                  <span>{{ previewFile.extension?.replace('.', '').toUpperCase() }}</span>
-                </div>
-                <div class="flex justify-between gap-3" data-testid="meta-size">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.fileSize') }}</span>
-                  <span>{{ formatSize(fileMeta?.size ?? previewFile.fileSize) }}</span>
-                </div>
-                <div v-if="fileMeta?.width && fileMeta?.height" class="flex justify-between gap-3" data-testid="meta-dimensions">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.dimensions') }}</span>
-                  <span>{{ fileMeta.width }} × {{ fileMeta.height }}</span>
-                </div>
-                <div v-if="fileMeta?.captureTime" class="flex justify-between gap-3" data-testid="meta-capture-time">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.captureTime') }}</span>
-                  <span>{{ fileMeta.captureTime }}</span>
-                </div>
-                <div v-if="fileMeta?.gps" class="flex justify-between gap-3" data-testid="meta-gps">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.gps') }}</span>
-                  <span class="text-right">{{ formatGps(fileMeta.gps) }}</span>
-                </div>
-                <div v-if="fileMeta?.duration" class="flex justify-between gap-3" data-testid="meta-duration">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.duration') }}</span>
-                  <span>{{ formatDuration(fileMeta.duration) }}</span>
-                </div>
-                <!-- Extended metadata (hidden when absent) -->
-                <div v-if="deviceLabel" class="flex justify-between gap-3" data-testid="meta-device">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.device') }}</span>
-                  <span class="text-right">{{ deviceLabel }}</span>
-                </div>
-                <div v-if="fileMeta?.lens" class="flex justify-between gap-3" data-testid="meta-lens">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.lens') }}</span>
-                  <span class="truncate ml-4 text-right max-w-[60%]" :title="fileMeta.lens">{{ fileMeta.lens }}</span>
-                </div>
-                <div v-if="fileMeta?.megapixels" class="flex justify-between gap-3" data-testid="meta-megapixels">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.megapixels') }}</span>
-                  <span>{{ Number(fileMeta.megapixels).toFixed(1) }} MP</span>
-                </div>
-                <div v-if="focalLabel" class="flex justify-between gap-3" data-testid="meta-focal">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.focalLength') }}</span>
-                  <span>{{ focalLabel }}</span>
-                </div>
-                <div v-if="fileMeta?.aperture != null" class="flex justify-between gap-3" data-testid="meta-aperture">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.aperture') }}</span>
-                  <span>ƒ{{ Number(fileMeta.aperture).toFixed(1) }}</span>
-                </div>
-                <div v-if="fileMeta?.iso != null" class="flex justify-between gap-3" data-testid="meta-iso">
-                  <span class="text-base-content/50 shrink-0">ISO</span>
-                  <span>{{ fileMeta.iso }}</span>
-                </div>
-                <div v-if="fileMeta?.shutterSpeed" class="flex justify-between gap-3" data-testid="meta-shutter">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.shutterSpeed') }}</span>
-                  <span>{{ fileMeta.shutterSpeed }}</span>
-                </div>
-                <div v-if="fileMeta?.exposureCompensation != null" class="flex justify-between gap-3" data-testid="meta-ev">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.exposureCompensation') }}</span>
-                  <span>{{ formatEv(fileMeta.exposureCompensation) }}</span>
-                </div>
-                <div v-if="fileMeta?.codec" class="flex justify-between gap-3" data-testid="meta-codec">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.codec') }}</span>
-                  <span class="uppercase">{{ fileMeta.codec }}</span>
-                </div>
-                <div class="flex justify-between gap-3">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.created') }}</span>
-                  <span>{{ formatDate(fileMeta?.created || previewFile.createdAt) }}</span>
-                </div>
-                <div class="flex justify-between gap-3">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.modified') }}</span>
-                  <span>{{ formatDate(fileMeta?.modified || previewFile.modifiedAt) }}</span>
-                </div>
-                <div v-if="previewFile.sourceUrl" class="flex justify-between gap-3">
-                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.sourceUrl') }}</span>
-                  <a :href="previewFile.sourceUrl" target="_blank" rel="noopener" class="truncate ml-4 text-right max-w-[60%] underline">{{ previewFile.sourceUrl }}</a>
-                </div>
-              </div>
+              </section>
 
-              <div class="mt-4 pt-4 border-t border-base-300">
-                <div class="text-xs text-base-content/50 mb-2">{{ $t('gallery.tags') }}</div>
-                <TagEditor
-                  :file-tags="fileTags"
-                  :all-tags="allTags"
-                  @update="onUpdateTags"
-                  @create="onCreateTag"
-                />
-              </div>
+              <!-- 拍摄设备 -->
+              <section v-if="showDeviceModule" class="rounded-xl bg-base-200/60 p-3" data-testid="meta-module-device">
+                <div class="flex items-baseline justify-between gap-2">
+                  <div class="font-semibold" data-testid="meta-device">{{ deviceLabel || $t('gallery.device') }}</div>
+                  <span v-if="fileMeta?.format" class="badge badge-ghost badge-sm font-semibold" data-testid="meta-format">{{ fileMeta.format }}</span>
+                </div>
+                <div v-if="fileMeta?.lens" class="mt-1 text-xs text-base-content/60 truncate" data-testid="meta-lens" :title="fileMeta.lens">{{ fileMeta.lens }}</div>
+                <div v-if="deviceSummaryLine" class="mt-1 text-xs text-base-content/60" data-testid="meta-dimensions">{{ deviceSummaryLine }}</div>
+                <div v-if="exifStrip.length" class="mt-2 flex flex-wrap gap-1" data-testid="meta-exif-strip">
+                  <span v-for="item in exifStrip" :key="item" class="badge badge-ghost badge-sm font-mono">{{ item }}</span>
+                </div>
+              </section>
+
+              <!-- 地图定位 -->
+              <section v-if="fileMeta?.gps" class="rounded-xl bg-base-200/60 overflow-hidden" data-testid="meta-gps">
+                <div class="h-24 bg-base-300/80 flex items-center justify-center text-xs text-base-content/50 px-3 text-center">
+                  {{ formatGps(fileMeta.gps) }}
+                </div>
+                <div class="px-3 py-2 text-xs text-base-content/60">{{ formatGps(fileMeta.gps) }}</div>
+              </section>
+
+              <!-- 基础信息：仅剩余字段 -->
+              <section class="rounded-xl bg-base-200/60 p-3 space-y-2" data-testid="meta-module-basics">
+                <div class="font-semibold text-xs uppercase tracking-wide text-base-content/50">{{ $t('gallery.basicInfo') }}</div>
+                <div v-for="row in basicsRows" :key="row.id" class="flex justify-between gap-3" :data-testid="row.testId || undefined">
+                  <span class="text-base-content/50 shrink-0">{{ row.label }}</span>
+                  <span class="text-right truncate max-w-[60%]">
+                    <a v-if="row.href" :href="row.href" target="_blank" rel="noopener" class="underline">{{ row.value }}</a>
+                    <template v-else>{{ row.value }}</template>
+                  </span>
+                </div>
+                <div class="pt-1">
+                  <div class="text-xs text-base-content/50 mb-1">{{ $t('gallery.tags') }}</div>
+                  <TagEditor
+                    :file-tags="fileTags"
+                    :all-tags="allTags"
+                    @update="onUpdateTags"
+                    @create="onCreateTag"
+                  />
+                </div>
+              </section>
             </div>
 
             <!-- Single action row: download / share / move / rename / delete -->
@@ -834,19 +790,151 @@ const deviceLabel = computed(() => {
   return m.model || m.make || null
 })
 
-const focalLabel = computed(() => {
+const hasCaptureContext = computed(() => {
   const m = fileMeta.value
-  if (!m) return null
-  const fl = m.focalLength35mm ?? m.focalLengthMm
-  if (fl == null) return null
-  return `${Math.round(Number(fl))} mm`
+  if (!m) return false
+  return !!(deviceLabel.value || m.lens || m.iso != null || m.aperture != null || m.shutterSpeed || m.captureTime)
 })
 
-function formatEv(v) {
-  const n = Number(v)
-  if (Number.isNaN(n) || Math.abs(n) < 0.05) return '0 EV'
-  return `${n > 0 ? '+' : ''}${n.toFixed(1)} EV`
+const showDeviceModule = computed(() => {
+  const m = fileMeta.value
+  if (!m) return false
+  return !!(
+    deviceLabel.value
+    || m.lens
+    || m.iso != null
+    || m.aperture != null
+    || m.shutterSpeed
+    || (hasCaptureContext.value && m.format)
+  )
+})
+
+const photosDateHeader = computed(() => {
+  const raw = fileMeta.value?.captureTime
+  if (!raw) return ''
+  try {
+    const d = new Date(raw.includes('T') ? raw : raw.replace(' ', 'T'))
+    if (Number.isNaN(d.getTime())) return ''
+    return d.toLocaleString(undefined, {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return ''
+  }
+})
+
+const deviceSummaryLine = computed(() => {
+  if (!showDeviceModule.value) return ''
+  const m = fileMeta.value
+  const parts = []
+  if (m?.megapixels != null) {
+    const mp = Number(m.megapixels)
+    parts.push(`${mp >= 10 ? mp.toFixed(0) : mp.toFixed(1)} MP`)
+  }
+  if (m?.width && m?.height) parts.push(`${m.width} × ${m.height}`)
+  parts.push(formatSize(m?.size ?? previewFile.value?.fileSize))
+  return parts.join(' • ')
+})
+
+const exifStrip = computed(() => {
+  const m = fileMeta.value
+  if (!m || !showDeviceModule.value) return []
+  const items = []
+  if (m.iso != null) items.push(`ISO${m.iso}`)
+  const fl = m.focalLength35mm ?? m.focalLengthMm
+  if (fl != null) items.push(`${Math.round(Number(fl))}mm`)
+  if (m.exposureCompensation != null) {
+    const v = Number(m.exposureCompensation)
+    items.push(Math.abs(v) < 0.05 ? '0ev' : `${v > 0 ? '+' : ''}${Math.round(v)}ev`)
+  }
+  if (m.aperture != null) items.push(`ƒ${Number(m.aperture).toFixed(1)}`)
+  if (m.shutterSpeed) items.push(String(m.shutterSpeed).endsWith('s') ? m.shutterSpeed : `${m.shutterSpeed}s`)
+  return items
+})
+
+function calendarDayKey(raw) {
+  if (!raw) return null
+  try {
+    const d = new Date(String(raw).includes('T') ? raw : String(raw).replace(' ', 'T'))
+    if (Number.isNaN(d.getTime())) return null
+    return d.toISOString().slice(0, 10)
+  } catch {
+    return null
+  }
 }
+
+const basicsRows = computed(() => {
+  const m = fileMeta.value
+  const file = previewFile.value
+  if (!file) return []
+  const rows = []
+
+  // Filename lives in 时间 subtitle when capture time module shows; otherwise 基础信息
+  if (!photosDateHeader.value) {
+    rows.push({
+      id: 'filename',
+      label: t('gallery.fileName'),
+      value: m?.filename || file.fileName,
+      testId: 'meta-filename',
+    })
+  }
+
+  const path = file.currentPath || file.path || ''
+  const folder = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''
+  if (folder) {
+    rows.push({ id: 'path', label: t('gallery.path'), value: folder, testId: 'meta-path' })
+  }
+
+  if (!showDeviceModule.value) {
+    const format = m?.format || file.extension?.replace('.', '').toUpperCase()
+    if (format) rows.push({ id: 'format', label: t('gallery.format'), value: format, testId: 'meta-format' })
+    if (m?.width && m?.height) {
+      rows.push({ id: 'dims', label: t('gallery.dimensions'), value: `${m.width} × ${m.height}`, testId: 'meta-dimensions' })
+    }
+    rows.push({
+      id: 'size',
+      label: t('gallery.fileSize'),
+      value: formatSize(m?.size ?? file.fileSize),
+      testId: 'meta-size',
+    })
+  }
+
+  if (m?.duration) {
+    rows.push({ id: 'duration', label: t('gallery.duration'), value: formatDuration(m.duration), testId: 'meta-duration' })
+  }
+  if (m?.codec) {
+    rows.push({ id: 'codec', label: t('gallery.codec'), value: String(m.codec).toUpperCase(), testId: 'meta-codec' })
+  }
+
+  const captureDay = calendarDayKey(m?.captureTime)
+  const createdRaw = m?.created || file.createdAt
+  const modifiedRaw = m?.modified || file.modifiedAt
+  const createdDay = calendarDayKey(createdRaw)
+  if (createdRaw && !(photosDateHeader.value && captureDay && createdDay === captureDay)) {
+    rows.push({ id: 'created', label: t('gallery.created'), value: formatDate(createdRaw) })
+  }
+  if (modifiedRaw && String(modifiedRaw).slice(0, 19) !== String(createdRaw || '').slice(0, 19)) {
+    const modifiedDay = calendarDayKey(modifiedRaw)
+    if (!(photosDateHeader.value && captureDay && modifiedDay === captureDay)) {
+      rows.push({ id: 'modified', label: t('gallery.modified'), value: formatDate(modifiedRaw) })
+    }
+  }
+
+  if (file.sourceUrl) {
+    rows.push({
+      id: 'source',
+      label: t('gallery.sourceUrl'),
+      value: file.sourceUrl,
+      href: file.sourceUrl,
+    })
+  }
+
+  return rows
+})
 
 function formatSize(bytes) {
   if (!bytes) return '—'

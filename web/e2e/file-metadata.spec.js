@@ -102,7 +102,8 @@ test.describe('file metadata info dialog', () => {
 
     await expect(page.getByTestId('file-metadata-panel')).toBeVisible()
     await expect(page.getByTestId('meta-format')).toContainText('HEIC')
-    await expect(page.getByTestId('meta-capture-time')).toContainText('2024-06-15')
+    await expect(page.getByTestId('meta-module-time')).toBeVisible()
+    await expect(page.getByTestId('meta-capture-time')).toContainText(/Jun|6月|Saturday|星期/)
     await expect(page.getByTestId('meta-gps')).toBeVisible()
     await expect(page.getByTestId('meta-dimensions')).toContainText('512')
   })
@@ -125,6 +126,8 @@ test.describe('file metadata info dialog', () => {
     await page.getByTestId('file-info-btn').click()
 
     await expect(page.getByTestId('file-metadata-panel')).toBeVisible()
+    await expect(page.getByTestId('meta-module-time')).toHaveCount(0)
+    await expect(page.getByTestId('meta-module-device')).toHaveCount(0)
     await expect(page.getByTestId('meta-format')).toContainText('PNG')
     await expect(page.getByTestId('meta-capture-time')).toHaveCount(0)
     await expect(page.getByTestId('meta-gps')).toHaveCount(0)

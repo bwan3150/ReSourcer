@@ -71,6 +71,8 @@ export default {
     noFolders: '没有文件夹',
     rootFolder: '根目录',
     fileInfo: '文件信息',
+    basicInfo: '基础信息',
+    path: '路径',
     fileName: '文件名',
     fileSize: '文件大小',
     fileType: '文件类型',

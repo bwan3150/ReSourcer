@@ -71,6 +71,8 @@ export default {
     noFolders: 'No folders',
     rootFolder: 'Root',
     fileInfo: 'File Info',
+    basicInfo: 'Basics',
+    path: 'Path',
     fileName: 'Name',
     fileSize: 'Size',
     fileType: 'Type',

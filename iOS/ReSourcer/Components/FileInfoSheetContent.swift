@@ -2,8 +2,8 @@
 //  FileInfoSheetContent.swift
 //  ReSourcer
 //
-//  文件信息面板：Apple Photos 风格模块（时间 / 设备 / 地图）+ 原有 label/value 行。
-//  缺数据时整块模块隐藏；操作为单行 GlassButton（含分享）。
+//  信息面板 = 模块卡片（时间 / 拍摄设备 / 地图定位 / 基础信息）+ 单行操作栏。
+//  字段归属严格去重：更丰富的模块拥有字段时，基础信息不重复展示。
 //
 
 import MapKit
@@ -16,7 +16,7 @@ struct FileInfoSheetContent: View {
     /// 路径元数据（缺省字段不显示）；nil 表示尚未加载或加载失败
     var metadata: FileMetadata? = nil
 
-    /// 文件位置信息（如 "3 / 10"），nil 则不显示
+    /// 画廊序号（如 "3 / 10"），显示在时间模块副标题；不是路径
     var position: String? = nil
 
     /// 底部额外间距（如 GalleryView 需要给 navbar 留空间）
@@ -28,25 +28,17 @@ struct FileInfoSheetContent: View {
     /// 添加标签回调（nil 则隐藏标签行）
     var onAddTag: (() -> Void)? = nil
 
-    /// 操作按钮闭包（nil 则隐藏该按钮）
     var onRename: (() -> Void)? = nil
     var onShare: (() -> Void)? = nil
     var onMove: (() -> Void)? = nil
     var onDownload: (() -> Void)? = nil
-    /// 删除回调（软删除到回收站，nil 则隐藏；回收站内应隐藏）
     var onDelete: (() -> Void)? = nil
-
-    /// 调试日志按钮（nil 则隐藏）
     var onShowDebugLog: (() -> Void)? = nil
 
-    /// 创建/修改时间切换状态
-    @State private var showCreatedTime = true
-
     var body: some View {
-        VStack(spacing: AppTheme.Spacing.lg) {
-            // ── Photos-style modules (hide when empty) ──
-            if let header = photosDateHeader {
-                timeModule(header: header)
+        VStack(spacing: AppTheme.Spacing.md) {
+            if showTimeModule {
+                timeModule
             }
 
             if showDeviceModule {
@@ -57,130 +49,8 @@ struct FileInfoSheetContent: View {
                 mapModule(gps)
             }
 
-            // ── Original label/value detail fields ──
-            infoRow("文件名", value: metadata?.filename ?? file.name)
-
-            if let format = metadata?.format, !format.isEmpty {
-                infoRow("格式", value: format)
-            }
-
-            if let onAddTag {
-                tagsRow(onAddTag: onAddTag)
-            }
-
-            if let position {
-                infoRow("位置", value: position)
-            }
-
-            infoRow("大小", value: metadata?.formattedSize ?? file.formattedSize)
-
-            if let dims = metadata?.formattedDimensions {
-                infoRow("分辨率", value: dims)
-            } else if let width = file.width, let height = file.height {
-                infoRow("分辨率", value: "\(width) × \(height)")
-            }
-
-            if let capture = metadata?.captureTime, !capture.isEmpty {
-                infoRow("拍摄时间", value: capture)
-            }
-
-            if let gps = metadata?.gps {
-                infoRow("GPS", value: gps.formatted)
-            }
-
-            if let duration = metadata?.formattedDuration ?? file.formattedDuration {
-                infoRow("时长", value: duration)
-            }
-
-            if let device = metadata?.deviceLabel {
-                infoRow("设备", value: device)
-            }
-            if let lens = metadata?.lens, !lens.isEmpty {
-                infoRow("镜头", value: lens)
-            }
-            if let megapixels = metadata?.megapixels {
-                let mp = megapixels >= 10
-                    ? String(format: "%.0f MP", megapixels)
-                    : String(format: "%.1f MP", megapixels)
-                infoRow("像素", value: mp)
-            }
-            if let fl = metadata?.focalLength35mm ?? metadata?.focalLengthMm.map({ UInt32($0.rounded()) }) {
-                infoRow("焦距", value: "\(fl) mm")
-            }
-            if let aperture = metadata?.aperture {
-                infoRow("光圈", value: String(format: "ƒ%.2g", aperture))
-            }
-            if let iso = metadata?.iso {
-                infoRow("ISO", value: "\(iso)")
-            }
-            if let shutter = metadata?.shutterSpeed, !shutter.isEmpty {
-                infoRow("快门", value: shutter)
-            }
-            if let ev = metadata?.exposureCompensation {
-                let label = abs(ev) < 0.05 ? "0 EV" : String(format: "%+.1f EV", ev)
-                infoRow("曝光补偿", value: label)
-            }
-            if let codec = metadata?.codec, !codec.isEmpty {
-                infoRow("编码", value: codec.uppercased())
-            }
-
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) { showCreatedTime.toggle() }
-            } label: {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-                    HStack(spacing: 4) {
-                        Text(showCreatedTime ? "创建时间" : "修改时间")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Image(systemName: "arrow.left.arrow.right")
-                            .font(.system(size: 9))
-                            .foregroundStyle(.tertiary)
-                    }
-                    Text(showCreatedTime
-                         ? (metadata?.created ?? file.created).toLocalDateTime
-                         : (metadata?.modified ?? file.modified).toLocalDateTime)
-                        .font(.body)
-                        .foregroundStyle(.primary)
-                        .contentTransition(.numericText())
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .buttonStyle(.plain)
-
-            if let sourceUrl = file.sourceUrl, let url = URL(string: sourceUrl) {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-                    Text("来源地址")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Link(destination: url) {
-                        HStack(spacing: 4) {
-                            Text(sourceUrl)
-                                .font(.body)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                            Image(systemName: "arrow.up.right.square")
-                                .font(.caption)
-                        }
-                        .foregroundStyle(.blue)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            if let onShowDebugLog {
-                Button(action: onShowDebugLog) {
-                    HStack {
-                        Text("调试日志")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.plain)
+            if showBasicsModule {
+                basicsModule
             }
 
             actionsRow
@@ -192,14 +62,55 @@ struct FileInfoSheetContent: View {
         .padding(.vertical, AppTheme.Spacing.md)
     }
 
-    // MARK: - Time module
+    // MARK: - Ownership helpers
 
-    private func timeModule(header: String) -> some View {
+    /// 拍摄设备模块：有机身/镜头/EXIF 等“拍摄”信息时显示
+    private var showDeviceModule: Bool {
+        metadata?.deviceLabel != nil
+            || metadata?.lensLine != nil
+            || !(metadata?.exifStripItems.isEmpty ?? true)
+            || (metadata?.megapixels != nil && hasCaptureContext)
+            || (hasCaptureContext && metadata?.format.isEmpty == false)
+    }
+
+    /// 有拍摄上下文（设备/镜头/EXIF/拍摄时间）时，dims/size 归拍摄设备
+    private var hasCaptureContext: Bool {
+        metadata?.deviceLabel != nil
+            || metadata?.lensLine != nil
+            || !(metadata?.exifStripItems.isEmpty ?? true)
+            || (metadata?.captureTime?.isEmpty == false)
+    }
+
+    private var showTimeModule: Bool {
+        photosDateHeader != nil
+    }
+
+    private var showBasicsModule: Bool {
+        !basicsRows.isEmpty || onAddTag != nil || file.sourceUrl != nil || onShowDebugLog != nil
+    }
+
+    private var photosDateHeader: String? {
+        let raw = metadata?.captureTime
+        guard let raw, !raw.isEmpty else { return nil }
+        return Self.formatPhotosDate(raw)
+    }
+
+    /// 拍摄时间已在时间模块展示时，基础信息不再展示同日的创建时间
+    private var captureCalendarDay: String? {
+        guard let raw = metadata?.captureTime, !raw.isEmpty else { return nil }
+        return Self.calendarDayKey(raw)
+    }
+
+    // MARK: - 时间
+
+    private var timeModule: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(header)
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.primary)
-                .lineLimit(2)
+            if let header = photosDateHeader {
+                Text(header)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+            }
 
             HStack(spacing: 6) {
                 Image(systemName: file.isVideo ? "video" : "photo")
@@ -219,22 +130,10 @@ struct FileInfoSheetContent: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .glassBackground(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .moduleCard()
     }
 
-    // MARK: - Device module
-
-    private var showDeviceModule: Bool {
-        metadata?.deviceLabel != nil
-            || metadata?.lensLine != nil
-            || metadata?.resolutionSummary != nil
-            || !(metadata?.exifStripItems.isEmpty ?? true)
-            || (metadata?.format.isEmpty == false)
-            || metadata?.codec != nil
-            || (metadata?.formattedDuration ?? file.formattedDuration) != nil
-    }
+    // MARK: - 拍摄设备
 
     private var deviceModule: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -242,9 +141,12 @@ struct FileInfoSheetContent: View {
                 if let device = metadata?.deviceLabel {
                     Text(device)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
+                } else if let lens = metadata?.lensLine {
+                    Text(lens)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(2)
                 } else {
-                    Text(metadata?.format ?? file.extensionLabel)
+                    Text("拍摄信息")
                         .font(.subheadline.weight(.semibold))
                 }
                 Spacer(minLength: 8)
@@ -257,28 +159,16 @@ struct FileInfoSheetContent: View {
                 }
             }
 
-            if let lens = metadata?.lensLine {
+            if metadata?.deviceLabel != nil, let lens = metadata?.lensLine {
                 Text(lens)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 
-            if let summary = metadata?.resolutionSummary {
+            if let summary = deviceResolutionSummary {
                 Text(summary)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-            }
-
-            if let duration = metadata?.formattedDuration ?? file.formattedDuration {
-                Text("时长 \(duration)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            if let codec = metadata?.codec, !codec.isEmpty {
-                Text(codec.uppercased())
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
             }
 
             let strip = metadata?.exifStripItems ?? []
@@ -293,7 +183,6 @@ struct FileInfoSheetContent: View {
                         }
                         Text(item.value)
                             .font(.caption.monospacedDigit().weight(.medium))
-                            .foregroundStyle(.primary)
                             .frame(maxWidth: .infinity)
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
@@ -302,12 +191,28 @@ struct FileInfoSheetContent: View {
                 .padding(.top, 2)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .glassBackground(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .moduleCard()
     }
 
-    // MARK: - Map module
+    /// MP • dims • size — owned by 拍摄设备 when that module shows
+    private var deviceResolutionSummary: String? {
+        var parts: [String] = []
+        if let megapixels = metadata?.megapixels {
+            let mp = megapixels >= 10
+                ? String(format: "%.0f MP", megapixels)
+                : String(format: "%.1f MP", megapixels)
+            parts.append(mp)
+        }
+        if let dims = metadata?.formattedDimensions {
+            parts.append(dims)
+        } else if let w = file.width, let h = file.height {
+            parts.append("\(w) × \(h)")
+        }
+        parts.append(metadata?.formattedSize ?? file.formattedSize)
+        return parts.isEmpty ? nil : parts.joined(separator: " • ")
+    }
+
+    // MARK: - 地图定位
 
     private func mapModule(_ gps: FileGpsCoords) -> some View {
         let coord = CLLocationCoordinate2D(latitude: gps.lat, longitude: gps.lon)
@@ -332,43 +237,182 @@ struct FileInfoSheetContent: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(14)
-        .glassBackground(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .moduleCard()
     }
 
-    // MARK: - Tags / actions
+    // MARK: - 基础信息（仅剩余字段）
 
-    private func tagsRow(onAddTag: @escaping () -> Void) -> some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-            Text("标签")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(tags) { tag in
-                        Text(tag.name)
-                            .font(.subheadline)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(Color(hex: tag.color).opacity(0.85))
-                            .foregroundStyle(.white)
-                            .clipShape(Capsule())
-                    }
-                    Button(action: onAddTag) {
-                        Image(systemName: "plus")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .overlay(Capsule().stroke(Color.secondary.opacity(0.4), lineWidth: 1))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("添加标签")
+    private struct BasicsRow: Identifiable {
+        let id: String
+        let label: String
+        let value: String
+    }
+
+    private var basicsRows: [BasicsRow] {
+        var rows: [BasicsRow] = []
+
+        // Filename lives in 时间 subtitle when that module shows; otherwise 基础信息
+        if !showTimeModule {
+            rows.append(BasicsRow(id: "filename", label: "文件名", value: metadata?.filename ?? file.name))
+        }
+
+        // Path / folder location (not gallery index)
+        let folder = (file.path as NSString).deletingLastPathComponent
+        if !folder.isEmpty, folder != "." {
+            rows.append(BasicsRow(id: "path", label: "路径", value: folder))
+        }
+
+        // Format / dims / size only when 拍摄设备 is hidden
+        if !showDeviceModule {
+            if let format = metadata?.format, !format.isEmpty {
+                rows.append(BasicsRow(id: "format", label: "格式", value: format))
+            } else {
+                let ext = file.extensionLabel
+                if !ext.isEmpty {
+                    rows.append(BasicsRow(id: "format", label: "格式", value: ext))
                 }
             }
+            if let dims = metadata?.formattedDimensions {
+                rows.append(BasicsRow(id: "dims", label: "分辨率", value: dims))
+            } else if let w = file.width, let h = file.height {
+                rows.append(BasicsRow(id: "dims", label: "分辨率", value: "\(w) × \(h)"))
+            }
+            rows.append(BasicsRow(
+                id: "size",
+                label: "大小",
+                value: metadata?.formattedSize ?? file.formattedSize
+            ))
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+
+        // Codec / duration → 基础信息
+        if let duration = metadata?.formattedDuration ?? file.formattedDuration {
+            rows.append(BasicsRow(id: "duration", label: "时长", value: duration))
+        }
+        if let codec = metadata?.codec, !codec.isEmpty {
+            rows.append(BasicsRow(id: "codec", label: "编码", value: codec.uppercased()))
+        }
+
+        // Created / modified — omit if same calendar day as capture time already in 时间
+        let createdRaw = metadata?.created ?? file.created
+        let modifiedRaw = metadata?.modified ?? file.modified
+        if shouldShowFilesystemTime(createdRaw) {
+            rows.append(BasicsRow(
+                id: "created",
+                label: "创建时间",
+                value: createdRaw.toLocalDateTime
+            ))
+        }
+        if shouldShowFilesystemTime(modifiedRaw),
+           Self.normalizeTime(modifiedRaw) != Self.normalizeTime(createdRaw) {
+            rows.append(BasicsRow(
+                id: "modified",
+                label: "修改时间",
+                value: modifiedRaw.toLocalDateTime
+            ))
+        }
+
+        return rows
     }
+
+    private func shouldShowFilesystemTime(_ raw: String) -> Bool {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        // If capture time module is showing and this FS time is the same calendar day, skip
+        if showTimeModule, let captureDay = captureCalendarDay,
+           let day = Self.calendarDayKey(trimmed), day == captureDay {
+            return false
+        }
+        return true
+    }
+
+    private var basicsModule: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("基础信息")
+                .font(.subheadline.weight(.semibold))
+
+            ForEach(basicsRows) { row in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(row.label)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(row.value)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if let onAddTag {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                    Text("标签")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(tags) { tag in
+                                Text(tag.name)
+                                    .font(.subheadline)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(Color(hex: tag.color).opacity(0.85))
+                                    .foregroundStyle(.white)
+                                    .clipShape(Capsule())
+                            }
+                            Button(action: onAddTag) {
+                                Image(systemName: "plus")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .overlay(Capsule().stroke(Color.secondary.opacity(0.4), lineWidth: 1))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("添加标签")
+                        }
+                    }
+                }
+            }
+
+            if let sourceUrl = file.sourceUrl, let url = URL(string: sourceUrl) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("来源地址")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Link(destination: url) {
+                        HStack(spacing: 4) {
+                            Text(sourceUrl)
+                                .font(.body)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.blue)
+                    }
+                }
+            }
+
+            if let onShowDebugLog {
+                Button(action: onShowDebugLog) {
+                    HStack {
+                        Text("调试日志")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .moduleCard()
+    }
+
+    // MARK: - Actions (single row)
 
     @ViewBuilder
     private var actionsRow: some View {
@@ -402,51 +446,53 @@ struct FileInfoSheetContent: View {
                         .accessibilityLabel("删除")
                 }
             }
-            .padding(.top, AppTheme.Spacing.sm)
+            .padding(.top, AppTheme.Spacing.xs)
         }
     }
 
-    // MARK: - Helpers
-
-    private func infoRow(_ label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.body)
-                .foregroundStyle(.primary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    /// Photos-style `星期 • 日期 • 时间`, or nil when no parseable capture/created time.
-    private var photosDateHeader: String? {
-        let raw = metadata?.captureTime ?? metadata?.created ?? file.created
-        return Self.formatPhotosDate(raw)
-    }
+    // MARK: - Date helpers
 
     private static func formatPhotosDate(_ raw: String) -> String? {
+        guard let date = parseDate(raw) else { return nil }
+        let out = DateFormatter()
+        out.locale = Locale(identifier: "zh_CN")
+        out.dateFormat = "EEEE • M月d日 • HH:mm"
+        return out.string(from: date)
+    }
+
+    private static func calendarDayKey(_ raw: String) -> String? {
+        guard let date = parseDate(raw) else { return nil }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: date)
+    }
+
+    private static func normalizeTime(_ raw: String) -> String {
+        String(raw.trimmingCharacters(in: .whitespacesAndNewlines).prefix(19))
+    }
+
+    private static func parseDate(_ raw: String) -> Date? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
-
         let a = DateFormatter()
         a.locale = Locale(identifier: "en_US_POSIX")
         a.dateFormat = "yyyy-MM-dd HH:mm:ss"
         let b = DateFormatter()
         b.locale = Locale(identifier: "en_US_POSIX")
         b.dateFormat = "yyyy:MM:dd HH:mm:ss"
-
         let head = String(trimmed.prefix(19))
-        var date = a.date(from: head) ?? b.date(from: head)
-        if date == nil {
-            date = ISO8601DateFormatter().date(from: trimmed)
-        }
-        guard let date else { return nil }
+        return a.date(from: head) ?? b.date(from: head) ?? ISO8601DateFormatter().date(from: trimmed)
+    }
+}
 
-        let out = DateFormatter()
-        out.locale = Locale(identifier: "zh_CN")
-        out.dateFormat = "EEEE • M月d日 • HH:mm"
-        return out.string(from: date)
+// MARK: - Module card chrome (native Liquid Glass)
+
+private extension View {
+    func moduleCard() -> some View {
+        self
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14)
+            .glassBackground(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
