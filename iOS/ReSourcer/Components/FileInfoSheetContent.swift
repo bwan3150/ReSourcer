@@ -326,11 +326,13 @@ struct FileInfoSheetContent: View {
             ))
         }
 
-        // Codec / duration → 基础信息
+        // Codec / duration → 基础信息（仅音视频；图片容器的 hevc 等不进基础信息）
         if let duration = metadata?.formattedDuration ?? file.formattedDuration {
             rows.append(BasicsRow(id: "duration", label: "时长", value: duration))
         }
-        if let codec = metadata?.codec, !codec.isEmpty {
+        let mediaKind = metadata?.fileType ?? (file.isVideo ? "video" : file.isAudio ? "audio" : nil)
+        if let codec = metadata?.codec, !codec.isEmpty,
+           mediaKind == "video" || mediaKind == "audio" {
             rows.append(BasicsRow(id: "codec", label: "编码", value: codec.uppercased()))
         }
 
