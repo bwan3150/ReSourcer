@@ -44,20 +44,33 @@ struct ReSourcerApp: App {
                             self.apiService = service
                             self.isLoggedIn = true
                             LocalStorageService.shared.syncServersToAppGroupIfNeeded()
-                            Self.resumeBackgroundUploads(using: service)
+                            Self.resumeBackgroundUploadsIfAppropriate(using: service)
                             runE2EShareSourcesProbeIfNeeded()
+                            runE2EHarnessIfNeeded(using: service)
                         }
                     )
                 }
             }
             .overlay(alignment: .topLeading) {
-                if !e2eShareSourcesProbeText.isEmpty {
-                    Text(e2eShareSourcesProbeText)
-                        .font(.system(size: 1))
-                        .foregroundStyle(.clear)
-                        .accessibilityIdentifier("e2eShareSourcesProbe")
-                        .accessibilityValue(e2eShareSourcesProbeText)
-                        .allowsHitTesting(false)
+                VStack(alignment: .leading, spacing: 2) {
+                    if !e2eShareSourcesProbeText.isEmpty {
+                        Text(e2eShareSourcesProbeText)
+                            .font(.system(size: 1))
+                            .foregroundStyle(.clear)
+                            .accessibilityIdentifier("e2eShareSourcesProbe")
+                            .accessibilityValue(e2eShareSourcesProbeText)
+                            .allowsHitTesting(false)
+                    }
+                    let env = ProcessInfo.processInfo.environment
+                    let np = env["E2E_NOWPLAYING_PROBE"] == "1"
+                    let up = env["E2E_KILL_UPLOAD"] == "1" || env["E2E_UPLOAD_RESUME_CHECK"] == "1"
+                    if np || up {
+                        E2EProbeOverlay(
+                            showNowPlaying: np,
+                            showUpload: up,
+                            showRemoteButtons: np
+                        )
+                    }
                 }
             }
             .withGlassAlerts()
@@ -71,6 +84,9 @@ struct ReSourcerApp: App {
                 applyE2EPendingDownloadIfNeeded()
                 consumePendingDownloadHandoff()
                 runE2EShareSourcesProbeIfNeeded()
+                if let service = apiService {
+                    runE2EHarnessIfNeeded(using: service)
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: .themeDidChange)) { _ in
                 themePreference = LocalStorageService.shared.getAppSettings().darkModePreference
@@ -112,7 +128,7 @@ struct ReSourcerApp: App {
            let service = APIService.create(for: server) {
             self.apiService = service
             self.isLoggedIn = true
-            Self.resumeBackgroundUploads(using: service)
+            Self.resumeBackgroundUploadsIfAppropriate(using: service)
 
             // 快速探测当前地址，不可达则弹切换对话框；仅检查 auth 失效时登出
             Task {
@@ -144,6 +160,28 @@ struct ReSourcerApp: App {
         }
     }
 
+    /// E2E 杀进程续传由探针接管 resume，避免与自动恢复竞态
+    private static func resumeBackgroundUploadsIfAppropriate(using service: APIService) {
+        let env = ProcessInfo.processInfo.environment
+        if env["E2E_KILL_UPLOAD"] == "1" || env["E2E_UPLOAD_RESUME_CHECK"] == "1" {
+            return
+        }
+        resumeBackgroundUploads(using: service)
+    }
+
+    private func runE2EHarnessIfNeeded(using service: APIService) {
+        let env = ProcessInfo.processInfo.environment
+        if env["E2E_NOWPLAYING_PROBE"] == "1" {
+            E2EHarness.shared.startNowPlayingProbeIfNeeded()
+        }
+        if env["E2E_KILL_UPLOAD"] == "1" {
+            E2EHarness.shared.startKillUploadIfNeeded(apiService: service)
+        }
+        if env["E2E_UPLOAD_RESUME_CHECK"] == "1" {
+            E2EHarness.shared.checkUploadResumeIfNeeded(apiService: service)
+        }
+    }
+
     /// 读取 `E2E_SERVER_URL` / `E2E_API_KEY`（由 XCUITest launchEnvironment 注入）
     @discardableResult
     private func applyE2ELoginIfNeeded() -> Bool {
@@ -167,7 +205,7 @@ struct ReSourcerApp: App {
         guard let service = APIService.create(for: server) else { return false }
         self.apiService = service
         self.isLoggedIn = true
-        Self.resumeBackgroundUploads(using: service)
+        Self.resumeBackgroundUploadsIfAppropriate(using: service)
         return true
     }
 
@@ -208,6 +246,9 @@ struct ReSourcerApp: App {
     }
 
     private func handleOpenURL(_ url: URL) {
+        if E2EHarness.handleNowPlayingDeepLink(url) {
+            return
+        }
         if let pending = ShareBridge.parseDownloadDeepLink(url) {
             ShareBridge.setPendingDownloadURL(pending)
             consumePendingDownloadHandoff()
