@@ -62,6 +62,13 @@ struct ShareDestinationPreference: Codable, Equatable {
     }
 }
 
+/// Flow A：分享链接交接主 App（URL + 目标服务器 / 源文件夹）
+struct SharePendingDownloadHandoff: Codable, Equatable {
+    var url: String
+    var serverId: String?
+    var sourceFolder: String?
+}
+
 // MARK: - ShareBridge
 
 /// 主 App ↔ Share Extension 共享状态
@@ -192,48 +199,98 @@ enum ShareBridge {
         return servers.first
     }
 
-    // MARK: Pending download URL（Flow A）
+    // MARK: Pending download handoff（Flow A：URL + 可选服务器 / 源文件夹）
 
+    private static let pendingDownloadHandoffKey = "share_pending_download_handoff"
+
+    /// 写入完整交接意图（URL 必填；服务器 / 源文件夹可选）
+    static func setPendingDownload(_ handoff: SharePendingDownloadHandoff?) {
+        guard let handoff, !handoff.url.isEmpty else {
+            AppGroup.defaults.removeObject(forKey: Keys.pendingDownloadURL)
+            AppGroup.defaults.removeObject(forKey: pendingDownloadHandoffKey)
+            return
+        }
+        AppGroup.defaults.set(handoff.url, forKey: Keys.pendingDownloadURL)
+        if let data = try? JSONEncoder().encode(handoff) {
+            AppGroup.defaults.set(data, forKey: pendingDownloadHandoffKey)
+        }
+    }
+
+    /// 兼容旧调用：仅写 URL
     static func setPendingDownloadURL(_ url: String?) {
         if let url, !url.isEmpty {
-            AppGroup.defaults.set(url, forKey: Keys.pendingDownloadURL)
+            setPendingDownload(SharePendingDownloadHandoff(url: url))
         } else {
-            AppGroup.defaults.removeObject(forKey: Keys.pendingDownloadURL)
+            setPendingDownload(nil)
         }
+    }
+
+    static func clearPendingDownload() {
+        setPendingDownload(nil)
+    }
+
+    /// 读取完整交接（不消费）
+    static func peekPendingDownload() -> SharePendingDownloadHandoff? {
+        if let data = AppGroup.defaults.data(forKey: pendingDownloadHandoffKey),
+           let handoff = try? JSONDecoder().decode(SharePendingDownloadHandoff.self, from: data),
+           !handoff.url.isEmpty {
+            return handoff
+        }
+        if let url = AppGroup.defaults.string(forKey: Keys.pendingDownloadURL), !url.isEmpty {
+            return SharePendingDownloadHandoff(url: url)
+        }
+        return nil
+    }
+
+    /// 消费完整交接
+    static func consumePendingDownload() -> SharePendingDownloadHandoff? {
+        let handoff = peekPendingDownload()
+        clearPendingDownload()
+        return handoff
     }
 
     static func consumePendingDownloadURL() -> String? {
-        guard let url = AppGroup.defaults.string(forKey: Keys.pendingDownloadURL), !url.isEmpty else {
-            return nil
-        }
-        AppGroup.defaults.removeObject(forKey: Keys.pendingDownloadURL)
-        return url
+        consumePendingDownload()?.url
     }
 
     static func peekPendingDownloadURL() -> String? {
-        AppGroup.defaults.string(forKey: Keys.pendingDownloadURL)
+        peekPendingDownload()?.url
     }
 
-    /// 构建打开主 App 下载页的 URL：`resourcer://download?url=...`
-    static func downloadDeepLink(url: String) -> URL? {
+    /// 构建打开主 App 下载页的 URL：`resourcer://download?url=...&serverId=...&sf=...`
+    static func downloadDeepLink(
+        url: String,
+        serverId: String? = nil,
+        sourceFolder: String? = nil
+    ) -> URL? {
         var components = URLComponents()
         components.scheme = AppGroup.urlScheme
         components.host = AppGroup.downloadHost
-        components.queryItems = [URLQueryItem(name: "url", value: url)]
+        var items = [URLQueryItem(name: "url", value: url)]
+        if let serverId, !serverId.isEmpty {
+            items.append(URLQueryItem(name: "serverId", value: serverId))
+        }
+        if let sourceFolder, !sourceFolder.isEmpty {
+            items.append(URLQueryItem(name: "sf", value: sourceFolder))
+        }
+        components.queryItems = items
         return components.url
     }
 
-    /// 解析 `resourcer://download` 深链中的 url 参数
-    static func parseDownloadDeepLink(_ url: URL) -> String? {
+    /// 解析 `resourcer://download` 深链
+    static func parseDownloadDeepLink(_ url: URL) -> SharePendingDownloadHandoff? {
         guard url.scheme == AppGroup.urlScheme else { return nil }
         let host = url.host ?? url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard host == AppGroup.downloadHost else { return nil }
-        if let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
-           let value = items.first(where: { $0.name == "url" })?.value,
-           !value.isEmpty {
-            return value
-        }
-        return peekPendingDownloadURL()
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        let linkURL = items.first(where: { $0.name == "url" })?.value
+        let resolvedURL = (linkURL?.isEmpty == false) ? linkURL : peekPendingDownloadURL()
+        guard let resolvedURL, !resolvedURL.isEmpty else { return nil }
+        return SharePendingDownloadHandoff(
+            url: resolvedURL,
+            serverId: items.first(where: { $0.name == "serverId" })?.value,
+            sourceFolder: items.first(where: { $0.name == "sf" })?.value
+        )
     }
 
     // MARK: Last destination

@@ -56,11 +56,25 @@ struct PatternLockView: View {
                     onCancel()
                 }
                 .frame(maxWidth: 160)
+                .accessibilityIdentifier("patternLockCancel")
+
+                // UITest：无法稳定绘制九宫格时，用环境变量露出探针按钮
+                if ProcessInfo.processInfo.environment["E2E_PATTERN_LOCK_PROBE"] == "1" {
+                    HStack(spacing: 12) {
+                        Button("E2E Unlock") { onSuccess() }
+                            .accessibilityIdentifier("e2ePatternUnlockSuccess")
+                        Button("E2E Cancel") { onCancel() }
+                            .accessibilityIdentifier("e2ePatternUnlockCancel")
+                    }
+                    .font(.caption2)
+                    .opacity(0.01)
+                }
             }
             .padding(AppTheme.Spacing.xxl)
             .frame(maxWidth: 340)
             .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
             .padding(.horizontal, AppTheme.Spacing.xl)
+            .accessibilityIdentifier("patternLockOverlay")
         }
     }
 
