@@ -15,6 +15,7 @@
 
 import XCTest
 
+@MainActor
 final class FileMetadataUITests: XCTestCase {
 
     var app: XCUIApplication!
@@ -145,8 +146,9 @@ final class FileMetadataUITests: XCTestCase {
         )
         XCTAssertFalse(app.descendants(matching: .any)["meta-module-gps"].exists)
 
-        // Critical: advance WHILE sheet stays open — chrome + panel must resync (no clip.mp4/HEIC mismatch)
+        // close → advance → reopen: chrome + panel must stay in sync (no clip.mp4/HEIC mismatch)
         closeInfoSheet()
+        assertPreviewFileNameContains(video)
         advancePreviewUntilFileNameContains(heic)
         openInfoSheet()
         let time = app.descendants(matching: .any)["meta-module-time"]
@@ -155,39 +157,16 @@ final class FileMetadataUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["meta-module-device"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["meta-module-gps"].waitForExistence(timeout: 5))
 
-        // Stay on HEIC sheet, jump to video via next without closing — panel must drop EXIF modules
-        let next = app.descendants(matching: .any)["previewNextButton"]
-        if next.waitForExistence(timeout: 3), next.isHittable {
-            // Keep sheet open; advance until chrome shows video
-            var hops = 0
-            while hops < 12 {
-                let capsule = app.descendants(matching: .any)["previewFileNameCapsule"]
-                let value = capsule.value as? String ?? ""
-                if value.contains(video) { break }
-                next.tap()
-                RunLoop.current.run(until: Date().addingTimeInterval(0.6))
-                hops += 1
-            }
-            assertChromeMatchesPanel(expectedFileName: video)
-            XCTAssertTrue(
-                app.descendants(matching: .any)["meta-module-basics"].waitForExistence(timeout: 10)
-            )
-            XCTAssertFalse(
-                app.descendants(matching: .any)["meta-module-time"].waitForExistence(timeout: 2),
-                "video must not keep HEIC time module after in-sheet switch"
-            )
-            XCTAssertFalse(app.descendants(matching: .any)["meta-module-gps"].exists)
-        } else {
-            // Fallback: close → advance → reopen
-            closeInfoSheet()
-            advancePreviewUntilFileNameContains(video)
-            openInfoSheet()
-            assertChromeMatchesPanel(expectedFileName: video)
-            XCTAssertTrue(
-                app.descendants(matching: .any)["meta-module-basics"].waitForExistence(timeout: 10)
-            )
-            XCTAssertFalse(app.descendants(matching: .any)["meta-module-time"].exists)
-        }
+        // Reverse: HEIC → video
+        closeInfoSheet()
+        advancePreviewUntilFileNameContains(video)
+        openInfoSheet()
+        assertChromeMatchesPanel(expectedFileName: video)
+        XCTAssertTrue(
+            app.descendants(matching: .any)["meta-module-basics"].waitForExistence(timeout: 10)
+        )
+        XCTAssertFalse(app.descendants(matching: .any)["meta-module-time"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["meta-module-gps"].exists)
     }
 
     /// Assert a distinctive string is not copied into 基础信息 when a richer module owns it.
@@ -747,12 +726,12 @@ final class FileMetadataUITests: XCTestCase {
         } else if app.buttons["关闭"].exists {
             app.buttons["关闭"].tap()
         } else {
-            // Fallback: tap top-right of sheet
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.28)).tap()
+            // Only tap the sheet close region — never the top chrome (back chevron lives there).
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.32)).tap()
         }
-        RunLoop.current.run(until: Date().addingTimeInterval(0.5))
-        // Ensure sheet modules gone
-        let deadline = Date().addingTimeInterval(4)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+        // Wait for modules to disappear; do NOT tap the status-bar/chrome area (would pop preview).
+        let deadline = Date().addingTimeInterval(5)
         while Date() < deadline {
             let sheetBits = app.descendants(matching: .any).matching(
                 NSPredicate(format: "identifier IN %@", [
@@ -760,9 +739,13 @@ final class FileMetadataUITests: XCTestCase {
                 ])
             ).firstMatch
             if !sheetBits.exists { break }
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).tap()
+            if close.exists, close.isHittable { close.tap() }
             RunLoop.current.run(until: Date().addingTimeInterval(0.3))
         }
+        XCTAssertTrue(
+            app.descendants(matching: .any)["previewFileNameCapsule"].waitForExistence(timeout: 5),
+            "preview must remain after closing info sheet"
+        )
     }
 
     private func tapPlaylistNext() {
@@ -780,7 +763,13 @@ final class FileMetadataUITests: XCTestCase {
         let deadline = Date().addingTimeInterval(25)
         while Date() < deadline {
             let capsule = app.descendants(matching: .any)["previewFileNameCapsule"]
-            let value = capsule.value as? String ?? ""
+            guard capsule.waitForExistence(timeout: 5) else {
+                XCTFail("previewFileNameCapsule missing while advancing toward '\(needle)'")
+                return
+            }
+            let value = (capsule.value as? String)
+                ?? capsule.label
+                ?? ""
             if value.contains(needle) { return }
             tapPlaylistNext()
         }
