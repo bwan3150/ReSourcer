@@ -56,8 +56,6 @@ final class FileMetadataUITests: XCTestCase {
         openGridItem(uuid: uuid)
         assertTabBarHidden(reason: "playback / preview")
         assertPreviewFileNameContains(fileName)
-        // Full-frame playback (no info sheet) — TabBar hidden
-        saveFullScreenShot(named: "01-playback-tabbar-hidden")
 
         openInfoSheet()
         assertTabBarHidden(reason: "file info sheet")
@@ -73,7 +71,7 @@ final class FileMetadataUITests: XCTestCase {
         XCTAssertTrue(gps.waitForExistence(timeout: 5), "地图定位 module visible")
         XCTAssertTrue(actions.waitForExistence(timeout: 5), "action icon row visible")
 
-        // Distinct element screenshots (not duplicate full-frame copies)
+        // Distinct shots: full panel + per-module element crops (unique digests required)
         saveFullScreenShot(named: "02-heic-info-modules-full")
         saveElementShot(time, named: "03-heic-module-time")
         saveElementShot(device, named: "04-heic-module-device-exif")
@@ -147,6 +145,7 @@ final class FileMetadataUITests: XCTestCase {
         )
         XCTAssertFalse(app.descendants(matching: .any)["meta-module-gps"].exists)
 
+        // Critical: advance WHILE sheet stays open — chrome + panel must resync (no clip.mp4/HEIC mismatch)
         closeInfoSheet()
         advancePreviewUntilFileNameContains(heic)
         openInfoSheet()
@@ -156,15 +155,39 @@ final class FileMetadataUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["meta-module-device"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["meta-module-gps"].waitForExistence(timeout: 5))
 
-        // Reverse: HEIC → video
-        closeInfoSheet()
-        advancePreviewUntilFileNameContains(video)
-        openInfoSheet()
-        assertChromeMatchesPanel(expectedFileName: video)
-        XCTAssertTrue(
-            app.descendants(matching: .any)["meta-module-basics"].waitForExistence(timeout: 10)
-        )
-        XCTAssertFalse(app.descendants(matching: .any)["meta-module-time"].exists)
+        // Stay on HEIC sheet, jump to video via next without closing — panel must drop EXIF modules
+        let next = app.descendants(matching: .any)["previewNextButton"]
+        if next.waitForExistence(timeout: 3), next.isHittable {
+            // Keep sheet open; advance until chrome shows video
+            var hops = 0
+            while hops < 12 {
+                let capsule = app.descendants(matching: .any)["previewFileNameCapsule"]
+                let value = capsule.value as? String ?? ""
+                if value.contains(video) { break }
+                next.tap()
+                RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+                hops += 1
+            }
+            assertChromeMatchesPanel(expectedFileName: video)
+            XCTAssertTrue(
+                app.descendants(matching: .any)["meta-module-basics"].waitForExistence(timeout: 10)
+            )
+            XCTAssertFalse(
+                app.descendants(matching: .any)["meta-module-time"].waitForExistence(timeout: 2),
+                "video must not keep HEIC time module after in-sheet switch"
+            )
+            XCTAssertFalse(app.descendants(matching: .any)["meta-module-gps"].exists)
+        } else {
+            // Fallback: close → advance → reopen
+            closeInfoSheet()
+            advancePreviewUntilFileNameContains(video)
+            openInfoSheet()
+            assertChromeMatchesPanel(expectedFileName: video)
+            XCTAssertTrue(
+                app.descendants(matching: .any)["meta-module-basics"].waitForExistence(timeout: 10)
+            )
+            XCTAssertFalse(app.descendants(matching: .any)["meta-module-time"].exists)
+        }
     }
 
     /// Assert a distinctive string is not copied into 基础信息 when a richer module owns it.
@@ -231,6 +254,10 @@ final class FileMetadataUITests: XCTestCase {
 
         openGridItem(uuid: uuid)
         assertPreviewFileNameContains(fileName)
+        assertTabBarHidden(reason: "video playback")
+        // Required evidence: real video playback with system TabBar hidden
+        saveFullScreenShot(named: "01-video-playback-tabbar-hidden")
+
         openInfoSheet()
         assertChromeMatchesPanel(expectedFileName: fileName)
 
