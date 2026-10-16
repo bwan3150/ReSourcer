@@ -184,8 +184,12 @@ actor UploadService {
                     job.completedIndices = status.uploaded
                     ChunkUploadJobStore.upsert(job)
                 }
-                let progressCb: (@Sendable (Double) -> Void)? = onProgress.map { cb in
-                    { p in cb(job.id, p) }
+                let jobId = job.id
+                let progressCb: (@Sendable (Double) -> Void)?
+                if let onProgress {
+                    progressCb = { p in onProgress(jobId, p) }
+                } else {
+                    progressCb = nil
                 }
                 _ = try await uploadRemainingChunks(job: &job, onProgress: progressCb)
                 ChunkUploadJobStore.remove(id: job.id)
@@ -218,7 +222,12 @@ actor UploadService {
     ) async throws -> ChunkCompleteResponse {
         let fileData = try Data(contentsOf: job.localFileURL)
         let completed = Set(job.completedIndices)
-        let baseURL = URL(string: job.baseURLString) ?? await networkManager.baseURL
+        let baseURL: URL
+        if let stored = URL(string: job.baseURLString) {
+            baseURL = stored
+        } else {
+            baseURL = await networkManager.baseURL
+        }
 
         for index in 0..<job.totalChunks where !completed.contains(index) {
             let start = index * job.chunkSize
