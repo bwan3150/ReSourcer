@@ -122,21 +122,23 @@ final class NowPlayingController {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
-    // MARK: - Sanitizers（NaN / 零尺寸封面会导致系统 Now Playing 崩溃）
+    // MARK: - Sanitizers（NaN / 零尺寸封面 / MainActor 隔离会导致系统 Now Playing 崩溃）
 
     /// CMTime.seconds 在未就绪时常为 NaN；写入 MPNowPlayingInfo 会直接崩
-    static func sanitizedTime(_ value: TimeInterval) -> TimeInterval {
+    nonisolated static func sanitizedTime(_ value: TimeInterval) -> TimeInterval {
         guard value.isFinite else { return 0 }
         return max(0, value)
     }
 
-    /// boundsSize 为 .zero 时 MPMediaItemArtwork 会断言崩溃
-    static func makeArtwork(from image: UIImage?) -> MPMediaItemArtwork? {
+    /// 构造封面。handler 由 MediaPlayer 在后台 `accessQueue` 回调，
+    /// 必须 `nonisolated`，否则 Swift 隔离断言 SIGTRAP（0.0.37 播放视频闪退根因）。
+    nonisolated static func makeArtwork(from image: UIImage?) -> MPMediaItemArtwork? {
         guard let image else { return nil }
         let size = image.size
         guard size.width >= 1, size.height >= 1, size.width.isFinite, size.height.isFinite else {
             return nil
         }
+        // 只捕获 UIImage，勿捕获 self / MainActor 状态
         return MPMediaItemArtwork(boundsSize: size) { _ in image }
     }
 

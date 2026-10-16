@@ -46,17 +46,21 @@ final class VideoPlaybackCrashUITests: XCTestCase {
 
         videoItem.tap()
 
-        // 预览 chrome / 播放控件出现
+        // 预览 chrome（点一下屏幕可唤醒自动隐藏的控件）
         let modeBtn = app.descendants(matching: .any)["playbackModeButton"]
-        XCTAssertTrue(
-            modeBtn.waitForExistence(timeout: 15),
-            "preview should open for video without crashing"
-        )
+        let playPause = app.descendants(matching: .any)["previewPlayPauseButton"]
+        if !modeBtn.waitForExistence(timeout: 3) && !playPause.exists {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        let chromeVisible = modeBtn.waitForExistence(timeout: 12) || playPause.waitForExistence(timeout: 2)
+        XCTAssertTrue(chromeVisible, "preview should open for video without crashing")
 
-        // 给 AVPlayer + Now Playing 时间观察器足够时间触发（崩溃多发于起播瞬间）
-        RunLoop.current.run(until: Date().addingTimeInterval(4))
+        // 给 AVPlayer + Now Playing（含封面回调）足够时间；崩溃多发于 artwork handler
+        RunLoop.current.run(until: Date().addingTimeInterval(5))
 
-        XCTAssertTrue(app.state == .runningForeground, "app must stay alive while playing video")
-        XCTAssertTrue(modeBtn.exists, "preview chrome should remain after playback start")
+        XCTAssertEqual(app.state, .runningForeground, "app must stay alive while playing video")
+        // 再点一次确认进程仍响应（未因 SIGTRAP 被杀）
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45)).tap()
+        XCTAssertEqual(app.state, .runningForeground, "app must still respond after Now Playing artwork path")
     }
 }
