@@ -4,6 +4,7 @@ mod files;
 mod thumbnail;
 mod content;
 pub mod utils;
+pub mod persist;
 
 use actix_web::web;
 

@@ -33,6 +33,9 @@ pub async fn rename_file(req: web::Json<RenameFileRequest>) -> Result<HttpRespon
     fs::rename(file_path, &new_path)
         .map_err(|e| actix_web::error::ErrorInternalServerError(format!("重命名失败: {}", e)))?;
 
+    // 最佳努力：同步搬迁 `.thumb` 镜像
+    crate::preview::persist::relocate_thumb_mirrors(file_path, &new_path);
+
     // 更新文件索引
     let new_path_str = new_path.to_string_lossy().to_string();
     let folder_str = parent_dir.to_string_lossy().to_string();

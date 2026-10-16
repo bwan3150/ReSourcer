@@ -1394,7 +1394,16 @@ Base URL: `http://localhost:1234`
 ## 预览操作 API
 
 ### GET `/api/preview/thumbnail`
-生成并返回图片/视频缩略图
+生成并返回图片/视频缩略图。服务端在**首次请求**时将 JPEG 原子写入源根下的路径镜像缓存，之后读盘复用（无后台 batch backfill）。
+
+**磁盘路径（路径镜像）：**
+```text
+{source_root}/abc/123/test.mp4
+→ {source_root}/.thumb/abc/123/test.mp4.thumb          # size=300（默认）
+→ {source_root}/.thumb/abc/123/test.mp4.s640.thumb     # 其它尺寸
+```
+
+缓存文件带文本头（`tv` / 源 mtime / 源 size / px）；源变更或算法版本不符时重建。`.thumb/` 与 `*.thumb` 不进入全量/lazy 扫描与画廊索引。
 
 **Query Parameters:**
 - `path` 或 `uuid`: 文件路径或文件 UUID（二选一）
