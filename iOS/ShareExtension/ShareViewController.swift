@@ -161,7 +161,9 @@ final class ShareViewController: UIViewController {
     }
 
     private func loadFileRepresentation(from provider: NSItemProvider, type: String) async -> URL? {
-        await withCheckedContinuation { cont in
+        // 先取出 Sendable 值，避免在 @Sendable 回调里捕获 NSItemProvider（Xcode 26.6 complete concurrency）
+        let suggestedName = provider.suggestedName
+        return await withCheckedContinuation { cont in
             provider.loadFileRepresentation(forTypeIdentifier: type) { url, _ in
                 guard let url else {
                     cont.resume(returning: nil)
@@ -169,7 +171,7 @@ final class ShareViewController: UIViewController {
                 }
                 // 回调返回后系统会删除临时文件，必须在此同步拷贝
                 let preferred = Self.preferredFileName(
-                    provider: provider,
+                    suggestedName: suggestedName,
                     sourceURL: url,
                     typeIdentifier: type
                 )
@@ -183,11 +185,12 @@ final class ShareViewController: UIViewController {
         if let viaRep = await loadFileRepresentation(from: provider, type: type) {
             return viaRep
         }
+        let suggestedName = provider.suggestedName
         return await withCheckedContinuation { cont in
             provider.loadItem(forTypeIdentifier: type, options: nil) { item, _ in
                 if let url = item as? URL {
                     let preferred = Self.preferredFileName(
-                        provider: provider,
+                        suggestedName: suggestedName,
                         sourceURL: url,
                         typeIdentifier: type
                     )
@@ -205,7 +208,7 @@ final class ShareViewController: UIViewController {
             guard provider.hasItemConformingToTypeIdentifier(typeId) else { continue }
             if let data = await loadDataRepresentation(from: provider, type: typeId) {
                 let name = Self.preferredFileName(
-                    provider: provider,
+                    suggestedName: provider.suggestedName,
                     sourceURL: nil,
                     typeIdentifier: typeId,
                     data: data
@@ -283,8 +286,10 @@ final class ShareViewController: UIViewController {
     // MARK: - Naming / staging
 
     /// 优先原始文件名；否则按 UTType / 魔数补扩展名（默认不再强行 .jpg）
-    private static func preferredFileName(
-        provider: NSItemProvider,
+    /// `nonisolated`: NSItemProvider 回调不在 MainActor；UIViewController 默认隔离会触发 sending risks data races。
+    /// 只接收已提取的 `suggestedName`（Sendable），勿把 `NSItemProvider` 传入回调。
+    nonisolated private static func preferredFileName(
+        suggestedName: String?,
         sourceURL: URL?,
         typeIdentifier: String,
         data: Data? = nil
@@ -295,7 +300,7 @@ final class ShareViewController: UIViewController {
                 return last
             }
         }
-        if let suggested = provider.suggestedName, !suggested.isEmpty {
+        if let suggested = suggestedName, !suggested.isEmpty {
             if suggested.contains(".") {
                 return suggested
             }
@@ -314,7 +319,7 @@ final class ShareViewController: UIViewController {
         return "share.\(ext)"
     }
 
-    private static func fileExtension(
+    nonisolated private static func fileExtension(
         forTypeIdentifier typeId: String,
         data: Data?,
         sourceURL: URL?
@@ -343,7 +348,7 @@ final class ShareViewController: UIViewController {
     }
 
     /// 根据文件头推断扩展名（用于无文件名时）
-    private static func extensionFromMagic(_ data: Data) -> String? {
+    nonisolated private static func extensionFromMagic(_ data: Data) -> String? {
         guard data.count >= 12 else { return nil }
         // JPEG
         if data[0] == 0xFF, data[1] == 0xD8, data[2] == 0xFF { return "jpg" }
@@ -368,7 +373,7 @@ final class ShareViewController: UIViewController {
         return nil
     }
 
-    private static func copyIntoStaging(_ url: URL, preferredName: String? = nil) -> URL? {
+    nonisolated private static func copyIntoStaging(_ url: URL, preferredName: String? = nil) -> URL? {
         let staging = AppGroup.uploadStagingURL ?? FileManager.default.temporaryDirectory
         let name = preferredName?.isEmpty == false ? preferredName! : url.lastPathComponent
         // 优先保留原始文件名；仅冲突时加短前缀
