@@ -205,6 +205,10 @@ struct FilePreviewView: View {
             startAutoAdvanceTimer()
             logger.clear()
             refreshNowPlayingSkipAvailability()
+            publishE2EPlaylistMeta()
+        }
+        .onChange(of: playlist.count) { _, _ in
+            publishE2EPlaylistMeta()
         }
         .onChange(of: shuffleEnabled) { _, _ in
             refreshNowPlayingSkipAvailability()
@@ -240,8 +244,15 @@ struct FilePreviewView: View {
             navigateInPlaylist(direction: -1)
         }
         .task {
+            // UITest：在拉播放列表前同步冷启动注入的模式，避免上一测 UserDefaults 残留
+            if ProcessInfo.processInfo.environment["E2E_NOWPLAYING_PROBE"] == "1" {
+                listLoopEnabled = LocalStorageService.shared.getListLoopEnabled()
+                shuffleEnabled = LocalStorageService.shared.getShuffleEnabled()
+                prefs = LocalStorageService.shared.getPreviewPreferences()
+            }
             if shuffleEnabled { shuffleNeedsFresh = true }
             await fetchPlaylist(uuid: initialUuid, keepShuffleQueue: false)
+            refreshNowPlayingSkipAvailability()
         }
         .onDisappear {
             hideControlsTask?.cancel()
@@ -473,15 +484,30 @@ struct FilePreviewView: View {
 
     // MARK: - 底部导航按钮
 
+    /// E2E 下以 LocalStorage 为准（避免 @State 与冷启动注入短暂不一致）
+    private var effectiveShuffleEnabled: Bool {
+        if ProcessInfo.processInfo.environment["E2E_NOWPLAYING_PROBE"] == "1" {
+            return LocalStorageService.shared.getShuffleEnabled()
+        }
+        return shuffleEnabled
+    }
+
+    private var effectiveListLoopEnabled: Bool {
+        if ProcessInfo.processInfo.environment["E2E_NOWPLAYING_PROBE"] == "1" {
+            return LocalStorageService.shared.getListLoopEnabled()
+        }
+        return listLoopEnabled
+    }
+
     private var canGoPrev: Bool {
         guard playlist.count > 1 else { return false }
-        if shuffleEnabled || listLoopEnabled { return true }
+        if effectiveShuffleEnabled || effectiveListLoopEnabled { return true }
         return !(playlistAtStart && playlistIndex <= 0)
     }
 
     private var canGoNext: Bool {
         guard playlist.count > 1 else { return false }
-        if shuffleEnabled || listLoopEnabled { return true }
+        if effectiveShuffleEnabled || effectiveListLoopEnabled { return true }
         return !(playlistAtEnd && playlistIndex >= playlist.count - 1)
     }
 
@@ -942,25 +968,39 @@ struct FilePreviewView: View {
     // MARK: - Playlist Navigation
 
     private func apiPlaylistMode() -> String {
-        if shuffleEnabled { return "shuffle" }
-        if listLoopEnabled { return "list_loop" }
+        if effectiveShuffleEnabled { return "shuffle" }
+        if effectiveListLoopEnabled { return "list_loop" }
         return "sequential"
     }
 
     /// Fetch playlist from server centered on given UUID
     private func fetchPlaylist(uuid: String, keepShuffleQueue: Bool = true) async {
         let mode = apiPlaylistMode()
-        let fileType = prefs.filterAutoplayByFileType ? currentFile?.fileType.rawValue : nil
+        let filterByType = prefs.filterAutoplayByFileType
+        // 首拉时 playlist 为空 → currentFile 为 nil；若仍要同类型，先无过滤拉一次再按当前项类型重拉
+        var fileType = filterByType ? currentFile?.fileType.rawValue : nil
 
         // True shuffle: omit current_queue on first enter / jump so neighbors aren't sequential
         let sendQueue = mode == "shuffle" && keepShuffleQueue && !shuffleNeedsFresh && !playlist.isEmpty
         let queue: [String]? = sendQueue ? playlist.compactMap(\.uuid) : nil
 
         do {
-            let resp = try await apiService.preview.getPlaylist(
+            var resp = try await apiService.preview.getPlaylist(
                 uuid: uuid, folderPath: folderPath, mode: mode,
                 fileType: fileType, currentQueue: queue
             )
+            if filterByType, fileType == nil {
+                let seed = resp.items.indices.contains(resp.currentIndex)
+                    ? resp.items[resp.currentIndex]
+                    : resp.items.first
+                if let inferred = seed?.fileType, !inferred.isEmpty {
+                    fileType = inferred
+                    resp = try await apiService.preview.getPlaylist(
+                        uuid: uuid, folderPath: folderPath, mode: mode,
+                        fileType: fileType, currentQueue: queue
+                    )
+                }
+            }
             let files = resp.items.map { $0.toFileInfo() }
             await MainActor.run {
                 withAnimation {
@@ -971,6 +1011,7 @@ struct FilePreviewView: View {
                 }
                 if mode == "shuffle" { shuffleNeedsFresh = false }
                 startAutoAdvanceTimer()
+                publishE2EPlaylistMeta()
             }
         } catch {}
     }
@@ -985,28 +1026,31 @@ struct FilePreviewView: View {
     }
 
     /// Navigate within the playlist (direction: +1 forward, -1 backward)
+    /// list_loop 滑动窗会在两端填充重复项；必须跳过与当前相同 uuid，否则遥控 next/prev 会「假换曲」。
     private func navigateInPlaylist(direction: Int) {
         guard playlist.count > 1 else { return }
-        let wrap = shuffleEnabled || listLoopEnabled
-        var newIndex = playlistIndex + direction
+        let wrap = effectiveShuffleEnabled || effectiveListLoopEnabled
+        let currentId = playlist[playlistIndex].uuid ?? playlist[playlistIndex].path
 
-        if newIndex >= 0 && newIndex < playlist.count {
-            withAnimation { playlistIndex = newIndex }
+        var idx = playlistIndex
+        for _ in 0..<playlist.count {
+            idx += direction
+            if idx < 0 || idx >= playlist.count {
+                guard wrap else { return }
+                idx = direction > 0 ? 0 : playlist.count - 1
+            }
+            let candidateId = playlist[idx].uuid ?? playlist[idx].path
+            if candidateId == currentId { continue }
+            withAnimation { playlistIndex = idx }
             cancelAutoAdvanceTimer()
             startAutoAdvanceTimer()
-            // Refill sliding window at edges for shuffle / list loop
-            if wrap && (newIndex == 0 || newIndex == playlist.count - 1) {
-                let file = playlist[newIndex]
-                Task { await fetchPlaylist(uuid: file.uuid ?? file.path, keepShuffleQueue: shuffleEnabled) }
+            refreshNowPlayingSkipAvailability()
+            if wrap && (idx == 0 || idx == playlist.count - 1) {
+                let file = playlist[idx]
+                Task { await fetchPlaylist(uuid: file.uuid ?? file.path, keepShuffleQueue: effectiveShuffleEnabled) }
             }
             return
         }
-
-        guard wrap else { return }
-        newIndex = direction > 0 ? 0 : playlist.count - 1
-        withAnimation { playlistIndex = newIndex }
-        let file = playlist[newIndex]
-        Task { await fetchPlaylist(uuid: file.uuid ?? file.path, keepShuffleQueue: shuffleEnabled) }
     }
 
     /// Jump to a specific file in the playlist
@@ -1047,6 +1091,12 @@ struct FilePreviewView: View {
         let npc = NowPlayingController.shared
         npc.canGoPrevious = canGoPrev
         npc.canGoNext = canGoNext
+        publishE2EPlaylistMeta()
+    }
+
+    private func publishE2EPlaylistMeta() {
+        guard ProcessInfo.processInfo.environment["E2E_NOWPLAYING_PROBE"] == "1" else { return }
+        E2EHarness.shared.playlistMeta = "\(playlist.count)|\(playlistIndex)|\(canGoNext ? 1 : 0)|\(canGoPrev ? 1 : 0)"
     }
 
     // MARK: - 视频截图
