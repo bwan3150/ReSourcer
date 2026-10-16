@@ -47,12 +47,19 @@
           </button>
           <span class="text-sm truncate flex-1">{{ previewFile.fileName }}</span>
           <span class="text-xs text-base-content/40">{{ playlistIndex + 1 }} / {{ playlist.length }}</span>
-          <button class="btn btn-ghost btn-xs btn-square" data-testid="file-info-btn" @click="openFileInfo()" :title="$t('gallery.fileInfo')">
+          <button
+            class="btn btn-ghost btn-xs btn-square"
+            data-testid="file-info-btn"
+            :class="{ 'btn-active': showInfoPanel }"
+            @click="toggleFileInfo()"
+            :title="$t('gallery.fileInfo') + ' (I)'"
+          >
             <Info :size="16" />
           </button>
         </div>
-        <!-- Player fills remaining space -->
-        <div class="flex-1 min-h-0">
+        <!-- Player + optional desktop info side panel -->
+        <div class="flex flex-1 min-h-0 relative">
+          <div class="flex-1 min-w-0 min-h-0 relative">
           <MediaPlayer
             ref="mediaPlayer"
             :src="contentSrc"
@@ -125,6 +132,133 @@
               </div>
             </div>
           </transition>
+          </div>
+
+          <!-- Desktop info side panel (feature parity with iOS; not phone Photos chrome) -->
+          <aside
+            v-if="showInfoPanel && !previewUIHidden"
+            class="w-[22rem] shrink-0 border-l border-base-300 bg-base-100 flex flex-col overflow-hidden"
+            data-testid="file-info-dialog"
+          >
+            <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-base-300 shrink-0">
+              <h3 class="font-semibold text-sm">{{ $t('gallery.fileInfo') }}</h3>
+              <kbd class="kbd kbd-xs opacity-50">I</kbd>
+              <button class="btn btn-ghost btn-xs btn-square ml-auto" @click="showInfoPanel = false" title="Close">
+                <X :size="14" />
+              </button>
+            </div>
+            <div class="flex-1 overflow-y-auto px-4 py-3 space-y-4 text-sm" data-testid="file-metadata-panel">
+              <div>
+                <div class="text-base font-medium truncate" data-testid="meta-filename">
+                  {{ fileMeta?.filename || previewFile.fileName }}
+                </div>
+                <div v-if="photosDateLabel" class="text-xs text-base-content/50 mt-0.5">{{ photosDateLabel }}</div>
+              </div>
+
+              <dl class="space-y-2">
+                <div v-if="fileMeta?.format || previewFile.extension" class="flex justify-between gap-3" data-testid="meta-format">
+                  <dt class="text-base-content/50 shrink-0">{{ $t('gallery.format') }}</dt>
+                  <dd class="text-right">{{ fileMeta?.format || previewFile.extension?.replace('.', '').toUpperCase() }}</dd>
+                </div>
+                <div class="flex justify-between gap-3" data-testid="meta-size">
+                  <dt class="text-base-content/50 shrink-0">{{ $t('gallery.fileSize') }}</dt>
+                  <dd class="text-right">{{ formatSize(fileMeta?.size ?? previewFile.fileSize) }}</dd>
+                </div>
+                <div v-if="fileMeta?.width && fileMeta?.height" class="flex justify-between gap-3" data-testid="meta-dimensions">
+                  <dt class="text-base-content/50 shrink-0">{{ $t('gallery.dimensions') }}</dt>
+                  <dd class="text-right">{{ fileMeta.width }} × {{ fileMeta.height }}</dd>
+                </div>
+                <div v-if="fileMeta?.megapixels" class="flex justify-between gap-3" data-testid="meta-megapixels">
+                  <dt class="text-base-content/50 shrink-0">MP</dt>
+                  <dd class="text-right">{{ Number(fileMeta.megapixels).toFixed(1) }}</dd>
+                </div>
+                <div v-if="deviceLabel" class="flex justify-between gap-3" data-testid="meta-device">
+                  <dt class="text-base-content/50 shrink-0">设备</dt>
+                  <dd class="text-right">{{ deviceLabel }}</dd>
+                </div>
+                <div v-if="fileMeta?.lens" class="flex justify-between gap-3" data-testid="meta-lens">
+                  <dt class="text-base-content/50 shrink-0">镜头</dt>
+                  <dd class="text-right truncate max-w-[60%]" :title="fileMeta.lens">{{ fileMeta.lens }}</dd>
+                </div>
+                <div v-if="fileMeta?.captureTime" class="flex justify-between gap-3" data-testid="meta-capture-time">
+                  <dt class="text-base-content/50 shrink-0">{{ $t('gallery.captureTime') }}</dt>
+                  <dd class="text-right">{{ fileMeta.captureTime }}</dd>
+                </div>
+                <div v-if="fileMeta?.duration" class="flex justify-between gap-3" data-testid="meta-duration">
+                  <dt class="text-base-content/50 shrink-0">{{ $t('gallery.duration') }}</dt>
+                  <dd class="text-right">{{ formatDuration(fileMeta.duration) }}</dd>
+                </div>
+                <div v-if="fileMeta?.codec" class="flex justify-between gap-3" data-testid="meta-codec">
+                  <dt class="text-base-content/50 shrink-0">Codec</dt>
+                  <dd class="text-right uppercase">{{ fileMeta.codec }}</dd>
+                </div>
+                <div class="flex justify-between gap-3">
+                  <dt class="text-base-content/50 shrink-0">{{ $t('gallery.created') }}</dt>
+                  <dd class="text-right">{{ formatDate(fileMeta?.created || previewFile.createdAt) }}</dd>
+                </div>
+                <div class="flex justify-between gap-3">
+                  <dt class="text-base-content/50 shrink-0">{{ $t('gallery.modified') }}</dt>
+                  <dd class="text-right">{{ formatDate(fileMeta?.modified || previewFile.modifiedAt) }}</dd>
+                </div>
+                <div v-if="previewFile.sourceUrl" class="flex justify-between gap-3">
+                  <dt class="text-base-content/50 shrink-0">{{ $t('gallery.sourceUrl') }}</dt>
+                  <dd class="text-right truncate max-w-[60%]">
+                    <a :href="previewFile.sourceUrl" target="_blank" rel="noopener" class="underline">{{ previewFile.sourceUrl }}</a>
+                  </dd>
+                </div>
+              </dl>
+
+              <div v-if="exifStrip.length" class="flex flex-wrap gap-1.5" data-testid="meta-exif-strip">
+                <span
+                  v-for="item in exifStrip"
+                  :key="item"
+                  class="badge badge-ghost badge-sm font-mono"
+                >{{ item }}</span>
+              </div>
+
+              <div v-if="fileMeta?.gps" class="rounded-lg border border-base-300 overflow-hidden" data-testid="meta-gps">
+                <div class="h-28 bg-base-200 flex items-center justify-center text-xs text-base-content/40">
+                  {{ formatGps(fileMeta.gps) }}
+                </div>
+                <div class="px-3 py-2 text-xs text-base-content/60">{{ formatGps(fileMeta.gps) }}</div>
+              </div>
+
+              <div class="pt-2 border-t border-base-300">
+                <div class="text-xs text-base-content/50 mb-2">{{ $t('gallery.tags') }}</div>
+                <TagEditor
+                  :file-tags="fileTags"
+                  :all-tags="allTags"
+                  @update="onUpdateTags"
+                  @create="onCreateTag"
+                />
+              </div>
+            </div>
+
+            <div class="shrink-0 border-t border-base-300 p-3 space-y-2" data-testid="file-info-actions">
+              <div class="flex gap-2">
+                <button class="btn btn-ghost btn-sm flex-1 gap-1" @click="showInfoPanel = false; startRename(previewFile)">
+                  <Pencil :size="14" />
+                  {{ $t('common.rename') }}
+                </button>
+                <button class="btn btn-ghost btn-sm flex-1 gap-1" @click="showInfoPanel = false; startMove(previewFile)">
+                  <FolderInput :size="14" />
+                  {{ $t('common.move') }}
+                </button>
+                <a :href="contentSrc" download class="btn btn-ghost btn-sm flex-1 gap-1">
+                  <Download :size="14" />
+                  {{ $t('common.download') }}
+                </a>
+              </div>
+              <button
+                v-if="!isInRecycleBin"
+                class="btn btn-ghost btn-sm w-full gap-1 text-error"
+                @click="showInfoPanel = false; confirmDelete(previewFile)"
+              >
+                <Trash2 :size="14" />
+                {{ $t('common.delete') }}
+              </button>
+            </div>
+          </aside>
         </div>
       </div>
     </template>
@@ -200,95 +334,6 @@
         </div>
       </div>
     </template>
-
-    <!-- File Info Dialog -->
-    <dialog ref="fileInfoDialog" class="modal" data-testid="file-info-dialog">
-      <div class="modal-box" v-if="previewFile">
-        <h3 class="font-bold text-lg mb-4">{{ $t('gallery.fileInfo') }}</h3>
-        <div class="space-y-2 text-sm" data-testid="file-metadata-panel">
-          <div class="flex justify-between" data-testid="meta-filename">
-            <span class="text-base-content/50">{{ $t('gallery.fileName') }}</span>
-            <span class="truncate ml-4 text-right max-w-[60%]">{{ fileMeta?.filename || previewFile.fileName }}</span>
-          </div>
-          <div v-if="fileMeta?.format" class="flex justify-between" data-testid="meta-format">
-            <span class="text-base-content/50">{{ $t('gallery.format') }}</span>
-            <span>{{ fileMeta.format }}</span>
-          </div>
-          <div v-else class="flex justify-between">
-            <span class="text-base-content/50">{{ $t('gallery.fileType') }}</span>
-            <span>{{ previewFile.extension?.replace('.', '').toUpperCase() }}</span>
-          </div>
-          <div class="flex justify-between" data-testid="meta-size">
-            <span class="text-base-content/50">{{ $t('gallery.fileSize') }}</span>
-            <span>{{ formatSize(fileMeta?.size ?? previewFile.fileSize) }}</span>
-          </div>
-          <div v-if="fileMeta?.width && fileMeta?.height" class="flex justify-between" data-testid="meta-dimensions">
-            <span class="text-base-content/50">{{ $t('gallery.dimensions') }}</span>
-            <span>{{ fileMeta.width }} × {{ fileMeta.height }}</span>
-          </div>
-          <div v-if="fileMeta?.captureTime" class="flex justify-between" data-testid="meta-capture-time">
-            <span class="text-base-content/50">{{ $t('gallery.captureTime') }}</span>
-            <span>{{ fileMeta.captureTime }}</span>
-          </div>
-          <div v-if="fileMeta?.gps" class="flex justify-between" data-testid="meta-gps">
-            <span class="text-base-content/50">{{ $t('gallery.gps') }}</span>
-            <span>{{ formatGps(fileMeta.gps) }}</span>
-          </div>
-          <div v-if="fileMeta?.duration" class="flex justify-between" data-testid="meta-duration">
-            <span class="text-base-content/50">{{ $t('gallery.duration') }}</span>
-            <span>{{ formatDuration(fileMeta.duration) }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-base-content/50">{{ $t('gallery.created') }}</span>
-            <span>{{ formatDate(fileMeta?.created || previewFile.createdAt) }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-base-content/50">{{ $t('gallery.modified') }}</span>
-            <span>{{ formatDate(fileMeta?.modified || previewFile.modifiedAt) }}</span>
-          </div>
-          <div v-if="previewFile.sourceUrl" class="flex justify-between">
-            <span class="text-base-content/50">{{ $t('gallery.sourceUrl') }}</span>
-            <a :href="previewFile.sourceUrl" target="_blank" rel="noopener" class="truncate ml-4 text-right max-w-[60%] underline">{{ previewFile.sourceUrl }}</a>
-          </div>
-        </div>
-
-        <!-- Tags -->
-        <div class="mt-4 pt-4 border-t border-base-300">
-          <div class="text-xs text-base-content/50 mb-2">{{ $t('gallery.tags') }}</div>
-          <TagEditor
-            :file-tags="fileTags"
-            :all-tags="allTags"
-            @update="onUpdateTags"
-            @create="onCreateTag"
-          />
-        </div>
-
-        <div class="flex gap-2 mt-6">
-          <button class="btn btn-ghost btn-sm flex-1 gap-1" @click="fileInfoDialog?.close(); startRename(previewFile)">
-            <Pencil :size="14" />
-            {{ $t('common.rename') }}
-          </button>
-          <button class="btn btn-ghost btn-sm flex-1 gap-1" @click="fileInfoDialog?.close(); startMove(previewFile)">
-            <FolderInput :size="14" />
-            {{ $t('common.move') }}
-          </button>
-          <a :href="contentSrc" download class="btn btn-ghost btn-sm flex-1 gap-1">
-            <Download :size="14" />
-            {{ $t('common.download') }}
-          </a>
-        </div>
-        <!-- 删除按钮（软删除到回收站；回收站内文件不显示，防止彻底删除） -->
-        <button
-          v-if="!isInRecycleBin"
-          class="btn btn-ghost btn-sm w-full gap-1 mt-2 text-error"
-          @click="fileInfoDialog?.close(); confirmDelete(previewFile)"
-        >
-          <Trash2 :size="14" />
-          {{ $t('common.delete') }}
-        </button>
-      </div>
-      <form method="dialog" class="modal-backdrop"><button>close</button></form>
-    </dialog>
 
     <!-- Delete Confirm Dialog -->
     <ConfirmDialog
@@ -540,14 +585,8 @@ useKeyboardShortcuts({
     osd.value?.show(wasMuted ? 'Volume2' : 'VolumeX')
   },
   fileInfo: () => {
-    const dialog = fileInfoDialog.value
-    if (dialog?.open) {
-      dialog.close()
-    } else {
-      loadFileMetadata()
-      dialog?.showModal()
-      osd.value?.show('Info')
-    }
+    toggleFileInfo()
+    osd.value?.show('Info')
   },
   exitPreview: () => { closePreview() },
   zoomIn: () => { mediaPlayer.value?.zoomBy(0.2); osd.value?.show('ZoomIn') },
@@ -576,7 +615,7 @@ useKeyboardShortcuts({
   },
 }, () => !!previewFile.value)
 
-const fileInfoDialog = ref(null)
+const showInfoPanel = ref(false)
 const gridScrollContainer = ref(null)
 let savedScrollTop = 0
 const allTags = ref([])
@@ -719,10 +758,57 @@ async function loadFileMetadata() {
   }
 }
 
-function openFileInfo() {
+function toggleFileInfo() {
+  if (showInfoPanel.value) {
+    showInfoPanel.value = false
+    return
+  }
+  showInfoPanel.value = true
   loadFileMetadata()
-  fileInfoDialog.value?.showModal()
 }
+
+function openFileInfo() {
+  showInfoPanel.value = true
+  loadFileMetadata()
+}
+
+const deviceLabel = computed(() => {
+  const m = fileMeta.value
+  if (!m) return null
+  if (m.make && m.model) {
+    if (String(m.model).toLowerCase().startsWith(String(m.make).toLowerCase())) return m.model
+    return `${m.make} ${m.model}`
+  }
+  return m.model || m.make || null
+})
+
+const photosDateLabel = computed(() => {
+  const raw = fileMeta.value?.captureTime || fileMeta.value?.created || previewFile.value?.createdAt
+  if (!raw) return ''
+  try {
+    const d = new Date(raw.includes('T') ? raw : raw.replace(' ', 'T'))
+    if (Number.isNaN(d.getTime())) return raw
+    return d.toLocaleString(undefined, { weekday: 'long', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return raw
+  }
+})
+
+const exifStrip = computed(() => {
+  const m = fileMeta.value
+  if (!m) return []
+  const items = []
+  if (m.iso != null) items.push(`ISO${m.iso}`)
+  const fl = m.focalLength35mm ?? m.focalLengthMm
+  if (fl != null) items.push(`${Math.round(Number(fl))}mm`)
+  if (m.exposureCompensation != null) {
+    const v = Number(m.exposureCompensation)
+    items.push(Math.abs(v) < 0.05 ? '0ev' : `${v > 0 ? '+' : ''}${Math.round(v)}ev`)
+  }
+  if (m.aperture != null) items.push(`ƒ${Number(m.aperture).toFixed(1)}`)
+  if (m.shutterSpeed) items.push(String(m.shutterSpeed).endsWith('s') ? m.shutterSpeed : `${m.shutterSpeed}s`)
+  return items
+})
 
 function formatSize(bytes) {
   if (!bytes) return '—'
@@ -797,6 +883,8 @@ function closePreview() {
   previewFile.value = null
   previewUIHidden.value = false
   showPlaylistPanel.value = false
+  showInfoPanel.value = false
+  fileMeta.value = null
   clearAutoAdvance()
   nextTick(() => {
     if (gridScrollContainer.value) {

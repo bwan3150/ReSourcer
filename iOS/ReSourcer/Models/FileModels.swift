@@ -213,6 +213,83 @@ struct FileMetadata: Codable, Equatable {
         }
         return String(format: "%d:%02d", m, s)
     }
+
+    /// e.g. "Apple iPhone 15 Pro"
+    var deviceLabel: String? {
+        switch (make, model) {
+        case let (m?, d?) where !m.isEmpty && !d.isEmpty:
+            if d.lowercased().hasPrefix(m.lowercased()) { return d }
+            return "\(m) \(d)"
+        case let (m?, nil) where !m.isEmpty: return m
+        case let (nil, d?) where !d.isEmpty: return d
+        default: return nil
+        }
+    }
+
+    /// Photos-style lens line, e.g. "Main Camera — 24 mm ƒ1.78"
+    var lensLine: String? {
+        var parts: [String] = []
+        if let lens, !lens.isEmpty {
+            let short = Self.shortenLens(lens)
+            if !short.isEmpty { parts.append(short) }
+        }
+        var optics: [String] = []
+        if let fl = focalLength35mm ?? focalLengthMm.map({ UInt32($0.rounded()) }) {
+            optics.append("\(fl) mm")
+        }
+        if let aperture {
+            optics.append(String(format: "ƒ%.2g", aperture))
+        }
+        if parts.isEmpty && optics.isEmpty { return nil }
+        if parts.isEmpty { return optics.joined(separator: " ") }
+        if optics.isEmpty { return parts[0] }
+        return "\(parts[0]) — \(optics.joined(separator: " "))"
+    }
+
+    /// e.g. "24 MP • 5712 × 4284 • 3.6 MB"
+    var resolutionSummary: String? {
+        var parts: [String] = []
+        if let megapixels {
+            let mp = megapixels >= 10
+                ? String(format: "%.0f MP", megapixels)
+                : String(format: "%.1f MP", megapixels)
+            parts.append(mp)
+        }
+        if let dims = formattedDimensions { parts.append(dims) }
+        parts.append(formattedSize)
+        return parts.isEmpty ? nil : parts.joined(separator: " • ")
+    }
+
+    var exifStripItems: [(label: String, value: String)] {
+        var items: [(String, String)] = []
+        if let iso { items.append(("ISO", "ISO\(iso)")) }
+        if let fl = focalLength35mm ?? focalLengthMm.map({ UInt32($0.rounded()) }) {
+            items.append(("Focal", "\(fl)mm"))
+        }
+        if let exposureCompensation {
+            let v = exposureCompensation
+            if abs(v) < 0.05 { items.append(("EV", "0ev")) }
+            else { items.append(("EV", String(format: "%+.0fev", v))) }
+        }
+        if let aperture {
+            items.append(("Aperture", String(format: "ƒ%.1f", aperture)))
+        }
+        if let shutterSpeed, !shutterSpeed.isEmpty {
+            items.append(("Shutter", shutterSpeed.hasSuffix("s") ? shutterSpeed : "\(shutterSpeed)s"))
+        }
+        return items
+    }
+
+    private static func shortenLens(_ raw: String) -> String {
+        let lower = raw.lowercased()
+        if lower.contains("ultra") && lower.contains("wide") { return "Ultra Wide Camera" }
+        if lower.contains("tele") { return "Telephoto Camera" }
+        if lower.contains("front") || lower.contains("selfie") { return "Front Camera" }
+        if lower.contains("back") || lower.contains("main") || lower.contains("wide") {
+            return "Main Camera"
+        }
+        return raw
+    }
 }
 
 /// 文件重命名请求
