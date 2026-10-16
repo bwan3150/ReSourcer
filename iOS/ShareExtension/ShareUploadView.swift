@@ -250,7 +250,8 @@ struct ShareUploadView: View {
                 return
             }
 
-            let staging = AppGroup.uploadStagingURL ?? FileManager.default.temporaryDirectory
+            // 大文件后台会话要求文件落在 App Group；缺容器时勿回退到临时目录（会触发 -995）
+            let staging = AppGroup.uploadStagingURL
             var backgroundEnqueued = false
 
             for (index, file) in prepared.enumerated() {
@@ -258,6 +259,11 @@ struct ShareUploadView: View {
                 let large = file.data.count > useBackgroundCutoff
 
                 if large {
+                    guard let staging else {
+                        throw APIError.unknown(
+                            "App Group 容器不可用，无法后台上传。请确认主 App 与 Share Extension 均已开启 App Group。"
+                        )
+                    }
                     try await enqueueBackground(
                         client: client,
                         server: server,
@@ -270,6 +276,7 @@ struct ShareUploadView: View {
                     )
                     backgroundEnqueued = true
                 } else {
+                    // 小文件：前台 NetworkManager multipart（不再走 BackgroundUploadSession）
                     _ = try await client.uploadDirect(
                         fileName: file.fileName,
                         data: file.data,

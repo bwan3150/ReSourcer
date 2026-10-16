@@ -64,15 +64,18 @@ actor ShareUploadClient {
         try await upload.getUploadPolicy().chunkSize
     }
 
-    /// 小文件直传（multipart）
+    /// 小文件前台直传（multipart，走默认 URLSession，避免 Extension 内 background 会话 -995）
     @discardableResult
     func uploadDirect(fileName: String, data: Data, mimeType: String, to targetFolder: String) async throws -> String {
-        try await upload.uploadFile(
-            fileName: fileName,
-            data: data,
-            mimeType: mimeType,
-            to: targetFolder
+        let response: CreateUploadTaskResponse = try await networkManager.upload(
+            .uploadTask,
+            files: [(fileName: fileName, data: data, mimeType: mimeType)],
+            parameters: ["target_folder": targetFolder]
         )
+        guard let taskId = response.taskIds.first else {
+            throw APIError.unknown("上传任务创建失败")
+        }
+        return taskId
     }
 
     /// 大文件分片（前台会话；用于 Extension 仍存活时）

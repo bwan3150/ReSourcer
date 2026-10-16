@@ -237,11 +237,12 @@ struct FilePreviewView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemoteNext)) { _ in
             guard canGoNext else { return }
-            navigateInPlaylist(direction: 1)
+            // 锁屏 / 控制中心：跳过图片等非音视频，保持后台连播
+            navigateInPlaylist(direction: 1, skipNonPlayable: true)
         }
         .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemotePrevious)) { _ in
             guard canGoPrev else { return }
-            navigateInPlaylist(direction: -1)
+            navigateInPlaylist(direction: -1, skipNonPlayable: true)
         }
         .task {
             // UITest：在拉播放列表前同步冷启动注入的模式，避免上一测 UserDefaults 残留
@@ -249,6 +250,7 @@ struct FilePreviewView: View {
                 listLoopEnabled = LocalStorageService.shared.getListLoopEnabled()
                 shuffleEnabled = LocalStorageService.shared.getShuffleEnabled()
                 prefs = LocalStorageService.shared.getPreviewPreferences()
+                advanceMode = LocalStorageService.shared.getAdvanceMode()
             }
             if shuffleEnabled { shuffleNeedsFresh = true }
             await fetchPlaylist(uuid: initialUuid, keepShuffleQueue: false)
@@ -1027,29 +1029,24 @@ struct FilePreviewView: View {
 
     /// Navigate within the playlist (direction: +1 forward, -1 backward)
     /// list_loop 滑动窗会在两端填充重复项；必须跳过与当前相同 uuid，否则遥控 next/prev 会「假换曲」。
-    private func navigateInPlaylist(direction: Int) {
-        guard playlist.count > 1 else { return }
+    /// `skipNonPlayable`：自动连播 / 锁屏遥控时跳过图片等，避免后台播放停住。
+    private func navigateInPlaylist(direction: Int, skipNonPlayable: Bool = false) {
         let wrap = effectiveShuffleEnabled || effectiveListLoopEnabled
-        let currentId = playlist[playlistIndex].uuid ?? playlist[playlistIndex].path
+        guard let idx = PlaylistAdvance.nextIndex(
+            playlist: playlist,
+            from: playlistIndex,
+            direction: direction,
+            wrap: wrap,
+            skipNonPlayable: skipNonPlayable
+        ) else { return }
 
-        var idx = playlistIndex
-        for _ in 0..<playlist.count {
-            idx += direction
-            if idx < 0 || idx >= playlist.count {
-                guard wrap else { return }
-                idx = direction > 0 ? 0 : playlist.count - 1
-            }
-            let candidateId = playlist[idx].uuid ?? playlist[idx].path
-            if candidateId == currentId { continue }
-            withAnimation { playlistIndex = idx }
-            cancelAutoAdvanceTimer()
-            startAutoAdvanceTimer()
-            refreshNowPlayingSkipAvailability()
-            if wrap && (idx == 0 || idx == playlist.count - 1) {
-                let file = playlist[idx]
-                Task { await fetchPlaylist(uuid: file.uuid ?? file.path, keepShuffleQueue: effectiveShuffleEnabled) }
-            }
-            return
+        withAnimation { playlistIndex = idx }
+        cancelAutoAdvanceTimer()
+        startAutoAdvanceTimer()
+        refreshNowPlayingSkipAvailability()
+        if wrap && (idx == 0 || idx == playlist.count - 1) {
+            let file = playlist[idx]
+            Task { await fetchPlaylist(uuid: file.uuid ?? file.path, keepShuffleQueue: effectiveShuffleEnabled) }
         }
     }
 
@@ -1060,10 +1057,10 @@ struct FilePreviewView: View {
         Task { await fetchPlaylist(uuid: file.uuid ?? file.path, keepShuffleQueue: false) }
     }
 
-    /// Called when media playback ends
+    /// Called when media playback ends — 跳过非音视频以保持后台连播
     private func advanceToNext() {
         if advanceMode == .repeatCurrent { return }
-        navigateInPlaylist(direction: 1)
+        navigateInPlaylist(direction: 1, skipNonPlayable: true)
     }
 
     /// Auto-advance timer for static content (images, PDF, other)
@@ -1616,7 +1613,8 @@ struct VideoPreviewContent: View {
     let onTap: () -> Void
 
     @State private var player: AVPlayer?
-    @State private var duration: Double = 1
+    /// 勿默认 1：未就绪时写入 Now Playing 会让锁屏进度条显示约 1 秒总时长
+    @State private var duration: Double = 0
     @State private var timeObserver: Any?
     @State private var isBuffering = true  // 缓冲/转码加载中
     @State private var statusObserver: NSKeyValueObservation?
@@ -1734,6 +1732,12 @@ struct VideoPreviewContent: View {
         NowPlayingController.shared.activatePlaybackSession()
 
         isBuffering = true
+        // 索引元数据优先于占位 1s；流媒体 item.duration 未就绪时也能先写出真实总时长
+        duration = MediaDurationResolver.resolve(
+            playerItem: nil,
+            fileDuration: file.duration,
+            current: 0
+        )
         logger.info("视频 URL: \(url.absoluteString)")
 
         let avPlayer = AVPlayer(url: url)
@@ -1750,11 +1754,8 @@ struct VideoPreviewContent: View {
                 switch item.status {
                 case .readyToPlay:
                     isBuffering = false
-                    let dur = item.duration.seconds
-                    if dur.isFinite && dur > 0 {
-                        duration = dur
-                    }
-                    self.logger.info("readyToPlay，时长: \(dur.isFinite ? String(format: "%.2fs", dur) : "未知")")
+                    self.refreshResolvedDuration(from: item)
+                    self.logger.info("readyToPlay，时长: \(String(format: "%.2fs", self.duration))")
                     self.publishNowPlaying(isPlaying: true)
                 case .failed:
                     isBuffering = false
@@ -1778,12 +1779,7 @@ struct VideoPreviewContent: View {
             Task { @MainActor in
                 let elapsed = NowPlayingController.sanitizedTime(time.seconds)
                 currentTime = elapsed
-                if let item = avPlayer?.currentItem {
-                    let dur = item.duration.seconds
-                    if dur.isFinite && dur > 0 {
-                        duration = dur
-                    }
-                }
+                self.refreshResolvedDuration(from: avPlayer?.currentItem)
                 NowPlayingController.shared.updatePlaybackProgress(
                     elapsed: elapsed,
                     duration: duration,
@@ -1811,10 +1807,34 @@ struct VideoPreviewContent: View {
             }
         }
 
-        publishNowPlaying(isPlaying: true)
+        // 仅在已有真实时长时立即发布，避免把 1s 占位写进锁屏
+        if duration > 0 {
+            publishNowPlaying(isPlaying: true)
+        }
         loadArtworkIntoNowPlaying()
+        // 流媒体：并行从 asset 拉时长，覆盖 indefinite duration
+        Task {
+            let assetDur = await MediaDurationResolver.loadAssetDuration(url: url)
+            await MainActor.run {
+                if assetDur > 0, assetDur > duration {
+                    duration = assetDur
+                    publishNowPlaying(isPlaying: isPlaying)
+                }
+            }
+        }
         avPlayer.play()
         isPlaying = true
+    }
+
+    private func refreshResolvedDuration(from item: AVPlayerItem?) {
+        let resolved = MediaDurationResolver.resolve(
+            playerItem: item,
+            fileDuration: file.duration,
+            current: duration
+        )
+        if resolved > 0 {
+            duration = resolved
+        }
     }
 
     private func seekTo(_ position: TimeInterval) {
@@ -1899,7 +1919,7 @@ struct AudioPreviewContent: View {
     let onTap: () -> Void
 
     @State private var player: AVPlayer?
-    @State private var duration: Double = 1
+    @State private var duration: Double = 0
     @State private var timeObserver: Any?
     @State private var statusObserver: NSKeyValueObservation?
     @State private var coverLoaded = false
@@ -2028,6 +2048,11 @@ struct AudioPreviewContent: View {
 
         NowPlayingController.shared.activatePlaybackSession()
 
+        duration = MediaDurationResolver.resolve(
+            playerItem: nil,
+            fileDuration: file.duration,
+            current: 0
+        )
         logger.info("音频 URL: \(url.absoluteString)")
         let avPlayer = AVPlayer(url: url)
         avPlayer.isMuted = isMuted
@@ -2041,11 +2066,8 @@ struct AudioPreviewContent: View {
             Task { @MainActor in
                 switch item.status {
                 case .readyToPlay:
-                    let dur = item.duration.seconds
-                    if dur.isFinite && dur > 0 {
-                        duration = dur
-                    }
-                    self.logger.info("音频 readyToPlay")
+                    self.refreshResolvedDuration(from: item)
+                    self.logger.info("音频 readyToPlay，时长: \(String(format: "%.2fs", self.duration))")
                     self.publishNowPlaying(isPlaying: true)
                 case .failed:
                     let err = item.error
@@ -2067,12 +2089,7 @@ struct AudioPreviewContent: View {
             Task { @MainActor in
                 let elapsed = NowPlayingController.sanitizedTime(time.seconds)
                 currentTime = elapsed
-                if let item = avPlayer?.currentItem {
-                    let dur = item.duration.seconds
-                    if dur.isFinite && dur > 0 {
-                        duration = dur
-                    }
-                }
+                self.refreshResolvedDuration(from: avPlayer?.currentItem)
                 NowPlayingController.shared.updatePlaybackProgress(
                     elapsed: elapsed,
                     duration: duration,
@@ -2100,10 +2117,32 @@ struct AudioPreviewContent: View {
             }
         }
 
-        publishNowPlaying(isPlaying: true)
+        if duration > 0 {
+            publishNowPlaying(isPlaying: true)
+        }
         loadArtworkIntoNowPlaying()
+        Task {
+            let assetDur = await MediaDurationResolver.loadAssetDuration(url: url)
+            await MainActor.run {
+                if assetDur > 0, assetDur > duration {
+                    duration = assetDur
+                    publishNowPlaying(isPlaying: isPlaying)
+                }
+            }
+        }
         avPlayer.play()
         isPlaying = true
+    }
+
+    private func refreshResolvedDuration(from item: AVPlayerItem?) {
+        let resolved = MediaDurationResolver.resolve(
+            playerItem: item,
+            fileDuration: file.duration,
+            current: duration
+        )
+        if resolved > 0 {
+            duration = resolved
+        }
     }
 
     private func seekTo(_ position: TimeInterval) {
