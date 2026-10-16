@@ -29,6 +29,8 @@
 		C1000011233F0001 /* ShareUploadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000011233F0000 /* ShareUploadView.swift */; };
 		C10000E2233F0000 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C1000020233F0000 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C1000030233F0001 /* ShareDownloadUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000030233F0000 /* ShareDownloadUITests.swift */; };
+		C1000031233F0001 /* VideoPlaybackCrashUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000031233F0000 /* VideoPlaybackCrashUITests.swift */; };
+		C1000032233F0001 /* ShareSourceFoldersUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000032233F0000 /* ShareSourceFoldersUITests.swift */; };
 		4C1D717EE8BDFF4B003707D2 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E698E88935756D992DB0E55 /* AboutView.swift */; };
 		5BA764DFEB45D4ADAE38CC6A /* MetricsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF085BEB183121E3B39A0477 /* MetricsService.swift */; };
 		8B6571A01BF18BCAF39FCD63 /* ServerMetricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C09E79295A8E45EF0CDF20D /* ServerMetricsView.swift */; };
@@ -121,6 +123,8 @@
 		C1000014233F0000 /* ReSourcer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ReSourcer.entitlements; sourceTree = "<group>"; };
 		C1000020233F0000 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		C1000030233F0000 /* ShareDownloadUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareDownloadUITests.swift; sourceTree = "<group>"; };
+		C1000031233F0000 /* VideoPlaybackCrashUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlaybackCrashUITests.swift; sourceTree = "<group>"; };
+		C1000032233F0000 /* ShareSourceFoldersUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSourceFoldersUITests.swift; sourceTree = "<group>"; };
 		4C09E79295A8E45EF0CDF20D /* ServerMetricsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ServerMetricsView.swift; sourceTree = "<group>"; };
 		649E6184143302EFD3D570DE /* MetricsModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MetricsModels.swift; sourceTree = "<group>"; };
 		7E698E88935756D992DB0E55 /* AboutView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
@@ -441,6 +445,8 @@
 				B1000008233F0000 /* ThumbnailPersistUITests.swift */,
 				C1000004233F0000 /* BackgroundPlaybackUITests.swift */,
 				C1000030233F0000 /* ShareDownloadUITests.swift */,
+				C1000031233F0000 /* VideoPlaybackCrashUITests.swift */,
+				C1000032233F0000 /* ShareSourceFoldersUITests.swift */,
 			);
 			path = ReSourcerUITests;
 			sourceTree = "<group>";
@@ -756,6 +762,8 @@
 				B1000009233F0001 /* ThumbnailPersistUITests.swift in Sources */,
 				C1000004233F0001 /* BackgroundPlaybackUITests.swift in Sources */,
 				C1000030233F0001 /* ShareDownloadUITests.swift in Sources */,
+				C1000031233F0001 /* VideoPlaybackCrashUITests.swift in Sources */,
+				C1000032233F0001 /* ShareSourceFoldersUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
