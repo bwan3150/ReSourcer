@@ -186,6 +186,15 @@ struct ChunkPartResponse: Codable {
     let received: UInt64
 }
 
+/// 分片状态查询响应（断点续传）
+struct ChunkStatusResponse: Codable {
+    let uploadId: String
+    let totalChunks: Int
+    let fileSize: UInt64
+    /// 服务端已接收的分片序号
+    let uploaded: [Int]
+}
+
 /// 分片上传完成响应
 struct ChunkCompleteResponse: Codable {
     let uploadId: String
