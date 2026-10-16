@@ -12,7 +12,7 @@ on:
 env:
   # 切换开发者账号时改这三行,并替换 environment 下的全部 secret
   BUNDLE_ID: app.resourcer.apple
-  SHARE_BUNDLE_ID: app.resourcer.apple.share
+  SHARE_BUNDLE_ID: app.resourcer.apple.helper
   TEAM_ID: 925YHK2R4K
 
 jobs:
@@ -37,7 +37,7 @@ jobs:
           IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
           IOS_KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
           IOS_APPSTORE_PROFILE_BASE64: ${{ secrets.IOS_APPSTORE_PROFILE_BASE64 }}
-          IOS_APPSTORE_SHARE_PROFILE_BASE64: ${{ secrets.IOS_APPSTORE_SHARE_PROFILE_BASE64 }}
+          IOS_APPSTORE_HELPER_PROFILE_BASE64: ${{ secrets.IOS_APPSTORE_HELPER_PROFILE_BASE64 }}
           ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
           ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
           ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
@@ -57,14 +57,14 @@ jobs:
 
           # Share Extension profile: prefer dedicated secret; else download via ASC API
           export SHARE_PROVISION_PATH
-          if [ -n "$IOS_APPSTORE_SHARE_PROFILE_BASE64" ]; then
-            echo -n "$IOS_APPSTORE_SHARE_PROFILE_BASE64" | base64 --decode -o "$SHARE_PROVISION_PATH"
+          if [ -n "$IOS_APPSTORE_HELPER_PROFILE_BASE64" ]; then
+            echo -n "$IOS_APPSTORE_HELPER_PROFILE_BASE64" | base64 --decode -o "$SHARE_PROVISION_PATH"
           else
             if [ -z "$ASC_API_KEY_ID" ] || [ -z "$ASC_API_ISSUER_ID" ] || [ -z "$ASC_API_KEY_P8" ]; then
-              echo "::error::缺少 IOS_APPSTORE_SHARE_PROFILE_BASE64，且无 ASC API 凭证可自动拉取 Share Extension 描述文件"
+              echo "::error::缺少 IOS_APPSTORE_HELPER_PROFILE_BASE64，且无 ASC API 凭证可自动拉取 Share Extension 描述文件"
               exit 1
             fi
-            echo "IOS_APPSTORE_SHARE_PROFILE_BASE64 未设置，通过 App Store Connect API 拉取 $SHARE_BUNDLE_ID App Store profile…"
+            echo "IOS_APPSTORE_HELPER_PROFILE_BASE64 未设置，通过 App Store Connect API 拉取 $SHARE_BUNDLE_ID App Store profile…"
             python3 -m venv "$RUNNER_TEMP/asc-venv"
             # shellcheck disable=SC1091
             source "$RUNNER_TEMP/asc-venv/bin/activate"
@@ -185,7 +185,7 @@ jobs:
                   print(
                       "::error::找不到 Apple Distribution 证书，无法自动创建 Share Extension profile。"
                       "请在 developer.apple.com 创建 App Store profile，"
-                      "并设置 secret IOS_APPSTORE_SHARE_PROFILE_BASE64。",
+                      "并设置 secret IOS_APPSTORE_HELPER_PROFILE_BASE64。",
                       file=sys.stderr,
                   )
                   sys.exit(1)
