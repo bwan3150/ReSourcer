@@ -76,7 +76,8 @@ final class ShareDownloadUITests: XCTestCase {
         XCTAssertTrue(downloadTab.waitForExistence(timeout: 12))
 
         let url = URL(string: "resourcer://download?url=\(pending.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)")!
-        XCUIDevice.shared.system.open(url)
+        // XCUIApplication.open 走系统打开 URL（模拟 Share / 深链交接）
+        app.open(url)
 
         if downloadTab.waitForExistence(timeout: 5) {
             downloadTab.tap()
