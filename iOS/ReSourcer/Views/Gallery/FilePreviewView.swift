@@ -265,8 +265,12 @@ struct FilePreviewView: View {
             NowPlayingController.shared.clear()
         }
         // 文件信息面板
-        .glassBottomSheet(isPresented: $showInfoSheet, title: "文件信息") {
-            fileInfoContent
+        .glassBottomSheet(
+            isPresented: $showInfoSheet,
+            title: "文件信息",
+            stickyFooter: { fileInfoActions }
+        ) {
+            fileInfoModules
         }
         // 重命名浮窗（overlay 避免被输入法遮挡）
         .overlay {
@@ -681,12 +685,13 @@ struct FilePreviewView: View {
     // MARK: - 文件信息面板内容
 
     @ViewBuilder
-    private var fileInfoContent: some View {
+    private var fileInfoModules: some View {
         if let file = currentFile {
             FileInfoSheetContent(
                 file: file,
                 metadata: fileMetadata,
                 position: "\(playlistIndex + 1) / \(playlist.count)",
+                showsActions: false,
                 tags: fileInfoTags,
                 onAddTag: file.uuid != nil ? {
                     showInfoSheet = false
@@ -695,15 +700,24 @@ struct FilePreviewView: View {
                         showTagEditor = true
                     }
                 } : nil,
-                onRename: {
-                    let target = file
-                    renameTarget = target
+                onShowDebugLog: {
                     showInfoSheet = false
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(300))
-                        renameText = target.baseName
-                        showRenameAlert = true
+                        showDebugLog = true
                     }
+                }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var fileInfoActions: some View {
+        if let file = currentFile {
+            FileInfoActionsRow(
+                onDownload: {
+                    showInfoSheet = false
+                    saveFileToDevice(file)
                 },
                 onShare: {
                     showInfoSheet = false
@@ -718,9 +732,15 @@ struct FilePreviewView: View {
                         showMoveSheet = true
                     }
                 },
-                onDownload: {
+                onRename: {
+                    let target = file
+                    renameTarget = target
                     showInfoSheet = false
-                    saveFileToDevice(file)
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        renameText = target.baseName
+                        showRenameAlert = true
+                    }
                 },
                 onDelete: (file.uuid != nil && !isInRecycleBin) ? {
                     showInfoSheet = false
@@ -728,14 +748,7 @@ struct FilePreviewView: View {
                         try? await Task.sleep(for: .milliseconds(300))
                         promptDelete(file: file)
                     }
-                } : nil,
-                onShowDebugLog: {
-                    showInfoSheet = false
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(300))
-                        showDebugLog = true
-                    }
-                }
+                } : nil
             )
         }
     }

@@ -148,12 +148,31 @@ struct ClassifierView: View {
                 .presentationDetents([.medium, .large])
             }
         }
-        // 文件信息面板
-        .glassBottomSheet(isPresented: $showInfoSheet, title: "文件信息") {
+        // 信息 / 重命名 sheet 打开时隐藏 TabBar，避免挡住操作栏
+        .toolbar((showInfoSheet || showRenameAlert) ? .hidden : .automatic, for: .tabBar)
+        // 文件信息面板（操作栏 sticky）
+        .glassBottomSheet(
+            isPresented: $showInfoSheet,
+            title: "文件信息",
+            stickyFooter: {
+                if let file = currentFile {
+                    FileInfoActionsRow(
+                        onRename: {
+                            showInfoSheet = false
+                            Task { @MainActor in
+                                try? await Task.sleep(for: .milliseconds(300))
+                                renameText = file.baseName
+                                showRenameAlert = true
+                            }
+                        }
+                    )
+                }
+            }
+        ) {
             if let file = currentFile {
                 FileInfoSheetContent(
                     file: file,
-                    bottomSpacing: 60,
+                    showsActions: false,
                     tags: fileInfoTags,
                     onAddTag: file.uuid != nil ? {
                         showInfoSheet = false
@@ -161,15 +180,7 @@ struct ClassifierView: View {
                             try? await Task.sleep(for: .milliseconds(300))
                             showTagEditor = true
                         }
-                    } : nil,
-                    onRename: {
-                        showInfoSheet = false
-                        Task { @MainActor in
-                            try? await Task.sleep(for: .milliseconds(300))
-                            renameText = file.baseName
-                            showRenameAlert = true
-                        }
-                    }
+                    } : nil
                 )
             }
         }

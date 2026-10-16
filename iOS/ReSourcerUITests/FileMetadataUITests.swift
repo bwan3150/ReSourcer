@@ -205,14 +205,14 @@ final class FileMetadataUITests: XCTestCase {
         }
         uuid = uuid!
 
-        // Prefer FilePreview info sheet: gallery list sheet sits under the tab bar,
-        // so action buttons stay non-hittable even after scrolling.
-        openGridItem(uuid: uuid!)
-        openInfoSheet()
+        // Gallery **list** info sheet (not FilePreview): sticky action row must be
+        // visible/hittable above the tab bar / safe area.
+        openListInfo(uuid: uuid!, fileNameHint: mutateName)
+        assertFileInfoActionsHittable()
 
         // --- RENAME ---
         tapActionButton(labeled: "重命名")
-        // Preview rename overlay opens after ~300ms sheet dismiss
+        // Gallery rename sheet opens after ~300ms sheet dismiss
         RunLoop.current.run(until: Date().addingTimeInterval(0.8))
 
         var nameField = app.descendants(matching: .any)["renameTextField"].firstMatch
@@ -258,15 +258,15 @@ final class FileMetadataUITests: XCTestCase {
         XCTAssertTrue(renamedPath.hasSuffix("mutate-renamed.jpg"), "path=\(renamedPath)")
         XCTAssertTrue(FileManager.default.fileExists(atPath: renamedPath), "fs \(renamedPath)")
 
-        // Refresh into preview of the renamed file
+        // Relaunch so gallery list reflects renamed file
         app.terminate()
         app.launchEnvironment["E2E_SERVER_URL"] = serverURL
         app.launchEnvironment["E2E_API_KEY"] = apiKey
         app.launch()
 
         // --- MOVE to Album ---
-        openGridItem(uuid: uuid!)
-        openInfoSheet()
+        openListInfo(uuid: uuid!, fileNameHint: "mutate-renamed.jpg")
+        assertFileInfoActionsHittable()
         tapActionButton(labeled: "移动")
 
         let album = app.staticTexts["Album"].firstMatch
@@ -297,10 +297,10 @@ final class FileMetadataUITests: XCTestCase {
         app.launchEnvironment["E2E_API_KEY"] = apiKey
         app.launch()
 
-        // Gallery grid only lists files in the current folder — enter Album via dropdown.
+        // Gallery list only shows files in the current folder — enter Album via dropdown.
         navigateToSubfolder(named: "Album")
-        openGridItem(uuid: uuid!)
-        openInfoSheet()
+        openListInfo(uuid: uuid!, fileNameHint: "mutate-renamed.jpg")
+        assertFileInfoActionsHittable()
         tapActionButton(labeled: "删除")
 
         let dialogTitle = app.staticTexts["删除此文件？"]
@@ -329,8 +329,24 @@ final class FileMetadataUITests: XCTestCase {
         "分享": "fileInfoShareButton"
     ]
 
-    /// Tap info-panel action without app-level swipes (those dismiss glass sheets).
-    /// Tall EXIF sheets clip the action row — scroll the sheet ScrollView until hittable.
+    /// Sticky action row must be hittable without scrolling (product fix for tab-bar clip).
+    private func assertFileInfoActionsHittable() {
+        let row = app.descendants(matching: .any)["fileInfoActionsRow"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "fileInfoActionsRow should exist")
+        let rename = app.buttons["fileInfoRenameButton"].firstMatch
+        let move = app.buttons["fileInfoMoveButton"].firstMatch
+        let delete = app.buttons["fileInfoDeleteButton"].firstMatch
+        XCTAssertTrue(rename.waitForExistence(timeout: 5), "rename action")
+        XCTAssertTrue(rename.isHittable, "rename must be hittable without scrolling (not under tab bar)")
+        if move.exists {
+            XCTAssertTrue(move.isHittable, "move must be hittable without scrolling")
+        }
+        if delete.exists {
+            XCTAssertTrue(delete.isHittable, "delete must be hittable without scrolling")
+        }
+    }
+
+    /// Tap info-panel action. Sticky footer should already be hittable; scroll only as fallback.
     private func tapActionButton(labeled label: String) {
         let actionId = Self.fileInfoActionIds[label]
         let btn: XCUIElement
@@ -420,7 +436,11 @@ final class FileMetadataUITests: XCTestCase {
             }
         }
         if infoBtn.waitForExistence(timeout: 3) {
-            infoBtn.tap()
+            if infoBtn.isHittable {
+                infoBtn.tap()
+            } else {
+                infoBtn.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
         } else if let name = fileNameHint {
             // Fallback: find filename label then tap 文件信息 / ellipsis on that row
             let nameLabel = app.staticTexts[name].firstMatch
@@ -438,10 +458,13 @@ final class FileMetadataUITests: XCTestCase {
             XCTFail("list info button for \(uuid) not found")
             return
         }
-        let actions = app.buttons["重命名"]
+        let actionsRow = app.descendants(matching: .any)["fileInfoActionsRow"].firstMatch
+        let rename = app.buttons["fileInfoRenameButton"].firstMatch
         let basics = app.descendants(matching: .any)["meta-module-basics"]
         XCTAssertTrue(
-            actions.waitForExistence(timeout: 10) || basics.waitForExistence(timeout: 10),
+            actionsRow.waitForExistence(timeout: 10)
+                || rename.waitForExistence(timeout: 10)
+                || basics.waitForExistence(timeout: 10),
             "info sheet should open from list"
         )
         RunLoop.current.run(until: Date().addingTimeInterval(1.0))

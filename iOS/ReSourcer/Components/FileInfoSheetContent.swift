@@ -19,8 +19,11 @@ struct FileInfoSheetContent: View {
     /// 画廊序号（如 "3 / 10"），显示在时间模块副标题；不是路径
     var position: String? = nil
 
-    /// 底部额外间距（如 GalleryView 需要给 navbar 留空间）
+    /// 底部额外间距（遗留；优先用 glassBottomSheet stickyFooter + 隐藏 TabBar）
     var bottomSpacing: CGFloat = 0
+
+    /// 是否在滚动内容内渲染操作栏。false 时由调用方放到 stickyFooter。
+    var showsActions: Bool = true
 
     /// 文件标签
     var tags: [Tag] = []
@@ -53,7 +56,15 @@ struct FileInfoSheetContent: View {
                 basicsModule
             }
 
-            actionsRow
+            if showsActions {
+                FileInfoActionsRow(
+                    onDownload: onDownload,
+                    onShare: onShare,
+                    onMove: onMove,
+                    onRename: onRename,
+                    onDelete: onDelete
+                )
+            }
 
             if bottomSpacing > 0 {
                 Spacer().frame(height: bottomSpacing)
@@ -431,10 +442,53 @@ struct FileInfoSheetContent: View {
         .accessibilityIdentifier("meta-module-basics")
     }
 
-    // MARK: - Actions (single row)
+    // MARK: - Date helpers
 
-    @ViewBuilder
-    private var actionsRow: some View {
+    private static func formatPhotosDate(_ raw: String) -> String? {
+        guard let date = parseDate(raw) else { return nil }
+        let out = DateFormatter()
+        out.locale = Locale(identifier: "zh_CN")
+        out.dateFormat = "EEEE • M月d日 • HH:mm"
+        return out.string(from: date)
+    }
+
+    private static func calendarDayKey(_ raw: String) -> String? {
+        guard let date = parseDate(raw) else { return nil }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: date)
+    }
+
+    private static func normalizeTime(_ raw: String) -> String {
+        String(raw.trimmingCharacters(in: .whitespacesAndNewlines).prefix(19))
+    }
+
+    private static func parseDate(_ raw: String) -> Date? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let a = DateFormatter()
+        a.locale = Locale(identifier: "en_US_POSIX")
+        a.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        let b = DateFormatter()
+        b.locale = Locale(identifier: "en_US_POSIX")
+        b.dateFormat = "yyyy:MM:dd HH:mm:ss"
+        let head = String(trimmed.prefix(19))
+        return a.date(from: head) ?? b.date(from: head) ?? ISO8601DateFormatter().date(from: trimmed)
+    }
+}
+
+// MARK: - Sticky action row (outside ScrollView)
+
+/// 信息面板底部操作栏。放进 `glassBottomSheet(stickyFooter:)` 以免被滚动裁切或被 TabBar 挡住。
+struct FileInfoActionsRow: View {
+    var onDownload: (() -> Void)? = nil
+    var onShare: (() -> Void)? = nil
+    var onMove: (() -> Void)? = nil
+    var onRename: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
+
+    var body: some View {
         let hasActions = onDownload != nil || onShare != nil || onMove != nil
             || onRename != nil || onDelete != nil
         if hasActions {
@@ -470,43 +524,10 @@ struct FileInfoSheetContent: View {
                         .accessibilityIdentifier("fileInfoDeleteButton")
                 }
             }
-            .padding(.top, AppTheme.Spacing.xs)
+            .padding(.bottom, AppTheme.Spacing.xs)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("fileInfoActionsRow")
         }
-    }
-
-    // MARK: - Date helpers
-
-    private static func formatPhotosDate(_ raw: String) -> String? {
-        guard let date = parseDate(raw) else { return nil }
-        let out = DateFormatter()
-        out.locale = Locale(identifier: "zh_CN")
-        out.dateFormat = "EEEE • M月d日 • HH:mm"
-        return out.string(from: date)
-    }
-
-    private static func calendarDayKey(_ raw: String) -> String? {
-        guard let date = parseDate(raw) else { return nil }
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "yyyy-MM-dd"
-        return f.string(from: date)
-    }
-
-    private static func normalizeTime(_ raw: String) -> String {
-        String(raw.trimmingCharacters(in: .whitespacesAndNewlines).prefix(19))
-    }
-
-    private static func parseDate(_ raw: String) -> Date? {
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        let a = DateFormatter()
-        a.locale = Locale(identifier: "en_US_POSIX")
-        a.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let b = DateFormatter()
-        b.locale = Locale(identifier: "en_US_POSIX")
-        b.dateFormat = "yyyy:MM:dd HH:mm:ss"
-        let head = String(trimmed.prefix(19))
-        return a.date(from: head) ?? b.date(from: head) ?? ISO8601DateFormatter().date(from: trimmed)
     }
 }
 
