@@ -512,7 +512,7 @@ struct FileInfoSheetContent: View {
 
 // MARK: - Sticky action row (outside ScrollView)
 
-/// 信息面板底部操作栏。放进 `glassBottomSheet(stickyFooter:)` 以免被滚动裁切或被 TabBar 挡住。
+/// 信息面板底部操作栏。放进 `fileInfoPanel(actions:)`（ScrollView 外）以免被滚动裁切。
 struct FileInfoActionsRow: View {
     var onDownload: (() -> Void)? = nil
     var onShare: (() -> Void)? = nil

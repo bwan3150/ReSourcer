@@ -71,6 +71,7 @@ struct FilePreviewView: View {
 
     // 文件信息面板
     @State private var showInfoSheet = false
+    @State private var fileInfoDetent: FileInfoPanelDetent = .half
     @State private var fileInfoTags: [Tag] = []
     @State private var fileMetadata: FileMetadata? = nil
     @State private var isLoadingFileMetadata = false
@@ -278,13 +279,13 @@ struct FilePreviewView: View {
 
     private var previewWithSheets: some View {
         previewWithLifecycle
-            .glassBottomSheet(
+            .fileInfoPanel(
                 isPresented: $showInfoSheet,
+                selectedDetent: $fileInfoDetent,
                 title: "文件信息",
-                stickyFooter: { fileInfoActions }
-            ) {
-                fileInfoModules
-            }
+                actions: { fileInfoActions },
+                modules: { fileInfoModules }
+            )
             .overlay {
                 if showRenameAlert {
                     renameAlertOverlay
@@ -702,6 +703,7 @@ struct FilePreviewView: View {
     }
 
     private func openInfoSheetForCurrentFile() {
+        fileInfoDetent = .half
         showInfoSheet = true
         cancelAutoAdvanceTimer()
         reloadFileMetadataForCurrentFile()

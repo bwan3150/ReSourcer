@@ -67,6 +67,7 @@ struct GalleryView: View {
     // 文件信息弹窗
     @State private var selectedFile: FileInfo?       // 用于重命名/移动操作
     @State private var fileInfoToShow: FileInfo?     // 驱动弹窗显示 + 数据（单一状态源）
+    @State private var fileInfoDetent: FileInfoPanelDetent = .half
     @State private var fileInfoMetadata: FileMetadata? = nil
     @State private var isLoadingFileInfoMetadata = false
     @State private var showRenameAlert = false
@@ -215,17 +216,17 @@ struct GalleryView: View {
         }
         // 信息 / 重命名 sheet 打开时隐藏 TabBar（子页 + MainTabView 双保险）
         .toolbar(hidesTabBarForSheets ? .hidden : .automatic, for: .tabBar)
-        // 文件信息面板（操作栏 sticky，不被滚动裁切 / TabBar 挡住）
-        .glassBottomSheet(
+        // 文件信息面板：原生两档 detent + 底部操作栏固定
+        .fileInfoPanel(
             isPresented: Binding(
                 get: { fileInfoToShow != nil },
                 set: { if !$0 { fileInfoToShow = nil } }
             ),
+            selectedDetent: $fileInfoDetent,
             title: "文件信息",
-            stickyFooter: { galleryFileInfoActions }
-        ) {
-            galleryFileInfoModules
-        }
+            actions: { galleryFileInfoActions },
+            modules: { galleryFileInfoModules }
+        )
         // 重命名浮窗（overlay，避免底部 sheet 被输入法挡住确认按钮）
         .overlay {
             if showRenameAlert {
@@ -1002,6 +1003,7 @@ struct GalleryView: View {
                         fileInfoTags = []
                         fileInfoMetadata = nil
                         isLoadingFileInfoMetadata = true
+                        fileInfoDetent = .half
                         fileInfoToShow = file
                         let path = file.path
                         let uuid = file.uuid

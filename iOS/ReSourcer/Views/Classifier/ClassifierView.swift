@@ -26,6 +26,7 @@ struct ClassifierView: View {
 
     // 文件信息面板
     @State private var showInfoSheet = false
+    @State private var fileInfoDetent: FileInfoPanelDetent = .half
     @State private var showRenameAlert = false
     @State private var renameText = ""
     @State private var fileInfoMetadata: FileMetadata? = nil
@@ -120,6 +121,7 @@ struct ClassifierView: View {
                                 fileInfoTags = []
                                 fileInfoMetadata = nil
                                 isLoadingFileInfoMetadata = true
+                                fileInfoDetent = .half
                                 showInfoSheet = true
                                 Task {
                                     if let uuid = file.uuid {
@@ -163,11 +165,12 @@ struct ClassifierView: View {
         .onChange(of: showInfoSheet) { _, _ in syncTabBarVisibility() }
         .onChange(of: showRenameAlert) { _, _ in syncTabBarVisibility() }
         .onDisappear { NavigationState.shared.hideTabBar = false }
-        // 文件信息面板（操作栏 sticky）
-        .glassBottomSheet(
+        // 文件信息面板：原生两档 detent + 底部操作栏固定
+        .fileInfoPanel(
             isPresented: $showInfoSheet,
+            selectedDetent: $fileInfoDetent,
             title: "文件信息",
-            stickyFooter: {
+            actions: {
                 if let file = currentFile {
                     FileInfoActionsRow(
                         onDownload: {
@@ -202,25 +205,26 @@ struct ClassifierView: View {
                         } : nil
                     )
                 }
+            },
+            modules: {
+                if let file = currentFile {
+                    FileInfoSheetContent(
+                        file: file,
+                        metadata: fileInfoMetadata,
+                        isLoadingMetadata: isLoadingFileInfoMetadata,
+                        showsActions: false,
+                        tags: fileInfoTags,
+                        onAddTag: file.uuid != nil ? {
+                            showInfoSheet = false
+                            Task { @MainActor in
+                                try? await Task.sleep(for: .milliseconds(300))
+                                showTagEditor = true
+                            }
+                        } : nil
+                    )
+                }
             }
-        ) {
-            if let file = currentFile {
-                FileInfoSheetContent(
-                    file: file,
-                    metadata: fileInfoMetadata,
-                    isLoadingMetadata: isLoadingFileInfoMetadata,
-                    showsActions: false,
-                    tags: fileInfoTags,
-                    onAddTag: file.uuid != nil ? {
-                        showInfoSheet = false
-                        Task { @MainActor in
-                            try? await Task.sleep(for: .milliseconds(300))
-                            showTagEditor = true
-                        }
-                    } : nil
-                )
-            }
-        }
+        )
         .sheet(isPresented: $showMoveSheet) {
             if let file = currentFile {
                 MoveSheetView(

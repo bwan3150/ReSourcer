@@ -166,6 +166,85 @@ final class FileMetadataUITests: XCTestCase {
         assertKeyStringNotDuplicatedAcrossModules(expectedGPS)
     }
 
+    /// 原生两档 detent + 固定底栏：半屏 / 接近全高 / 滚动顶 / 滚动底。
+    func testInfoPanelDetentsStickyToolbarScreenshots() throws {
+        let fileName = "IMG_4821.HEIC"
+        let uuid = try requireUUID(named: fileName)
+
+        openGridItem(uuid: uuid)
+        openInfoSheet()
+        assertChromeMatchesPanel(expectedFileName: fileName)
+
+        let actions = app.descendants(matching: .any)["fileInfoActionsRow"]
+        let rename = app.buttons["fileInfoRenameButton"].firstMatch
+        let basics = app.descendants(matching: .any)["meta-module-basics"]
+        let scroll = app.descendants(matching: .any)["glassSheetScroll-文件信息"]
+        XCTAssertTrue(
+            actions.waitForExistence(timeout: 10) || rename.waitForExistence(timeout: 10),
+            "sticky actions at half detent"
+        )
+        let toolbarProbe = actions.exists ? actions : rename
+        XCTAssertTrue(toolbarProbe.isHittable, "toolbar must stay hittable at half detent")
+
+        // 08 — default half detent
+        saveFullScreenShot(named: "08-half-detent")
+
+        // Expand to near-full via grabber drag (native presentationDetents)
+        expandInfoPanelDetent()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["fileInfoPanel-expanded"].waitForExistence(timeout: 5)
+                || toolbarProbe.isHittable
+                || rename.isHittable,
+            "expanded detent or sticky actions after drag"
+        )
+        let toolbarAfterExpand = rename.exists ? rename : toolbarProbe
+        XCTAssertTrue(toolbarAfterExpand.isHittable, "toolbar must stay hittable at expanded detent")
+        saveFullScreenShot(named: "09-full-detent")
+
+        // 11 first — scroll to bottom (basics fully above sticky toolbar)
+        var scrolls = 0
+        while scrolls < 18 {
+            if basics.exists, basics.isHittable, rename.isHittable {
+                // Ensure basics isn't still clipped: one more nudge if tags/path mid-screen
+                break
+            }
+            scrollInfoPanelContent(direction: .up)
+            scrolls += 1
+            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+        }
+        // Extra nudges so 基础信息 clears the sticky footer
+        for _ in 0..<6 {
+            scrollInfoPanelContent(direction: .up)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        }
+        XCTAssertTrue(basics.waitForExistence(timeout: 5), "basics module after scroll")
+        XCTAssertTrue(basics.isHittable, "basics fully visible at scroll bottom")
+        XCTAssertTrue(
+            rename.isHittable || actions.isHittable,
+            "toolbar still fixed at scroll bottom"
+        )
+        saveFullScreenShot(named: "11-scroll-bottom")
+
+        // 10 — scroll back to top at expanded detent (avoid collapsing sheet)
+        for _ in 0..<14 {
+            scrollInfoPanelContent(direction: .down, gentle: true)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        }
+        // If content-drag collapsed the sheet, re-expand before the gate shot
+        if app.descendants(matching: .any)["fileInfoPanel-half"].exists
+            || !app.descendants(matching: .any)["fileInfoPanel-expanded"].exists {
+            expandInfoPanelDetent()
+        }
+        let time = app.descendants(matching: .any)["meta-module-time"]
+        XCTAssertTrue(time.waitForExistence(timeout: 5), "time module at scroll top")
+        XCTAssertTrue(
+            rename.isHittable || actions.isHittable,
+            "toolbar fixed while at scroll top"
+        )
+        RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        saveFullScreenShot(named: "10-scroll-top")
+    }
+
     /// Playlist 切曲后重开信息面板：顶栏文件名必须与面板 metadata 一致（回归 clip.mp4 vs HEIC 错配）。
     func testInfoPanelTracksPlaylistSwitchVideoThenHEIC() throws {
         let video = "clip.mp4"
@@ -675,6 +754,37 @@ final class FileMetadataUITests: XCTestCase {
         )
         // Extra beat for async metadata fetch
         RunLoop.current.run(until: Date().addingTimeInterval(1.2))
+    }
+
+    /// Drag sheet grabber upward to snap to the expanded (near-full) detent.
+    private func expandInfoPanelDetent() {
+        // Grabber sits near the top edge of the presented sheet (~mid-screen at half detent).
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.52))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12))
+        start.press(forDuration: 0.15, thenDragTo: end)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.8))
+        // Fallback second drag if still at half
+        if app.descendants(matching: .any)["fileInfoPanel-half"].exists {
+            let start2 = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.48))
+            let end2 = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08))
+            start2.press(forDuration: 0.15, thenDragTo: end2)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.8))
+        }
+    }
+
+    private enum InfoScrollDirection { case up, down }
+
+    /// Scroll only the info-panel ScrollView content (avoids collapsing native sheet detents).
+    private func scrollInfoPanelContent(direction: InfoScrollDirection, gentle: Bool = false) {
+        let scroll = app.descendants(matching: .any)["glassSheetScroll-文件信息"].firstMatch
+        guard scroll.exists else { return }
+        // Drag within the mid-band of the scroll view so the sheet grabber is not engaged.
+        let span: CGFloat = gentle ? 0.18 : 0.37
+        let topY: CGFloat = direction == .up ? 0.55 + span / 2 : 0.55 - span / 2
+        let bottomY: CGFloat = direction == .up ? 0.55 - span / 2 : 0.55 + span / 2
+        let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: topY))
+        let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: bottomY))
+        start.press(forDuration: 0.05, thenDragTo: end)
     }
 
     private func assertTabBarHidden(reason: String) {
