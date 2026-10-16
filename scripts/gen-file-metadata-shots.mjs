@@ -25,6 +25,7 @@ mkdirSync(SELF_STORE, { recursive: true })
 /* Minimal inline SVG icons (lucide-like) — no emoji */
 const I = {
   photo: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>`,
+  pin: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
   download: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
   share: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`,
   folder: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`,
@@ -78,6 +79,36 @@ const css = `
     display: flex; align-items: center; justify-content: center;
   }
   .abtn.danger { background: rgba(255,59,48,.18); color: #d70015; }
+  .mod {
+    background: rgba(255,255,255,.55); border-radius: 14px; padding: 14px; margin-bottom: 10px;
+    backdrop-filter: blur(12px);
+  }
+  .mod-date { font-size: 17px; font-weight: 650; letter-spacing: -0.2px; }
+  .mod-fname { margin-top: 6px; font-size: 13px; color: #6c6c70; display: flex; align-items: center; gap: 6px; }
+  .mod-device { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .mod-device .name { font-size: 14px; font-weight: 600; }
+  .pill {
+    font-size: 11px; font-weight: 650; background: rgba(60,60,67,.12);
+    padding: 3px 8px; border-radius: 999px;
+  }
+  .mod-muted { font-size: 13px; color: #6c6c70; margin-top: 6px; }
+  .strip {
+    display: flex; margin-top: 10px; align-items: center;
+    font-size: 12px; font-variant-numeric: tabular-nums; font-weight: 550;
+  }
+  .strip span { flex: 1; text-align: center; }
+  .strip .div { width: 1px; height: 16px; background: rgba(60,60,67,.28); flex: 0 0 1px; }
+  .map {
+    height: 110px; border-radius: 10px;
+    background: linear-gradient(135deg, #d7e6d2, #b7c9df 55%, #e8d9c0);
+    position: relative; overflow: hidden;
+  }
+  .map::after {
+    content: ''; position: absolute; left: 50%; top: 48%; width: 14px; height: 14px;
+    margin: -7px 0 0 -7px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+    background: #ff3b30; box-shadow: 0 0 0 3px rgba(255,59,48,.25);
+  }
+  .coords { margin-top: 8px; font-size: 13px; color: #6c6c70; display: flex; align-items: center; gap: 6px; }
   .desktop {
     width: 1280px; height: 800px; background: #121214; color: #eee;
     display: flex; flex-direction: column; overflow: hidden; border-radius: 12px;
@@ -169,6 +200,42 @@ function actionRowWeb() {
   </div>`
 }
 
+function iosPhotosModules({ rich }) {
+  if (!rich) {
+    // Sparse: only time module if we have created time; no device EXIF / no map
+    return `
+      <div class="mod">
+        <div class="mod-date">星期五 • 10月16日 • 06:21</div>
+        <div class="mod-fname">${I.photo} plain.png · 2 / 12</div>
+      </div>
+      <div class="mod">
+        <div class="mod-device"><div class="name">PNG 图像</div><div class="pill">PNG</div></div>
+        <div class="mod-muted">640 × 480 • 1.9 KB</div>
+      </div>`
+  }
+  return `
+    <div class="mod">
+      <div class="mod-date">星期六 • 6月15日 • 14:32</div>
+      <div class="mod-fname">${I.photo} IMG_4821.HEIC · 1 / 12</div>
+    </div>
+    <div class="mod">
+      <div class="mod-device"><div class="name">Apple iPhone 15 Pro</div><div class="pill">HEIC</div></div>
+      <div class="mod-muted">Main Camera — 24 mm ƒ1.78</div>
+      <div class="mod-muted">24.5 MP • 5712 × 4284 • 2.9 KB</div>
+      <div class="strip">
+        <span>ISO50</span><div class="div"></div>
+        <span>24mm</span><div class="div"></div>
+        <span>0ev</span><div class="div"></div>
+        <span>ƒ1.8</span><div class="div"></div>
+        <span>1/144s</span>
+      </div>
+    </div>
+    <div class="mod">
+      <div class="map"></div>
+      <div class="coords">${I.pin} 33.86880° S, 151.20930° E</div>
+    </div>`
+}
+
 function iosHTML({ rich, before }) {
   const items = before
     ? [
@@ -219,6 +286,8 @@ function iosHTML({ rich, before }) {
       </div>`
     : actionRowIOS()
 
+  const modules = before ? '' : iosPhotosModules({ rich })
+
   return `<!doctype html><html><head><meta charset="utf-8"><style>${css}
     body { display:flex; align-items:center; justify-content:center; min-height:100vh; background:#1c1c1e; }
   </style></head><body>
@@ -229,7 +298,10 @@ function iosHTML({ rich, before }) {
       <div class="sheet">
         <div class="grab"></div>
         <div class="sheet-title">文件信息</div>
-        <div class="rows">${rowsHTML(items)}</div>
+        <div class="rows">
+          ${modules}
+          ${rowsHTML(items)}
+        </div>
         ${actions}
       </div>
     </div>
