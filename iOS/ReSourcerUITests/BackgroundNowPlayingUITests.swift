@@ -46,7 +46,8 @@ final class BackgroundNowPlayingUITests: XCTestCase {
 
         var snap = waitForProbe(in: app, containing: "e2e-bg-audio", rateAtLeast: 0.5, timeout: 20)
         XCTAssertFalse(snap.title.isEmpty, "Now Playing title: \(snap.raw)")
-        XCTAssertGreaterThan(snap.duration, 2.0, "Now Playing duration: \(snap.raw)")
+        // e2e-bg-audio.mp4 ≈ 10s；严禁再出现锁屏总时长 ≈1s 的占位 bug
+        XCTAssertGreaterThan(snap.duration, 5.0, "Now Playing duration must be ≫1s: \(snap.raw)")
         XCTAssertGreaterThan(snap.elapsed, 0.05, "Now Playing progress: \(snap.raw)")
         snap = waitForProbe(in: app, matching: { $0.hasArtwork && $0.title.contains("e2e-bg-audio") }, timeout: 20)
         XCTAssertTrue(snap.hasArtwork, "Now Playing artwork: \(snap.raw)")

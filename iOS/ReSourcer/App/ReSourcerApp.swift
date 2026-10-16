@@ -29,6 +29,9 @@ struct ReSourcerApp: App {
     /// UITest：Share Extension 同源文件夹探测结果（App Group + Keychain + 真实 API）
     @State private var e2eShareSourcesProbeText: String = ""
 
+    /// UITest：Share 上传路径（foreground multipart + background 会话 sharedContainer）
+    @State private var e2eShareUploadProbeText: String = ""
+
     // MARK: - Body
 
     var body: some Scene {
@@ -46,6 +49,7 @@ struct ReSourcerApp: App {
                             LocalStorageService.shared.syncServersToAppGroupIfNeeded()
                             Self.resumeBackgroundUploadsIfAppropriate(using: service)
                             runE2EShareSourcesProbeIfNeeded()
+                            runE2EShareUploadProbeIfNeeded()
                             runE2EHarnessIfNeeded(using: service)
                         }
                     )
@@ -59,6 +63,14 @@ struct ReSourcerApp: App {
                             .foregroundStyle(.clear)
                             .accessibilityIdentifier("e2eShareSourcesProbe")
                             .accessibilityValue(e2eShareSourcesProbeText)
+                            .allowsHitTesting(false)
+                    }
+                    if !e2eShareUploadProbeText.isEmpty {
+                        Text(e2eShareUploadProbeText)
+                            .font(.system(size: 1))
+                            .foregroundStyle(.clear)
+                            .accessibilityIdentifier("e2eShareUploadProbe")
+                            .accessibilityValue(e2eShareUploadProbeText)
                             .allowsHitTesting(false)
                     }
                     let env = ProcessInfo.processInfo.environment
@@ -86,6 +98,7 @@ struct ReSourcerApp: App {
                 applyE2EPendingDownloadIfNeeded()
                 consumePendingDownloadHandoff()
                 runE2EShareSourcesProbeIfNeeded()
+                runE2EShareUploadProbeIfNeeded()
                 if let service = apiService {
                     runE2EHarnessIfNeeded(using: service)
                 }
@@ -186,6 +199,7 @@ struct ReSourcerApp: App {
 
     /// UITest：注入播放模式（避免点 Toggle 不稳定）
     /// `E2E_LIST_LOOP` / `E2E_SHUFFLE` / `E2E_SAME_TYPE` = `0`|`1`
+    /// `E2E_ADVANCE_MODE` = `autoNext`|`repeatCurrent`（默认未注入时不改；连播跳图测需 autoNext）
     private func applyE2EPlaybackPrefsIfNeeded() {
         let env = ProcessInfo.processInfo.environment
         let storage = LocalStorageService.shared
@@ -199,6 +213,9 @@ struct ReSourcerApp: App {
             var prefs = storage.getPreviewPreferences()
             prefs.filterAutoplayByFileType = (v == "1")
             _ = storage.savePreviewPreferences(prefs)
+        }
+        if let v = env["E2E_ADVANCE_MODE"], let mode = AdvanceMode(rawValue: v) {
+            storage.saveAdvanceMode(mode)
         }
     }
 
@@ -253,6 +270,59 @@ struct ReSourcerApp: App {
             } catch {
                 await MainActor.run {
                     e2eShareSourcesProbeText = "ERROR:\(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    /// UITest：覆盖 Share Extension 实际上传路径（小文件前台 multipart + background 会话 App Group）
+    /// 用于回归 NSURLErrorDomain -995（BackgroundSessionRequiresSharedContainer）。
+    private func runE2EShareUploadProbeIfNeeded() {
+        let env = ProcessInfo.processInfo.environment
+        guard env["E2E_SHARE_UPLOAD_PROBE"] == "1" else { return }
+        LocalStorageService.shared.syncServersToAppGroupIfNeeded()
+        Task {
+            let mainShared = BackgroundUploadSession.makeBackgroundConfiguration().sharedContainerIdentifier ?? ""
+            let shareShared = BackgroundUploadManager.makeBackgroundConfiguration().sharedContainerIdentifier ?? ""
+            let containerOK = AppGroup.containerURL != nil
+            guard mainShared == AppGroup.identifier, shareShared == AppGroup.identifier, containerOK else {
+                await MainActor.run {
+                    e2eShareUploadProbeText =
+                        "ERROR:sharedContainer main=\(mainShared) share=\(shareShared) container=\(containerOK)"
+                }
+                return
+            }
+            guard let server = ShareBridge.currentServer() else {
+                await MainActor.run { e2eShareUploadProbeText = "ERROR:no-server" }
+                return
+            }
+            do {
+                let client = try ShareUploadClient(server: server)
+                let sources = try await ShareUploadClient.loadSourceFoldersTryingCandidates(for: server)
+                guard let target = sources.first else {
+                    await MainActor.run { e2eShareUploadProbeText = "ERROR:no-source" }
+                    return
+                }
+                // 1x1 PNG
+                let png = Data(base64Encoded:
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+                )!
+                let name = "e2e-share-upload-\(Int(Date().timeIntervalSince1970)).png"
+                let taskId = try await client.uploadDirect(
+                    fileName: name,
+                    data: png,
+                    mimeType: "image/png",
+                    to: target
+                )
+                await MainActor.run {
+                    e2eShareUploadProbeText =
+                        "OK:\(taskId)|shared=\(AppGroup.identifier)|file=\(name)|target=\(target)"
+                }
+            } catch {
+                let ns = error as NSError
+                await MainActor.run {
+                    e2eShareUploadProbeText =
+                        "ERROR:\(ns.domain) code=\(ns.code) \(error.localizedDescription)"
                 }
             }
         }

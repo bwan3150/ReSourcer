@@ -19,7 +19,16 @@ final class BackgroundUploadSession: NSObject, @unchecked Sendable {
     private var backgroundCompletionHandler: (() -> Void)?
 
     private lazy var session: URLSession = {
-        let config = URLSessionConfiguration.background(withIdentifier: Self.sessionIdentifier)
+        // Share Extension 编译本类型时必须带 sharedContainerIdentifier，
+        // 否则系统返回 NSURLErrorBackgroundSessionRequiresSharedContainer (-995)。
+        let config = Self.makeBackgroundConfiguration()
+        return URLSession(configuration: config, delegate: self, delegateQueue: nil)
+    }()
+
+    /// 供主 App / Share Extension / E2E 探针复用的后台会话配置
+    static func makeBackgroundConfiguration() -> URLSessionConfiguration {
+        let config = URLSessionConfiguration.background(withIdentifier: sessionIdentifier)
+        config.sharedContainerIdentifier = AppGroup.identifier
         config.isDiscretionary = false
         config.sessionSendsLaunchEvents = true
         config.allowsCellularAccess = true
@@ -27,8 +36,8 @@ final class BackgroundUploadSession: NSObject, @unchecked Sendable {
         config.httpAdditionalHeaders = ["Accept": "application/json"]
         // timeoutIntervalForResource 对 background 生效；给足大文件时间
         config.timeoutIntervalForResource = 60 * 60 * 6
-        return URLSession(configuration: config, delegate: self, delegateQueue: nil)
-    }()
+        return config
+    }
 
     private let decoder: JSONDecoder = {
         let d = JSONDecoder()
@@ -104,9 +113,14 @@ final class BackgroundUploadSession: NSObject, @unchecked Sendable {
 
     // MARK: - 临时文件工具
 
-    /// Application Support 下的后台上传暂存目录
+    /// 后台上传暂存目录：优先 App Group 共享容器（Extension 与主 App 共用；配合 sharedContainerIdentifier）
     static var stagingDirectory: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let base: URL
+        if let container = AppGroup.containerURL {
+            base = container
+        } else {
+            base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        }
         let dir = base.appendingPathComponent("BackgroundUploads", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir

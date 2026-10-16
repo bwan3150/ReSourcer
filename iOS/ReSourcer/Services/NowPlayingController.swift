@@ -106,6 +106,7 @@ final class NowPlayingController {
         var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = Self.sanitizedTime(elapsed)
         let safeDuration = Self.sanitizedTime(duration)
+        // 始终写入已解析出的真实时长（>0），覆盖早期占位/过短值
         if safeDuration > 0 {
             info[MPMediaItemPropertyPlaybackDuration] = safeDuration
         }

@@ -19,12 +19,21 @@ final class BackgroundUploadManager: NSObject, URLSessionTaskDelegate, URLSessio
 
     private override init() {
         super.init()
+        if AppGroup.containerURL == nil {
+            print("[ShareUpload] WARNING: App Group \(AppGroup.identifier) containerURL is nil — uploads may fail with -995")
+        }
+        let config = Self.makeBackgroundConfiguration()
+        session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+    }
+
+    /// 与 E2E / 诊断共用：确认 sharedContainerIdentifier 已写入
+    static func makeBackgroundConfiguration() -> URLSessionConfiguration {
         let config = URLSessionConfiguration.background(withIdentifier: AppGroup.backgroundUploadSessionId)
         config.sharedContainerIdentifier = AppGroup.identifier
         config.isDiscretionary = false
         config.sessionSendsLaunchEvents = true
         config.allowsCellularAccess = true
-        session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+        return config
     }
 
     /// 主 App 收到系统唤醒时挂上 completion handler

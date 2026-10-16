@@ -33,6 +33,8 @@
 		C1000032233F0001 /* ShareSourceFoldersUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000032233F0000 /* ShareSourceFoldersUITests.swift */; };
 		C1000033233F0001 /* BackgroundNowPlayingUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000033233F0000 /* BackgroundNowPlayingUITests.swift */; };
 		C1000034233F0001 /* KillResumeUploadUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000034233F0000 /* KillResumeUploadUITests.swift */; };
+		C1000035233F0001 /* ShareUploadPathUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000035233F0000 /* ShareUploadPathUITests.swift */; };
+		C1000036233F0001 /* BackgroundSkipNonPlayableUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000036233F0000 /* BackgroundSkipNonPlayableUITests.swift */; };
 		4C1D717EE8BDFF4B003707D2 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E698E88935756D992DB0E55 /* AboutView.swift */; };
 		5BA764DFEB45D4ADAE38CC6A /* MetricsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF085BEB183121E3B39A0477 /* MetricsService.swift */; };
 		8B6571A01BF18BCAF39FCD63 /* ServerMetricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C09E79295A8E45EF0CDF20D /* ServerMetricsView.swift */; };
@@ -41,6 +43,8 @@
 		A1000002233F0001 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002233F0000 /* MainTabView.swift */; };
 		A1000003233F0001 /* ServerConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000003233F0000 /* ServerConnectView.swift */; };
 		C10000A2233F0001 /* NowPlayingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000A2233F0000 /* NowPlayingController.swift */; };
+		C10000A6233F0001 /* PlaylistAdvance.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000A6233F0000 /* PlaylistAdvance.swift */; };
+		C10000A7233F0001 /* MediaDurationResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000A7233F0000 /* MediaDurationResolver.swift */; };
 		C10000A4233F0001 /* E2EHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000A4233F0000 /* E2EHarness.swift */; };
 		C10000A3233F0001 /* BackgroundUploadSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000A3233F0000 /* BackgroundUploadSession.swift */; };
 		A1000010233F0001 /* GlassAlert.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000010233F0000 /* GlassAlert.swift */; };
@@ -130,6 +134,8 @@
 		C1000032233F0000 /* ShareSourceFoldersUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSourceFoldersUITests.swift; sourceTree = "<group>"; };
 		C1000033233F0000 /* BackgroundNowPlayingUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundNowPlayingUITests.swift; sourceTree = "<group>"; };
 		C1000034233F0000 /* KillResumeUploadUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KillResumeUploadUITests.swift; sourceTree = "<group>"; };
+		C1000035233F0000 /* ShareUploadPathUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareUploadPathUITests.swift; sourceTree = "<group>"; };
+		C1000036233F0000 /* BackgroundSkipNonPlayableUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundSkipNonPlayableUITests.swift; sourceTree = "<group>"; };
 		4C09E79295A8E45EF0CDF20D /* ServerMetricsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ServerMetricsView.swift; sourceTree = "<group>"; };
 		649E6184143302EFD3D570DE /* MetricsModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MetricsModels.swift; sourceTree = "<group>"; };
 		7E698E88935756D992DB0E55 /* AboutView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
@@ -139,6 +145,8 @@
 		A1000002233F0000 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		A1000003233F0000 /* ServerConnectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConnectView.swift; sourceTree = "<group>"; };
 		C10000A2233F0000 /* NowPlayingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingController.swift; sourceTree = "<group>"; };
+		C10000A6233F0000 /* PlaylistAdvance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistAdvance.swift; sourceTree = "<group>"; };
+		C10000A7233F0000 /* MediaDurationResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaDurationResolver.swift; sourceTree = "<group>"; };
 		C10000A4233F0000 /* E2EHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EHarness.swift; sourceTree = "<group>"; };
 		C10000A3233F0000 /* BackgroundUploadSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundUploadSession.swift; sourceTree = "<group>"; };
 		A1000010233F0000 /* GlassAlert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassAlert.swift; sourceTree = "<group>"; };
@@ -347,6 +355,8 @@
 				A1000059233F0000 /* PreviewService.swift */,
 				A100005A233F0000 /* UploadService.swift */,
 				C10000A2233F0000 /* NowPlayingController.swift */,
+				C10000A6233F0000 /* PlaylistAdvance.swift */,
+				C10000A7233F0000 /* MediaDurationResolver.swift */,
 				C10000A4233F0000 /* E2EHarness.swift */,
 				C10000A3233F0000 /* BackgroundUploadSession.swift */,
 				A100005B233F0000 /* TagService.swift */,
@@ -456,6 +466,8 @@
 				C1000032233F0000 /* ShareSourceFoldersUITests.swift */,
 				C1000033233F0000 /* BackgroundNowPlayingUITests.swift */,
 				C1000034233F0000 /* KillResumeUploadUITests.swift */,
+				C1000035233F0000 /* ShareUploadPathUITests.swift */,
+				C1000036233F0000 /* BackgroundSkipNonPlayableUITests.swift */,
 			);
 			path = ReSourcerUITests;
 			sourceTree = "<group>";
@@ -679,6 +691,8 @@
 				A1000059233F0001 /* PreviewService.swift in Sources */,
 				A100005A233F0001 /* UploadService.swift in Sources */,
 				C10000A2233F0001 /* NowPlayingController.swift in Sources */,
+				C10000A6233F0001 /* PlaylistAdvance.swift in Sources */,
+				C10000A7233F0001 /* MediaDurationResolver.swift in Sources */,
 				C10000A4233F0001 /* E2EHarness.swift in Sources */,
 				C10000A3233F0001 /* BackgroundUploadSession.swift in Sources */,
 				A100005B233F0001 /* TagService.swift in Sources */,
@@ -776,6 +790,8 @@
 				C1000032233F0001 /* ShareSourceFoldersUITests.swift in Sources */,
 				C1000033233F0001 /* BackgroundNowPlayingUITests.swift in Sources */,
 				C1000034233F0001 /* KillResumeUploadUITests.swift in Sources */,
+				C1000035233F0001 /* ShareUploadPathUITests.swift in Sources */,
+				C1000036233F0001 /* BackgroundSkipNonPlayableUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
