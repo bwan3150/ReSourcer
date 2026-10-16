@@ -388,7 +388,19 @@ final class FileMetadataUITests: XCTestCase {
     private func tapActionButton(element btn: XCUIElement, label: String, actionId: String?) {
         XCTAssertTrue(btn.exists, "\(label) action exists")
 
-        let sheetScroll = app.scrollViews["glassSheetScroll-文件信息"].firstMatch
+        // Prefer tagged info-sheet scroll; fall back to the ScrollView that owns the button.
+        var sheetScroll = app.descendants(matching: .any)["glassSheetScroll-文件信息"].firstMatch
+        if !sheetScroll.exists {
+            if let actionId {
+                sheetScroll = app.scrollViews.containing(.button, identifier: actionId).element
+            } else {
+                // XCUIElementQuery.containing(_:identifier:) only — match by button label via predicate.
+                sheetScroll = app.scrollViews.containing(
+                    NSPredicate(format: "label == %@", label)
+                ).element
+            }
+        }
+
         var scrolls = 0
         while !btn.isHittable && scrolls < 12 {
             if sheetScroll.exists {
