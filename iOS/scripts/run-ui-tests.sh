@@ -35,9 +35,11 @@ export TEST_RUNNER_E2E_ALLOW_MUTATION="$E2E_ALLOW_MUTATION"
 
 echo "-- running ReSourcerUITests on $DESTINATION"
 echo "-- E2E_SERVER_URL=$E2E_SERVER_URL"
+# ONLY_TESTING 可覆盖，例如：ONLY_TESTING=ReSourcerUITests/ShareDownloadUITests
+ONLY_TESTING="${ONLY_TESTING:-ReSourcerUITests}"
 xcodebuild \
   -project ReSourcer.xcodeproj \
   -scheme ReSourcer \
   -destination "$DESTINATION" \
-  -only-testing:ReSourcerUITests \
+  -only-testing:"$ONLY_TESTING" \
   test

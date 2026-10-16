@@ -22,6 +22,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         }
         // 触达 background session，尽早与系统重连未完成的上传任务
         _ = BackgroundUploadSession.shared
+        _ = BackgroundUploadManager.shared
+        BackgroundUploadManager.shared.resumePendingFinalizations()
         return true
     }
 
@@ -30,12 +32,23 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         handleEventsForBackgroundURLSession identifier: String,
         completionHandler: @escaping () -> Void
     ) {
-        guard identifier == BackgroundUploadSession.sessionIdentifier else {
-            completionHandler()
+        if identifier == BackgroundUploadSession.sessionIdentifier {
+            BackgroundUploadSession.shared.handleEventsForBackgroundURLSession(
+                completionHandler: completionHandler
+            )
             return
         }
-        BackgroundUploadSession.shared.handleEventsForBackgroundURLSession(
-            completionHandler: completionHandler
-        )
+
+        if identifier == AppGroup.backgroundUploadSessionId {
+            BackgroundUploadManager.shared.setBackgroundCompletionHandler(
+                completionHandler,
+                for: identifier
+            )
+            _ = BackgroundUploadManager.shared
+            BackgroundUploadManager.shared.resumePendingFinalizations()
+            return
+        }
+
+        completionHandler()
     }
 }

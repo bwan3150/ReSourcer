@@ -298,3 +298,10 @@ extension Data {
         }
     }
 }
+
+// MARK: - Connectivity notification（主 App / Share Extension 共用）
+
+extension Notification.Name {
+    /// 网络连接类错误（无法连上 host 等），主 App 可据此切备用地址
+    static let networkConnectivityError = Notification.Name("networkConnectivityError")
+}

@@ -63,6 +63,8 @@ final class LocalStorageService: @unchecked Sendable {
             let encoder = JSONEncoder()
             let data = try encoder.encode(servers)
             defaults.set(data, forKey: Keys.servers)
+            // 同步到 App Group / Keychain，供 Share Extension 使用
+            ShareBridge.syncServers(servers, currentServerId: getCurrentServerId())
             return true
         } catch {
             print("Failed to encode servers: \(error)")
@@ -150,6 +152,7 @@ final class LocalStorageService: @unchecked Sendable {
         }
 
         defaults.set(serverId, forKey: Keys.currentServerId)
+        ShareBridge.syncServers(getServers(), currentServerId: serverId)
         return true
     }
 
@@ -165,6 +168,12 @@ final class LocalStorageService: @unchecked Sendable {
     /// 清除当前服务器
     func clearCurrentServer() {
         defaults.removeObject(forKey: Keys.currentServerId)
+        ShareBridge.syncServers(getServers(), currentServerId: nil)
+    }
+
+    /// 启动时把本机服务器镜像推到 App Group（兼容升级前已登录用户）
+    func syncServersToAppGroupIfNeeded() {
+        ShareBridge.syncServers(getServers(), currentServerId: getCurrentServerId())
     }
 
     // MARK: - Login Status

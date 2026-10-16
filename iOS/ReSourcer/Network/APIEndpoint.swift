@@ -223,9 +223,9 @@ enum APIEndpoint {
         case .previewFiles(let folder):
             return "/api/preview/files?folder=\(folder.urlEncoded)"
         case .previewThumbnail(let path, let size):
-            return "/api/preview/thumbnail?path=\(path.urlEncoded)&size=\(size)&tv=\(PreviewService.thumbnailVersion)"
+            return "/api/preview/thumbnail?path=\(path.urlEncoded)&size=\(size)&tv=\(APIThumbnailVersion.current)"
         case .previewThumbnailByUuid(let uuid, let size):
-            return "/api/preview/thumbnail?uuid=\(uuid.urlEncoded)&size=\(size)&tv=\(PreviewService.thumbnailVersion)"
+            return "/api/preview/thumbnail?uuid=\(uuid.urlEncoded)&size=\(size)&tv=\(APIThumbnailVersion.current)"
         case .previewContent(let path):
             return "/api/preview/content/\(path.urlEncoded)"
         case .previewContentByUuid(let uuid):
@@ -364,6 +364,11 @@ enum APIEndpoint {
 }
 
 // MARK: - String URL 编码扩展
+/// 缩略图 URL 缓存破坏版本（与 PreviewService.thumbnailVersion 保持一致）
+enum APIThumbnailVersion {
+    static let current = "2"
+}
+
 extension String {
     var urlEncoded: String {
         return self.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? self

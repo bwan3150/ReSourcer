@@ -40,6 +40,7 @@ struct ReSourcerApp: App {
                         onConnected: { service in
                             self.apiService = service
                             self.isLoggedIn = true
+                            LocalStorageService.shared.syncServersToAppGroupIfNeeded()
                             Self.resumeBackgroundUploads(using: service)
                         }
                     )
@@ -50,13 +51,23 @@ struct ReSourcerApp: App {
             .animation(AppTheme.Animation.standard, value: isLoggedIn)
             .onAppear {
                 themePreference = LocalStorageService.shared.getAppSettings().darkModePreference
+                LocalStorageService.shared.syncServersToAppGroupIfNeeded()
+                BackgroundUploadManager.shared.resumePendingFinalizations()
                 checkExistingLogin()
+                applyE2EPendingDownloadIfNeeded()
+                consumePendingDownloadHandoff()
             }
             .onReceive(NotificationCenter.default.publisher(for: .themeDidChange)) { _ in
                 themePreference = LocalStorageService.shared.getAppSettings().darkModePreference
             }
             .onReceive(NotificationCenter.default.publisher(for: .userDidLogout)) { _ in
                 handleLogout()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .shareDownloadPrefillRequested)) { _ in
+                selectedTab = .download
+            }
+            .onOpenURL { url in
+                handleOpenURL(url)
             }
         }
     }
@@ -129,11 +140,34 @@ struct ReSourcerApp: App {
         let server = Server(name: "E2E", baseURL: url, apiKey: key)
         _ = LocalStorageService.shared.addServer(server)
         _ = LocalStorageService.shared.setCurrentServer(server.id)
+        LocalStorageService.shared.setLoggedIn(true)
         guard let service = APIService.create(for: server) else { return false }
         self.apiService = service
         self.isLoggedIn = true
         Self.resumeBackgroundUploads(using: service)
         return true
+    }
+
+    /// UITest：`E2E_PENDING_DOWNLOAD_URL` 注入待预填链接（模拟 Share Extension 交接）
+    private func applyE2EPendingDownloadIfNeeded() {
+        let env = ProcessInfo.processInfo.environment
+        if let pending = env["E2E_PENDING_DOWNLOAD_URL"], !pending.isEmpty {
+            ShareBridge.setPendingDownloadURL(pending)
+        }
+    }
+
+    private func handleOpenURL(_ url: URL) {
+        if let pending = ShareBridge.parseDownloadDeepLink(url) {
+            ShareBridge.setPendingDownloadURL(pending)
+            consumePendingDownloadHandoff()
+        }
+    }
+
+    /// 切到下载 Tab，并通知 DownloadView 预填（不自动 detect / 不自动下载）
+    private func consumePendingDownloadHandoff() {
+        guard ShareBridge.peekPendingDownloadURL() != nil else { return }
+        selectedTab = .download
+        NotificationCenter.default.post(name: .shareDownloadPrefillRequested, object: nil)
     }
 
     /// 处理登出
@@ -145,6 +179,13 @@ struct ReSourcerApp: App {
         }
     }
 
+}
+
+// MARK: - Notifications
+
+extension Notification.Name {
+    /// Share Extension / 深链要求预填下载 URL（仅预填，不自动下载）
+    static let shareDownloadPrefillRequested = Notification.Name("shareDownloadPrefillRequested")
 }
 
 // MARK: - App Tab 枚举
