@@ -22,7 +22,7 @@ actor ShareUploadClient {
         self.server = server
         let nm = NetworkManager(baseURL: baseURL, apiKey: server.apiKey, timeoutInterval: 60)
         self.networkManager = nm
-        self.upload = UploadService(networkManager: nm)
+        self.upload = UploadService(networkManager: nm, apiKey: server.apiKey)
     }
 
     /// 源文件夹列表（当前 + 备用）
