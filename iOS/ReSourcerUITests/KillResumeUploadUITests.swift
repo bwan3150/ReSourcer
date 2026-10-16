@@ -2,7 +2,7 @@
 //  KillResumeUploadUITests.swift
 //  ReSourcerUITests
 //
-//  真实后端：分片上传只传第 0 片 → 杀 App → 冷启动 resume → 校验目标文件完整。
+//  真实后端：大文件分片上传中途杀 App → 冷启动 resume → 文件字节完整。
 //
 
 import XCTest
@@ -23,29 +23,41 @@ final class KillResumeUploadUITests: XCTestCase {
             "Set E2E_SERVER_URL and E2E_API_KEY to run kill-resume upload UI E2E"
         )
 
-        // Phase 1: 准备部分上传 job
+        // Phase 1: ~12MB，先传 2/12 片再杀
         let app = XCUIApplication()
         app.launchEnvironment["E2E_SERVER_URL"] = server!
         app.launchEnvironment["E2E_API_KEY"] = key!
         app.launchEnvironment["E2E_KILL_UPLOAD"] = "1"
+        app.launchEnvironment["E2E_KILL_UPLOAD_MB"] = "12"
+        app.launchEnvironment["E2E_KILL_CHUNKS_BEFORE"] = "2"
         app.launch()
 
         let probe = app.descendants(matching: .any)["e2eUploadProbe"]
-        XCTAssertTrue(probe.waitForExistence(timeout: 10), "upload probe should appear")
+        XCTAssertTrue(probe.waitForExistence(timeout: 15), "upload probe should appear")
 
-        let ready = waitForUploadProbe(in: app, prefix: "READY_TO_KILL|", timeout: 90)
+        let ready = waitForUploadProbe(in: app, prefix: "READY_TO_KILL|", timeout: 180)
         XCTAssertTrue(
             ready.hasPrefix("READY_TO_KILL|"),
-            "phase1 should finish first chunk: \(ready)"
+            "phase1 should finish first chunks mid-upload: \(ready)"
         )
         let parts = ready.split(separator: "|").map(String.init)
-        XCTAssertGreaterThanOrEqual(parts.count, 3, "READY_TO_KILL|uploadId|fileName|jobId")
+        // READY_TO_KILL|uploadId|fileName|jobId|totalBytes|2/12
+        XCTAssertGreaterThanOrEqual(parts.count, 5, ready)
+        let expectedBytes = Int(parts[4]) ?? 0
+        XCTAssertGreaterThanOrEqual(expectedBytes, 12 * 1024 * 1024, "large upload payload: \(ready)")
+        if parts.count >= 6 {
+            XCTAssertTrue(parts[5].contains("/"), "chunk progress \(parts[5])")
+            let prog = parts[5].split(separator: "/")
+            if prog.count == 2, let done = Int(prog[0]), let total = Int(prog[1]) {
+                XCTAssertGreaterThan(total, done, "must kill mid-upload, not after complete")
+                XCTAssertGreaterThanOrEqual(done, 1)
+            }
+        }
 
-        // 杀进程（terminate，模拟用户强杀；job + staging 文件应仍在 Application Support）
         app.terminate()
         RunLoop.current.run(until: Date().addingTimeInterval(1.0))
 
-        // Phase 2: 冷启动续传
+        // Phase 2: 冷启动续传并校验精确字节数
         let app2 = XCUIApplication()
         app2.launchEnvironment["E2E_SERVER_URL"] = server!
         app2.launchEnvironment["E2E_API_KEY"] = key!
@@ -55,11 +67,15 @@ final class KillResumeUploadUITests: XCTestCase {
         let probe2 = app2.descendants(matching: .any)["e2eUploadProbe"]
         XCTAssertTrue(probe2.waitForExistence(timeout: 15), "resume probe should appear")
 
-        let done = waitForUploadProbe(in: app2, prefix: "RESUME_OK", timeout: 120)
+        let done = waitForUploadProbe(in: app2, prefix: "RESUME_OK|", timeout: 300)
         XCTAssertTrue(
-            done.hasPrefix("RESUME_OK"),
+            done.hasPrefix("RESUME_OK|"),
             "resume should complete with intact file: \(done)"
         )
+        let doneParts = done.split(separator: "|").map(String.init)
+        XCTAssertGreaterThanOrEqual(doneParts.count, 3, done)
+        let actualSize = Int(doneParts[2]) ?? -1
+        XCTAssertEqual(actualSize, expectedBytes, "server file size must match: \(done)")
         XCTAssertEqual(app2.state, .runningForeground)
     }
 
@@ -74,10 +90,11 @@ final class KillResumeUploadUITests: XCTestCase {
         while Date() < deadline {
             last = (probe.value as? String) ?? ""
             if last.hasPrefix(prefix) { return last }
-            if last.hasPrefix("ERROR") || last.hasPrefix("RESUME_BAD") || last.hasPrefix("RESUME_LIST") {
+            if last.hasPrefix("ERROR") || last.hasPrefix("RESUME_BAD") || last.hasPrefix("RESUME_LIST")
+                || last.hasPrefix("RESUME_NOTHING") || last.hasPrefix("RESUME_OK_NO_FILE") {
                 return last
             }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
         }
         return last
     }

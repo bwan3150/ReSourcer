@@ -77,6 +77,8 @@ struct ReSourcerApp: App {
             .preferredColorScheme(colorSchemeForPreference)
             .animation(AppTheme.Animation.standard, value: isLoggedIn)
             .onAppear {
+                // E2E 播放偏好必须在预览打开前写入，且每次冷启动都覆盖上次测试残留
+                applyE2EPlaybackPrefsIfNeeded()
                 themePreference = LocalStorageService.shared.getAppSettings().darkModePreference
                 LocalStorageService.shared.syncServersToAppGroupIfNeeded()
                 BackgroundUploadManager.shared.resumePendingFinalizations()
@@ -182,6 +184,24 @@ struct ReSourcerApp: App {
         }
     }
 
+    /// UITest：注入播放模式（避免点 Toggle 不稳定）
+    /// `E2E_LIST_LOOP` / `E2E_SHUFFLE` / `E2E_SAME_TYPE` = `0`|`1`
+    private func applyE2EPlaybackPrefsIfNeeded() {
+        let env = ProcessInfo.processInfo.environment
+        let storage = LocalStorageService.shared
+        if let v = env["E2E_LIST_LOOP"] {
+            storage.saveListLoopEnabled(v == "1")
+        }
+        if let v = env["E2E_SHUFFLE"] {
+            storage.saveShuffleEnabled(v == "1")
+        }
+        if let v = env["E2E_SAME_TYPE"] {
+            var prefs = storage.getPreviewPreferences()
+            prefs.filterAutoplayByFileType = (v == "1")
+            _ = storage.savePreviewPreferences(prefs)
+        }
+    }
+
     /// 读取 `E2E_SERVER_URL` / `E2E_API_KEY`（由 XCUITest launchEnvironment 注入）
     @discardableResult
     private func applyE2ELoginIfNeeded() -> Bool {
@@ -190,6 +210,7 @@ struct ReSourcerApp: App {
               let key = env["E2E_API_KEY"], !key.isEmpty else {
             return false
         }
+        applyE2EPlaybackPrefsIfNeeded()
         var server: Server
         if let existing = LocalStorageService.shared.getServers().first(where: { $0.baseURL == url }) {
             server = existing.with(name: "E2E", apiKey: key)

@@ -179,11 +179,12 @@ actor UploadService {
         data: Data,
         targetFolder: String,
         chunkSize: Int,
-        uploadFirstChunkOnly: Bool
+        uploadFirstChunkCount: Int
     ) async throws -> PartialChunkJobResult {
         let totalBytes = data.count
         guard chunkSize > 0 else { throw APIError.unknown("无效的分片大小") }
         let totalChunks = max(1, (totalBytes + chunkSize - 1) / chunkSize)
+        let chunksToUpload = min(max(0, uploadFirstChunkCount), totalChunks)
         let jobId = UUID().uuidString
         let stagingName = "chunk-src-\(jobId)-\(fileName)"
         let localFile = try BackgroundUploadSession.writeStagingFile(data: data, name: stagingName)
@@ -214,15 +215,16 @@ actor UploadService {
         )
         ChunkUploadJobStore.upsert(job)
 
-        if uploadFirstChunkOnly {
-            let end = min(chunkSize, data.count)
-            let chunk0 = data.subdata(in: 0..<end)
+        for index in 0..<chunksToUpload {
+            let start = index * chunkSize
+            let end = min(start + chunkSize, data.count)
+            let chunk = data.subdata(in: start..<end)
             let partFile = try BackgroundUploadSession.writeStagingFile(
-                data: chunk0,
-                name: "chunk-\(jobId)-0.part"
+                data: chunk,
+                name: "chunk-\(jobId)-\(index).part"
             )
             guard let url = URL(
-                string: APIEndpoint.uploadChunkPart(uploadId: uploadId, index: 0).path,
+                string: APIEndpoint.uploadChunkPart(uploadId: uploadId, index: index).path,
                 relativeTo: baseURL
             )?.absoluteURL else {
                 throw APIError.invalidURL
@@ -239,7 +241,7 @@ actor UploadService {
                 fromFile: partFile
             )
             let _: ChunkPartResponse = try decode(respData)
-            job.completedIndices = [0]
+            job.completedIndices.append(index)
             ChunkUploadJobStore.upsert(job)
         }
 

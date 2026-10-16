@@ -18,6 +18,8 @@ final class E2EHarness: ObservableObject {
 
     @Published var nowPlayingProbeText: String = ""
     @Published var uploadProbeText: String = ""
+    /// playlistCount|index|canNext|canPrev（由 FilePreviewView 写入）
+    var playlistMeta: String = "0|0|0|0"
 
     private var nowPlayingTimer: Timer?
     private var backgroundMarkElapsed: TimeInterval?
@@ -75,15 +77,20 @@ final class E2EHarness: ObservableObject {
     private func refreshNowPlayingProbe() {
         let snap = Self.readNowPlaying()
         let bg = didAdvanceWhileBackground ? "1" : "0"
-        // OK|title|duration|elapsed|rate|artwork|bgAdvanced
+        // OK|title|duration|elapsed|rate|artwork|bgAdvanced|loop|shuffle|plMeta
+        let loop = LocalStorageService.shared.getListLoopEnabled() ? "1" : "0"
+        let shuffle = LocalStorageService.shared.getShuffleEnabled() ? "1" : "0"
         nowPlayingProbeText = String(
-            format: "OK|%@|%.3f|%.3f|%.2f|%d|%@",
+            format: "OK|%@|%.3f|%.3f|%.2f|%d|%@|%@|%@|%@",
             snap.title.replacingOccurrences(of: "|", with: "_"),
             snap.duration,
             snap.elapsed,
             snap.rate,
             snap.hasArtwork ? 1 : 0,
-            bg
+            bg,
+            loop,
+            shuffle,
+            playlistMeta
         )
     }
 
@@ -154,19 +161,28 @@ final class E2EHarness: ObservableObject {
 
     // MARK: - Kill / resume upload
 
-    /// Phase 1：init + 仅第 0 片 → 持久化 job → READY_TO_KILL
+    private enum KillUploadKeys {
+        static let expectedBytes = "e2e_kill_expected_bytes"
+        static let fileName = "e2e_kill_file_name"
+        static let chunksBeforeKill = "e2e_kill_chunks_before"
+    }
+
+    /// Phase 1：大文件分片，只传前 N 片 → 持久化 job → READY_TO_KILL
+    /// 默认 ~12MB / 1MB 分片，先传 2 片再杀（模拟中途被杀）。
     func startKillUploadIfNeeded(apiService: APIService) {
         let env = ProcessInfo.processInfo.environment
         guard env["E2E_KILL_UPLOAD"] == "1" else { return }
         uploadProbeText = "STARTING"
+        let mb = Int(env["E2E_KILL_UPLOAD_MB"] ?? "12") ?? 12
+        let chunksBeforeKill = max(1, Int(env["E2E_KILL_CHUNKS_BEFORE"] ?? "2") ?? 2)
         Task {
             do {
                 _ = try await apiService.upload.updateUploadPolicy(chunkSizeMb: 1)
                 let chunkSize = 1 * 1024 * 1024
-                let totalBytes = chunkSize * 2 + 200_000
+                let totalBytes = max(chunkSize * (chunksBeforeKill + 2), mb * 1024 * 1024)
                 var data = Data(count: totalBytes)
-                for i in 0..<totalBytes {
-                    data[i] = UInt8(i % 251)
+                for i in stride(from: 0, to: totalBytes, by: 4096) {
+                    data[i] = UInt8((i / 4096) % 251)
                 }
                 let fileName = "e2e-kill-resume-\(Int(Date().timeIntervalSince1970)).bin"
                 let sources = try await apiService.config.getSourceFolders()
@@ -175,11 +191,14 @@ final class E2EHarness: ObservableObject {
                     data: data,
                     targetFolder: sources.current,
                     chunkSize: chunkSize,
-                    uploadFirstChunkOnly: true
+                    uploadFirstChunkCount: chunksBeforeKill
                 )
+                AppGroup.defaults.set(totalBytes, forKey: KillUploadKeys.expectedBytes)
+                AppGroup.defaults.set(fileName, forKey: KillUploadKeys.fileName)
+                AppGroup.defaults.set(chunksBeforeKill, forKey: KillUploadKeys.chunksBeforeKill)
                 await MainActor.run {
                     self.uploadProbeText =
-                        "READY_TO_KILL|\(result.uploadId)|\(result.fileName)|\(result.jobId)"
+                        "READY_TO_KILL|\(result.uploadId)|\(result.fileName)|\(result.jobId)|\(totalBytes)|\(chunksBeforeKill)/\(result.totalChunks)"
                 }
             } catch {
                 await MainActor.run {
@@ -189,31 +208,35 @@ final class E2EHarness: ObservableObject {
         }
     }
 
-    /// Phase 2：冷启动 resume + 校验目标目录文件完整
+    /// Phase 2：冷启动 resume + 校验目标文件字节数与文件名
     func checkUploadResumeIfNeeded(apiService: APIService) {
         let env = ProcessInfo.processInfo.environment
         guard env["E2E_UPLOAD_RESUME_CHECK"] == "1" else { return }
         uploadProbeText = "RESUMING"
+        let expectedBytes = AppGroup.defaults.integer(forKey: KillUploadKeys.expectedBytes)
+        let expectedName = AppGroup.defaults.string(forKey: KillUploadKeys.fileName) ?? ""
         Task {
             let finished = await apiService.upload.resumePendingChunkJobs()
-            try? await Task.sleep(nanoseconds: 800_000_000)
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
             let jobsLeft = ChunkUploadJobStore.loadAll()
             if jobsLeft.isEmpty, !finished.isEmpty {
                 do {
                     let sources = try await apiService.config.getSourceFolders()
                     let browse = try await apiService.browser.browse(path: sources.current)
-                    let hit = browse.items.first {
-                        $0.name.hasPrefix("e2e-kill-resume-") && !$0.isDirectory
+                    let hit = browse.items.first { item in
+                        guard !item.isDirectory else { return false }
+                        if !expectedName.isEmpty { return item.name == expectedName }
+                        return item.name.hasPrefix("e2e-kill-resume-")
                     }
                     if let hit {
-                        // DirectoryItem 无 size；用本地磁盘路径核对（E2E 服务器与模拟器同机）
                         let attrs = try? FileManager.default.attributesOfItem(atPath: hit.path)
                         let size = (attrs?[.size] as? NSNumber)?.int64Value ?? -1
-                        let intact = size >= 2 * 1024 * 1024
+                        let need = expectedBytes > 0 ? Int64(expectedBytes) : (12 * 1024 * 1024)
+                        let intact = size == need
                         await MainActor.run {
                             self.uploadProbeText = intact
                                 ? "RESUME_OK|\(hit.name)|\(size)"
-                                : "RESUME_BAD_SIZE|\(hit.name)|\(size)"
+                                : "RESUME_BAD_SIZE|\(hit.name)|\(size)|expected:\(need)"
                         }
                         return
                     }
