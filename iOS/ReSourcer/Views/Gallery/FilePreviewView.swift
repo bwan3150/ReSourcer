@@ -204,9 +204,40 @@ struct FilePreviewView: View {
             scheduleAutoHide()
             startAutoAdvanceTimer()
             logger.clear()
+            refreshNowPlayingSkipAvailability()
+        }
+        .onChange(of: shuffleEnabled) { _, _ in
+            refreshNowPlayingSkipAvailability()
+        }
+        .onChange(of: listLoopEnabled) { _, _ in
+            refreshNowPlayingSkipAvailability()
+        }
+        .onChange(of: playlistAtStart) { _, _ in
+            refreshNowPlayingSkipAvailability()
+        }
+        .onChange(of: playlistAtEnd) { _, _ in
+            refreshNowPlayingSkipAvailability()
         }
         .onAppear {
             scheduleAutoHide()
+            refreshNowPlayingSkipAvailability()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemotePlay)) { _ in
+            isVideoPlaying = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemotePause)) { _ in
+            isVideoPlaying = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemoteToggle)) { _ in
+            isVideoPlaying.toggle()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemoteNext)) { _ in
+            guard canGoNext else { return }
+            navigateInPlaylist(direction: 1)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemotePrevious)) { _ in
+            guard canGoPrev else { return }
+            navigateInPlaylist(direction: -1)
         }
         .task {
             if shuffleEnabled { shuffleNeedsFresh = true }
@@ -215,6 +246,7 @@ struct FilePreviewView: View {
         .onDisappear {
             hideControlsTask?.cancel()
             cancelAutoAdvanceTimer()
+            NowPlayingController.shared.clear()
         }
         // 文件信息面板
         .glassBottomSheet(isPresented: $showInfoSheet, title: "文件信息") {
@@ -455,7 +487,7 @@ struct FilePreviewView: View {
 
     private var bottomControls: some View {
         HStack {
-            // 上一个
+            // 上一个（锁屏远程 previous 复用同一 navigateInPlaylist）
             Button {
                 navigateInPlaylist(direction: -1)
             } label: {
@@ -466,6 +498,7 @@ struct FilePreviewView: View {
                     .background(.white.opacity(0.85))
                     .clipShape(Circle())
             }
+            .accessibilityIdentifier("previewPrevButton")
             .opacity(canGoPrev ? 1.0 : 0.3)
             .disabled(!canGoPrev)
 
@@ -545,7 +578,7 @@ struct FilePreviewView: View {
                             .opacity(0.001)
                     )
 
-                    // 播放/暂停
+                    // 播放/暂停（锁屏远程 play/pause 写同一 isVideoPlaying）
                     Button {
                         isVideoPlaying.toggle()
                     } label: {
@@ -556,6 +589,7 @@ struct FilePreviewView: View {
                             .background(.white.opacity(0.85))
                             .clipShape(Circle())
                     }
+                    .accessibilityIdentifier("previewPlayPauseButton")
 
                     // 截图（仅视频）
                     if currentFile?.isVideo == true {
@@ -575,7 +609,7 @@ struct FilePreviewView: View {
 
             Spacer()
 
-            // 下一个
+            // 下一个（锁屏远程 next 复用同一 navigateInPlaylist）
             Button {
                 navigateInPlaylist(direction: 1)
             } label: {
@@ -586,6 +620,7 @@ struct FilePreviewView: View {
                     .background(.white.opacity(0.85))
                     .clipShape(Circle())
             }
+            .accessibilityIdentifier("previewNextButton")
             .opacity(canGoNext ? 1.0 : 0.3)
             .disabled(!canGoNext)
         }
@@ -1006,6 +1041,13 @@ struct FilePreviewView: View {
         autoAdvanceTask = nil
     }
 
+    // MARK: - Now Playing / 远程控制
+
+    private func refreshNowPlayingSkipAvailability() {
+        let npc = NowPlayingController.shared
+        npc.canGoPrevious = canGoPrev
+        npc.canGoNext = canGoNext
+    }
 
     // MARK: - 视频截图
 
@@ -1605,9 +1647,18 @@ struct VideoPreviewContent: View {
             } else {
                 player.pause()
             }
+            NowPlayingController.shared.updatePlaybackProgress(
+                elapsed: currentTime,
+                duration: duration,
+                isPlaying: newValue
+            )
         }
         .onChange(of: isMuted) { _, newValue in
             player?.isMuted = newValue
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemoteSeek)) { note in
+            guard let position = note.userInfo?[NowPlayingController.seekPositionKey] as? TimeInterval else { return }
+            seekTo(position)
         }
     }
 
@@ -1629,12 +1680,19 @@ struct VideoPreviewContent: View {
         }
         guard let url else { return }
 
+        // 后台继续出声（画面可停，音频轨继续）
+        NowPlayingController.shared.activatePlaybackSession()
+
         isBuffering = true
         logger.info("视频 URL: \(url.absoluteString)")
 
         let avPlayer = AVPlayer(url: url)
         avPlayer.isMuted = isMuted
         player = avPlayer
+
+        NowPlayingController.shared.onSeek = { [weak avPlayer] position in
+            avPlayer?.seek(to: CMTime(seconds: position, preferredTimescale: 600))
+        }
 
         // KVO 监听 currentItem.status，等待 readyToPlay
         statusObserver = avPlayer.currentItem?.observe(\.status, options: [.new]) { item, _ in
@@ -1643,7 +1701,11 @@ struct VideoPreviewContent: View {
                 case .readyToPlay:
                     isBuffering = false
                     let dur = item.duration.seconds
+                    if dur.isFinite && dur > 0 {
+                        duration = dur
+                    }
                     self.logger.info("readyToPlay，时长: \(dur.isFinite ? String(format: "%.2fs", dur) : "未知")")
+                    self.publishNowPlaying(isPlaying: true)
                 case .failed:
                     isBuffering = false
                     let err = item.error
@@ -1671,6 +1733,11 @@ struct VideoPreviewContent: View {
                         duration = dur
                     }
                 }
+                NowPlayingController.shared.updatePlaybackProgress(
+                    elapsed: time.seconds,
+                    duration: duration,
+                    isPlaying: isPlaying
+                )
             }
         }
 
@@ -1693,8 +1760,50 @@ struct VideoPreviewContent: View {
             }
         }
 
+        publishNowPlaying(isPlaying: true)
+        loadArtworkIntoNowPlaying()
         avPlayer.play()
         isPlaying = true
+    }
+
+    private func seekTo(_ position: TimeInterval) {
+        currentTime = position
+        player?.seek(to: CMTime(seconds: position, preferredTimescale: 600))
+        NowPlayingController.shared.updatePlaybackProgress(
+            elapsed: position,
+            duration: duration,
+            isPlaying: isPlaying
+        )
+    }
+
+    private func publishNowPlaying(isPlaying playing: Bool) {
+        NowPlayingController.shared.update(
+            title: file.name,
+            duration: duration,
+            elapsed: currentTime,
+            isPlaying: playing
+        )
+    }
+
+    private func loadArtworkIntoNowPlaying() {
+        guard let thumbURL = file.thumbnailURL(apiService: apiService, size: 300) else { return }
+        Task {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: thumbURL)
+                guard let image = UIImage(data: data) else { return }
+                await MainActor.run {
+                    NowPlayingController.shared.update(
+                        title: file.name,
+                        duration: duration,
+                        elapsed: currentTime,
+                        isPlaying: isPlaying,
+                        artworkImage: image
+                    )
+                }
+            } catch {
+                // 无封面不阻断播放
+            }
+        }
     }
 
     private func cleanupPlayer() {
@@ -1832,9 +1941,18 @@ struct AudioPreviewContent: View {
             } else {
                 player.pause()
             }
+            NowPlayingController.shared.updatePlaybackProgress(
+                elapsed: currentTime,
+                duration: duration,
+                isPlaying: newValue
+            )
         }
         .onChange(of: isMuted) { _, newValue in
             player?.isMuted = newValue
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemoteSeek)) { note in
+            guard let position = note.userInfo?[NowPlayingController.seekPositionKey] as? TimeInterval else { return }
+            seekTo(position)
         }
     }
 
@@ -1856,16 +1974,27 @@ struct AudioPreviewContent: View {
         }
         guard let url else { return }
 
+        NowPlayingController.shared.activatePlaybackSession()
+
         logger.info("音频 URL: \(url.absoluteString)")
         let avPlayer = AVPlayer(url: url)
         avPlayer.isMuted = isMuted
         player = avPlayer
 
+        NowPlayingController.shared.onSeek = { [weak avPlayer] position in
+            avPlayer?.seek(to: CMTime(seconds: position, preferredTimescale: 600))
+        }
+
         statusObserver = avPlayer.currentItem?.observe(\.status, options: [.new]) { item, _ in
             Task { @MainActor in
                 switch item.status {
                 case .readyToPlay:
+                    let dur = item.duration.seconds
+                    if dur.isFinite && dur > 0 {
+                        duration = dur
+                    }
                     self.logger.info("音频 readyToPlay")
+                    self.publishNowPlaying(isPlaying: true)
                 case .failed:
                     let err = item.error
                     self.logger.error("音频加载失败: \(err?.localizedDescription ?? "未知")")
@@ -1891,6 +2020,11 @@ struct AudioPreviewContent: View {
                         duration = dur
                     }
                 }
+                NowPlayingController.shared.updatePlaybackProgress(
+                    elapsed: time.seconds,
+                    duration: duration,
+                    isPlaying: isPlaying
+                )
             }
         }
 
@@ -1913,11 +2047,53 @@ struct AudioPreviewContent: View {
             }
         }
 
+        publishNowPlaying(isPlaying: true)
+        loadArtworkIntoNowPlaying()
         avPlayer.play()
         isPlaying = true
     }
 
+    private func seekTo(_ position: TimeInterval) {
+        currentTime = position
+        player?.seek(to: CMTime(seconds: position, preferredTimescale: 600))
+        NowPlayingController.shared.updatePlaybackProgress(
+            elapsed: position,
+            duration: duration,
+            isPlaying: isPlaying
+        )
+    }
+
+    private func publishNowPlaying(isPlaying playing: Bool) {
+        NowPlayingController.shared.update(
+            title: file.name,
+            duration: duration,
+            elapsed: currentTime,
+            isPlaying: playing
+        )
+    }
+
+    private func loadArtworkIntoNowPlaying() {
+        guard let thumbURL = file.thumbnailURL(apiService: apiService, size: 300) else { return }
+        Task {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: thumbURL)
+                guard let image = UIImage(data: data) else { return }
+                await MainActor.run {
+                    NowPlayingController.shared.update(
+                        title: file.name,
+                        duration: duration,
+                        elapsed: currentTime,
+                        isPlaying: isPlaying,
+                        artworkImage: image
+                    )
+                }
+            } catch {}
+        }
+    }
+
     private func cleanupPlayer() {
+        statusObserver?.invalidate()
+        statusObserver = nil
         if let observer = timeObserver, let player = player {
             player.removeTimeObserver(observer)
         }
