@@ -71,8 +71,10 @@ struct FilePreviewView: View {
 
     // 文件信息面板
     @State private var showInfoSheet = false
+    @State private var fileInfoDetent: FileInfoPanelDetent = .half
     @State private var fileInfoTags: [Tag] = []
     @State private var fileMetadata: FileMetadata? = nil
+    @State private var isLoadingFileMetadata = false
     @State private var showTagEditor = false
 
     // 重命名（pin target — playlistIndex can change while the overlay is open）
@@ -147,14 +149,19 @@ struct FilePreviewView: View {
     }
 
     // MARK: - Body
+    // Split into sub-trees so Release + SWIFT_STRICT_CONCURRENCY can type-check.
 
     var body: some View {
+        previewWithSheets
+            .environmentObject(logger)
+    }
+
+    @ViewBuilder
+    private var previewStack: some View {
         ZStack {
-            // 黑色背景
             Color.black.ignoresSafeArea()
 
             if playlist.isEmpty {
-                // Loading state — show spinner and back button
                 VStack(spacing: AppTheme.Spacing.lg) {
                     ProgressView()
                         .tint(.white)
@@ -162,7 +169,6 @@ struct FilePreviewView: View {
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.5))
                 }
-                // Back button overlay
                 VStack {
                     HStack {
                         Button { dismiss() } label: {
@@ -178,13 +184,11 @@ struct FilePreviewView: View {
                     Spacer()
                 }
             } else if let file = currentFile {
-                // 直接显示当前文件
                 fileContentView(for: file)
                     .id(file.id)
                     .ignoresSafeArea()
                     .longPressToDismiss { dismiss() }
 
-                // 顶部 + 底部控制层
                 if showControls {
                     VStack {
                         topControls
@@ -197,181 +201,190 @@ struct FilePreviewView: View {
                 }
             }
         }
-        .ignoresSafeArea(edges: .bottom)
-        .navigationBarBackButtonHidden(true)
-        .toolbarVisibility(.hidden, for: .navigationBar)
-        .toolbar(.hidden, for: .tabBar)
-        .statusBarHidden(!showControls)
-        .animation(AppTheme.Animation.standard, value: showControls)
-        .onChange(of: playlistIndex) { _, _ in
-            scheduleAutoHide()
-            startAutoAdvanceTimer()
-            logger.clear()
-            refreshNowPlayingSkipAvailability()
-            publishE2EPlaylistMeta()
-        }
-        .onChange(of: playlist.count) { _, _ in
-            publishE2EPlaylistMeta()
-        }
-        .onChange(of: shuffleEnabled) { _, _ in
-            refreshNowPlayingSkipAvailability()
-        }
-        .onChange(of: listLoopEnabled) { _, _ in
-            refreshNowPlayingSkipAvailability()
-        }
-        .onChange(of: playlistAtStart) { _, _ in
-            refreshNowPlayingSkipAvailability()
-        }
-        .onChange(of: playlistAtEnd) { _, _ in
-            refreshNowPlayingSkipAvailability()
-        }
-        .onAppear {
-            scheduleAutoHide()
-            refreshNowPlayingSkipAvailability()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemotePlay)) { _ in
-            isVideoPlaying = true
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemotePause)) { _ in
-            isVideoPlaying = false
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemoteToggle)) { _ in
-            isVideoPlaying.toggle()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemoteNext)) { _ in
-            guard canGoNext else { return }
-            // 锁屏 / 控制中心：跳过图片等非音视频，保持后台连播
-            navigateInPlaylist(direction: 1, skipNonPlayable: true)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemotePrevious)) { _ in
-            guard canGoPrev else { return }
-            navigateInPlaylist(direction: -1, skipNonPlayable: true)
-        }
-        .task {
-            // UITest：在拉播放列表前同步冷启动注入的模式，避免上一测 UserDefaults 残留
-            if ProcessInfo.processInfo.environment["E2E_NOWPLAYING_PROBE"] == "1" {
-                listLoopEnabled = LocalStorageService.shared.getListLoopEnabled()
-                shuffleEnabled = LocalStorageService.shared.getShuffleEnabled()
-                prefs = LocalStorageService.shared.getPreviewPreferences()
-                advanceMode = LocalStorageService.shared.getAdvanceMode()
+    }
+
+    private var previewWithLifecycle: some View {
+        previewStack
+            .ignoresSafeArea(edges: .bottom)
+            .navigationBarBackButtonHidden(true)
+            .toolbarVisibility(.hidden, for: .navigationBar)
+            .toolbar(.hidden, for: .tabBar)
+            .statusBarHidden(!showControls)
+            .animation(AppTheme.Animation.standard, value: showControls)
+            .onChange(of: playlistIndex) { _, _ in
+                handlePlaylistIndexChanged()
             }
-            if shuffleEnabled { shuffleNeedsFresh = true }
-            await fetchPlaylist(uuid: initialUuid, keepShuffleQueue: false)
-            refreshNowPlayingSkipAvailability()
-        }
-        .onDisappear {
-            hideControlsTask?.cancel()
-            cancelAutoAdvanceTimer()
-            NowPlayingController.shared.clear()
-        }
-        // 文件信息面板
-        .glassBottomSheet(
-            isPresented: $showInfoSheet,
-            title: "文件信息",
-            stickyFooter: { fileInfoActions }
-        ) {
-            fileInfoModules
-        }
-        // 重命名浮窗（overlay 避免被输入法遮挡）
-        .overlay {
-            if showRenameAlert {
-                ZStack {
-                    Color.black.opacity(0.5)
-                        .ignoresSafeArea()
-                        .onTapGesture { showRenameAlert = false }
-
-                    VStack(spacing: AppTheme.Spacing.lg) {
-                        HStack {
-                            TextField("文件名", text: $renameText)
-                                .textFieldStyle(.plain)
-                                .autocorrectionDisabled()
-                                .textInputAutocapitalization(.never)
-                                .accessibilityIdentifier("renameTextField")
-                            Text((renameTarget ?? currentFile).map { $0.extension.isEmpty ? "" : ".\($0.extension)" } ?? "")
-                                .foregroundStyle(.tertiary)
-                        }
-                        .padding(AppTheme.Spacing.md)
-                        .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
-
-                        HStack(spacing: AppTheme.Spacing.md) {
-                            GlassButton(icon: "trash", style: .secondary, size: .medium) {
-                                renameText = ""
-                            }
-                            .frame(maxWidth: .infinity)
-                            .accessibilityLabel("清空")
-
-                            GlassButton(icon: "checkmark", style: .primary, size: .medium) {
-                                showRenameAlert = false
-                                Task { await performRename() }
-                            }
-                            .disabled(renameText.isEmpty || renameText == (renameTarget ?? currentFile)?.baseName)
-                            .frame(maxWidth: .infinity)
-                            .accessibilityIdentifier("renameConfirmButton")
-                            .accessibilityLabel("确认")
-
-                            GlassButton(icon: "xmark", style: .secondary, size: .medium) {
-                                showRenameAlert = false
-                            }
-                            .frame(maxWidth: .infinity)
-                            .accessibilityLabel("取消")
-                        }
-                    }
-                    .padding(AppTheme.Spacing.xxl)
-                    .frame(maxWidth: 340)
-                    .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
-                }
-                .transition(.opacity.combined(with: .scale(scale: 0.92)))
+            .onChange(of: playlist.count) { _, _ in
+                publishE2EPlaylistMeta()
             }
-        }
-        .animation(AppTheme.Animation.spring, value: showRenameAlert)
-        // 移动面板（复用 GalleryView 的 MoveSheetView）
-        .sheet(isPresented: $showMoveSheet) {
-            MoveSheetView(
-                apiService: apiService,
-                sourceFolder: NavigationState.shared.sourceFolder,
-                file: moveTarget ?? currentFile,
-                uuids: (moveTarget ?? currentFile)?.uuid.map { [$0] } ?? [],
-                onDismiss: {
-                    showMoveSheet = false
-                    moveTarget = nil
-                },
-                onMoved: { folderName, _ in
-                    showMoveSheet = false
-                    moveTarget = nil
-                    GlassAlertManager.shared.showSuccess("已移动到 \(folderName)")
-                    handlePostOperation()
+            .onChange(of: shuffleEnabled) { _, _ in
+                refreshNowPlayingSkipAvailability()
+            }
+            .onChange(of: listLoopEnabled) { _, _ in
+                refreshNowPlayingSkipAvailability()
+            }
+            .onChange(of: playlistAtStart) { _, _ in
+                refreshNowPlayingSkipAvailability()
+            }
+            .onChange(of: playlistAtEnd) { _, _ in
+                refreshNowPlayingSkipAvailability()
+            }
+            .onChange(of: showInfoSheet) { _, isOpen in
+                if isOpen {
+                    cancelAutoAdvanceTimer()
+                } else {
+                    startAutoAdvanceTimer()
                 }
+            }
+            .onAppear {
+                NavigationState.shared.hideTabBar = true
+                scheduleAutoHide()
+                refreshNowPlayingSkipAvailability()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemotePlay)) { _ in
+                isVideoPlaying = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemotePause)) { _ in
+                isVideoPlaying = false
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemoteToggle)) { _ in
+                isVideoPlaying.toggle()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemoteNext)) { _ in
+                guard canGoNext else { return }
+                navigateInPlaylist(direction: 1, skipNonPlayable: true)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .nowPlayingRemotePrevious)) { _ in
+                guard canGoPrev else { return }
+                navigateInPlaylist(direction: -1, skipNonPlayable: true)
+            }
+            .task {
+                if ProcessInfo.processInfo.environment["E2E_NOWPLAYING_PROBE"] == "1" {
+                    listLoopEnabled = LocalStorageService.shared.getListLoopEnabled()
+                    shuffleEnabled = LocalStorageService.shared.getShuffleEnabled()
+                    prefs = LocalStorageService.shared.getPreviewPreferences()
+                    advanceMode = LocalStorageService.shared.getAdvanceMode()
+                }
+                if shuffleEnabled { shuffleNeedsFresh = true }
+                await fetchPlaylist(uuid: initialUuid, keepShuffleQueue: false)
+                refreshNowPlayingSkipAvailability()
+            }
+            .onDisappear {
+                hideControlsTask?.cancel()
+                cancelAutoAdvanceTimer()
+                NowPlayingController.shared.clear()
+                NavigationState.shared.hideTabBar = false
+            }
+    }
+
+    private var previewWithSheets: some View {
+        previewWithLifecycle
+            .fileInfoPanel(
+                isPresented: $showInfoSheet,
+                selectedDetent: $fileInfoDetent,
+                title: "文件信息",
+                actions: { fileInfoActions },
+                modules: { fileInfoModules }
             )
-            .presentationDetents([.medium, .large])
-        }
-        // 标签编辑器
-        .sheet(isPresented: $showTagEditor) {
-            if let file = currentFile, let uuid = file.uuid {
-                TagEditorView(
+            .overlay {
+                if showRenameAlert {
+                    renameAlertOverlay
+                }
+            }
+            .animation(AppTheme.Animation.spring, value: showRenameAlert)
+            .sheet(isPresented: $showMoveSheet) {
+                MoveSheetView(
                     apiService: apiService,
                     sourceFolder: NavigationState.shared.sourceFolder,
-                    fileUuid: uuid,
-                    onDismiss: { updatedTags in
-                        fileInfoTags = updatedTags
+                    file: moveTarget ?? currentFile,
+                    uuids: (moveTarget ?? currentFile)?.uuid.map { [$0] } ?? [],
+                    onDismiss: {
+                        showMoveSheet = false
+                        moveTarget = nil
+                    },
+                    onMoved: { folderName, _ in
+                        showMoveSheet = false
+                        moveTarget = nil
+                        GlassAlertManager.shared.showSuccess("已移动到 \(folderName)")
+                        handlePostOperation()
                     }
                 )
                 .presentationDetents([.medium, .large])
             }
-        }
-        // 调试日志面板
-        .sheet(isPresented: $showDebugLog) {
-            DebugLogSheet(logger: logger, fileName: currentFile?.name ?? "")
-                .presentationDetents([.medium, .large])
-        }
-        // 长按快捷编辑浮窗
-        .overlay {
-            if showQuickActions {
-                quickEditPopup
-                    .transition(.opacity.combined(with: .scale(scale: 0.92)))
+            .sheet(isPresented: $showTagEditor) {
+                if let file = currentFile, let uuid = file.uuid {
+                    TagEditorView(
+                        apiService: apiService,
+                        sourceFolder: NavigationState.shared.sourceFolder,
+                        fileUuid: uuid,
+                        onDismiss: { updatedTags in
+                            fileInfoTags = updatedTags
+                        }
+                    )
+                    .presentationDetents([.medium, .large])
+                }
             }
+            .sheet(isPresented: $showDebugLog) {
+                DebugLogSheet(logger: logger, fileName: currentFile?.name ?? "")
+                    .presentationDetents([.medium, .large])
+            }
+            .overlay {
+                if showQuickActions {
+                    quickEditPopup
+                        .transition(.opacity.combined(with: .scale(scale: 0.92)))
+                }
+            }
+            .animation(AppTheme.Animation.spring, value: showQuickActions)
+    }
+
+    @ViewBuilder
+    private var renameAlertOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.5)
+                .ignoresSafeArea()
+                .onTapGesture { showRenameAlert = false }
+
+            VStack(spacing: AppTheme.Spacing.lg) {
+                HStack {
+                    TextField("文件名", text: $renameText)
+                        .textFieldStyle(.plain)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .accessibilityIdentifier("renameTextField")
+                    Text((renameTarget ?? currentFile).map { $0.extension.isEmpty ? "" : ".\($0.extension)" } ?? "")
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(AppTheme.Spacing.md)
+                .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+
+                HStack(spacing: AppTheme.Spacing.md) {
+                    GlassButton(icon: "trash", style: .secondary, size: .medium) {
+                        renameText = ""
+                    }
+                    .frame(maxWidth: .infinity)
+                    .accessibilityLabel("清空")
+
+                    GlassButton(icon: "checkmark", style: .primary, size: .medium) {
+                        showRenameAlert = false
+                        Task { await performRename() }
+                    }
+                    .disabled(renameText.isEmpty || renameText == (renameTarget ?? currentFile)?.baseName)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("renameConfirmButton")
+                    .accessibilityLabel("确认")
+
+                    GlassButton(icon: "xmark", style: .secondary, size: .medium) {
+                        showRenameAlert = false
+                    }
+                    .frame(maxWidth: .infinity)
+                    .accessibilityLabel("取消")
+                }
+            }
+            .padding(AppTheme.Spacing.xxl)
+            .frame(maxWidth: 340)
+            .glassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
         }
-        .animation(AppTheme.Animation.spring, value: showQuickActions)
-        .environmentObject(logger)
+        .transition(.opacity.combined(with: .scale(scale: 0.92)))
     }
 
     // MARK: - 文件内容路由
@@ -455,15 +468,7 @@ struct FilePreviewView: View {
             .accessibilityValue(currentFile?.name ?? "")
             .accessibilityAddTraits(.isButton)
             .simultaneousGesture(TapGesture().onEnded {
-                fileInfoTags = []
-                fileMetadata = nil
-                showInfoSheet = true
-                Task {
-                    await resolveUuidAndLoadTags()
-                    if let path = currentFile?.path {
-                        fileMetadata = try? await apiService.file.getMetadata(path: path)
-                    }
-                }
+                openInfoSheetForCurrentFile()
             })
             .onLongPressGesture {
                 if let file = currentFile {
@@ -684,12 +689,55 @@ struct FilePreviewView: View {
 
     // MARK: - 文件信息面板内容
 
+    private func handlePlaylistIndexChanged() {
+        scheduleAutoHide()
+        startAutoAdvanceTimer()
+        logger.clear()
+        refreshNowPlayingSkipAvailability()
+        publishE2EPlaylistMeta()
+        // 切曲时若信息面板仍开着，必须同步 metadata，否则会出现
+        // 顶栏 clip.mp4、面板却仍是上一张 HEIC EXIF 的错配（TF 041 用户截图）。
+        if showInfoSheet {
+            reloadFileMetadataForCurrentFile()
+        }
+    }
+
+    private func openInfoSheetForCurrentFile() {
+        fileInfoDetent = .half
+        showInfoSheet = true
+        cancelAutoAdvanceTimer()
+        reloadFileMetadataForCurrentFile()
+        Task { await resolveUuidAndLoadTags() }
+    }
+
+    /// 按当前曲目刷新 metadata；用 path 校验丢弃过期响应，避免顶栏/面板文件名错配。
+    private func reloadFileMetadataForCurrentFile() {
+        let path = currentFile?.path
+        fileInfoTags = []
+        fileMetadata = nil
+        isLoadingFileMetadata = path != nil
+        guard let path else {
+            isLoadingFileMetadata = false
+            return
+        }
+        Task {
+            let meta = try? await apiService.file.getMetadata(path: path)
+            await MainActor.run {
+                // 仅当仍停留在同一 path 时采纳（切曲 / 快速连点会作废旧请求）
+                guard currentFile?.path == path else { return }
+                fileMetadata = meta
+                isLoadingFileMetadata = false
+            }
+        }
+    }
+
     @ViewBuilder
     private var fileInfoModules: some View {
         if let file = currentFile {
             FileInfoSheetContent(
                 file: file,
                 metadata: fileMetadata,
+                isLoadingMetadata: isLoadingFileMetadata,
                 position: "\(playlistIndex + 1) / \(playlist.count)",
                 showsActions: false,
                 tags: fileInfoTags,
@@ -1103,6 +1151,8 @@ struct FilePreviewView: View {
 
     /// Called when media playback ends — 跳过非音视频以保持后台连播
     private func advanceToNext() {
+        // 信息面板打开时禁止自动切曲，否则会出现 chrome 已变、面板仍挂旧 EXIF 的错配窗口
+        if showInfoSheet { return }
         if advanceMode == .repeatCurrent { return }
         navigateInPlaylist(direction: 1, skipNonPlayable: true)
     }
@@ -1110,6 +1160,7 @@ struct FilePreviewView: View {
     /// Auto-advance timer for static content (images, PDF, other)
     private func startAutoAdvanceTimer() {
         cancelAutoAdvanceTimer()
+        guard !showInfoSheet else { return }
         guard advanceMode != .repeatCurrent else { return }
         guard currentFile?.isVideo != true && currentFile?.isAudio != true else { return }
 
@@ -1117,7 +1168,10 @@ struct FilePreviewView: View {
         autoAdvanceTask = Task {
             try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled else { return }
-            advanceToNext()
+            await MainActor.run {
+                guard !showInfoSheet else { return }
+                advanceToNext()
+            }
         }
     }
 

@@ -1,0 +1,12 @@
+SYNC-CHECK file-metadata-041-fix +detents 2026-10-16T12:06:21Z
+a0743799dc06d9e3a4810fa34a323299  01-playback-tabbar-hidden.png
+f73ef7668b3100ad3e7f9c3f3fd05fe7  02-info-modules-full.png
+c8825289545044534fdd9a7f3b8eaadc  03-module-time.png
+9ffa2b38a3bc747136b662374875553a  04-module-device-exif.png
+e02b1bd60c1e95480b218996f1771bff  05-module-map-gps.png
+6785a6ee5b3b49d412db784d2d28c531  06-module-basics-deduped.png
+38462775e7e8e4015388f02d8b27254f  07-actions-row.png
+d4c1bc9a82655d42f081ffcb0b28e295  08-half-detent.png
+a2d0b9f57983cb1176de849749abba10  09-full-detent.png
+e4a058cdbbf60b53601f6ccc6cc68680  10-scroll-top.png
+8467dd82556aa34d494add35dee3dcb5  11-scroll-bottom.png

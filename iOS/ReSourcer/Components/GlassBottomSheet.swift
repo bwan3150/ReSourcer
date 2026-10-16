@@ -211,6 +211,8 @@ struct GlassBottomSheet<Content: View, Footer: View>: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 44, height: 44)
                 }
+                .accessibilityLabel("关闭")
+                .accessibilityIdentifier("glassSheetCloseButton")
             }
         }
         .frame(height: AppTheme.BottomSheet.headerHeight)

@@ -373,7 +373,10 @@ enum APIThumbnailVersion {
 }
 
 extension String {
+    /// 查询参数编码。`urlQueryAllowed` 仍保留 `&` `=` `+` 等，会导致 path 截断、元数据 404。
     var urlEncoded: String {
-        return self.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? self
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-._~/")
+        return addingPercentEncoding(withAllowedCharacters: allowed) ?? self
     }
 }

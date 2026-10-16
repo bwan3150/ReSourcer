@@ -15,6 +15,7 @@
 
 import XCTest
 
+@MainActor
 final class FileMetadataUITests: XCTestCase {
 
     var app: XCUIApplication!
@@ -49,18 +50,73 @@ final class FileMetadataUITests: XCTestCase {
     // MARK: - (1) Module content vs live metadata
 
     func testRichHEICShowsTimeDeviceGPSMatchingServer() throws {
-        let uuid = try requireUUID(named: "IMG_4821.HEIC")
-        let meta = try fetchMetadata(named: "IMG_4821.HEIC")
+        let fileName = "IMG_4821.HEIC"
+        let uuid = try requireUUID(named: fileName)
+        let meta = try fetchMetadata(named: fileName)
 
         openGridItem(uuid: uuid)
+        assertTabBarHidden(reason: "playback / preview")
+        assertPreviewFileNameContains(fileName)
+
         openInfoSheet()
+        assertTabBarHidden(reason: "file info sheet")
+        assertChromeMatchesPanel(expectedFileName: fileName)
 
         let time = app.descendants(matching: .any)["meta-module-time"]
         let device = app.descendants(matching: .any)["meta-module-device"]
         let gps = app.descendants(matching: .any)["meta-module-gps"]
+        let actions = app.descendants(matching: .any)["fileInfoActionsRow"]
+        let basics = app.descendants(matching: .any)["meta-module-basics"]
         XCTAssertTrue(time.waitForExistence(timeout: 12), "时间 module visible for EXIF HEIC")
         XCTAssertTrue(device.waitForExistence(timeout: 5), "拍摄设备 module visible")
         XCTAssertTrue(gps.waitForExistence(timeout: 5), "地图定位 module visible")
+        XCTAssertTrue(actions.waitForExistence(timeout: 5), "action icon row visible")
+
+        // Gate filenames: 02 = full frame (chrome visible = HEIC); 03–07 = unique module crops
+        saveGateShot(
+            named: "02-info-modules-full",
+            expectedFileName: fileName,
+            focus: time,
+            preferCrop: false
+        )
+        saveGateShot(
+            named: "03-module-time",
+            expectedFileName: fileName,
+            focus: time,
+            preferCrop: true
+        )
+        time.swipeUp()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+        saveGateShot(
+            named: "04-module-device-exif",
+            expectedFileName: fileName,
+            focus: device,
+            preferCrop: true
+        )
+        device.swipeUp()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+        saveGateShot(
+            named: "05-module-map-gps",
+            expectedFileName: fileName,
+            focus: gps,
+            preferCrop: true
+        )
+        if basics.waitForExistence(timeout: 3) {
+            gps.swipeUp()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+            saveGateShot(
+                named: "06-module-basics-deduped",
+                expectedFileName: fileName,
+                focus: basics,
+                preferCrop: true
+            )
+        }
+        saveGateShot(
+            named: "07-actions-row",
+            expectedFileName: fileName,
+            focus: actions,
+            preferCrop: true
+        )
 
         // Capture time — Photos-style zh_CN header from capture_time
         let capture = meta["capture_time"] as? String ?? ""
@@ -110,6 +166,124 @@ final class FileMetadataUITests: XCTestCase {
         assertKeyStringNotDuplicatedAcrossModules(expectedGPS)
     }
 
+    /// 原生两档 detent + 固定底栏：半屏 / 接近全高 / 滚动顶 / 滚动底。
+    func testInfoPanelDetentsStickyToolbarScreenshots() throws {
+        let fileName = "IMG_4821.HEIC"
+        let uuid = try requireUUID(named: fileName)
+
+        openGridItem(uuid: uuid)
+        openInfoSheet()
+        assertChromeMatchesPanel(expectedFileName: fileName)
+
+        let actions = app.descendants(matching: .any)["fileInfoActionsRow"]
+        let rename = app.buttons["fileInfoRenameButton"].firstMatch
+        let basics = app.descendants(matching: .any)["meta-module-basics"]
+        let scroll = app.descendants(matching: .any)["glassSheetScroll-文件信息"]
+        XCTAssertTrue(
+            actions.waitForExistence(timeout: 10) || rename.waitForExistence(timeout: 10),
+            "sticky actions at half detent"
+        )
+        let toolbarProbe = actions.exists ? actions : rename
+        XCTAssertTrue(toolbarProbe.isHittable, "toolbar must stay hittable at half detent")
+
+        // 08 — default half detent
+        saveFullScreenShot(named: "08-half-detent")
+
+        // Expand to near-full via grabber drag (native presentationDetents)
+        expandInfoPanelDetent()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["fileInfoPanel-expanded"].waitForExistence(timeout: 5)
+                || toolbarProbe.isHittable
+                || rename.isHittable,
+            "expanded detent or sticky actions after drag"
+        )
+        let toolbarAfterExpand = rename.exists ? rename : toolbarProbe
+        XCTAssertTrue(toolbarAfterExpand.isHittable, "toolbar must stay hittable at expanded detent")
+        saveFullScreenShot(named: "09-full-detent")
+
+        // 11 first — scroll to bottom (basics fully above sticky toolbar)
+        var scrolls = 0
+        while scrolls < 18 {
+            if basics.exists, basics.isHittable, rename.isHittable {
+                // Ensure basics isn't still clipped: one more nudge if tags/path mid-screen
+                break
+            }
+            scrollInfoPanelContent(direction: .up)
+            scrolls += 1
+            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+        }
+        // Extra nudges so 基础信息 clears the sticky footer
+        for _ in 0..<6 {
+            scrollInfoPanelContent(direction: .up)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        }
+        XCTAssertTrue(basics.waitForExistence(timeout: 5), "basics module after scroll")
+        XCTAssertTrue(basics.isHittable, "basics fully visible at scroll bottom")
+        XCTAssertTrue(
+            rename.isHittable || actions.isHittable,
+            "toolbar still fixed at scroll bottom"
+        )
+        saveFullScreenShot(named: "11-scroll-bottom")
+
+        // 10 — scroll back to top at expanded detent (avoid collapsing sheet)
+        for _ in 0..<14 {
+            scrollInfoPanelContent(direction: .down, gentle: true)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        }
+        // If content-drag collapsed the sheet, re-expand before the gate shot
+        if app.descendants(matching: .any)["fileInfoPanel-half"].exists
+            || !app.descendants(matching: .any)["fileInfoPanel-expanded"].exists {
+            expandInfoPanelDetent()
+        }
+        let time = app.descendants(matching: .any)["meta-module-time"]
+        XCTAssertTrue(time.waitForExistence(timeout: 5), "time module at scroll top")
+        XCTAssertTrue(
+            rename.isHittable || actions.isHittable,
+            "toolbar fixed while at scroll top"
+        )
+        RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        saveFullScreenShot(named: "10-scroll-top")
+    }
+
+    /// Playlist 切曲后重开信息面板：顶栏文件名必须与面板 metadata 一致（回归 clip.mp4 vs HEIC 错配）。
+    func testInfoPanelTracksPlaylistSwitchVideoThenHEIC() throws {
+        let video = "clip.mp4"
+        let heic = "IMG_4821.HEIC"
+        let videoUUID = try requireUUID(named: video)
+        _ = try requireUUID(named: heic)
+
+        openGridItem(uuid: videoUUID)
+        assertPreviewFileNameContains(video)
+        openInfoSheet()
+        assertChromeMatchesPanel(expectedFileName: video)
+        XCTAssertTrue(
+            app.descendants(matching: .any)["meta-module-basics"].waitForExistence(timeout: 10)
+        )
+        XCTAssertFalse(app.descendants(matching: .any)["meta-module-gps"].exists)
+
+        // close → advance → reopen: chrome + panel must stay in sync (no clip.mp4/HEIC mismatch)
+        closeInfoSheet()
+        assertPreviewFileNameContains(video)
+        advancePreviewUntilFileNameContains(heic)
+        openInfoSheet()
+        let time = app.descendants(matching: .any)["meta-module-time"]
+        XCTAssertTrue(time.waitForExistence(timeout: 12), "HEIC time module after switch")
+        assertChromeMatchesPanel(expectedFileName: heic)
+        XCTAssertTrue(app.descendants(matching: .any)["meta-module-device"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["meta-module-gps"].waitForExistence(timeout: 5))
+
+        // Reverse: HEIC → video
+        closeInfoSheet()
+        advancePreviewUntilFileNameContains(video)
+        openInfoSheet()
+        assertChromeMatchesPanel(expectedFileName: video)
+        XCTAssertTrue(
+            app.descendants(matching: .any)["meta-module-basics"].waitForExistence(timeout: 10)
+        )
+        XCTAssertFalse(app.descendants(matching: .any)["meta-module-time"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["meta-module-gps"].exists)
+    }
+
     /// Assert a distinctive string is not copied into 基础信息 when a richer module owns it.
     private func assertKeyStringNotDuplicatedAcrossModules(_ needle: String) {
         let basics = app.descendants(matching: .any)["meta-module-basics"]
@@ -129,14 +303,17 @@ final class FileMetadataUITests: XCTestCase {
     }
 
     func testSparsePNGHidesTimeDeviceGPSModules() throws {
-        let uuid = try requireUUID(named: "plain.png")
-        let meta = try fetchMetadata(named: "plain.png")
+        let fileName = "plain.png"
+        let uuid = try requireUUID(named: fileName)
+        let meta = try fetchMetadata(named: fileName)
         XCTAssertNil(meta["capture_time"], "fixture must lack capture_time")
         XCTAssertNil(meta["gps"], "fixture must lack gps")
         XCTAssertNil(meta["make"], "fixture must lack make")
 
         openGridItem(uuid: uuid)
+        assertPreviewFileNameContains(fileName)
         openInfoSheet()
+        assertChromeMatchesPanel(expectedFileName: fileName)
 
         // Wait for basics (always present for sparse)
         let basics = app.descendants(matching: .any)["meta-module-basics"]
@@ -151,22 +328,32 @@ final class FileMetadataUITests: XCTestCase {
         // Filename lives in 基础信息 when 时间 is hidden
         let filename = app.descendants(matching: .any)["meta-basics-filename"]
         if filename.waitForExistence(timeout: 3) {
-            XCTAssertTrue(filename.label.contains("plain.png"))
+            XCTAssertTrue(filename.label.contains(fileName))
         } else {
-            XCTAssertTrue(app.staticTexts["plain.png"].exists || app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "plain.png")).count > 0)
+            XCTAssertTrue(app.staticTexts[fileName].exists || app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", fileName)).count > 0)
         }
+
+        saveFullScreenShot(named: "08-sparse-png-basics-only")
+        saveElementShot(basics, named: "09-sparse-png-module-basics")
     }
 
     func testVideoShowsDurationAndCodecInBasics() throws {
-        let uuid = try requireUUID(named: "clip.mp4")
-        let meta = try fetchMetadata(named: "clip.mp4")
+        let fileName = "clip.mp4"
+        let uuid = try requireUUID(named: fileName)
+        let meta = try fetchMetadata(named: fileName)
         let duration = meta["duration"] as? Double ?? 0
         let codec = (meta["codec"] as? String ?? "").uppercased()
         XCTAssertGreaterThan(duration, 0)
         XCTAssertFalse(codec.isEmpty)
 
         openGridItem(uuid: uuid)
+        assertPreviewFileNameContains(fileName)
+        assertTabBarHidden(reason: "video playback")
+        // Gate name: chrome must be this video (clip.mp4), TabBar hidden — never HEIC preview
+        saveFullScreenShot(named: "01-playback-tabbar-hidden")
+
         openInfoSheet()
+        assertChromeMatchesPanel(expectedFileName: fileName)
 
         let basics = app.descendants(matching: .any)["meta-module-basics"]
         XCTAssertTrue(basics.waitForExistence(timeout: 12))
@@ -189,6 +376,11 @@ final class FileMetadataUITests: XCTestCase {
         // Video without capture EXIF should not show time/device/gps modules
         XCTAssertFalse(app.descendants(matching: .any)["meta-module-time"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["meta-module-gps"].exists)
+
+        let actions = app.descendants(matching: .any)["fileInfoActionsRow"]
+        XCTAssertTrue(actions.waitForExistence(timeout: 5))
+        saveFullScreenShot(named: "10-video-info-basics")
+        saveElementShot(actions, named: "11-video-actions-row")
     }
 
     // MARK: - (2) Action mutations vs live server
@@ -515,15 +707,30 @@ final class FileMetadataUITests: XCTestCase {
         )
     }
 
-    private func assertPreviewFileNameContains(_ needle: String) {
+    /// Video auto-hides chrome; tap center to bring controls + filename capsule back.
+    private func revealPreviewChromeIfNeeded() {
         let capsule = app.descendants(matching: .any)["previewFileNameCapsule"]
-        XCTAssertTrue(capsule.waitForExistence(timeout: 8))
+        if capsule.exists { return }
+        // Avoid top chrome / bottom tab — tap content center
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45)).tap()
+        _ = capsule.waitForExistence(timeout: 3)
+        if !capsule.exists {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.55)).tap()
+            _ = capsule.waitForExistence(timeout: 3)
+        }
+    }
+
+    private func assertPreviewFileNameContains(_ needle: String) {
+        revealPreviewChromeIfNeeded()
+        let capsule = app.descendants(matching: .any)["previewFileNameCapsule"]
+        XCTAssertTrue(capsule.waitForExistence(timeout: 8), "previewFileNameCapsule for '\(needle)'")
         // Prefer accessibilityValue (filename); label is the generic "文件信息"
         var value = capsule.value as? String ?? ""
         let deadline = Date().addingTimeInterval(6)
         while Date() < deadline {
             value = capsule.value as? String ?? ""
             if value.contains(needle) { break }
+            revealPreviewChromeIfNeeded()
             RunLoop.current.run(until: Date().addingTimeInterval(0.25))
         }
         XCTAssertTrue(
@@ -533,6 +740,7 @@ final class FileMetadataUITests: XCTestCase {
     }
 
     private func openInfoSheet() {
+        revealPreviewChromeIfNeeded()
         let capsule = app.descendants(matching: .any)["previewFileNameCapsule"]
         XCTAssertTrue(capsule.waitForExistence(timeout: 12), "preview filename capsule")
         capsule.tap()
@@ -546,6 +754,213 @@ final class FileMetadataUITests: XCTestCase {
         )
         // Extra beat for async metadata fetch
         RunLoop.current.run(until: Date().addingTimeInterval(1.2))
+    }
+
+    /// Drag sheet grabber upward to snap to the expanded (near-full) detent.
+    private func expandInfoPanelDetent() {
+        // Grabber sits near the top edge of the presented sheet (~mid-screen at half detent).
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.52))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12))
+        start.press(forDuration: 0.15, thenDragTo: end)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.8))
+        // Fallback second drag if still at half
+        if app.descendants(matching: .any)["fileInfoPanel-half"].exists {
+            let start2 = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.48))
+            let end2 = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08))
+            start2.press(forDuration: 0.15, thenDragTo: end2)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.8))
+        }
+    }
+
+    private enum InfoScrollDirection { case up, down }
+
+    /// Scroll only the info-panel ScrollView content (avoids collapsing native sheet detents).
+    private func scrollInfoPanelContent(direction: InfoScrollDirection, gentle: Bool = false) {
+        let scroll = app.descendants(matching: .any)["glassSheetScroll-文件信息"].firstMatch
+        guard scroll.exists else { return }
+        // Drag within the mid-band of the scroll view so the sheet grabber is not engaged.
+        let span: CGFloat = gentle ? 0.18 : 0.37
+        let topY: CGFloat = direction == .up ? 0.55 + span / 2 : 0.55 - span / 2
+        let bottomY: CGFloat = direction == .up ? 0.55 - span / 2 : 0.55 + span / 2
+        let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: topY))
+        let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: bottomY))
+        start.press(forDuration: 0.05, thenDragTo: end)
+    }
+
+    private func assertTabBarHidden(reason: String) {
+        // Only inspect the system TabBar container — do NOT use app.buttons["下载"],
+        // which also matches FileInfoActionsRow's download action.
+        let tabBar = app.tabBars.firstMatch
+        if tabBar.exists {
+            XCTAssertFalse(
+                tabBar.isHittable,
+                "TabBar must not be hittable over \(reason)"
+            )
+            for label in ["画廊", "分类", "下载", "设置"] {
+                let tab = tabBar.buttons[label].firstMatch
+                if tab.exists {
+                    XCTAssertFalse(
+                        tab.isHittable,
+                        "TabBar button '\(label)' must not be hittable during \(reason)"
+                    )
+                }
+            }
+        }
+    }
+
+    private var screenshotDigests = Set<String>()
+
+    private func screenshotOutputDir() -> String {
+        let env = ProcessInfo.processInfo.environment
+        return env["E2E_SCREENSHOT_DIR"]
+            ?? env["TEST_RUNNER_E2E_SCREENSHOT_DIR"]
+            ?? NSTemporaryDirectory()
+    }
+
+    private func saveFullScreenShot(named name: String) {
+        saveShotData(XCUIScreen.main.screenshot().pngRepresentation, named: name)
+    }
+
+    private func saveElementShot(_ element: XCUIElement, named name: String) {
+        XCTAssertTrue(element.exists, "element for screenshot \(name) must exist")
+        // Prefer element crop so module shots are content-unique (not duplicate full frames).
+        let data = element.screenshot().pngRepresentation
+        saveShotData(data, named: name)
+    }
+
+    /// Full-frame gate shot: assert chrome↔panel filename, then capture.
+    /// Uses element crop when `preferCrop` so module files stay byte-unique vs the full panel shot.
+    private func saveGateShot(
+        named name: String,
+        expectedFileName: String,
+        focus: XCUIElement,
+        preferCrop: Bool = false
+    ) {
+        assertChromeMatchesPanel(expectedFileName: expectedFileName)
+        XCTAssertTrue(focus.exists, "focus element for \(name)")
+        if preferCrop {
+            // Nudge focus into view then crop — unique bytes, still real UI
+            if focus.isHittable == false {
+                focus.swipeUp()
+                RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+            }
+            saveElementShot(focus, named: name)
+        } else {
+            saveFullScreenShot(named: name)
+        }
+    }
+
+    private func saveShotData(_ data: Data, named name: String) {
+        let dir = screenshotOutputDir()
+        let fm = FileManager.default
+        try? fm.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        let url = URL(fileURLWithPath: dir).appendingPathComponent("\(name).png")
+        let digest = data.reduce(into: UInt64(5381)) { hash, byte in
+            hash = ((hash << 5) &+ hash) &+ UInt64(byte)
+        }
+        let key = "\(digest)-\(data.count)"
+        XCTAssertFalse(
+            screenshotDigests.contains(key),
+            "screenshot \(name) must be unique — duplicate PNG content is forbidden"
+        )
+        screenshotDigests.insert(key)
+        do {
+            try data.write(to: url)
+            XCTContext.runActivity(named: "screenshot \(name)") { activity in
+                let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.png")
+                attachment.name = name
+                attachment.lifetime = .keepAlways
+                activity.add(attachment)
+            }
+        } catch {
+            XCTFail("failed to write screenshot \(name): \(error)")
+        }
+    }
+
+    /// 顶栏 capsule 与面板文件名必须一致（防 clip.mp4 chrome + HEIC 面板错配）。
+    private func assertChromeMatchesPanel(expectedFileName: String) {
+        assertPreviewFileNameContains(expectedFileName)
+        // Prefer metadata filename id; fall back to basics filename when 时间模块隐藏
+        let metaName = app.descendants(matching: .any)["meta-filename"]
+        let basicsName = app.descendants(matching: .any)["meta-basics-filename"]
+        let deadline = Date().addingTimeInterval(10)
+        var matched = false
+        while Date() < deadline {
+            if metaName.exists, metaName.label.contains(expectedFileName) {
+                matched = true
+                break
+            }
+            if basicsName.exists, basicsName.label.contains(expectedFileName) {
+                matched = true
+                break
+            }
+            // Loading placeholder may still be up
+            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+        }
+        XCTAssertTrue(
+            matched,
+            "panel filename must contain '\(expectedFileName)' (chrome matched); meta='\(metaName.label)' basics='\(basicsName.label)'"
+        )
+    }
+
+    private func closeInfoSheet() {
+        let close = app.descendants(matching: .any)["glassSheetCloseButton"]
+        if close.waitForExistence(timeout: 3), close.isHittable {
+            close.tap()
+        } else if app.buttons["关闭"].exists {
+            app.buttons["关闭"].tap()
+        } else {
+            // Only tap the sheet close region — never the top chrome (back chevron lives there).
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.32)).tap()
+        }
+        RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+        // Wait for modules to disappear; do NOT tap the status-bar/chrome area (would pop preview).
+        let deadline = Date().addingTimeInterval(5)
+        while Date() < deadline {
+            let sheetBits = app.descendants(matching: .any).matching(
+                NSPredicate(format: "identifier IN %@", [
+                    "meta-module-time", "meta-module-basics", "meta-module-device", "fileInfoActionsRow"
+                ])
+            ).firstMatch
+            if !sheetBits.exists { break }
+            if close.exists, close.isHittable { close.tap() }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+        }
+        revealPreviewChromeIfNeeded()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["previewFileNameCapsule"].waitForExistence(timeout: 5),
+            "preview must remain after closing info sheet"
+        )
+    }
+
+    private func tapPlaylistNext() {
+        revealPreviewChromeIfNeeded()
+        let next = app.descendants(matching: .any)["previewNextButton"]
+        XCTAssertTrue(next.waitForExistence(timeout: 5), "previewNextButton")
+        if next.isHittable {
+            next.tap()
+        } else {
+            next.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+    }
+
+    private func advancePreviewUntilFileNameContains(_ needle: String) {
+        let deadline = Date().addingTimeInterval(25)
+        while Date() < deadline {
+            revealPreviewChromeIfNeeded()
+            let capsule = app.descendants(matching: .any)["previewFileNameCapsule"]
+            guard capsule.waitForExistence(timeout: 5) else {
+                XCTFail("previewFileNameCapsule missing while advancing toward '\(needle)'")
+                return
+            }
+            let value = (capsule.value as? String)
+                ?? capsule.label
+                ?? ""
+            if value.contains(needle) { return }
+            tapPlaylistNext()
+        }
+        XCTFail("preview did not reach file containing '\(needle)'")
     }
 
     private func triggerScan() throws {
