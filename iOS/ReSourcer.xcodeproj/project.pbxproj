@@ -427,6 +427,7 @@
 				B1000004233F0000 /* PlaybackModeUITests.swift */,
 				B1000006233F0000 /* HeicThumbnailUITests.swift */,
 				B1000008233F0000 /* ThumbnailPersistUITests.swift */,
+				C1000030233F0000 /* ShareDownloadUITests.swift */,
 			);
 			path = ReSourcerUITests;
 			sourceTree = "<group>";
@@ -736,6 +737,7 @@
 				B1000005233F0001 /* PlaybackModeUITests.swift in Sources */,
 				B1000007233F0001 /* HeicThumbnailUITests.swift in Sources */,
 				B1000009233F0001 /* ThumbnailPersistUITests.swift in Sources */,
+				C1000030233F0001 /* ShareDownloadUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
