@@ -223,7 +223,9 @@ final class FileMetadataUITests: XCTestCase {
                 "renameBtn": app.buttons["重命名"].exists,
                 "infoTitle": app.staticTexts["文件信息"].exists,
                 "renameTitle": app.staticTexts["重命名"].exists,
-                "textFieldCount": app.textFields.count
+                "textFieldCount": app.textFields.count,
+                "renameTextField": app.descendants(matching: .any)["renameTextField"].exists,
+                "runId": "post-fix"
             ]
         )
         // #endregion
