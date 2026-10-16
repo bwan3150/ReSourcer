@@ -29,9 +29,11 @@ DESTINATION="${DESTINATION:-platform=iOS Simulator,name=iPhone 17}"
 # not trailing KEY=value build settings (those do not reach ProcessInfo).
 export E2E_SERVER_URL E2E_API_KEY
 export E2E_ALLOW_MUTATION="${E2E_ALLOW_MUTATION:-0}"
+export E2E_SOURCE_FOLDER="${E2E_SOURCE_FOLDER:-}"
 export TEST_RUNNER_E2E_SERVER_URL="$E2E_SERVER_URL"
 export TEST_RUNNER_E2E_API_KEY="$E2E_API_KEY"
 export TEST_RUNNER_E2E_ALLOW_MUTATION="$E2E_ALLOW_MUTATION"
+export TEST_RUNNER_E2E_SOURCE_FOLDER="$E2E_SOURCE_FOLDER"
 
 echo "-- running ReSourcerUITests on $DESTINATION"
 echo "-- E2E_SERVER_URL=$E2E_SERVER_URL"

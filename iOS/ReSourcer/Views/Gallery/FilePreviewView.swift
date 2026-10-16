@@ -291,6 +291,7 @@ struct FilePreviewView: View {
                                 renameText = ""
                             }
                             .frame(maxWidth: .infinity)
+                            .accessibilityLabel("清空")
 
                             GlassButton(icon: "checkmark", style: .primary, size: .medium) {
                                 showRenameAlert = false
@@ -298,11 +299,14 @@ struct FilePreviewView: View {
                             }
                             .disabled(renameText.isEmpty || renameText == currentFile?.baseName)
                             .frame(maxWidth: .infinity)
+                            .accessibilityIdentifier("renameConfirmButton")
+                            .accessibilityLabel("确认")
 
                             GlassButton(icon: "xmark", style: .secondary, size: .medium) {
                                 showRenameAlert = false
                             }
                             .frame(maxWidth: .infinity)
+                            .accessibilityLabel("取消")
                         }
                     }
                     .padding(AppTheme.Spacing.xxl)
@@ -435,6 +439,10 @@ struct FilePreviewView: View {
             .frame(height: 48)
             .background(.white.opacity(0.85), in: Capsule())
             .contentShape(Capsule())
+            .accessibilityIdentifier("previewFileNameCapsule")
+            .accessibilityLabel("文件信息")
+            .accessibilityValue(currentFile?.name ?? "")
+            .accessibilityAddTraits(.isButton)
             .simultaneousGesture(TapGesture().onEnded {
                 fileInfoTags = []
                 fileMetadata = nil

@@ -215,6 +215,7 @@ struct GalleryView: View {
                 HStack {
                     TextField("文件名", text: $renameText)
                         .textFieldStyle(.plain)
+                        .accessibilityIdentifier("renameTextField")
                     Text(selectedFile?.extension ?? "")
                         .foregroundStyle(.tertiary)
                 }
@@ -226,17 +227,21 @@ struct GalleryView: View {
                         renameText = ""
                     }
                     .frame(maxWidth: .infinity)
+                    .accessibilityLabel("清空")
 
                     GlassButton(icon: "checkmark", style: .primary, size: .medium) {
                         Task { await performRename() }
                     }
                     .disabled(renameText.isEmpty || renameText == selectedFile?.baseName)
                     .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("renameConfirmButton")
+                    .accessibilityLabel("确认")
 
                     GlassButton(icon: "xmark", style: .secondary, size: .medium) {
                         showRenameAlert = false
                     }
                     .frame(maxWidth: .infinity)
+                    .accessibilityLabel("取消")
                 }
 
                 Spacer().frame(height: 60)
@@ -635,6 +640,8 @@ struct GalleryView: View {
                     .foregroundStyle(.primary)
                     .frame(width: 44, height: 44)
             }
+            .accessibilityIdentifier("galleryViewModeToggle")
+            .accessibilityLabel(viewMode == .grid ? "列表视图" : "网格视图")
             .interactiveGlassBackground(in: Circle())
         }
     }
@@ -1443,10 +1450,12 @@ struct GalleryView: View {
                     }
                 } : nil,
                 onRename: {
+                    let target = file
+                    selectedFile = target
                     fileInfoToShow = nil
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(300))
-                        renameText = selectedFile?.baseName ?? ""
+                        renameText = target.baseName
                         showRenameAlert = true
                     }
                 },
@@ -1915,6 +1924,7 @@ struct MoveSheetView: View {
                     .padding(.vertical, AppTheme.Spacing.md)
                     .background(.blue, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
                 }
+                .accessibilityIdentifier("moveHereButton")
                 .disabled(targetUUIDs.isEmpty || isMoving)
                 .padding(.horizontal, AppTheme.Spacing.lg)
                 .padding(.vertical, AppTheme.Spacing.md)
@@ -2153,10 +2163,15 @@ struct GalleryListItem: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier(file.uuid.map { "fileInfoButton-\($0)" } ?? "fileInfoButton")
+                .accessibilityLabel("文件信息")
             }
         }
         .padding(AppTheme.Spacing.md)
         .clearGlassBackground(in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+        // Keep children (esp. fileInfoButton-*) independently addressable for XCUITest
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(file.uuid.map { "fileListItem-\($0)" } ?? "fileListItem")
         .overlay {
             if isSelectMode && isSelected {
                 RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md)

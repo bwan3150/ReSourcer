@@ -110,6 +110,7 @@ struct FileInfoSheetContent: View {
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
+                    .accessibilityIdentifier("meta-capture-time")
             }
 
             HStack(spacing: 6) {
@@ -121,6 +122,7 @@ struct FileInfoSheetContent: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .accessibilityIdentifier("meta-filename")
                 if let position {
                     Text("·")
                         .foregroundStyle(.tertiary)
@@ -131,6 +133,8 @@ struct FileInfoSheetContent: View {
             }
         }
         .moduleCard()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("meta-module-time")
     }
 
     // MARK: - 拍摄设备
@@ -141,13 +145,16 @@ struct FileInfoSheetContent: View {
                 if let device = metadata?.deviceLabel {
                     Text(device)
                         .font(.subheadline.weight(.semibold))
+                        .accessibilityIdentifier("meta-device")
                 } else if let lens = metadata?.lensLine {
                     Text(lens)
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(2)
+                        .accessibilityIdentifier("meta-device")
                 } else {
                     Text("拍摄信息")
                         .font(.subheadline.weight(.semibold))
+                        .accessibilityIdentifier("meta-device")
                 }
                 Spacer(minLength: 8)
                 if let format = metadata?.format, !format.isEmpty {
@@ -156,6 +163,7 @@ struct FileInfoSheetContent: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(.tertiary.opacity(0.35), in: Capsule())
+                        .accessibilityIdentifier("meta-format")
                 }
             }
 
@@ -163,12 +171,14 @@ struct FileInfoSheetContent: View {
                 Text(lens)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("meta-lens")
             }
 
             if let summary = deviceResolutionSummary {
                 Text(summary)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("meta-dimensions")
             }
 
             let strip = metadata?.exifStripItems ?? []
@@ -189,9 +199,12 @@ struct FileInfoSheetContent: View {
                     }
                 }
                 .padding(.top, 2)
+                .accessibilityIdentifier("meta-exif-strip")
             }
         }
         .moduleCard()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("meta-module-device")
     }
 
     /// MP • dims • size — owned by 拍摄设备 when that module shows
@@ -235,9 +248,12 @@ struct FileInfoSheetContent: View {
                 Text(gps.formatted)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("meta-gps-coords")
             }
         }
         .moduleCard()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("meta-module-gps")
     }
 
     // MARK: - 基础信息（仅剩余字段）
@@ -340,6 +356,7 @@ struct FileInfoSheetContent: View {
                         .foregroundStyle(.primary)
                         .lineLimit(2)
                         .truncationMode(.middle)
+                        .accessibilityIdentifier("meta-basics-\(row.id)")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -410,6 +427,8 @@ struct FileInfoSheetContent: View {
             }
         }
         .moduleCard()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("meta-module-basics")
     }
 
     // MARK: - Actions (single row)
