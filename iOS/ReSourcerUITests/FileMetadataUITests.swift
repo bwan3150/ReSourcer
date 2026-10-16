@@ -72,15 +72,51 @@ final class FileMetadataUITests: XCTestCase {
         XCTAssertTrue(gps.waitForExistence(timeout: 5), "地图定位 module visible")
         XCTAssertTrue(actions.waitForExistence(timeout: 5), "action icon row visible")
 
-        // Distinct shots: full panel + per-module element crops (unique digests required)
-        saveFullScreenShot(named: "02-heic-info-modules-full")
-        saveElementShot(time, named: "03-heic-module-time")
-        saveElementShot(device, named: "04-heic-module-device-exif")
-        saveElementShot(gps, named: "05-heic-module-map-gps")
+        // Gate filenames: 02 = full frame (chrome visible = HEIC); 03–07 = unique module crops
+        saveGateShot(
+            named: "02-info-modules-full",
+            expectedFileName: fileName,
+            focus: time,
+            preferCrop: false
+        )
+        saveGateShot(
+            named: "03-module-time",
+            expectedFileName: fileName,
+            focus: time,
+            preferCrop: true
+        )
+        time.swipeUp()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+        saveGateShot(
+            named: "04-module-device-exif",
+            expectedFileName: fileName,
+            focus: device,
+            preferCrop: true
+        )
+        device.swipeUp()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+        saveGateShot(
+            named: "05-module-map-gps",
+            expectedFileName: fileName,
+            focus: gps,
+            preferCrop: true
+        )
         if basics.waitForExistence(timeout: 3) {
-            saveElementShot(basics, named: "06-heic-module-basics-deduped")
+            gps.swipeUp()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+            saveGateShot(
+                named: "06-module-basics-deduped",
+                expectedFileName: fileName,
+                focus: basics,
+                preferCrop: true
+            )
         }
-        saveElementShot(actions, named: "07-heic-actions-row")
+        saveGateShot(
+            named: "07-actions-row",
+            expectedFileName: fileName,
+            focus: actions,
+            preferCrop: true
+        )
 
         // Capture time — Photos-style zh_CN header from capture_time
         let capture = meta["capture_time"] as? String ?? ""
@@ -234,8 +270,8 @@ final class FileMetadataUITests: XCTestCase {
         openGridItem(uuid: uuid)
         assertPreviewFileNameContains(fileName)
         assertTabBarHidden(reason: "video playback")
-        // Required evidence: real video playback with system TabBar hidden
-        saveFullScreenShot(named: "01-video-playback-tabbar-hidden")
+        // Gate name: chrome must be this video (clip.mp4), TabBar hidden — never HEIC preview
+        saveFullScreenShot(named: "01-playback-tabbar-hidden")
 
         openInfoSheet()
         assertChromeMatchesPanel(expectedFileName: fileName)
@@ -680,6 +716,28 @@ final class FileMetadataUITests: XCTestCase {
         // Prefer element crop so module shots are content-unique (not duplicate full frames).
         let data = element.screenshot().pngRepresentation
         saveShotData(data, named: name)
+    }
+
+    /// Full-frame gate shot: assert chrome↔panel filename, then capture.
+    /// Uses element crop when `preferCrop` so module files stay byte-unique vs the full panel shot.
+    private func saveGateShot(
+        named name: String,
+        expectedFileName: String,
+        focus: XCUIElement,
+        preferCrop: Bool = false
+    ) {
+        assertChromeMatchesPanel(expectedFileName: expectedFileName)
+        XCTAssertTrue(focus.exists, "focus element for \(name)")
+        if preferCrop {
+            // Nudge focus into view then crop — unique bytes, still real UI
+            if focus.isHittable == false {
+                focus.swipeUp()
+                RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+            }
+            saveElementShot(focus, named: name)
+        } else {
+            saveFullScreenShot(named: name)
+        }
     }
 
     private func saveShotData(_ data: Data, named name: String) {
