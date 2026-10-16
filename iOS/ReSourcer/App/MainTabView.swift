@@ -14,6 +14,7 @@ struct MainTabView: View {
 
     @Binding var selectedTab: AppTab
     let apiService: APIService
+    @Bindable private var navigationState = NavigationState.shared
 
     // MARK: - Body
 
@@ -36,6 +37,10 @@ struct MainTabView: View {
                 SettingsView(apiService: apiService)
             }
         }
+        // 子页 overlay 信息面板/全屏播放时，必须在 TabView 层隐藏 TabBar，
+        // 否则系统 TabBar 会画在 sheet 之上（TF 0.0.41 用户截图）。
+        .toolbar(navigationState.hideTabBar ? .hidden : .automatic, for: .tabBar)
+        .animation(AppTheme.Animation.standard, value: navigationState.hideTabBar)
     }
 }
 

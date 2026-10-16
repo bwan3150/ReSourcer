@@ -16,6 +16,9 @@ struct FileInfoSheetContent: View {
     /// 路径元数据（缺省字段不显示）；nil 表示尚未加载或加载失败
     var metadata: FileMetadata? = nil
 
+    /// true 时 metadata 仍在请求中；显示轻量占位，避免先闪「仅基础信息」旧观感
+    var isLoadingMetadata: Bool = false
+
     /// 画廊序号（如 "3 / 10"），显示在时间模块副标题；不是路径
     var position: String? = nil
 
@@ -40,6 +43,18 @@ struct FileInfoSheetContent: View {
 
     var body: some View {
         VStack(spacing: AppTheme.Spacing.md) {
+            if isLoadingMetadata && metadata == nil {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("加载拍摄信息…")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                }
+                .moduleCard()
+                .accessibilityIdentifier("meta-loading")
+            }
+
             if showTimeModule {
                 timeModule
             }
@@ -531,13 +546,22 @@ struct FileInfoActionsRow: View {
     }
 }
 
-// MARK: - Module card chrome (native Liquid Glass)
+// MARK: - Module card chrome (match Liquid Glass drawer)
 
 private extension View {
+    /// 模块衬底：嵌套 `glassEffect` 在抽屉玻璃上会变成不透明灰块（与 TF 截图冲突）。
+    /// 改为与系统 Photos / grouped inset 一致的轻量材质，贴合抽屉玻璃而不抢层。
     func moduleCard() -> some View {
         self
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
-            .glassBackground(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(.primary.opacity(0.06))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(.primary.opacity(0.06), lineWidth: 0.5)
+            }
     }
 }

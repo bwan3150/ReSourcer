@@ -73,6 +73,7 @@ struct FilePreviewView: View {
     @State private var showInfoSheet = false
     @State private var fileInfoTags: [Tag] = []
     @State private var fileMetadata: FileMetadata? = nil
+    @State private var isLoadingFileMetadata = false
     @State private var showTagEditor = false
 
     // 重命名（pin target — playlistIndex can change while the overlay is open）
@@ -226,6 +227,7 @@ struct FilePreviewView: View {
             refreshNowPlayingSkipAvailability()
         }
         .onAppear {
+            NavigationState.shared.hideTabBar = true
             scheduleAutoHide()
             refreshNowPlayingSkipAvailability()
         }
@@ -263,6 +265,7 @@ struct FilePreviewView: View {
             hideControlsTask?.cancel()
             cancelAutoAdvanceTimer()
             NowPlayingController.shared.clear()
+            NavigationState.shared.hideTabBar = false
         }
         // 文件信息面板
         .glassBottomSheet(
@@ -457,12 +460,14 @@ struct FilePreviewView: View {
             .simultaneousGesture(TapGesture().onEnded {
                 fileInfoTags = []
                 fileMetadata = nil
+                isLoadingFileMetadata = true
                 showInfoSheet = true
                 Task {
                     await resolveUuidAndLoadTags()
                     if let path = currentFile?.path {
                         fileMetadata = try? await apiService.file.getMetadata(path: path)
                     }
+                    isLoadingFileMetadata = false
                 }
             })
             .onLongPressGesture {
@@ -690,6 +695,7 @@ struct FilePreviewView: View {
             FileInfoSheetContent(
                 file: file,
                 metadata: fileMetadata,
+                isLoadingMetadata: isLoadingFileMetadata,
                 position: "\(playlistIndex + 1) / \(playlist.count)",
                 showsActions: false,
                 tags: fileInfoTags,

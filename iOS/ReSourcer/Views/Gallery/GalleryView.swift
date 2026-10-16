@@ -68,6 +68,7 @@ struct GalleryView: View {
     @State private var selectedFile: FileInfo?       // 用于重命名/移动操作
     @State private var fileInfoToShow: FileInfo?     // 驱动弹窗显示 + 数据（单一状态源）
     @State private var fileInfoMetadata: FileMetadata? = nil
+    @State private var isLoadingFileInfoMetadata = false
     @State private var showRenameAlert = false
     @State private var renameText = ""
     @State private var showMoveSheet = false
@@ -198,8 +199,21 @@ struct GalleryView: View {
             if !sourceFolder.isEmpty {
                 NavigationState.shared.setCurrentFolder(currentFolderPath)
             }
+            syncTabBarVisibility()
         }
-        // 信息 / 重命名 sheet 打开时隐藏 TabBar，避免挡住操作栏
+        .onChange(of: hidesTabBarForSheets) { _, _ in
+            syncTabBarVisibility()
+        }
+        .onChange(of: navPath.count) { _, _ in
+            syncTabBarVisibility()
+        }
+        .onDisappear {
+            // 离开画廊时清掉本页占用的 hide 标记（预览页会自行维护）
+            if fileInfoToShow == nil && !showRenameAlert && navPath.isEmpty {
+                NavigationState.shared.hideTabBar = false
+            }
+        }
+        // 信息 / 重命名 sheet 打开时隐藏 TabBar（子页 + MainTabView 双保险）
         .toolbar(hidesTabBarForSheets ? .hidden : .automatic, for: .tabBar)
         // 文件信息面板（操作栏 sticky，不被滚动裁切 / TabBar 挡住）
         .glassBottomSheet(
@@ -987,12 +1001,14 @@ struct GalleryView: View {
                         selectedFile = file
                         fileInfoTags = []
                         fileInfoMetadata = nil
+                        isLoadingFileInfoMetadata = true
                         fileInfoToShow = file
                         Task {
                             if let uuid = file.uuid {
                                 fileInfoTags = (try? await apiService.tag.getFileTags(fileUuid: uuid)) ?? []
                             }
                             fileInfoMetadata = try? await apiService.file.getMetadata(path: file.path)
+                            isLoadingFileInfoMetadata = false
                         }
                     }
                 )
@@ -1458,7 +1474,11 @@ struct GalleryView: View {
     // MARK: - 文件信息面板内容
 
     private var hidesTabBarForSheets: Bool {
-        fileInfoToShow != nil || showRenameAlert
+        fileInfoToShow != nil || showRenameAlert || !navPath.isEmpty
+    }
+
+    private func syncTabBarVisibility() {
+        NavigationState.shared.hideTabBar = hidesTabBarForSheets
     }
 
     @ViewBuilder
@@ -1467,6 +1487,7 @@ struct GalleryView: View {
             FileInfoSheetContent(
                 file: file,
                 metadata: fileInfoMetadata,
+                isLoadingMetadata: isLoadingFileInfoMetadata,
                 showsActions: false,
                 tags: fileInfoTags,
                 onAddTag: file.uuid != nil ? {

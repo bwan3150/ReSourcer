@@ -53,14 +53,30 @@ final class FileMetadataUITests: XCTestCase {
         let meta = try fetchMetadata(named: "IMG_4821.HEIC")
 
         openGridItem(uuid: uuid)
+        assertTabBarHidden(reason: "playback / preview")
         openInfoSheet()
+        assertTabBarHidden(reason: "file info sheet")
 
         let time = app.descendants(matching: .any)["meta-module-time"]
         let device = app.descendants(matching: .any)["meta-module-device"]
         let gps = app.descendants(matching: .any)["meta-module-gps"]
+        let actions = app.descendants(matching: .any)["fileInfoActionsRow"]
         XCTAssertTrue(time.waitForExistence(timeout: 12), "时间 module visible for EXIF HEIC")
         XCTAssertTrue(device.waitForExistence(timeout: 5), "拍摄设备 module visible")
         XCTAssertTrue(gps.waitForExistence(timeout: 5), "地图定位 module visible")
+        XCTAssertTrue(actions.waitForExistence(timeout: 5), "action icon row visible")
+
+        // Real Simulator screenshots for the gate report (not HTML mocks)
+        saveE2EScreenshot(named: "01-playback-tabbar-hidden")
+        saveE2EScreenshot(named: "02-info-modules-full")
+        // Scroll modules into view for per-module crops (full-frame still proves real app UI)
+        time.swipeUp()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+        saveE2EScreenshot(named: "03-device-exif-strip")
+        device.swipeUp()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+        saveE2EScreenshot(named: "04-map-gps-module")
+        saveE2EScreenshot(named: "05-actions-row")
 
         // Capture time — Photos-style zh_CN header from capture_time
         let capture = meta["capture_time"] as? String ?? ""
@@ -546,6 +562,48 @@ final class FileMetadataUITests: XCTestCase {
         )
         // Extra beat for async metadata fetch
         RunLoop.current.run(until: Date().addingTimeInterval(1.2))
+    }
+
+    private func assertTabBarHidden(reason: String) {
+        let tabBar = app.tabBars.firstMatch
+        if tabBar.exists {
+            XCTAssertFalse(
+                tabBar.isHittable,
+                "TabBar must not be hittable over \(reason)"
+            )
+        }
+        // iOS 26 Tab API may expose tab buttons without a classic tabBars container
+        for label in ["画廊", "分类", "下载", "设置"] {
+            let tab = app.buttons[label].firstMatch
+            if tab.exists {
+                XCTAssertFalse(
+                    tab.isHittable,
+                    "Tab '\(label)' must not be hittable during \(reason)"
+                )
+            }
+        }
+    }
+
+    private func saveE2EScreenshot(named name: String) {
+        let shot = XCUIScreen.main.screenshot()
+        let env = ProcessInfo.processInfo.environment
+        let dir = env["E2E_SCREENSHOT_DIR"]
+            ?? env["TEST_RUNNER_E2E_SCREENSHOT_DIR"]
+            ?? NSTemporaryDirectory()
+        let fm = FileManager.default
+        try? fm.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        let url = URL(fileURLWithPath: dir).appendingPathComponent("\(name).png")
+        do {
+            try shot.pngRepresentation.write(to: url)
+            XCTContext.runActivity(named: "screenshot \(name)") { activity in
+                let attachment = XCTAttachment(screenshot: shot)
+                attachment.name = name
+                attachment.lifetime = .keepAlways
+                activity.add(attachment)
+            }
+        } catch {
+            XCTFail("failed to write screenshot \(name): \(error)")
+        }
     }
 
     private func triggerScan() throws {

@@ -8,6 +8,8 @@
 import SwiftUI
 import AVFoundation
 import PDFKit
+import Photos
+import UIKit
 
 struct ClassifierView: View {
 
@@ -26,6 +28,9 @@ struct ClassifierView: View {
     @State private var showInfoSheet = false
     @State private var showRenameAlert = false
     @State private var renameText = ""
+    @State private var fileInfoMetadata: FileMetadata? = nil
+    @State private var isLoadingFileInfoMetadata = false
+    @State private var showMoveSheet = false
 
     // 标签
     @State private var fileInfoTags: [Tag] = []
@@ -113,11 +118,15 @@ struct ClassifierView: View {
                         .onTapGesture {
                             if let file = currentFile {
                                 fileInfoTags = []
+                                fileInfoMetadata = nil
+                                isLoadingFileInfoMetadata = true
                                 showInfoSheet = true
-                                if let uuid = file.uuid {
-                                    Task {
+                                Task {
+                                    if let uuid = file.uuid {
                                         fileInfoTags = (try? await apiService.tag.getFileTags(fileUuid: uuid)) ?? []
                                     }
+                                    fileInfoMetadata = try? await apiService.file.getMetadata(path: file.path)
+                                    isLoadingFileInfoMetadata = false
                                 }
                             }
                         }
@@ -148,8 +157,12 @@ struct ClassifierView: View {
                 .presentationDetents([.medium, .large])
             }
         }
-        // 信息 / 重命名 sheet 打开时隐藏 TabBar，避免挡住操作栏
+        // 信息 / 重命名 sheet 打开时隐藏 TabBar（子页 + MainTabView 双保险）
         .toolbar((showInfoSheet || showRenameAlert) ? .hidden : .automatic, for: .tabBar)
+        .onAppear { syncTabBarVisibility() }
+        .onChange(of: showInfoSheet) { _, _ in syncTabBarVisibility() }
+        .onChange(of: showRenameAlert) { _, _ in syncTabBarVisibility() }
+        .onDisappear { NavigationState.shared.hideTabBar = false }
         // 文件信息面板（操作栏 sticky）
         .glassBottomSheet(
             isPresented: $showInfoSheet,
@@ -157,6 +170,21 @@ struct ClassifierView: View {
             stickyFooter: {
                 if let file = currentFile {
                     FileInfoActionsRow(
+                        onDownload: {
+                            showInfoSheet = false
+                            saveClassifierFileToDevice(file)
+                        },
+                        onShare: {
+                            showInfoSheet = false
+                            shareClassifierFile(file)
+                        },
+                        onMove: {
+                            showInfoSheet = false
+                            Task { @MainActor in
+                                try? await Task.sleep(for: .milliseconds(300))
+                                showMoveSheet = true
+                            }
+                        },
                         onRename: {
                             showInfoSheet = false
                             Task { @MainActor in
@@ -164,7 +192,14 @@ struct ClassifierView: View {
                                 renameText = file.baseName
                                 showRenameAlert = true
                             }
-                        }
+                        },
+                        onDelete: file.uuid != nil ? {
+                            showInfoSheet = false
+                            Task { @MainActor in
+                                try? await Task.sleep(for: .milliseconds(300))
+                                promptDeleteCurrentFile(file)
+                            }
+                        } : nil
                     )
                 }
             }
@@ -172,6 +207,8 @@ struct ClassifierView: View {
             if let file = currentFile {
                 FileInfoSheetContent(
                     file: file,
+                    metadata: fileInfoMetadata,
+                    isLoadingMetadata: isLoadingFileInfoMetadata,
                     showsActions: false,
                     tags: fileInfoTags,
                     onAddTag: file.uuid != nil ? {
@@ -182,6 +219,30 @@ struct ClassifierView: View {
                         }
                     } : nil
                 )
+            }
+        }
+        .sheet(isPresented: $showMoveSheet) {
+            if let file = currentFile {
+                MoveSheetView(
+                    apiService: apiService,
+                    sourceFolder: sourceFolder,
+                    file: file,
+                    uuids: file.uuid.map { [$0] } ?? [],
+                    onDismiss: { showMoveSheet = false },
+                    onMoved: { folderName, movedUUIDs in
+                        showMoveSheet = false
+                        if !movedUUIDs.isEmpty {
+                            files.removeAll { file in
+                                guard let uuid = file.uuid else { return false }
+                                return movedUUIDs.contains(uuid)
+                            }
+                        } else {
+                            files.removeAll { $0.id == file.id }
+                        }
+                        GlassAlertManager.shared.showSuccess("已移动到 \(folderName)")
+                    }
+                )
+                .presentationDetents([.medium, .large])
             }
         }
         // 重命名面板
@@ -1040,6 +1101,10 @@ struct ClassifierView: View {
         }
     }
 
+    private func syncTabBarVisibility() {
+        NavigationState.shared.hideTabBar = showInfoSheet || showRenameAlert
+    }
+
     private func renameCurrentFile() {
         guard let file = currentFile, let uuid = file.uuid,
               !renameText.isEmpty, renameText != file.baseName else { return }
@@ -1068,6 +1133,143 @@ struct ClassifierView: View {
                 showRenameAlert = false
             } catch {
                 GlassAlertManager.shared.showError("重命名失败", message: error.localizedDescription)
+            }
+        }
+    }
+
+    private func promptDeleteCurrentFile(_ file: FileInfo) {
+        GlassConfirmManager.shared.show(
+            config: GlassConfirmConfig(
+                title: "删除此文件？",
+                message: "文件将被移动到回收站，可稍后在回收站中还原。",
+                icon: "trash.fill",
+                iconColor: .red,
+                confirmTitle: "删除",
+                confirmStyle: .destructive,
+                cancelTitle: "取消"
+            ),
+            onConfirm: {
+                Task { @MainActor in
+                    guard let uuid = file.uuid else { return }
+                    do {
+                        _ = try await apiService.file.deleteFile(uuid: uuid)
+                        files.removeAll { $0.id == file.id }
+                        GlassAlertManager.shared.showSuccess("已移到回收站")
+                    } catch {
+                        GlassAlertManager.shared.showError("删除失败", message: error.localizedDescription)
+                    }
+                }
+            }
+        )
+    }
+
+    private func classifierContentURL(for file: FileInfo) -> URL? {
+        if let uuid = file.uuid {
+            return apiService.preview.getContentURL(
+                uuid: uuid,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        }
+        return apiService.preview.getContentURL(
+            for: file.path,
+            baseURL: apiService.baseURL,
+            apiKey: apiService.apiKey
+        )
+    }
+
+    private func shareClassifierFile(_ file: FileInfo) {
+        guard let contentURL = classifierContentURL(for: file) else {
+            GlassAlertManager.shared.showError("无法获取文件地址")
+            return
+        }
+        GlassAlertManager.shared.showQuickLoading()
+        Task.detached {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: contentURL)
+                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(file.name)
+                try data.write(to: tempURL)
+                await MainActor.run {
+                    GlassAlertManager.shared.hideQuickLoading()
+                    let activityVC = UIActivityViewController(
+                        activityItems: [tempURL],
+                        applicationActivities: nil
+                    )
+                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                       let rootVC = windowScene.windows.first?.rootViewController {
+                        activityVC.popoverPresentationController?.sourceView = rootVC.view
+                        rootVC.present(activityVC, animated: true)
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    GlassAlertManager.shared.hideQuickLoading()
+                    if !error.isCancelledRequest {
+                        GlassAlertManager.shared.showError("分享失败", message: error.localizedDescription)
+                    }
+                }
+            }
+        }
+    }
+
+    private func saveClassifierFileToDevice(_ file: FileInfo) {
+        guard let contentURL = classifierContentURL(for: file) else {
+            GlassAlertManager.shared.showError("无法获取文件地址")
+            return
+        }
+        GlassAlertManager.shared.showQuickLoading()
+        Task.detached {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: contentURL)
+                if file.fileType.isMedia {
+                    var status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
+                    if status == .notDetermined {
+                        status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+                    }
+                    guard status == .authorized || status == .limited else {
+                        await MainActor.run {
+                            GlassAlertManager.shared.hideQuickLoading()
+                            GlassAlertManager.shared.showWarning("需要相册权限")
+                        }
+                        return
+                    }
+                    try await PHPhotoLibrary.shared().performChanges {
+                        if file.isVideo || file.isAudio {
+                            let temp = FileManager.default.temporaryDirectory.appendingPathComponent(file.name)
+                            try? data.write(to: temp)
+                            PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: temp)
+                        } else {
+                            if let image = UIImage(data: data) {
+                                PHAssetChangeRequest.creationRequestForAsset(from: image)
+                            }
+                        }
+                    }
+                    await MainActor.run {
+                        GlassAlertManager.shared.hideQuickLoading()
+                        GlassAlertManager.shared.showSuccess("已保存到相册")
+                    }
+                } else {
+                    let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(file.name)
+                    try data.write(to: tempURL)
+                    await MainActor.run {
+                        GlassAlertManager.shared.hideQuickLoading()
+                        let activityVC = UIActivityViewController(
+                            activityItems: [tempURL],
+                            applicationActivities: nil
+                        )
+                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                           let rootVC = windowScene.windows.first?.rootViewController {
+                            rootVC.present(activityVC, animated: true)
+                        }
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    GlassAlertManager.shared.hideQuickLoading()
+                    if !error.isCancelledRequest {
+                        GlassAlertManager.shared.showError("下载失败", message: error.localizedDescription)
+                    }
+                }
             }
         }
     }
