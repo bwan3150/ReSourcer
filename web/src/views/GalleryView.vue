@@ -47,7 +47,7 @@
           </button>
           <span class="text-sm truncate flex-1">{{ previewFile.fileName }}</span>
           <span class="text-xs text-base-content/40">{{ playlistIndex + 1 }} / {{ playlist.length }}</span>
-          <button class="btn btn-ghost btn-xs btn-square" @click="fileInfoDialog?.showModal()" :title="$t('gallery.fileInfo')">
+          <button class="btn btn-ghost btn-xs btn-square" data-testid="file-info-btn" @click="openFileInfo()" :title="$t('gallery.fileInfo')">
             <Info :size="16" />
           </button>
         </div>
@@ -202,29 +202,49 @@
     </template>
 
     <!-- File Info Dialog -->
-    <dialog ref="fileInfoDialog" class="modal">
+    <dialog ref="fileInfoDialog" class="modal" data-testid="file-info-dialog">
       <div class="modal-box" v-if="previewFile">
         <h3 class="font-bold text-lg mb-4">{{ $t('gallery.fileInfo') }}</h3>
-        <div class="space-y-2 text-sm">
-          <div class="flex justify-between">
+        <div class="space-y-2 text-sm" data-testid="file-metadata-panel">
+          <div class="flex justify-between" data-testid="meta-filename">
             <span class="text-base-content/50">{{ $t('gallery.fileName') }}</span>
-            <span class="truncate ml-4 text-right max-w-[60%]">{{ previewFile.fileName }}</span>
+            <span class="truncate ml-4 text-right max-w-[60%]">{{ fileMeta?.filename || previewFile.fileName }}</span>
           </div>
-          <div class="flex justify-between">
+          <div v-if="fileMeta?.format" class="flex justify-between" data-testid="meta-format">
+            <span class="text-base-content/50">{{ $t('gallery.format') }}</span>
+            <span>{{ fileMeta.format }}</span>
+          </div>
+          <div v-else class="flex justify-between">
             <span class="text-base-content/50">{{ $t('gallery.fileType') }}</span>
             <span>{{ previewFile.extension?.replace('.', '').toUpperCase() }}</span>
           </div>
-          <div class="flex justify-between">
+          <div class="flex justify-between" data-testid="meta-size">
             <span class="text-base-content/50">{{ $t('gallery.fileSize') }}</span>
-            <span>{{ formatSize(previewFile.fileSize) }}</span>
+            <span>{{ formatSize(fileMeta?.size ?? previewFile.fileSize) }}</span>
+          </div>
+          <div v-if="fileMeta?.width && fileMeta?.height" class="flex justify-between" data-testid="meta-dimensions">
+            <span class="text-base-content/50">{{ $t('gallery.dimensions') }}</span>
+            <span>{{ fileMeta.width }} × {{ fileMeta.height }}</span>
+          </div>
+          <div v-if="fileMeta?.captureTime" class="flex justify-between" data-testid="meta-capture-time">
+            <span class="text-base-content/50">{{ $t('gallery.captureTime') }}</span>
+            <span>{{ fileMeta.captureTime }}</span>
+          </div>
+          <div v-if="fileMeta?.gps" class="flex justify-between" data-testid="meta-gps">
+            <span class="text-base-content/50">{{ $t('gallery.gps') }}</span>
+            <span>{{ formatGps(fileMeta.gps) }}</span>
+          </div>
+          <div v-if="fileMeta?.duration" class="flex justify-between" data-testid="meta-duration">
+            <span class="text-base-content/50">{{ $t('gallery.duration') }}</span>
+            <span>{{ formatDuration(fileMeta.duration) }}</span>
           </div>
           <div class="flex justify-between">
             <span class="text-base-content/50">{{ $t('gallery.created') }}</span>
-            <span>{{ formatDate(previewFile.createdAt) }}</span>
+            <span>{{ formatDate(fileMeta?.created || previewFile.createdAt) }}</span>
           </div>
           <div class="flex justify-between">
             <span class="text-base-content/50">{{ $t('gallery.modified') }}</span>
-            <span>{{ formatDate(previewFile.modifiedAt) }}</span>
+            <span>{{ formatDate(fileMeta?.modified || previewFile.modifiedAt) }}</span>
           </div>
           <div v-if="previewFile.sourceUrl" class="flex justify-between">
             <span class="text-base-content/50">{{ $t('gallery.sourceUrl') }}</span>
@@ -414,6 +434,7 @@ const dragOver = ref(false)
 const uploadArea = ref(null)
 
 const previewFile = ref(null)
+const fileMeta = ref(null)
 const playlist = ref([])
 const playlistIndex = ref(0)
 const playlistAtStart = ref(false)
@@ -523,6 +544,7 @@ useKeyboardShortcuts({
     if (dialog?.open) {
       dialog.close()
     } else {
+      loadFileMetadata()
       dialog?.showModal()
       osd.value?.show('Info')
     }
@@ -665,6 +687,42 @@ async function loadMore() {
 }
 
 function refreshFiles() { navigateTo(currentFolder.value) }
+
+function formatGps(gps) {
+  if (!gps || gps.lat == null || gps.lon == null) return ''
+  const latHem = gps.lat >= 0 ? 'N' : 'S'
+  const lonHem = gps.lon >= 0 ? 'E' : 'W'
+  return `${Math.abs(gps.lat).toFixed(5)}° ${latHem}, ${Math.abs(gps.lon).toFixed(5)}° ${lonHem}`
+}
+
+function formatDuration(seconds) {
+  if (seconds == null || Number.isNaN(seconds)) return ''
+  const s = Math.floor(seconds)
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+  return `${m}:${String(sec).padStart(2, '0')}`
+}
+
+async function loadFileMetadata() {
+  fileMeta.value = null
+  const file = previewFile.value
+  if (!file) return
+  const path = file.currentPath || file.path
+  if (!path) return
+  try {
+    const { data } = await fileApi.getFileMetadata(path)
+    fileMeta.value = data
+  } catch {
+    fileMeta.value = null
+  }
+}
+
+function openFileInfo() {
+  loadFileMetadata()
+  fileInfoDialog.value?.showModal()
+}
 
 function formatSize(bytes) {
   if (!bytes) return '—'

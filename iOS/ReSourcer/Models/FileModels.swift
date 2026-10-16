@@ -155,6 +155,55 @@ struct FileListResponse: Codable {
     let files: [FileInfo]
 }
 
+/// GPS 坐标（小数度，南纬/西经为负）
+struct FileGpsCoords: Codable, Equatable {
+    let lat: Double
+    let lon: Double
+
+    var formatted: String {
+        let latHem = lat >= 0 ? "N" : "S"
+        let lonHem = lon >= 0 ? "E" : "W"
+        return String(format: "%.5f° %@, %.5f° %@", abs(lat), latHem, abs(lon), lonHem)
+    }
+}
+
+/// 按路径读取的文件元数据（缺省字段由服务端省略，客户端隐藏）
+struct FileMetadata: Codable, Equatable {
+    let path: String
+    let filename: String
+    let format: String
+    let size: UInt64
+    let fileType: String?
+    let width: UInt32?
+    let height: UInt32?
+    let duration: Double?
+    let captureTime: String?
+    let gps: FileGpsCoords?
+    let created: String?
+    let modified: String?
+
+    var formattedSize: String {
+        ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)
+    }
+
+    var formattedDimensions: String? {
+        guard let width, let height else { return nil }
+        return "\(width) × \(height)"
+    }
+
+    var formattedDuration: String? {
+        guard let duration else { return nil }
+        let total = Int(duration)
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
+        if h > 0 {
+            return String(format: "%d:%02d:%02d", h, m, s)
+        }
+        return String(format: "%d:%02d", m, s)
+    }
+}
+
 /// 文件重命名请求
 struct FileRenameRequest: Codable {
     let uuid: String

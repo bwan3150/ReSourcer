@@ -1,5 +1,10 @@
 import client from './client'
 
+/** 按绝对路径读取文件元数据（缺省字段由服务端省略） */
+export function getFileMetadata(path) {
+  return client.get('/api/file/metadata', { params: { path } })
+}
+
 export function renameFile(uuid, newName) {
   return client.post('/api/file/rename', { uuid, newName })
 }

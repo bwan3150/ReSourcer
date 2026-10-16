@@ -26,6 +26,13 @@ actor FileService {
         return response.files
     }
 
+    /// 按绝对路径读取文件元数据（格式 / 拍摄时间 / GPS / 尺寸等；缺省字段不返回）
+    /// - Parameter path: 文件绝对路径
+    /// - Returns: 文件元数据
+    func getMetadata(path: String) async throws -> FileMetadata {
+        try await networkManager.request(.fileMetadata(path: path))
+    }
+
     /// 重命名文件
     /// - Parameters:
     ///   - uuid: 文件 UUID

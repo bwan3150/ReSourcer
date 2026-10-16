@@ -72,6 +72,7 @@ struct FilePreviewView: View {
     // 文件信息面板
     @State private var showInfoSheet = false
     @State private var fileInfoTags: [Tag] = []
+    @State private var fileMetadata: FileMetadata? = nil
     @State private var showTagEditor = false
 
     // 重命名
@@ -436,8 +437,14 @@ struct FilePreviewView: View {
             .contentShape(Capsule())
             .simultaneousGesture(TapGesture().onEnded {
                 fileInfoTags = []
+                fileMetadata = nil
                 showInfoSheet = true
-                Task { await resolveUuidAndLoadTags() }
+                Task {
+                    await resolveUuidAndLoadTags()
+                    if let path = currentFile?.path {
+                        fileMetadata = try? await apiService.file.getMetadata(path: path)
+                    }
+                }
             })
             .onLongPressGesture {
                 if let file = currentFile {
@@ -663,6 +670,7 @@ struct FilePreviewView: View {
         if let file = currentFile {
             FileInfoSheetContent(
                 file: file,
+                metadata: fileMetadata,
                 position: "\(playlistIndex + 1) / \(playlist.count)",
                 tags: fileInfoTags,
                 onAddTag: file.uuid != nil ? {

@@ -11,6 +11,9 @@ struct FileInfoSheetContent: View {
 
     let file: FileInfo
 
+    /// 路径元数据（缺省字段不显示）；nil 表示尚未加载或加载失败
+    var metadata: FileMetadata? = nil
+
     /// 文件位置信息（如 "3 / 10"），nil 则不显示
     var position: String? = nil
 
@@ -38,7 +41,11 @@ struct FileInfoSheetContent: View {
 
     var body: some View {
         VStack(spacing: AppTheme.Spacing.lg) {
-            infoRow("文件名", value: file.name)
+            infoRow("文件名", value: metadata?.filename ?? file.name)
+
+            if let format = metadata?.format, !format.isEmpty {
+                infoRow("格式", value: format)
+            }
 
             // 标签行：紧跟文件名下方
             if let onAddTag {
@@ -79,7 +86,25 @@ struct FileInfoSheetContent: View {
                 infoRow("位置", value: position)
             }
 
-            infoRow("大小", value: file.formattedSize)
+            infoRow("大小", value: metadata?.formattedSize ?? file.formattedSize)
+
+            if let dims = metadata?.formattedDimensions {
+                infoRow("分辨率", value: dims)
+            } else if let width = file.width, let height = file.height {
+                infoRow("分辨率", value: "\(width) × \(height)")
+            }
+
+            if let capture = metadata?.captureTime, !capture.isEmpty {
+                infoRow("拍摄时间", value: capture)
+            }
+
+            if let gps = metadata?.gps {
+                infoRow("GPS", value: gps.formatted)
+            }
+
+            if let duration = metadata?.formattedDuration ?? file.formattedDuration {
+                infoRow("时长", value: duration)
+            }
 
             // 创建/修改时间合并为一行，点击切换
             Button {
@@ -94,7 +119,9 @@ struct FileInfoSheetContent: View {
                             .font(.system(size: 9))
                             .foregroundStyle(.tertiary)
                     }
-                    Text(showCreatedTime ? file.created.toLocalDateTime : file.modified.toLocalDateTime)
+                    Text(showCreatedTime
+                         ? (metadata?.created ?? file.created).toLocalDateTime
+                         : (metadata?.modified ?? file.modified).toLocalDateTime)
                         .font(.body)
                         .foregroundStyle(.primary)
                         .contentTransition(.numericText())
@@ -121,13 +148,6 @@ struct FileInfoSheetContent: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            if let width = file.width, let height = file.height {
-                infoRow("分辨率", value: "\(width) × \(height)")
-            }
-            if let duration = file.formattedDuration {
-                infoRow("时长", value: duration)
             }
 
             // 调试日志入口（信息行末尾）

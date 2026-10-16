@@ -67,6 +67,7 @@ struct GalleryView: View {
     // 文件信息弹窗
     @State private var selectedFile: FileInfo?       // 用于重命名/移动操作
     @State private var fileInfoToShow: FileInfo?     // 驱动弹窗显示 + 数据（单一状态源）
+    @State private var fileInfoMetadata: FileMetadata? = nil
     @State private var showRenameAlert = false
     @State private var renameText = ""
     @State private var showMoveSheet = false
@@ -956,11 +957,13 @@ struct GalleryView: View {
                     onInfoTap: {
                         selectedFile = file
                         fileInfoTags = []
+                        fileInfoMetadata = nil
                         fileInfoToShow = file
-                        if let uuid = file.uuid {
-                            Task {
+                        Task {
+                            if let uuid = file.uuid {
                                 fileInfoTags = (try? await apiService.tag.getFileTags(fileUuid: uuid)) ?? []
                             }
+                            fileInfoMetadata = try? await apiService.file.getMetadata(path: file.path)
                         }
                     }
                 )
@@ -1430,6 +1433,7 @@ struct GalleryView: View {
         if let file = fileInfoToShow {
             FileInfoSheetContent(
                 file: file,
+                metadata: fileInfoMetadata,
                 tags: fileInfoTags,
                 onAddTag: file.uuid != nil ? {
                     fileInfoToShow = nil
