@@ -205,13 +205,14 @@ final class FileMetadataUITests: XCTestCase {
         }
         uuid = uuid!
 
-        // Use list view + per-row info (avoids FilePreview playlist index races).
-        switchToListView()
+        // Prefer FilePreview info sheet: gallery list sheet sits under the tab bar,
+        // so action buttons stay non-hittable even after scrolling.
+        openGridItem(uuid: uuid!)
+        openInfoSheet()
 
         // --- RENAME ---
-        openListInfo(uuid: uuid!, fileNameHint: "mutate-target.jpg")
         tapActionButton(labeled: "重命名")
-        // Gallery rename sheet opens after ~300ms sheet dismiss
+        // Preview rename overlay opens after ~300ms sheet dismiss
         RunLoop.current.run(until: Date().addingTimeInterval(0.8))
 
         // #region agent log
@@ -289,15 +290,15 @@ final class FileMetadataUITests: XCTestCase {
         XCTAssertTrue(renamedPath.hasSuffix("mutate-renamed.jpg"), "path=\(renamedPath)")
         XCTAssertTrue(FileManager.default.fileExists(atPath: renamedPath), "fs \(renamedPath)")
 
-        // Refresh gallery list
+        // Refresh into preview of the renamed file
         app.terminate()
         app.launchEnvironment["E2E_SERVER_URL"] = serverURL
         app.launchEnvironment["E2E_API_KEY"] = apiKey
         app.launch()
-        switchToListView()
 
         // --- MOVE to Album ---
-        openListInfo(uuid: uuid!, fileNameHint: "mutate-renamed.jpg")
+        openGridItem(uuid: uuid!)
+        openInfoSheet()
         tapActionButton(labeled: "移动")
 
         let album = app.staticTexts["Album"].firstMatch
@@ -327,16 +328,16 @@ final class FileMetadataUITests: XCTestCase {
         app.launchEnvironment["E2E_SERVER_URL"] = serverURL
         app.launchEnvironment["E2E_API_KEY"] = apiKey
         app.launch()
-        switchToListView()
 
-        // Enter Album folder then open info
+        // Enter Album folder then open preview info
         let albumFolder = app.staticTexts["Album"].firstMatch
         if albumFolder.waitForExistence(timeout: 8) {
             albumFolder.tap()
             RunLoop.current.run(until: Date().addingTimeInterval(1.2))
         }
 
-        openListInfo(uuid: uuid!, fileNameHint: "mutate-renamed.jpg")
+        openGridItem(uuid: uuid!)
+        openInfoSheet()
         tapActionButton(labeled: "删除")
 
         let dialogTitle = app.staticTexts["删除此文件？"]
@@ -422,13 +423,10 @@ final class FileMetadataUITests: XCTestCase {
             btn.tap()
         } else if btn.accessibilityActivate() {
             strategy = "accessibilityActivate"
-        } else if btn.exists {
-            // Last resort on the identified Button (icons are accessibilityHidden).
-            strategy = "coordinate"
-            btn.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         } else {
-            strategy = "missing"
-            XCTFail("\(label) action not found after scrolling")
+            // Do NOT coordinate-tap clipped controls near the tab bar — that switches tabs.
+            strategy = "notHittable"
+            XCTFail("\(label) action not hittable after \(scrolls) sheet scrolls (frame may be under tab bar)")
             return
         }
 

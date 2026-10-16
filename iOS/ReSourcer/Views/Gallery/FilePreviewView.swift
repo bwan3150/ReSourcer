@@ -280,6 +280,7 @@ struct FilePreviewView: View {
                                 .textFieldStyle(.plain)
                                 .autocorrectionDisabled()
                                 .textInputAutocapitalization(.never)
+                                .accessibilityIdentifier("renameTextField")
                             Text(currentFile.map { $0.extension.isEmpty ? "" : ".\($0.extension)" } ?? "")
                                 .foregroundStyle(.tertiary)
                         }
