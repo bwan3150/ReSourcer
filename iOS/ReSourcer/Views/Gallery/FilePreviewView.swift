@@ -1149,6 +1149,8 @@ struct FilePreviewView: View {
 
     /// Called when media playback ends — 跳过非音视频以保持后台连播
     private func advanceToNext() {
+        // 信息面板打开时禁止自动切曲，否则会出现 chrome 已变、面板仍挂旧 EXIF 的错配窗口
+        if showInfoSheet { return }
         if advanceMode == .repeatCurrent { return }
         navigateInPlaylist(direction: 1, skipNonPlayable: true)
     }

@@ -41,9 +41,23 @@ struct FileInfoSheetContent: View {
     var onDelete: (() -> Void)? = nil
     var onShowDebugLog: (() -> Void)? = nil
 
+    /// 切曲后若 fileMetadata 尚未刷新，filename 会与当前 `file` 错配（chrome=clip.mp4 / 面板=HEIC）。
+    /// 一律丢弃不一致的陈旧 metadata，避免把上一首的 EXIF/GPS 挂在新曲目下。
+    private var resolvedMetadata: FileMetadata? {
+        guard let metadata else { return nil }
+        guard metadata.filename == file.name else { return nil }
+        return metadata
+    }
+
+    private var isWaitingForMatchingMetadata: Bool {
+        if isLoadingMetadata { return true }
+        if let metadata, metadata.filename != file.name { return true }
+        return false
+    }
+
     var body: some View {
         VStack(spacing: AppTheme.Spacing.md) {
-            if isLoadingMetadata && metadata == nil {
+            if isWaitingForMatchingMetadata && resolvedMetadata == nil {
                 HStack(spacing: 10) {
                     ProgressView()
                     Text("加载拍摄信息…")
@@ -63,7 +77,7 @@ struct FileInfoSheetContent: View {
                 deviceModule
             }
 
-            if let gps = metadata?.gps {
+            if let gps = resolvedMetadata?.gps {
                 mapModule(gps)
             }
 
@@ -92,19 +106,19 @@ struct FileInfoSheetContent: View {
 
     /// 拍摄设备模块：有机身/镜头/EXIF 等“拍摄”信息时显示
     private var showDeviceModule: Bool {
-        metadata?.deviceLabel != nil
-            || metadata?.lensLine != nil
-            || !(metadata?.exifStripItems.isEmpty ?? true)
-            || (metadata?.megapixels != nil && hasCaptureContext)
-            || (hasCaptureContext && metadata?.format.isEmpty == false)
+        resolvedMetadata?.deviceLabel != nil
+            || resolvedMetadata?.lensLine != nil
+            || !(resolvedMetadata?.exifStripItems.isEmpty ?? true)
+            || (resolvedMetadata?.megapixels != nil && hasCaptureContext)
+            || (hasCaptureContext && resolvedMetadata?.format.isEmpty == false)
     }
 
     /// 有拍摄上下文（设备/镜头/EXIF/拍摄时间）时，dims/size 归拍摄设备
     private var hasCaptureContext: Bool {
-        metadata?.deviceLabel != nil
-            || metadata?.lensLine != nil
-            || !(metadata?.exifStripItems.isEmpty ?? true)
-            || (metadata?.captureTime?.isEmpty == false)
+        resolvedMetadata?.deviceLabel != nil
+            || resolvedMetadata?.lensLine != nil
+            || !(resolvedMetadata?.exifStripItems.isEmpty ?? true)
+            || (resolvedMetadata?.captureTime?.isEmpty == false)
     }
 
     private var showTimeModule: Bool {
@@ -116,14 +130,14 @@ struct FileInfoSheetContent: View {
     }
 
     private var photosDateHeader: String? {
-        let raw = metadata?.captureTime
+        let raw = resolvedMetadata?.captureTime
         guard let raw, !raw.isEmpty else { return nil }
         return Self.formatPhotosDate(raw)
     }
 
     /// 拍摄时间已在时间模块展示时，基础信息不再展示同日的创建时间
     private var captureCalendarDay: String? {
-        guard let raw = metadata?.captureTime, !raw.isEmpty else { return nil }
+        guard let raw = resolvedMetadata?.captureTime, !raw.isEmpty else { return nil }
         return Self.calendarDayKey(raw)
     }
 
@@ -140,11 +154,12 @@ struct FileInfoSheetContent: View {
             }
 
             HStack(spacing: 6) {
-                Image(systemName: (metadata?.fileType == "video" || (metadata?.fileType == nil && file.isVideo)) ? "video" : "photo")
+                Image(systemName: (resolvedMetadata?.fileType == "video" || (resolvedMetadata?.fileType == nil && file.isVideo)) ? "video" : "photo")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
-                Text(metadata?.filename ?? file.name)
+                // 始终跟当前 file（chrome），绝不显示陈旧 metadata.filename
+                Text(file.name)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -168,11 +183,11 @@ struct FileInfoSheetContent: View {
     private var deviceModule: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
-                if let device = metadata?.deviceLabel {
+                if let device = resolvedMetadata?.deviceLabel {
                     Text(device)
                         .font(.subheadline.weight(.semibold))
                         .accessibilityIdentifier("meta-device")
-                } else if let lens = metadata?.lensLine {
+                } else if let lens = resolvedMetadata?.lensLine {
                     Text(lens)
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(2)
@@ -183,7 +198,7 @@ struct FileInfoSheetContent: View {
                         .accessibilityIdentifier("meta-device")
                 }
                 Spacer(minLength: 8)
-                if let format = metadata?.format, !format.isEmpty {
+                if let format = resolvedMetadata?.format, !format.isEmpty {
                     Text(format)
                         .font(.caption.weight(.semibold))
                         .padding(.horizontal, 8)
@@ -193,7 +208,7 @@ struct FileInfoSheetContent: View {
                 }
             }
 
-            if metadata?.deviceLabel != nil, let lens = metadata?.lensLine {
+            if resolvedMetadata?.deviceLabel != nil, let lens = resolvedMetadata?.lensLine {
                 Text(lens)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -207,7 +222,7 @@ struct FileInfoSheetContent: View {
                     .accessibilityIdentifier("meta-dimensions")
             }
 
-            let strip = metadata?.exifStripItems ?? []
+            let strip = resolvedMetadata?.exifStripItems ?? []
             if !strip.isEmpty {
                 HStack(spacing: 0) {
                     ForEach(Array(strip.enumerated()), id: \.offset) { index, item in
@@ -236,18 +251,18 @@ struct FileInfoSheetContent: View {
     /// MP • dims • size — owned by 拍摄设备 when that module shows
     private var deviceResolutionSummary: String? {
         var parts: [String] = []
-        if let megapixels = metadata?.megapixels {
+        if let megapixels = resolvedMetadata?.megapixels {
             let mp = megapixels >= 10
                 ? String(format: "%.0f MP", megapixels)
                 : String(format: "%.1f MP", megapixels)
             parts.append(mp)
         }
-        if let dims = metadata?.formattedDimensions {
+        if let dims = resolvedMetadata?.formattedDimensions {
             parts.append(dims)
         } else if let w = file.width, let h = file.height {
             parts.append("\(w) × \(h)")
         }
-        parts.append(metadata?.formattedSize ?? file.formattedSize)
+        parts.append(resolvedMetadata?.formattedSize ?? file.formattedSize)
         return parts.isEmpty ? nil : parts.joined(separator: " • ")
     }
 
@@ -295,7 +310,7 @@ struct FileInfoSheetContent: View {
 
         // Filename lives in 时间 subtitle when that module shows; otherwise 基础信息
         if !showTimeModule {
-            rows.append(BasicsRow(id: "filename", label: "文件名", value: metadata?.filename ?? file.name))
+            rows.append(BasicsRow(id: "filename", label: "文件名", value: file.name))
         }
 
         // Path / folder location (not gallery index)
@@ -306,7 +321,7 @@ struct FileInfoSheetContent: View {
 
         // Format / dims / size only when 拍摄设备 is hidden
         if !showDeviceModule {
-            if let format = metadata?.format, !format.isEmpty {
+            if let format = resolvedMetadata?.format, !format.isEmpty {
                 rows.append(BasicsRow(id: "format", label: "格式", value: format))
             } else {
                 let ext = file.extensionLabel
@@ -314,7 +329,7 @@ struct FileInfoSheetContent: View {
                     rows.append(BasicsRow(id: "format", label: "格式", value: ext))
                 }
             }
-            if let dims = metadata?.formattedDimensions {
+            if let dims = resolvedMetadata?.formattedDimensions {
                 rows.append(BasicsRow(id: "dims", label: "分辨率", value: dims))
             } else if let w = file.width, let h = file.height {
                 rows.append(BasicsRow(id: "dims", label: "分辨率", value: "\(w) × \(h)"))
@@ -322,23 +337,23 @@ struct FileInfoSheetContent: View {
             rows.append(BasicsRow(
                 id: "size",
                 label: "大小",
-                value: metadata?.formattedSize ?? file.formattedSize
+                value: resolvedMetadata?.formattedSize ?? file.formattedSize
             ))
         }
 
         // Codec / duration → 基础信息（仅音视频；图片容器的 hevc 等不进基础信息）
-        if let duration = metadata?.formattedDuration ?? file.formattedDuration {
+        if let duration = resolvedMetadata?.formattedDuration ?? file.formattedDuration {
             rows.append(BasicsRow(id: "duration", label: "时长", value: duration))
         }
-        let mediaKind = metadata?.fileType ?? (file.isVideo ? "video" : file.isAudio ? "audio" : nil)
-        if let codec = metadata?.codec, !codec.isEmpty,
+        let mediaKind = resolvedMetadata?.fileType ?? (file.isVideo ? "video" : file.isAudio ? "audio" : nil)
+        if let codec = resolvedMetadata?.codec, !codec.isEmpty,
            mediaKind == "video" || mediaKind == "audio" {
             rows.append(BasicsRow(id: "codec", label: "编码", value: codec.uppercased()))
         }
 
         // Created / modified — omit if same calendar day as capture time already in 时间
-        let createdRaw = metadata?.created ?? file.created
-        let modifiedRaw = metadata?.modified ?? file.modified
+        let createdRaw = resolvedMetadata?.created ?? file.created
+        let modifiedRaw = resolvedMetadata?.modified ?? file.modified
         if shouldShowFilesystemTime(createdRaw) {
             rows.append(BasicsRow(
                 id: "created",
