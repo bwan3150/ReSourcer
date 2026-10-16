@@ -11,8 +11,11 @@
 		5BA764DFEB45D4ADAE38CC6A /* MetricsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF085BEB183121E3B39A0477 /* MetricsService.swift */; };
 		8B6571A01BF18BCAF39FCD63 /* ServerMetricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C09E79295A8E45EF0CDF20D /* ServerMetricsView.swift */; };
 		A1000001233F0001 /* ReSourcerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001233F0000 /* ReSourcerApp.swift */; };
+		C1000001233F0001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000001233F0000 /* AppDelegate.swift */; };
 		A1000002233F0001 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002233F0000 /* MainTabView.swift */; };
 		A1000003233F0001 /* ServerConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000003233F0000 /* ServerConnectView.swift */; };
+		C1000002233F0001 /* NowPlayingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000002233F0000 /* NowPlayingController.swift */; };
+		C1000003233F0001 /* BackgroundUploadSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000003233F0000 /* BackgroundUploadSession.swift */; };
 		A1000010233F0001 /* GlassAlert.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000010233F0000 /* GlassAlert.swift */; };
 		A1000011233F0001 /* GlassBottomSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000011233F0000 /* GlassBottomSheet.swift */; };
 		A1000012233F0001 /* GlassButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000012233F0000 /* GlassButton.swift */; };
@@ -81,6 +84,7 @@
 		B1000005233F0001 /* PlaybackModeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000004233F0000 /* PlaybackModeUITests.swift */; };
 		B1000007233F0001 /* HeicThumbnailUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000006233F0000 /* HeicThumbnailUITests.swift */; };
 		B1000009233F0001 /* ThumbnailPersistUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000008233F0000 /* ThumbnailPersistUITests.swift */; };
+		C1000004233F0001 /* BackgroundPlaybackUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000004233F0000 /* BackgroundPlaybackUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -89,8 +93,11 @@
 		7E698E88935756D992DB0E55 /* AboutView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		A1000000233F0000 /* ReSourcer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReSourcer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1000001233F0000 /* ReSourcerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReSourcerApp.swift; sourceTree = "<group>"; };
+		C1000001233F0000 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A1000002233F0000 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		A1000003233F0000 /* ServerConnectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConnectView.swift; sourceTree = "<group>"; };
+		C1000002233F0000 /* NowPlayingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingController.swift; sourceTree = "<group>"; };
+		C1000003233F0000 /* BackgroundUploadSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundUploadSession.swift; sourceTree = "<group>"; };
 		A1000010233F0000 /* GlassAlert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassAlert.swift; sourceTree = "<group>"; };
 		A1000011233F0000 /* GlassBottomSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassBottomSheet.swift; sourceTree = "<group>"; };
 		A1000012233F0000 /* GlassButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassButton.swift; sourceTree = "<group>"; };
@@ -161,6 +168,7 @@
 		B1000004233F0000 /* PlaybackModeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackModeUITests.swift; sourceTree = "<group>"; };
 		B1000006233F0000 /* HeicThumbnailUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeicThumbnailUITests.swift; sourceTree = "<group>"; };
 		B1000008233F0000 /* ThumbnailPersistUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailPersistUITests.swift; sourceTree = "<group>"; };
+		C1000004233F0000 /* BackgroundPlaybackUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundPlaybackUITests.swift; sourceTree = "<group>"; };
 		B1000002233F0000 /* ReSourcerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ReSourcerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -215,6 +223,7 @@
 			isa = PBXGroup;
 			children = (
 				A1000001233F0000 /* ReSourcerApp.swift */,
+				C1000001233F0000 /* AppDelegate.swift */,
 				A1000002233F0000 /* MainTabView.swift */,
 				A1000003233F0000 /* ServerConnectView.swift */,
 			);
@@ -290,6 +299,8 @@
 				A1000200233F0000 /* PrivacyManager.swift */,
 				A1000059233F0000 /* PreviewService.swift */,
 				A100005A233F0000 /* UploadService.swift */,
+				C1000002233F0000 /* NowPlayingController.swift */,
+				C1000003233F0000 /* BackgroundUploadSession.swift */,
 				A100005B233F0000 /* TagService.swift */,
 				A1000077233F0000 /* ThumbnailCacheService.swift */,
 				A1000092233F0000 /* NavigationState.swift */,
@@ -391,6 +402,7 @@
 				B1000004233F0000 /* PlaybackModeUITests.swift */,
 				B1000006233F0000 /* HeicThumbnailUITests.swift */,
 				B1000008233F0000 /* ThumbnailPersistUITests.swift */,
+				C1000004233F0000 /* BackgroundPlaybackUITests.swift */,
 			);
 			path = ReSourcerUITests;
 			sourceTree = "<group>";
@@ -508,6 +520,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1000001233F0001 /* ReSourcerApp.swift in Sources */,
+				C1000001233F0001 /* AppDelegate.swift in Sources */,
 				A1000002233F0001 /* MainTabView.swift in Sources */,
 				A1000003233F0001 /* ServerConnectView.swift in Sources */,
 				A1000010233F0001 /* GlassAlert.swift in Sources */,
@@ -540,6 +553,8 @@
 				A1000058233F0001 /* LocalStorageService.swift in Sources */,
 				A1000059233F0001 /* PreviewService.swift in Sources */,
 				A100005A233F0001 /* UploadService.swift in Sources */,
+				C1000002233F0001 /* NowPlayingController.swift in Sources */,
+				C1000003233F0001 /* BackgroundUploadSession.swift in Sources */,
 				A100005B233F0001 /* TagService.swift in Sources */,
 				A1000060233F0001 /* AppTheme.swift in Sources */,
 				A1000070233F0001 /* ClassifierView.swift in Sources */,
@@ -588,6 +603,7 @@
 				B1000005233F0001 /* PlaybackModeUITests.swift in Sources */,
 				B1000007233F0001 /* HeicThumbnailUITests.swift in Sources */,
 				B1000009233F0001 /* ThumbnailPersistUITests.swift in Sources */,
+				C1000004233F0001 /* BackgroundPlaybackUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -755,6 +771,7 @@
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "ReSourcer 需要访问相册以保存下载的媒体文件";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "ReSourcer 需要访问相册以上传媒体文件";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UIBackgroundModes = audio;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = arm64;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -793,6 +810,7 @@
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "ReSourcer 需要访问相册以保存下载的媒体文件";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "ReSourcer 需要访问相册以上传媒体文件";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UIBackgroundModes = audio;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = arm64;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";

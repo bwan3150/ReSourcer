@@ -12,6 +12,8 @@ struct ReSourcerApp: App {
 
     // MARK: - State
 
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     /// 当前选中的 Tab
     @State private var selectedTab: AppTab = .gallery
 
@@ -38,6 +40,7 @@ struct ReSourcerApp: App {
                         onConnected: { service in
                             self.apiService = service
                             self.isLoggedIn = true
+                            Self.resumeBackgroundUploads(using: service)
                         }
                     )
                 }
@@ -83,6 +86,7 @@ struct ReSourcerApp: App {
            let service = APIService.create(for: server) {
             self.apiService = service
             self.isLoggedIn = true
+            Self.resumeBackgroundUploads(using: service)
 
             // 快速探测当前地址，不可达则弹切换对话框；仅检查 auth 失效时登出
             Task {
@@ -94,6 +98,21 @@ struct ReSourcerApp: App {
                         handleLogout()
                         GlassAlertManager.shared.showError("认证失败", message: "API Key 已失效，请重新登录")
                     }
+                }
+            }
+        }
+    }
+
+    /// 恢复杀进程前未完成的分片上传（background URLSession 同 identifier 重连）
+    private static func resumeBackgroundUploads(using service: APIService) {
+        Task {
+            let finished = await service.upload.resumePendingChunkJobs()
+            if !finished.isEmpty {
+                await MainActor.run {
+                    GlassAlertManager.shared.showSuccess(
+                        "后台上传已恢复",
+                        message: "完成 \(finished.count) 个未完成的分片任务"
+                    )
                 }
             }
         }
@@ -113,6 +132,7 @@ struct ReSourcerApp: App {
         guard let service = APIService.create(for: server) else { return false }
         self.apiService = service
         self.isLoggedIn = true
+        Self.resumeBackgroundUploads(using: service)
         return true
     }
 

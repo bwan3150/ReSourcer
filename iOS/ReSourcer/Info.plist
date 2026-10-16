@@ -4,6 +4,10 @@
 <dict>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>需要访问相机以扫描服务器二维码、拍照或录像后上传</string>
 	<key>NSMicrophoneUsageDescription</key>

@@ -80,7 +80,7 @@ final class APIService: ObservableObject {
         self.file = FileService(networkManager: networkManager)
         self.folder = FolderService(networkManager: networkManager)
         self.download = DownloadService(networkManager: networkManager)
-        self.upload = UploadService(networkManager: networkManager)
+        self.upload = UploadService(networkManager: networkManager, apiKey: server.apiKey)
         self.preview = PreviewService(networkManager: networkManager)
         self.browser = BrowserService(networkManager: networkManager)
         self.config = ConfigService(networkManager: networkManager)
