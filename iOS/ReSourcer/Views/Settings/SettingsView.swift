@@ -1119,8 +1119,7 @@ extension Notification.Name {
     static let sourceFolderDidChange = Notification.Name("sourceFolderDidChange")
     /// 当前活动地址已就地切换（同一 APIService 实例），通知各视图重载数据
     static let activeURLDidChange = Notification.Name("activeURLDidChange")
-    /// 当 NetworkManager 检测到连接错误时发送（用于触发全局切换地址对话框）
-    static let networkConnectivityError = Notification.Name("networkConnectivityError")
+    // networkConnectivityError 定义在 NetworkManager.swift（Share Extension 共用）
 }
 
 // MARK: - Preview

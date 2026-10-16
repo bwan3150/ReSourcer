@@ -18,6 +18,10 @@ struct DownloadView: View {
     @State private var detectResult: UrlDetectResponse?
     @State private var isDetecting = false
     @State private var isCreatingTask = false
+    /// Share Extension / 深链预填时跳过自动 detect（仅预填，不自动下载）
+    @State private var suppressAutoDetect = false
+    /// 无障碍 / UITest：标记当前文本来自分享预填
+    @State private var prefilledFromShare = false
 
     // 下载器选择
     @State private var selectedDownloader: DownloaderType = .ytDlp
@@ -126,11 +130,17 @@ struct DownloadView: View {
         }
         .task {
             await loadFolders()
+            applyPendingShareURLIfNeeded()
         }
         // 地址切换后用新地址重载
         .onReceive(NotificationCenter.default.publisher(for: .activeURLDidChange)) { _ in
             Task { await loadFolders() }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .shareDownloadPrefillRequested)) { _ in
+            applyPendingShareURLIfNeeded()
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(prefilledFromShare ? "downloadViewPrefilled" : "downloadView")
     }
 
     // MARK: - Main Input Area
@@ -157,7 +167,12 @@ struct DownloadView: View {
                     .textInputAutocapitalization(.never)
                     .keyboardType(.URL)
                     .autocorrectionDisabled()
+                    .accessibilityIdentifier("downloadURLField")
                     .onChange(of: urlText) { _, newValue in
+                        if suppressAutoDetect {
+                            return
+                        }
+                        prefilledFromShare = false
                         detectURL(newValue)
                     }
 
@@ -343,6 +358,22 @@ struct DownloadView: View {
         }
     }
 
+    /// 消费 Share Extension / `resourcer://download` 留下的 pending URL：只预填，不 detect、不创建任务
+    private func applyPendingShareURLIfNeeded() {
+        guard let pending = ShareBridge.consumePendingDownloadURL(), !pending.isEmpty else {
+            return
+        }
+        suppressAutoDetect = true
+        detectResult = nil
+        isDetecting = false
+        urlText = pending
+        prefilledFromShare = true
+        // 下一 runloop 解除抑制，用户后续编辑仍可自动 detect
+        DispatchQueue.main.async {
+            suppressAutoDetect = false
+        }
+    }
+
     private func detectURL(_ url: String) {
         let trimmed = url.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else {
@@ -357,6 +388,11 @@ struct DownloadView: View {
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s 防抖
 
             guard urlText.trimmingCharacters(in: .whitespaces) == trimmed else { return }
+            // 分享预填期间可能仍有在途 debounce；若仍标记为预填则跳过
+            if suppressAutoDetect || prefilledFromShare {
+                await MainActor.run { isDetecting = false }
+                return
+            }
 
             do {
                 let result = try await apiService.download.detectUrl(trimmed)

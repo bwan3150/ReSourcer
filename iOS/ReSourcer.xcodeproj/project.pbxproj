@@ -7,6 +7,27 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+
+		C1000001233F0001 /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000001233F0000 /* AppGroup.swift */; };
+		C1000001233F0002 /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000001233F0000 /* AppGroup.swift */; };
+		C1000002233F0001 /* ShareUploadClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000002233F0000 /* ShareUploadClient.swift */; };
+		C1000002233F0002 /* ShareUploadClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000002233F0000 /* ShareUploadClient.swift */; };
+		C1000003233F0001 /* BackgroundUploadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000003233F0000 /* BackgroundUploadManager.swift */; };
+		C1000003233F0002 /* BackgroundUploadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000003233F0000 /* BackgroundUploadManager.swift */; };
+		C2000035233F0001 /* Server.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000035233F0000 /* Server.swift */; };
+		C2000036233F0001 /* UploadModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000036233F0000 /* UploadModels.swift */; };
+		C2000034233F0001 /* FolderModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000034233F0000 /* FolderModels.swift */; };
+		C2000031233F0001 /* ConfigModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000031233F0000 /* ConfigModels.swift */; };
+		C2000033233F0001 /* FileModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000033233F0000 /* FileModels.swift */; };
+		C2000032233F0001 /* DownloadModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000032233F0000 /* DownloadModels.swift */; };
+		C2000040233F0001 /* APIEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000040233F0000 /* APIEndpoint.swift */; };
+		C2000041233F0001 /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000041233F0000 /* APIError.swift */; };
+		C2000042233F0001 /* NetworkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000042233F0000 /* NetworkManager.swift */; };
+		C200005A233F0001 /* UploadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100005A233F0000 /* UploadService.swift */; };
+		C1000010233F0001 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000010233F0000 /* ShareViewController.swift */; };
+		C1000011233F0001 /* ShareUploadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000011233F0000 /* ShareUploadView.swift */; };
+		C10000E2233F0000 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C1000020233F0000 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		C1000030233F0001 /* ShareDownloadUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000030233F0000 /* ShareDownloadUITests.swift */; };
 		4C1D717EE8BDFF4B003707D2 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E698E88935756D992DB0E55 /* AboutView.swift */; };
 		5BA764DFEB45D4ADAE38CC6A /* MetricsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF085BEB183121E3B39A0477 /* MetricsService.swift */; };
 		8B6571A01BF18BCAF39FCD63 /* ServerMetricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C09E79295A8E45EF0CDF20D /* ServerMetricsView.swift */; };
@@ -84,6 +105,17 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+
+		C1000001233F0000 /* AppGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroup.swift; sourceTree = "<group>"; };
+		C1000002233F0000 /* ShareUploadClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareUploadClient.swift; sourceTree = "<group>"; };
+		C1000003233F0000 /* BackgroundUploadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundUploadManager.swift; sourceTree = "<group>"; };
+		C1000010233F0000 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		C1000011233F0000 /* ShareUploadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareUploadView.swift; sourceTree = "<group>"; };
+		C1000012233F0000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		C1000013233F0000 /* ShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
+		C1000014233F0000 /* ReSourcer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ReSourcer.entitlements; sourceTree = "<group>"; };
+		C1000020233F0000 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		C1000030233F0000 /* ShareDownloadUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareDownloadUITests.swift; sourceTree = "<group>"; };
 		4C09E79295A8E45EF0CDF20D /* ServerMetricsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ServerMetricsView.swift; sourceTree = "<group>"; };
 		649E6184143302EFD3D570DE /* MetricsModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MetricsModels.swift; sourceTree = "<group>"; };
 		7E698E88935756D992DB0E55 /* AboutView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
@@ -179,6 +211,8 @@
 			isa = PBXGroup;
 			children = (
 				A10000A1233F0000 /* ReSourcer */,
+				C10000G0233F0000 /* ReSourcerShared */,
+				C10000G1233F0000 /* ShareExtension */,
 				A10000A2233F0000 /* Products */,
 				B10000G0233F0000 /* ReSourcerUITests */,
 			);
@@ -187,6 +221,7 @@
 		A10000A1233F0000 /* ReSourcer */ = {
 			isa = PBXGroup;
 			children = (
+				C1000014233F0000 /* ReSourcer.entitlements */,
 				A10000B0233F0000 /* App */,
 				A10000B1233F0000 /* Components */,
 				A10000B2233F0000 /* Extensions */,
@@ -206,6 +241,7 @@
 			isa = PBXGroup;
 			children = (
 				A1000000233F0000 /* ReSourcer.app */,
+				C1000020233F0000 /* ShareExtension.appex */,
 				B1000002233F0000 /* ReSourcerUITests.xctest */,
 			);
 			name = Products;
@@ -395,6 +431,28 @@
 			path = ReSourcerUITests;
 			sourceTree = "<group>";
 		};
+
+		C10000G0233F0000 /* ReSourcerShared */ = {
+			isa = PBXGroup;
+			children = (
+				C1000001233F0000 /* AppGroup.swift */,
+				C1000002233F0000 /* ShareUploadClient.swift */,
+				C1000003233F0000 /* BackgroundUploadManager.swift */,
+			);
+			path = ReSourcerShared;
+			sourceTree = "<group>";
+		};
+		C10000G1233F0000 /* ShareExtension */ = {
+			isa = PBXGroup;
+			children = (
+				C1000010233F0000 /* ShareViewController.swift */,
+				C1000011233F0000 /* ShareUploadView.swift */,
+				C1000012233F0000 /* Info.plist */,
+				C1000013233F0000 /* ShareExtension.entitlements */,
+			);
+			path = ShareExtension;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -405,15 +463,34 @@
 				A10000D1233F0000 /* Sources */,
 				A10000F0233F0000 /* Frameworks */,
 				A10000D2233F0000 /* Resources */,
+				C10000E1233F0000 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				C10000C1233F0000 /* PBXTargetDependency */,
 			);
 			name = ReSourcer;
 			productName = ReSourcer;
 			productReference = A1000000233F0000 /* ReSourcer.app */;
 			productType = "com.apple.product-type.application";
+		};
+		C10000D0233F0000 /* ShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C10000E0233F0000 /* Build configuration list for PBXNativeTarget "ShareExtension" */;
+			buildPhases = (
+				C10000D1233F0000 /* Sources */,
+				C10000F0233F0000 /* Frameworks */,
+				C10000D2233F0000 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShareExtension;
+			productName = ShareExtension;
+			productReference = C1000020233F0000 /* ShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		B10000D1233F0000 /* ReSourcerUITests */ = {
 			isa = PBXNativeTarget;
@@ -446,6 +523,9 @@
 					A10000D0233F0000 = {
 						CreatedOnToolsVersion = 16.0;
 					};
+					C10000D0233F0000 = {
+						CreatedOnToolsVersion = 16.0;
+					};
 					B10000D1233F0000 = {
 						CreatedOnToolsVersion = 16.0;
 						TestTargetID = A10000D0233F0000;
@@ -467,12 +547,20 @@
 			projectRoot = "";
 			targets = (
 				A10000D0233F0000 /* ReSourcer */,
+				C10000D0233F0000 /* ShareExtension */,
 				B10000D1233F0000 /* ReSourcerUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXContainerItemProxy section */
+		C10000C0233F0000 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000E1233F0000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C10000D0233F0000;
+			remoteInfo = ShareExtension;
+		};
 		B10000C0233F0000 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A10000E1233F0000 /* Project object */;
@@ -483,12 +571,32 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXTargetDependency section */
+		C10000C1233F0000 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C10000D0233F0000 /* ShareExtension */;
+			targetProxy = C10000C0233F0000 /* PBXContainerItemProxy */;
+		};
 		B10000C1233F0000 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = A10000D0233F0000 /* ReSourcer */;
 			targetProxy = B10000C0233F0000 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C10000E1233F0000 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				C10000E2233F0000 /* ShareExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXResourcesBuildPhase section */
 		A10000D2233F0000 /* Resources */ = {
@@ -575,10 +683,50 @@
 				8B6571A01BF18BCAF39FCD63 /* ServerMetricsView.swift in Sources */,
 				4C1D717EE8BDFF4B003707D2 /* AboutView.swift in Sources */,
 				D622607EE8CDA1C4914D147B /* FileIconHelper.swift in Sources */,
+				C1000001233F0001 /* AppGroup.swift in Sources */,
+				C1000002233F0001 /* ShareUploadClient.swift in Sources */,
+				C1000003233F0001 /* BackgroundUploadManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+		C10000D1233F0000 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C1000010233F0001 /* ShareViewController.swift in Sources */,
+				C1000011233F0001 /* ShareUploadView.swift in Sources */,
+				C1000001233F0002 /* AppGroup.swift in Sources */,
+				C1000002233F0002 /* ShareUploadClient.swift in Sources */,
+				C1000003233F0002 /* BackgroundUploadManager.swift in Sources */,
+				C2000035233F0001 /* Server.swift in Sources */,
+				C2000036233F0001 /* UploadModels.swift in Sources */,
+				C2000034233F0001 /* FolderModels.swift in Sources */,
+				C2000031233F0001 /* ConfigModels.swift in Sources */,
+				C2000033233F0001 /* FileModels.swift in Sources */,
+				C2000032233F0001 /* DownloadModels.swift in Sources */,
+				C2000040233F0001 /* APIEndpoint.swift in Sources */,
+				C2000041233F0001 /* APIError.swift in Sources */,
+				C2000042233F0001 /* NetworkManager.swift in Sources */,
+				C200005A233F0001 /* UploadService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C10000F0233F0000 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C10000D2233F0000 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* Begin PBXSourcesBuildPhase section for UITests */
 		B10000E1233F0000 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -743,8 +891,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ReSourcer/ReSourcer.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 925YHK2R4K;
 				DEVELOPMENT_ASSET_PATHS = "\"ReSourcer/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -781,8 +931,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ReSourcer/ReSourcer.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 925YHK2R4K;
 				DEVELOPMENT_ASSET_PATHS = "\"ReSourcer/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -854,6 +1006,65 @@
 			};
 			name = Release;
 		};
+
+		C10000E5233F0000 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 925YHK2R4K;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ReSourcer;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.0.36;
+				PRODUCT_BUNDLE_IDENTIFIER = app.resourcer.apple.share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C10000E6233F0000 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 925YHK2R4K;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ReSourcer;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.0.36;
+				PRODUCT_BUNDLE_IDENTIFIER = app.resourcer.apple.share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -880,6 +1091,15 @@
 			buildConfigurations = (
 				B10000E5233F0000 /* Debug */,
 				B10000E6233F0000 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C10000E0233F0000 /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C10000E5233F0000 /* Debug */,
+				C10000E6233F0000 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

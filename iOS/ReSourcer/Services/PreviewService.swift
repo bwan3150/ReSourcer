@@ -120,7 +120,7 @@ actor PreviewService {
     }
 
     /// 与 server `THUMBNAIL_VERSION` 对齐；算法变更时递增以使本地磁盘缓存失效。
-    nonisolated static let thumbnailVersion = "2"
+    nonisolated static let thumbnailVersion = APIThumbnailVersion.current
 
     /// 获取缩略图 URL（基于文件路径，兼容旧 API 调用方）
     /// - Parameters:
