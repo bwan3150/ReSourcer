@@ -131,7 +131,7 @@ test.describe('file metadata info dialog', () => {
     await expect(page.getByTestId('meta-filename')).toContainText('plain.png')
   })
 
-  test('info side panel exposes rename/move/download/delete actions', async ({ page }) => {
+  test('info side panel exposes download/share/move/rename/delete on one row', async ({ page }) => {
     await seedAuth(page)
     await installMetadataMocks(page)
 
@@ -141,9 +141,11 @@ test.describe('file metadata info dialog', () => {
 
     const actions = page.getByTestId('file-info-actions')
     await expect(actions).toBeVisible()
-    await expect(actions.getByRole('button', { name: /rename|重命名/i })).toBeVisible()
-    await expect(actions.getByRole('button', { name: /move|移动/i })).toBeVisible()
-    await expect(actions.getByRole('link', { name: /download|下载/i })).toBeVisible()
-    await expect(actions.getByRole('button', { name: /delete|删除/i })).toBeVisible()
+    await expect(actions.getByTestId('file-info-download')).toBeVisible()
+    await expect(actions.getByTestId('file-info-share')).toBeVisible()
+    await expect(actions.getByTestId('file-info-delete')).toBeVisible()
+    // Single row: all action controls are direct children (no nested wrap rows)
+    const kids = actions.locator(':scope > a, :scope > button')
+    await expect(kids).toHaveCount(5)
   })
 })

@@ -1450,6 +1450,11 @@ struct GalleryView: View {
                         showRenameAlert = true
                     }
                 },
+                onShare: {
+                    let fileCopy = file
+                    fileInfoToShow = nil
+                    shareFile(fileCopy)
+                },
                 onMove: {
                     fileInfoToShow = nil
                     Task { @MainActor in
@@ -1615,6 +1620,62 @@ struct GalleryView: View {
             await refreshFiles()
         } catch {
             GlassAlertManager.shared.showError("重命名失败", message: error.localizedDescription)
+        }
+    }
+
+    /// Info 面板「分享」：拉取到临时文件并弹出系统分享面板
+    private func shareFile(_ file: FileInfo) {
+        let contentURL: URL? = if let uuid = file.uuid {
+            apiService.preview.getContentURL(
+                uuid: uuid,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        } else {
+            apiService.preview.getContentURL(
+                for: file.path,
+                baseURL: apiService.baseURL,
+                apiKey: apiService.apiKey
+            )
+        }
+        guard let contentURL else {
+            GlassAlertManager.shared.showError("无法获取文件地址")
+            return
+        }
+
+        GlassAlertManager.shared.showQuickLoading()
+        Task.detached {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: contentURL)
+                let tempURL = FileManager.default.temporaryDirectory
+                    .appendingPathComponent(file.name)
+                try data.write(to: tempURL)
+                await MainActor.run {
+                    GlassAlertManager.shared.hideQuickLoading()
+                    let activityVC = UIActivityViewController(
+                        activityItems: [tempURL],
+                        applicationActivities: nil
+                    )
+                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                       let rootVC = windowScene.windows.first?.rootViewController {
+                        activityVC.popoverPresentationController?.sourceView = rootVC.view
+                        activityVC.popoverPresentationController?.sourceRect = CGRect(
+                            x: rootVC.view.bounds.midX,
+                            y: rootVC.view.bounds.midY,
+                            width: 0, height: 0
+                        )
+                        activityVC.popoverPresentationController?.permittedArrowDirections = []
+                        rootVC.present(activityVC, animated: true)
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    GlassAlertManager.shared.hideQuickLoading()
+                    if !error.isCancelledRequest {
+                        GlassAlertManager.shared.showError("分享失败", message: error.localizedDescription)
+                    }
+                }
+            }
         }
     }
 

@@ -147,83 +147,93 @@
                 <X :size="14" />
               </button>
             </div>
-            <div class="flex-1 overflow-y-auto px-4 py-3 space-y-4 text-sm" data-testid="file-metadata-panel">
-              <div>
-                <div class="text-base font-medium truncate" data-testid="meta-filename">
-                  {{ fileMeta?.filename || previewFile.fileName }}
+            <div class="flex-1 overflow-y-auto px-4 py-3 text-sm" data-testid="file-metadata-panel">
+              <!-- Original label/value rows, then extended camera fields -->
+              <div class="space-y-2">
+                <div class="flex justify-between gap-3" data-testid="meta-filename">
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.fileName') }}</span>
+                  <span class="truncate ml-4 text-right max-w-[60%]">{{ fileMeta?.filename || previewFile.fileName }}</span>
                 </div>
-                <div v-if="photosDateLabel" class="text-xs text-base-content/50 mt-0.5">{{ photosDateLabel }}</div>
-              </div>
-
-              <dl class="space-y-2">
-                <div v-if="fileMeta?.format || previewFile.extension" class="flex justify-between gap-3" data-testid="meta-format">
-                  <dt class="text-base-content/50 shrink-0">{{ $t('gallery.format') }}</dt>
-                  <dd class="text-right">{{ fileMeta?.format || previewFile.extension?.replace('.', '').toUpperCase() }}</dd>
+                <div v-if="fileMeta?.format" class="flex justify-between gap-3" data-testid="meta-format">
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.format') }}</span>
+                  <span>{{ fileMeta.format }}</span>
+                </div>
+                <div v-else class="flex justify-between gap-3">
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.fileType') }}</span>
+                  <span>{{ previewFile.extension?.replace('.', '').toUpperCase() }}</span>
                 </div>
                 <div class="flex justify-between gap-3" data-testid="meta-size">
-                  <dt class="text-base-content/50 shrink-0">{{ $t('gallery.fileSize') }}</dt>
-                  <dd class="text-right">{{ formatSize(fileMeta?.size ?? previewFile.fileSize) }}</dd>
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.fileSize') }}</span>
+                  <span>{{ formatSize(fileMeta?.size ?? previewFile.fileSize) }}</span>
                 </div>
                 <div v-if="fileMeta?.width && fileMeta?.height" class="flex justify-between gap-3" data-testid="meta-dimensions">
-                  <dt class="text-base-content/50 shrink-0">{{ $t('gallery.dimensions') }}</dt>
-                  <dd class="text-right">{{ fileMeta.width }} × {{ fileMeta.height }}</dd>
-                </div>
-                <div v-if="fileMeta?.megapixels" class="flex justify-between gap-3" data-testid="meta-megapixels">
-                  <dt class="text-base-content/50 shrink-0">MP</dt>
-                  <dd class="text-right">{{ Number(fileMeta.megapixels).toFixed(1) }}</dd>
-                </div>
-                <div v-if="deviceLabel" class="flex justify-between gap-3" data-testid="meta-device">
-                  <dt class="text-base-content/50 shrink-0">设备</dt>
-                  <dd class="text-right">{{ deviceLabel }}</dd>
-                </div>
-                <div v-if="fileMeta?.lens" class="flex justify-between gap-3" data-testid="meta-lens">
-                  <dt class="text-base-content/50 shrink-0">镜头</dt>
-                  <dd class="text-right truncate max-w-[60%]" :title="fileMeta.lens">{{ fileMeta.lens }}</dd>
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.dimensions') }}</span>
+                  <span>{{ fileMeta.width }} × {{ fileMeta.height }}</span>
                 </div>
                 <div v-if="fileMeta?.captureTime" class="flex justify-between gap-3" data-testid="meta-capture-time">
-                  <dt class="text-base-content/50 shrink-0">{{ $t('gallery.captureTime') }}</dt>
-                  <dd class="text-right">{{ fileMeta.captureTime }}</dd>
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.captureTime') }}</span>
+                  <span>{{ fileMeta.captureTime }}</span>
+                </div>
+                <div v-if="fileMeta?.gps" class="flex justify-between gap-3" data-testid="meta-gps">
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.gps') }}</span>
+                  <span class="text-right">{{ formatGps(fileMeta.gps) }}</span>
                 </div>
                 <div v-if="fileMeta?.duration" class="flex justify-between gap-3" data-testid="meta-duration">
-                  <dt class="text-base-content/50 shrink-0">{{ $t('gallery.duration') }}</dt>
-                  <dd class="text-right">{{ formatDuration(fileMeta.duration) }}</dd>
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.duration') }}</span>
+                  <span>{{ formatDuration(fileMeta.duration) }}</span>
+                </div>
+                <!-- Extended metadata (hidden when absent) -->
+                <div v-if="deviceLabel" class="flex justify-between gap-3" data-testid="meta-device">
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.device') }}</span>
+                  <span class="text-right">{{ deviceLabel }}</span>
+                </div>
+                <div v-if="fileMeta?.lens" class="flex justify-between gap-3" data-testid="meta-lens">
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.lens') }}</span>
+                  <span class="truncate ml-4 text-right max-w-[60%]" :title="fileMeta.lens">{{ fileMeta.lens }}</span>
+                </div>
+                <div v-if="fileMeta?.megapixels" class="flex justify-between gap-3" data-testid="meta-megapixels">
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.megapixels') }}</span>
+                  <span>{{ Number(fileMeta.megapixels).toFixed(1) }} MP</span>
+                </div>
+                <div v-if="focalLabel" class="flex justify-between gap-3" data-testid="meta-focal">
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.focalLength') }}</span>
+                  <span>{{ focalLabel }}</span>
+                </div>
+                <div v-if="fileMeta?.aperture != null" class="flex justify-between gap-3" data-testid="meta-aperture">
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.aperture') }}</span>
+                  <span>ƒ{{ Number(fileMeta.aperture).toFixed(1) }}</span>
+                </div>
+                <div v-if="fileMeta?.iso != null" class="flex justify-between gap-3" data-testid="meta-iso">
+                  <span class="text-base-content/50 shrink-0">ISO</span>
+                  <span>{{ fileMeta.iso }}</span>
+                </div>
+                <div v-if="fileMeta?.shutterSpeed" class="flex justify-between gap-3" data-testid="meta-shutter">
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.shutterSpeed') }}</span>
+                  <span>{{ fileMeta.shutterSpeed }}</span>
+                </div>
+                <div v-if="fileMeta?.exposureCompensation != null" class="flex justify-between gap-3" data-testid="meta-ev">
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.exposureCompensation') }}</span>
+                  <span>{{ formatEv(fileMeta.exposureCompensation) }}</span>
                 </div>
                 <div v-if="fileMeta?.codec" class="flex justify-between gap-3" data-testid="meta-codec">
-                  <dt class="text-base-content/50 shrink-0">Codec</dt>
-                  <dd class="text-right uppercase">{{ fileMeta.codec }}</dd>
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.codec') }}</span>
+                  <span class="uppercase">{{ fileMeta.codec }}</span>
                 </div>
                 <div class="flex justify-between gap-3">
-                  <dt class="text-base-content/50 shrink-0">{{ $t('gallery.created') }}</dt>
-                  <dd class="text-right">{{ formatDate(fileMeta?.created || previewFile.createdAt) }}</dd>
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.created') }}</span>
+                  <span>{{ formatDate(fileMeta?.created || previewFile.createdAt) }}</span>
                 </div>
                 <div class="flex justify-between gap-3">
-                  <dt class="text-base-content/50 shrink-0">{{ $t('gallery.modified') }}</dt>
-                  <dd class="text-right">{{ formatDate(fileMeta?.modified || previewFile.modifiedAt) }}</dd>
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.modified') }}</span>
+                  <span>{{ formatDate(fileMeta?.modified || previewFile.modifiedAt) }}</span>
                 </div>
                 <div v-if="previewFile.sourceUrl" class="flex justify-between gap-3">
-                  <dt class="text-base-content/50 shrink-0">{{ $t('gallery.sourceUrl') }}</dt>
-                  <dd class="text-right truncate max-w-[60%]">
-                    <a :href="previewFile.sourceUrl" target="_blank" rel="noopener" class="underline">{{ previewFile.sourceUrl }}</a>
-                  </dd>
+                  <span class="text-base-content/50 shrink-0">{{ $t('gallery.sourceUrl') }}</span>
+                  <a :href="previewFile.sourceUrl" target="_blank" rel="noopener" class="truncate ml-4 text-right max-w-[60%] underline">{{ previewFile.sourceUrl }}</a>
                 </div>
-              </dl>
-
-              <div v-if="exifStrip.length" class="flex flex-wrap gap-1.5" data-testid="meta-exif-strip">
-                <span
-                  v-for="item in exifStrip"
-                  :key="item"
-                  class="badge badge-ghost badge-sm font-mono"
-                >{{ item }}</span>
               </div>
 
-              <div v-if="fileMeta?.gps" class="rounded-lg border border-base-300 overflow-hidden" data-testid="meta-gps">
-                <div class="h-28 bg-base-200 flex items-center justify-center text-xs text-base-content/40">
-                  {{ formatGps(fileMeta.gps) }}
-                </div>
-                <div class="px-3 py-2 text-xs text-base-content/60">{{ formatGps(fileMeta.gps) }}</div>
-              </div>
-
-              <div class="pt-2 border-t border-base-300">
+              <div class="mt-4 pt-4 border-t border-base-300">
                 <div class="text-xs text-base-content/50 mb-2">{{ $t('gallery.tags') }}</div>
                 <TagEditor
                   :file-tags="fileTags"
@@ -234,28 +244,47 @@
               </div>
             </div>
 
-            <div class="shrink-0 border-t border-base-300 p-3 space-y-2" data-testid="file-info-actions">
-              <div class="flex gap-2">
-                <button class="btn btn-ghost btn-sm flex-1 gap-1" @click="showInfoPanel = false; startRename(previewFile)">
-                  <Pencil :size="14" />
-                  {{ $t('common.rename') }}
-                </button>
-                <button class="btn btn-ghost btn-sm flex-1 gap-1" @click="showInfoPanel = false; startMove(previewFile)">
-                  <FolderInput :size="14" />
-                  {{ $t('common.move') }}
-                </button>
-                <a :href="contentSrc" download class="btn btn-ghost btn-sm flex-1 gap-1">
-                  <Download :size="14" />
-                  {{ $t('common.download') }}
-                </a>
-              </div>
+            <!-- Single action row: download / share / move / rename / delete -->
+            <div class="shrink-0 border-t border-base-300 p-2 flex gap-1" data-testid="file-info-actions">
+              <a
+                :href="contentSrc"
+                download
+                class="btn btn-ghost btn-sm btn-square flex-1"
+                data-testid="file-info-download"
+                :title="$t('common.download')"
+              >
+                <Download :size="16" />
+              </a>
+              <button
+                class="btn btn-ghost btn-sm btn-square flex-1"
+                data-testid="file-info-share"
+                :title="$t('common.share')"
+                @click="sharePreviewFile()"
+              >
+                <Share2 :size="16" />
+              </button>
+              <button
+                class="btn btn-ghost btn-sm btn-square flex-1"
+                :title="$t('common.move')"
+                @click="showInfoPanel = false; startMove(previewFile)"
+              >
+                <FolderInput :size="16" />
+              </button>
+              <button
+                class="btn btn-ghost btn-sm btn-square flex-1"
+                :title="$t('common.rename')"
+                @click="showInfoPanel = false; startRename(previewFile)"
+              >
+                <Pencil :size="16" />
+              </button>
               <button
                 v-if="!isInRecycleBin"
-                class="btn btn-ghost btn-sm w-full gap-1 text-error"
+                class="btn btn-ghost btn-sm btn-square flex-1 text-error"
+                data-testid="file-info-delete"
+                :title="$t('common.delete')"
                 @click="showInfoPanel = false; confirmDelete(previewFile)"
               >
-                <Trash2 :size="14" />
-                {{ $t('common.delete') }}
+                <Trash2 :size="16" />
               </button>
             </div>
           </aside>
@@ -448,7 +477,7 @@ import { useTheme } from '../composables/useTheme'
 import UploadArea from '../components/gallery/UploadArea.vue'
 import TagEditor from '../components/gallery/TagEditor.vue'
 import ConfirmDialog from '../components/shared/ConfirmDialog.vue'
-import { Folder, ChevronRight, X, Pencil, FolderInput, RefreshCw, Info, Download, FolderPlus, Trash2, CheckSquare } from 'lucide-vue-next'
+import { Folder, ChevronRight, X, Pencil, FolderInput, RefreshCw, Info, Download, FolderPlus, Trash2, CheckSquare, Share2 } from 'lucide-vue-next'
 import { contentUrl, thumbnailUrl } from '../api/preview'
 import { useCurrentFolder } from '../composables/useCurrentFolder'
 import { usePrivacy } from '../composables/usePrivacy'
@@ -772,6 +801,29 @@ function openFileInfo() {
   loadFileMetadata()
 }
 
+async function sharePreviewFile() {
+  const file = previewFile.value
+  if (!file) return
+  const url = contentSrc.value
+  const title = file.fileName || fileMeta.value?.filename || 'file'
+  try {
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      await navigator.share({ title, url, text: title })
+      return
+    }
+  } catch (e) {
+    // User cancel or share unsupported — fall through to clipboard
+    if (e && (e.name === 'AbortError' || e.name === 'NotAllowedError')) return
+  }
+  try {
+    await navigator.clipboard.writeText(url)
+    osd.value?.show('Share2')
+  } catch {
+    // Last resort: open in new tab so user can copy from address bar
+    window.open(url, '_blank', 'noopener')
+  }
+}
+
 const deviceLabel = computed(() => {
   const m = fileMeta.value
   if (!m) return null
@@ -782,33 +834,19 @@ const deviceLabel = computed(() => {
   return m.model || m.make || null
 })
 
-const photosDateLabel = computed(() => {
-  const raw = fileMeta.value?.captureTime || fileMeta.value?.created || previewFile.value?.createdAt
-  if (!raw) return ''
-  try {
-    const d = new Date(raw.includes('T') ? raw : raw.replace(' ', 'T'))
-    if (Number.isNaN(d.getTime())) return raw
-    return d.toLocaleString(undefined, { weekday: 'long', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-  } catch {
-    return raw
-  }
+const focalLabel = computed(() => {
+  const m = fileMeta.value
+  if (!m) return null
+  const fl = m.focalLength35mm ?? m.focalLengthMm
+  if (fl == null) return null
+  return `${Math.round(Number(fl))} mm`
 })
 
-const exifStrip = computed(() => {
-  const m = fileMeta.value
-  if (!m) return []
-  const items = []
-  if (m.iso != null) items.push(`ISO${m.iso}`)
-  const fl = m.focalLength35mm ?? m.focalLengthMm
-  if (fl != null) items.push(`${Math.round(Number(fl))}mm`)
-  if (m.exposureCompensation != null) {
-    const v = Number(m.exposureCompensation)
-    items.push(Math.abs(v) < 0.05 ? '0ev' : `${v > 0 ? '+' : ''}${Math.round(v)}ev`)
-  }
-  if (m.aperture != null) items.push(`ƒ${Number(m.aperture).toFixed(1)}`)
-  if (m.shutterSpeed) items.push(String(m.shutterSpeed).endsWith('s') ? m.shutterSpeed : `${m.shutterSpeed}s`)
-  return items
-})
+function formatEv(v) {
+  const n = Number(v)
+  if (Number.isNaN(n) || Math.abs(n) < 0.05) return '0 EV'
+  return `${n > 0 ? '+' : ''}${n.toFixed(1)} EV`
+}
 
 function formatSize(bytes) {
   if (!bytes) return '—'

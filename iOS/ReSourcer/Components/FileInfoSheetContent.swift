@@ -2,10 +2,10 @@
 //  FileInfoSheetContent.swift
 //  ReSourcer
 //
-//  Apple Photos–style file info panel. Actions live inside this panel.
+//  共享的文件信息面板内容（用于 glassBottomSheet）
+//  保留原 label/value 行设计，并在其后扩展相机/编解码等元数据字段。
 //
 
-import MapKit
 import SwiftUI
 
 struct FileInfoSheetContent: View {
@@ -29,6 +29,7 @@ struct FileInfoSheetContent: View {
 
     /// 操作按钮闭包（nil 则隐藏该按钮）
     var onRename: (() -> Void)? = nil
+    var onShare: (() -> Void)? = nil
     var onMove: (() -> Void)? = nil
     var onDownload: (() -> Void)? = nil
     /// 删除回调（软删除到回收站，nil 则隐藏；回收站内应隐藏）
@@ -37,24 +38,151 @@ struct FileInfoSheetContent: View {
     /// 调试日志按钮（nil 则隐藏）
     var onShowDebugLog: (() -> Void)? = nil
 
-    var body: some View {
-        VStack(spacing: AppTheme.Spacing.md) {
-            headerCard
+    /// 创建/修改时间切换状态
+    @State private var showCreatedTime = true
 
-            if hasCameraSection {
-                cameraCard
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.lg) {
+            infoRow("文件名", value: metadata?.filename ?? file.name)
+
+            if let format = metadata?.format, !format.isEmpty {
+                infoRow("格式", value: format)
+            }
+
+            // 标签行：紧跟文件名下方
+            if let onAddTag {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                    Text("标签")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(tags) { tag in
+                                Text(tag.name)
+                                    .font(.subheadline)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(Color(hex: tag.color).opacity(0.85))
+                                    .foregroundStyle(.white)
+                                    .clipShape(Capsule())
+                            }
+                            Button {
+                                onAddTag()
+                            } label: {
+                                Image(systemName: "plus")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .overlay(Capsule().stroke(Color.secondary.opacity(0.4), lineWidth: 1))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("添加标签")
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if let position {
+                infoRow("位置", value: position)
+            }
+
+            infoRow("大小", value: metadata?.formattedSize ?? file.formattedSize)
+
+            if let dims = metadata?.formattedDimensions {
+                infoRow("分辨率", value: dims)
+            } else if let width = file.width, let height = file.height {
+                infoRow("分辨率", value: "\(width) × \(height)")
+            }
+
+            if let capture = metadata?.captureTime, !capture.isEmpty {
+                infoRow("拍摄时间", value: capture)
             }
 
             if let gps = metadata?.gps {
-                gpsCard(gps)
+                infoRow("GPS", value: gps.formatted)
             }
 
-            if let onAddTag {
-                tagsRow(onAddTag: onAddTag)
+            if let duration = metadata?.formattedDuration ?? file.formattedDuration {
+                infoRow("时长", value: duration)
             }
+
+            // 扩展元数据（缺省则隐藏）— 追加在原字段之后
+            if let device = metadata?.deviceLabel {
+                infoRow("设备", value: device)
+            }
+            if let lens = metadata?.lens, !lens.isEmpty {
+                infoRow("镜头", value: lens)
+            }
+            if let megapixels = metadata?.megapixels {
+                let mp = megapixels >= 10
+                    ? String(format: "%.0f MP", megapixels)
+                    : String(format: "%.1f MP", megapixels)
+                infoRow("像素", value: mp)
+            }
+            if let fl = metadata?.focalLength35mm ?? metadata?.focalLengthMm.map({ UInt32($0.rounded()) }) {
+                infoRow("焦距", value: "\(fl) mm")
+            }
+            if let aperture = metadata?.aperture {
+                infoRow("光圈", value: String(format: "ƒ%.2g", aperture))
+            }
+            if let iso = metadata?.iso {
+                infoRow("ISO", value: "\(iso)")
+            }
+            if let shutter = metadata?.shutterSpeed, !shutter.isEmpty {
+                infoRow("快门", value: shutter)
+            }
+            if let ev = metadata?.exposureCompensation {
+                let label = abs(ev) < 0.05 ? "0 EV" : String(format: "%+.1f EV", ev)
+                infoRow("曝光补偿", value: label)
+            }
+            if let codec = metadata?.codec, !codec.isEmpty {
+                infoRow("编码", value: codec.uppercased())
+            }
+
+            // 创建/修改时间合并为一行，点击切换
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { showCreatedTime.toggle() }
+            } label: {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                    HStack(spacing: 4) {
+                        Text(showCreatedTime ? "创建时间" : "修改时间")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Image(systemName: "arrow.left.arrow.right")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.tertiary)
+                    }
+                    Text(showCreatedTime
+                         ? (metadata?.created ?? file.created).toLocalDateTime
+                         : (metadata?.modified ?? file.modified).toLocalDateTime)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .contentTransition(.numericText())
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
 
             if let sourceUrl = file.sourceUrl, let url = URL(string: sourceUrl) {
-                sourceLink(url: url, text: sourceUrl)
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                    Text("来源地址")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Link(destination: url) {
+                        HStack(spacing: 4) {
+                            Text(sourceUrl)
+                                .font(.body)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.blue)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             if let onShowDebugLog {
@@ -68,12 +196,44 @@ struct FileInfoSheetContent: View {
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
-                    .padding(.horizontal, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.plain)
             }
 
-            actionsSection
+            // 操作：下载 / 分享 / 移动 / 重命名 / 删除 — 单行，原生 GlassButton
+            let hasActions = onDownload != nil || onShare != nil || onMove != nil
+                || onRename != nil || onDelete != nil
+            if hasActions {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    if let onDownload {
+                        GlassButton(icon: "arrow.down.circle", style: .secondary, size: .medium, action: onDownload)
+                            .frame(maxWidth: .infinity)
+                            .accessibilityLabel("下载")
+                    }
+                    if let onShare {
+                        GlassButton(icon: "square.and.arrow.up", style: .secondary, size: .medium, action: onShare)
+                            .frame(maxWidth: .infinity)
+                            .accessibilityLabel("分享")
+                    }
+                    if let onMove {
+                        GlassButton(icon: "folder", style: .secondary, size: .medium, action: onMove)
+                            .frame(maxWidth: .infinity)
+                            .accessibilityLabel("移动")
+                    }
+                    if let onRename {
+                        GlassButton(icon: "pencil", style: .secondary, size: .medium, action: onRename)
+                            .frame(maxWidth: .infinity)
+                            .accessibilityLabel("重命名")
+                    }
+                    if let onDelete {
+                        GlassButton(icon: "trash", style: .destructive, size: .medium, action: onDelete)
+                            .frame(maxWidth: .infinity)
+                            .accessibilityLabel("删除")
+                    }
+                }
+                .padding(.top, AppTheme.Spacing.sm)
+            }
 
             if bottomSpacing > 0 {
                 Spacer().frame(height: bottomSpacing)
@@ -82,261 +242,17 @@ struct FileInfoSheetContent: View {
         .padding(.vertical, AppTheme.Spacing.md)
     }
 
-    // MARK: - Header (date • filename)
+    // MARK: - Info Row
 
-    private var headerCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(photosDateHeader)
-                .font(.headline.weight(.semibold))
+    private func infoRow(_ label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.body)
                 .foregroundStyle(.primary)
-                .lineLimit(2)
-
-            HStack(spacing: 6) {
-                Image(systemName: file.isVideo ? "video" : "photo")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(metadata?.filename ?? file.name)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                if let position {
-                    Text("·")
-                        .foregroundStyle(.tertiary)
-                    Text(position)
-                        .font(.subheadline)
-                        .foregroundStyle(.tertiary)
-                }
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(cardBackground)
-    }
-
-    // MARK: - Camera / EXIF
-
-    private var hasCameraSection: Bool {
-        metadata?.deviceLabel != nil
-            || metadata?.lensLine != nil
-            || metadata?.resolutionSummary != nil
-            || !(metadata?.exifStripItems.isEmpty ?? true)
-            || metadata?.format.isEmpty == false
-            || metadata?.codec != nil
-            || metadata?.formattedDuration != nil
-    }
-
-    private var cameraCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                if let device = metadata?.deviceLabel {
-                    Text(device)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                }
-                Spacer(minLength: 8)
-                if let format = metadata?.format, !format.isEmpty {
-                    Text(format)
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Color.secondary.opacity(0.15))
-                        .clipShape(Capsule())
-                }
-            }
-
-            if let lens = metadata?.lensLine {
-                Text(lens)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            if let summary = metadata?.resolutionSummary {
-                Text(summary)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            if let duration = metadata?.formattedDuration ?? file.formattedDuration {
-                Text("时长 \(duration)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            if let codec = metadata?.codec, !codec.isEmpty {
-                Text(codec.uppercased())
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-
-            let strip = metadata?.exifStripItems ?? []
-            if !strip.isEmpty {
-                HStack(spacing: 0) {
-                    ForEach(Array(strip.enumerated()), id: \.offset) { index, item in
-                        if index > 0 {
-                            Rectangle()
-                                .fill(Color.secondary.opacity(0.35))
-                                .frame(width: 1, height: 18)
-                                .padding(.horizontal, 8)
-                        }
-                        Text(item.value)
-                            .font(.caption.monospacedDigit().weight(.medium))
-                            .foregroundStyle(.primary)
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                .padding(.top, 4)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(cardBackground)
-    }
-
-    // MARK: - GPS
-
-    private func gpsCard(_ gps: FileGpsCoords) -> some View {
-        let coord = CLLocationCoordinate2D(latitude: gps.lat, longitude: gps.lon)
-        return VStack(alignment: .leading, spacing: 8) {
-            Map(initialPosition: .region(MKCoordinateRegion(
-                center: coord,
-                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-            ))) {
-                Marker("", coordinate: coord)
-            }
-            .frame(height: 120)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .allowsHitTesting(false)
-
-            Text(gps.formatted)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .padding(14)
-        .background(cardBackground)
-    }
-
-    // MARK: - Tags / source / actions
-
-    private func tagsRow(onAddTag: @escaping () -> Void) -> some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-            Text("标签")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(tags) { tag in
-                        Text(tag.name)
-                            .font(.subheadline)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(Color(hex: tag.color).opacity(0.85))
-                            .foregroundStyle(.white)
-                            .clipShape(Capsule())
-                    }
-                    Button(action: onAddTag) {
-                        Image(systemName: "plus")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .overlay(Capsule().stroke(Color.secondary.opacity(0.4), lineWidth: 1))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(cardBackground)
-    }
-
-    private func sourceLink(url: URL, text: String) -> some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-            Text("来源地址")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Link(destination: url) {
-                HStack(spacing: 4) {
-                    Text(text)
-                        .font(.body)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    Image(systemName: "arrow.up.right.square")
-                        .font(.caption)
-                }
-                .foregroundStyle(.blue)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(cardBackground)
-    }
-
-    @ViewBuilder
-    private var actionsSection: some View {
-        let hasActions = onRename != nil || onMove != nil || onDownload != nil || onDelete != nil
-        if hasActions {
-            VStack(spacing: AppTheme.Spacing.sm) {
-                HStack(spacing: AppTheme.Spacing.md) {
-                    if let onRename {
-                        GlassButton("重命名", icon: "pencil", style: .secondary, size: .medium, action: onRename)
-                            .frame(maxWidth: .infinity)
-                    }
-                    if let onMove {
-                        GlassButton("移动", icon: "folder", style: .secondary, size: .medium, action: onMove)
-                            .frame(maxWidth: .infinity)
-                    }
-                    if let onDownload {
-                        GlassButton("下载", icon: "arrow.down.circle", style: .secondary, size: .medium, action: onDownload)
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                if let onDelete {
-                    GlassButton("删除", icon: "trash", style: .destructive, size: .medium, action: onDelete)
-                        .frame(maxWidth: .infinity)
-                }
-            }
-            .padding(.top, AppTheme.Spacing.sm)
-        }
-    }
-
-    // MARK: - Helpers
-
-    private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 14, style: .continuous)
-            .fill(Color.secondary.opacity(0.12))
-    }
-
-    private var photosDateHeader: String {
-        let raw = metadata?.captureTime ?? metadata?.created ?? file.created
-        if let formatted = Self.formatPhotosDate(raw), !formatted.isEmpty {
-            return formatted
-        }
-        return metadata?.filename ?? file.name
-    }
-
-    private static func formatPhotosDate(_ raw: String) -> String? {
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-
-        let a = DateFormatter()
-        a.locale = Locale(identifier: "en_US_POSIX")
-        a.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let b = DateFormatter()
-        b.locale = Locale(identifier: "en_US_POSIX")
-        b.dateFormat = "yyyy:MM:dd HH:mm:ss"
-
-        var date: Date?
-        let head = String(trimmed.prefix(19))
-        date = a.date(from: head) ?? b.date(from: head)
-        if date == nil {
-            date = ISO8601DateFormatter().date(from: trimmed)
-        }
-        guard let date else { return trimmed }
-
-        let out = DateFormatter()
-        out.locale = Locale(identifier: "zh_CN")
-        out.dateFormat = "EEEE • M月d日 • HH:mm"
-        return out.string(from: date)
     }
 }
