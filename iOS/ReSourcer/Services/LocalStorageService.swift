@@ -173,7 +173,12 @@ final class LocalStorageService: @unchecked Sendable {
 
     /// 启动时把本机服务器镜像推到 App Group（兼容升级前已登录用户）
     func syncServersToAppGroupIfNeeded() {
-        ShareBridge.syncServers(getServers(), currentServerId: getCurrentServerId())
+        let servers = getServers()
+        ShareBridge.syncServers(servers, currentServerId: getCurrentServerId())
+        // 活跃地址只存在主 App UserDefaults；必须一并镜像，否则 Extension 会连错公网/局域网
+        for server in servers {
+            ShareBridge.syncActiveURL(getActiveURL(forServerId: server.id), forServerId: server.id)
+        }
     }
 
     // MARK: - Login Status
@@ -332,6 +337,7 @@ final class LocalStorageService: @unchecked Sendable {
     /// 保存某台服务器上次使用的活跃地址
     func saveActiveURL(_ urlString: String, forServerId serverId: String) {
         defaults.set(urlString, forKey: "active_url_\(serverId)")
+        ShareBridge.syncActiveURL(urlString, forServerId: serverId)
     }
 
     /// 读取某台服务器上次使用的活跃地址
@@ -342,5 +348,6 @@ final class LocalStorageService: @unchecked Sendable {
     /// 清除某台服务器的活跃地址记录
     func clearActiveURL(forServerId serverId: String) {
         defaults.removeObject(forKey: "active_url_\(serverId)")
+        ShareBridge.clearActiveURL(forServerId: serverId)
     }
 }

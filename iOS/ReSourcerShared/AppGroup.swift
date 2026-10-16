@@ -73,6 +73,9 @@ enum ShareBridge {
         static let pendingDownloadURL = "share_pending_download_url"
         static let lastDestination = "share_last_destination"
         static let backgroundJobs = "share_background_upload_jobs"
+        static func activeURL(forServerId id: String) -> String {
+            "share_active_url_\(id)"
+        }
     }
 
     // MARK: Servers（App Group 镜像；凭证优先 Keychain）
@@ -95,6 +98,70 @@ enum ShareBridge {
         let ids = Set(servers.map(\.id))
         for orphan in SharedKeychain.allStoredServerIds() where !ids.contains(orphan) {
             SharedKeychain.deleteAPIKey(forServerId: orphan)
+        }
+        // 清理已删除服务器的活跃地址
+        for orphan in loadAllActiveURLServerIds() where !ids.contains(orphan) {
+            clearActiveURL(forServerId: orphan)
+        }
+    }
+
+    /// 同步某台服务器当前选用的活动地址（公网 / 局域网），供 Share Extension 直连
+    static func syncActiveURL(_ urlString: String?, forServerId serverId: String) {
+        let key = Keys.activeURL(forServerId: serverId)
+        if let urlString, !urlString.isEmpty {
+            AppGroup.defaults.set(urlString, forKey: key)
+        } else {
+            AppGroup.defaults.removeObject(forKey: key)
+        }
+    }
+
+    static func loadActiveURL(forServerId serverId: String) -> String? {
+        AppGroup.defaults.string(forKey: Keys.activeURL(forServerId: serverId))
+    }
+
+    static func clearActiveURL(forServerId serverId: String) {
+        AppGroup.defaults.removeObject(forKey: Keys.activeURL(forServerId: serverId))
+    }
+
+    /// Extension 实际应连接的 base URL：优先 App Group 中的活跃地址
+    static func effectiveBaseURL(for server: Server) -> String {
+        if let active = loadActiveURL(forServerId: server.id), !active.isEmpty {
+            return active
+        }
+        return server.baseURL
+    }
+
+    /// 连接候选：活跃地址优先，再主地址与备用（去重）
+    static func connectionURLCandidates(for server: Server) -> [String] {
+        var ordered: [String] = []
+        var seen = Set<String>()
+        func append(_ raw: String) {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, URL(string: trimmed)?.host != nil else { return }
+            guard !seen.contains(trimmed) else { return }
+            seen.insert(trimmed)
+            ordered.append(trimmed)
+        }
+        append(effectiveBaseURL(for: server))
+        for url in server.allURLs {
+            append(url)
+        }
+        return ordered
+    }
+
+    /// 选择器文案：名称 + 有效 URL（公网 / 局域网可辨）
+    static func sharePickerLabel(for server: Server) -> String {
+        let urlPart = Server.displayURL(from: effectiveBaseURL(for: server))
+        let trimmed = server.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return urlPart }
+        return "\(trimmed) · \(urlPart)"
+    }
+
+    private static func loadAllActiveURLServerIds() -> [String] {
+        let prefix = "share_active_url_"
+        return AppGroup.defaults.dictionaryRepresentation().keys.compactMap { key in
+            guard key.hasPrefix(prefix) else { return nil }
+            return String(key.dropFirst(prefix.count))
         }
     }
 

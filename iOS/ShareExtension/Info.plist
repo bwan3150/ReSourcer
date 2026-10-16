@@ -43,6 +43,8 @@
 		<key>NSExtensionPrincipalClass</key>
 		<string>$(PRODUCT_MODULE_NAME).ShareViewController</string>
 	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>需要访问局域网以连接群晖等本地 ReSourcer 服务器并加载源文件夹</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

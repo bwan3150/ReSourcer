@@ -27,6 +27,8 @@
 	<string>需要访问麦克风以在录像时录制声音</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>需要访问相册以选择照片和视频上传到服务器</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>需要访问局域网以连接群晖等本地 ReSourcer 服务器</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
