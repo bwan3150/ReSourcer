@@ -1,9 +1,10 @@
 // 缩略图生成功能（从gallery/handlers.rs迁移）
 use actix_web::{web, HttpResponse, Result};
-use std::path::Path;
 use std::io::Cursor;
+use std::path::Path;
 use image::ImageFormat;
 use super::models::*;
+use super::persist::{load_persisted_thumbnail, store_persisted_thumbnail};
 use super::utils::{
     extract_audio_cover, extract_clip_thumbnail, extract_heif_thumbnail,
     extract_image_thumbnail_ffmpeg, extract_pdf_thumbnail, extract_video_first_frame,
@@ -11,7 +12,8 @@ use super::utils::{
 
 /// GET /api/preview/thumbnail?path=<file_path>&size=<size>
 /// GET /api/preview/thumbnail?uuid=<uuid>&size=<size>
-/// 生成并返回图片/视频缩略图，支持通过 UUID 或路径查询
+/// 生成并返回图片/视频缩略图，支持通过 UUID 或路径查询。
+/// 首次请求：生成后原子写入源根 `.thumb/` 镜像；之后读盘复用（mtime+size+tv 失效）。
 pub async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, String>>) -> Result<HttpResponse> {
     // 优先使用 UUID 查询
     let file_path_resolved = if let Some(uuid) = query.get("uuid") {
@@ -33,6 +35,11 @@ pub async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, S
     let path = Path::new(&file_path_resolved);
     if !path.exists() || !path.is_file() {
         return Err(actix_web::error::ErrorNotFound("文件不存在"));
+    }
+
+    // 磁盘命中：直接返回 JPEG（跳过解码/编码）
+    if let Some(jpeg) = load_persisted_thumbnail(path, size) {
+        return Ok(thumb_response(jpeg));
     }
 
     // 获取扩展名判断文件类型
@@ -102,11 +109,19 @@ pub async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, S
     thumbnail_rgb.write_to(&mut buffer, ImageFormat::Jpeg)
         .map_err(|e| actix_web::error::ErrorInternalServerError(format!("无法编码图片: {}", e)))?;
 
-    Ok(HttpResponse::Ok()
+    let jpeg = buffer.into_inner();
+    // 首次请求落盘；失败不影响本次响应。无后台 batch backfill。
+    store_persisted_thumbnail(path, size, &jpeg);
+
+    Ok(thumb_response(jpeg))
+}
+
+fn thumb_response(jpeg: Vec<u8>) -> HttpResponse {
+    HttpResponse::Ok()
         .content_type("image/jpeg")
         // UUID-based thumbnails are immutable — cache aggressively.
         // Clients pass tv=<THUMBNAIL_VERSION> so algorithm bumps invalidate caches.
         .insert_header(("Cache-Control", "public, max-age=31536000, immutable"))
         .insert_header(("X-Thumbnail-Version", THUMBNAIL_VERSION))
-        .body(buffer.into_inner()))
+        .body(jpeg)
 }

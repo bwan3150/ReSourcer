@@ -97,10 +97,24 @@ pub fn scan_folder(folder_path: &str, source_folder: &str, skip_mark_missing: bo
     let mut new_files: Vec<NewFile> = Vec::new();
     let mut existing_paths: Vec<String> = Vec::new();
 
+    // `.thumb` 镜像树内不索引（lazy 可能扫到隐藏目录）
+    if crate::preview::persist::is_thumb_artifact_path(dir_path) {
+        return Ok(());
+    }
+
     let entries = fs::read_dir(dir_path)?;
     for entry in entries.flatten() {
         let entry_path = entry.path();
         if entry_path.is_dir() {
+            continue;
+        }
+
+        let file_name = entry_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("");
+        // 排除 `*.thumb` 产物（lazy 扫描不会自动跳过隐藏文件）
+        if crate::preview::persist::is_thumb_scan_skip(file_name, false) {
             continue;
         }
 
@@ -301,7 +315,15 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
             let _ = storage::upsert_folder_with_conn(&conn, &folder);
             scanned_folders += 1;
         } else {
-            // 文件
+            // 文件 — 排除 `*.thumb`（全量扫描虽会跳过 `.thumb/` 目录，仍防漏网）
+            let file_name = entry_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("");
+            if crate::preview::persist::is_thumb_scan_skip(file_name, false) {
+                continue;
+            }
+
             let ext = entry_path.extension()
                 .and_then(|e| e.to_str())
                 .unwrap_or("")
@@ -372,6 +394,12 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
 
     // 提交最后一批
     conn.execute_batch("COMMIT")?;
+
+    // 顺带 GC：删除源已不存在的 `.thumb` 孤儿（非预生成 / 非 batch backfill）
+    let removed = crate::preview::persist::gc_orphan_thumbs(source_path);
+    if removed > 0 {
+        eprintln!("[scanner] 清理孤儿缩略图 {} 个 ({})", removed, source_folder);
+    }
 
     Ok(ScanResult {
         scanned_files,

@@ -67,6 +67,9 @@ pub fn move_one(
     fs::rename(file_path, &target_path)
         .map_err(|e| FileOpError::Internal(format!("移动失败: {}", e)))?;
 
+    // 最佳努力：同步搬迁 `.thumb` 镜像（外部挪文件则靠 GC）
+    crate::preview::persist::relocate_thumb_mirrors(file_path, &target_path);
+
     let new_path_str = target_path.to_string_lossy().to_string();
     let new_folder_str = target_folder_path.to_string_lossy().to_string();
     let new_file_name = target_path
@@ -127,6 +130,9 @@ pub fn delete_one(uuid: &str) -> Result<String, FileOpError> {
 
     fs::rename(file_path, &target_path)
         .map_err(|e| FileOpError::Internal(format!("删除失败: {}", e)))?;
+
+    // 软删进回收站：相对路径变了，同步镜像；失败则留给扫描 GC
+    crate::preview::persist::relocate_thumb_mirrors(file_path, &target_path);
 
     let new_path_str = target_path.to_string_lossy().to_string();
     let new_folder_str = recycle_dir.to_string_lossy().to_string();
