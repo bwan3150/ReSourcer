@@ -38,13 +38,12 @@ jobs:
           IOS_KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
           IOS_APPSTORE_PROFILE_BASE64: ${{ secrets.IOS_APPSTORE_PROFILE_BASE64 }}
           IOS_APPSTORE_SHARE_PROFILE_BASE64: ${{ secrets.IOS_APPSTORE_SHARE_PROFILE_BASE64 }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
         run: |
           if [ -z "$IOS_APPSTORE_PROFILE_BASE64" ]; then
             echo "::error::缺少 secret IOS_APPSTORE_PROFILE_BASE64(App Store 描述文件)"
-            exit 1
-          fi
-          if [ -z "$IOS_APPSTORE_SHARE_PROFILE_BASE64" ]; then
-            echo "::error::缺少 secret IOS_APPSTORE_SHARE_PROFILE_BASE64(Share Extension App Store 描述文件, bundle app.resourcer.apple.share)"
             exit 1
           fi
 
@@ -55,7 +54,103 @@ jobs:
 
           echo -n "$IOS_CERTIFICATE_BASE64" | base64 --decode -o $CERT_PATH
           echo -n "$IOS_APPSTORE_PROFILE_BASE64" | base64 --decode -o $PROVISION_PATH
-          echo -n "$IOS_APPSTORE_SHARE_PROFILE_BASE64" | base64 --decode -o $SHARE_PROVISION_PATH
+
+          # Share Extension profile: prefer dedicated secret; else download via ASC API
+          export SHARE_PROVISION_PATH
+          if [ -n "$IOS_APPSTORE_SHARE_PROFILE_BASE64" ]; then
+            echo -n "$IOS_APPSTORE_SHARE_PROFILE_BASE64" | base64 --decode -o "$SHARE_PROVISION_PATH"
+          else
+            if [ -z "$ASC_API_KEY_ID" ] || [ -z "$ASC_API_ISSUER_ID" ] || [ -z "$ASC_API_KEY_P8" ]; then
+              echo "::error::缺少 IOS_APPSTORE_SHARE_PROFILE_BASE64，且无 ASC API 凭证可自动拉取 Share Extension 描述文件"
+              exit 1
+            fi
+            echo "IOS_APPSTORE_SHARE_PROFILE_BASE64 未设置，通过 App Store Connect API 拉取 $SHARE_BUNDLE_ID App Store profile…"
+            python3 - <<'PY'
+          import base64, json, os, sys, time, urllib.error, urllib.parse, urllib.request
+          try:
+              import jwt
+          except ImportError:
+              import subprocess
+              subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", "PyJWT", "cryptography"])
+              import jwt
+
+          key_id = os.environ["ASC_API_KEY_ID"]
+          issuer = os.environ["ASC_API_ISSUER_ID"]
+          bundle = os.environ["SHARE_BUNDLE_ID"]
+          out_path = os.environ["SHARE_PROVISION_PATH"]
+          private_key = os.environ["ASC_API_KEY_P8"]
+          now = int(time.time())
+          token = jwt.encode(
+              {"iss": issuer, "iat": now, "exp": now + 20 * 60, "aud": "appstoreconnect-v1"},
+              private_key,
+              algorithm="ES256",
+              headers={"kid": key_id, "typ": "JWT"},
+          )
+          if isinstance(token, bytes):
+              token = token.decode()
+
+          def asc_get(path_query: str):
+              req = urllib.request.Request(
+                  f"https://api.appstoreconnect.apple.com{path_query}",
+                  headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+              )
+              try:
+                  with urllib.request.urlopen(req) as resp:
+                      return json.load(resp)
+              except urllib.error.HTTPError as e:
+                  body = e.read().decode("utf-8", errors="replace")
+                  print(f"::error::ASC API {e.code} for {path_query}: {body}", file=sys.stderr)
+                  sys.exit(1)
+
+          q = urllib.parse.urlencode({
+              "filter[identifier]": bundle,
+              "filter[platform]": "IOS",
+          })
+          bundles = asc_get(f"/v1/bundleIds?{q}").get("data") or []
+          if not bundles:
+              print(
+                  f"::error::ASC 中找不到 Bundle ID {bundle}。"
+                  "请先在 Apple Developer 创建 App ID（含 App Groups），"
+                  "或设置 environment secret IOS_APPSTORE_SHARE_PROFILE_BASE64。",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+          bundle_id = bundles[0]["id"]
+
+          profiles = asc_get(f"/v1/bundleIds/{bundle_id}/profiles?limit=50").get("data") or []
+          store = [
+              p for p in profiles
+              if (p.get("attributes") or {}).get("profileType") == "IOS_APP_STORE"
+          ]
+          active = [p for p in store if (p.get("attributes") or {}).get("profileState") == "ACTIVE"]
+          candidates = active or store
+          if not candidates:
+              print(
+                  f"::error::ASC 中没有 {bundle} 的 IOS_APP_STORE 描述文件。"
+                  "请在 developer.apple.com → Profiles 创建 App Store 类型 profile，"
+                  "或设置 secret IOS_APPSTORE_SHARE_PROFILE_BASE64（base64 of .mobileprovision）。",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+          candidates.sort(
+              key=lambda p: (p.get("attributes") or {}).get("createdDate") or "",
+              reverse=True,
+          )
+          profile = candidates[0]
+          content_b64 = (profile.get("attributes") or {}).get("profileContent")
+          if not content_b64:
+              detail = asc_get(f"/v1/profiles/{profile['id']}")
+              content_b64 = (detail.get("data", {}).get("attributes") or {}).get("profileContent")
+          if not content_b64:
+              print("::error::ASC profile 响应缺少 profileContent", file=sys.stderr)
+              sys.exit(1)
+          raw = base64.b64decode(content_b64)
+          with open(out_path, "wb") as f:
+              f.write(raw)
+          name = (profile.get("attributes") or {}).get("name")
+          print(f"Downloaded Share profile via ASC: {name} ({len(raw)} bytes)")
+          PY
+          fi
 
           security create-keychain -p "$IOS_KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
