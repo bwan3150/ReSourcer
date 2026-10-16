@@ -166,6 +166,93 @@ actor UploadService {
         }
     }
 
+    /// E2E：创建分片任务并可选只传第 0 片后停住，供杀进程续传测试。
+    struct PartialChunkJobResult: Sendable {
+        let jobId: String
+        let uploadId: String
+        let fileName: String
+        let totalChunks: Int
+    }
+
+    func preparePartialChunkJobForE2E(
+        fileName: String,
+        data: Data,
+        targetFolder: String,
+        chunkSize: Int,
+        uploadFirstChunkCount: Int
+    ) async throws -> PartialChunkJobResult {
+        let totalBytes = data.count
+        guard chunkSize > 0 else { throw APIError.unknown("无效的分片大小") }
+        let totalChunks = max(1, (totalBytes + chunkSize - 1) / chunkSize)
+        let chunksToUpload = min(max(0, uploadFirstChunkCount), totalChunks)
+        let jobId = UUID().uuidString
+        let stagingName = "chunk-src-\(jobId)-\(fileName)"
+        let localFile = try BackgroundUploadSession.writeStagingFile(data: data, name: stagingName)
+
+        let initBody = ChunkInitRequest(
+            fileName: fileName,
+            fileSize: UInt64(totalBytes),
+            targetFolder: targetFolder,
+            totalChunks: totalChunks
+        )
+        let initResp: ChunkInitResponse = try await networkManager.request(.uploadChunkInit, body: initBody)
+        let uploadId = initResp.uploadId
+        let baseURL = await networkManager.baseURL
+
+        var job = RecoverableChunkUploadJob(
+            id: jobId,
+            uploadId: uploadId,
+            fileName: fileName,
+            fileSize: UInt64(totalBytes),
+            targetFolder: targetFolder,
+            totalChunks: totalChunks,
+            chunkSize: chunkSize,
+            localFilePath: localFile.path,
+            baseURLString: baseURL.absoluteString,
+            apiKey: apiKey,
+            completedIndices: [],
+            createdAt: Date()
+        )
+        ChunkUploadJobStore.upsert(job)
+
+        for index in 0..<chunksToUpload {
+            let start = index * chunkSize
+            let end = min(start + chunkSize, data.count)
+            let chunk = data.subdata(in: start..<end)
+            let partFile = try BackgroundUploadSession.writeStagingFile(
+                data: chunk,
+                name: "chunk-\(jobId)-\(index).part"
+            )
+            guard let url = URL(
+                string: APIEndpoint.uploadChunkPart(uploadId: uploadId, index: index).path,
+                relativeTo: baseURL
+            )?.absoluteURL else {
+                throw APIError.invalidURL
+            }
+            var request = BackgroundUploadSession.makeRequest(
+                url: url,
+                method: "POST",
+                apiKey: apiKey,
+                contentType: "application/octet-stream"
+            )
+            request.timeoutInterval = 300
+            let respData = try await BackgroundUploadSession.shared.uploadFile(
+                request: request,
+                fromFile: partFile
+            )
+            let _: ChunkPartResponse = try decode(respData)
+            job.completedIndices.append(index)
+            ChunkUploadJobStore.upsert(job)
+        }
+
+        return PartialChunkJobResult(
+            jobId: jobId,
+            uploadId: uploadId,
+            fileName: fileName,
+            totalChunks: totalChunks
+        )
+    }
+
     /// App 冷启动时恢复未完成的分片任务（与 background URLSession 同 identifier 重连配合）
     @discardableResult
     func resumePendingChunkJobs(
