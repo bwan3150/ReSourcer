@@ -124,8 +124,9 @@ fi
 check "first thumb HTTP 200" '[ "$code" = "200" ]'
 check "X-Thumbnail-Version 2" 'grep -qi "x-thumbnail-version: 2" "$HDR1"'
 check "default mirror created" '[ -f "$THUMB_DEFAULT" ]'
-# File is header+JPEG; JPEG SOI should appear after header
-check "mirror contains JPEG SOI" 'grep -aob $'\''\xff\xd8'\'' "$THUMB_DEFAULT" | head -1 | grep -q .'
+# File is header+JPEG; JPEG SOI should appear after header.
+# Prefer Python over grep: macOS BSD grep can fail with "illegal byte sequence" on binary.
+check "mirror contains JPEG SOI" 'python3 -c "import pathlib,sys; d=pathlib.Path(sys.argv[1]).read_bytes(); raise SystemExit(0 if b\"\\xff\\xd8\" in d else 1)" "$THUMB_DEFAULT"'
 
 M1=$(stat -c %Y "$THUMB_DEFAULT" 2>/dev/null || stat -f %m "$THUMB_DEFAULT")
 
