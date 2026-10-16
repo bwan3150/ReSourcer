@@ -59,6 +59,7 @@ final class NowPlayingController {
             print("[NowPlaying] AVAudioSession 激活失败: \(error.localizedDescription)")
         }
         configureRemoteCommandsIfNeeded()
+        // beginReceivingRemoteControlEvents 在纯 SwiftUI 场景非必需；异常时忽略，避免阻断播放
         UIApplication.shared.beginReceivingRemoteControlEvents()
     }
 
@@ -76,18 +77,20 @@ final class NowPlayingController {
         isActive = true
         configureRemoteCommandsIfNeeded()
 
+        let safeElapsed = Self.sanitizedTime(elapsed)
+        let safeDuration = Self.sanitizedTime(duration)
+
         var info: [String: Any] = [
             MPMediaItemPropertyTitle: title,
-            MPNowPlayingInfoPropertyElapsedPlaybackTime: max(0, elapsed),
-            MPMediaItemPropertyPlaybackDuration: max(0, duration),
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: safeElapsed,
+            MPMediaItemPropertyPlaybackDuration: safeDuration,
             MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0,
             MPNowPlayingInfoPropertyDefaultPlaybackRate: 1.0,
         ]
         if let artist, !artist.isEmpty {
             info[MPMediaItemPropertyArtist] = artist
         }
-        if let artworkImage {
-            let artwork = MPMediaItemArtwork(boundsSize: artworkImage.size) { _ in artworkImage }
+        if let artwork = Self.makeArtwork(from: artworkImage) {
             info[MPMediaItemPropertyArtwork] = artwork
         } else if let existing = MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] {
             info[MPMediaItemPropertyArtwork] = existing
@@ -101,9 +104,10 @@ final class NowPlayingController {
     func updatePlaybackProgress(elapsed: TimeInterval, duration: TimeInterval, isPlaying: Bool) {
         guard isActive else { return }
         var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = max(0, elapsed)
-        if duration > 0 {
-            info[MPMediaItemPropertyPlaybackDuration] = duration
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = Self.sanitizedTime(elapsed)
+        let safeDuration = Self.sanitizedTime(duration)
+        if safeDuration > 0 {
+            info[MPMediaItemPropertyPlaybackDuration] = safeDuration
         }
         info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
@@ -116,6 +120,26 @@ final class NowPlayingController {
         canGoNext = false
         onSeek = nil
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+    }
+
+    // MARK: - Sanitizers（NaN / 零尺寸封面 / MainActor 隔离会导致系统 Now Playing 崩溃）
+
+    /// CMTime.seconds 在未就绪时常为 NaN；写入 MPNowPlayingInfo 会直接崩
+    nonisolated static func sanitizedTime(_ value: TimeInterval) -> TimeInterval {
+        guard value.isFinite else { return 0 }
+        return max(0, value)
+    }
+
+    /// 构造封面。handler 由 MediaPlayer 在后台 `accessQueue` 回调，
+    /// 必须 `nonisolated`，否则 Swift 隔离断言 SIGTRAP（0.0.37 播放视频闪退根因）。
+    nonisolated static func makeArtwork(from image: UIImage?) -> MPMediaItemArtwork? {
+        guard let image else { return nil }
+        let size = image.size
+        guard size.width >= 1, size.height >= 1, size.width.isFinite, size.height.isFinite else {
+            return nil
+        }
+        // 只捕获 UIImage，勿捕获 self / MainActor 状态
+        return MPMediaItemArtwork(boundsSize: size) { _ in image }
     }
 
     // MARK: - Remote commands
@@ -168,7 +192,7 @@ final class NowPlayingController {
             guard let positionEvent = event as? MPChangePlaybackPositionCommandEvent else {
                 return .commandFailed
             }
-            let position = positionEvent.positionTime
+            let position = Self.sanitizedTime(positionEvent.positionTime)
             Task { @MainActor in
                 if let onSeek = self?.onSeek {
                     onSeek(position)

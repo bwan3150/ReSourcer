@@ -44,17 +44,20 @@ struct ShareUploadView: View {
             Section("目标") {
                 Picker("服务器", selection: $selectedServerId) {
                     ForEach(servers) { server in
-                        Text(server.name.isEmpty ? server.displayURL : server.name)
+                        // 必须同时展示名称与 URL，否则公网/局域网无法区分
+                        Text(ShareBridge.sharePickerLabel(for: server))
                             .tag(server.id)
                     }
                 }
+                .accessibilityIdentifier("shareServerPicker")
                 .onChange(of: selectedServerId) { _, _ in
                     Task { await reloadSources() }
                 }
 
                 if sourceFolders.isEmpty {
-                    Text(isLoadingMeta ? "加载源文件夹…" : "无可用源文件夹")
-                        .foregroundStyle(.secondary)
+                    Text(isLoadingMeta ? "加载源文件夹…" : (errorMessage ?? "无可用源文件夹"))
+                        .foregroundStyle(errorMessage == nil ? Color.secondary : Color.red)
+                        .accessibilityIdentifier("shareSourceFoldersStatus")
                 } else {
                     Picker("源文件夹", selection: $selectedSource) {
                         ForEach(sourceFolders, id: \.self) { path in
@@ -156,12 +159,19 @@ struct ShareUploadView: View {
             selectedSource = ""
             return
         }
+        if server.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            sourceFolders = []
+            selectedSource = ""
+            errorMessage = "无法读取服务器凭证：请先在主 App 打开一次以同步 App Group / Keychain"
+            isLoadingMeta = false
+            return
+        }
         isLoadingMeta = true
         errorMessage = nil
         defer { isLoadingMeta = false }
         do {
-            let client = try ShareUploadClient(server: server)
-            let paths = try await client.sourceFolders()
+            // 活跃地址优先，失败再试主/备用（群晖常见公网 vs 局域网）
+            let paths = try await ShareUploadClient.loadSourceFoldersTryingCandidates(for: server)
             sourceFolders = paths
             if selectedSource.isEmpty || !paths.contains(selectedSource) {
                 selectedSource = paths.first ?? ""
@@ -180,7 +190,8 @@ struct ShareUploadView: View {
             return
         }
         do {
-            let client = try ShareUploadClient(server: server)
+            let url = ShareBridge.effectiveBaseURL(for: server)
+            let client = try ShareUploadClient(server: server, baseURLOverride: url)
             subfolders = try await client.subfolders(in: selectedSource)
             if !selectedSubfolder.isEmpty,
                !subfolders.contains(where: { $0.name == selectedSubfolder }) {

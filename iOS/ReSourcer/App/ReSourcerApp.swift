@@ -26,6 +26,9 @@ struct ReSourcerApp: App {
     /// 主题偏好
     @State private var themePreference: LocalStorageService.AppSettings.DarkModePreference = .system
 
+    /// UITest：Share Extension 同源文件夹探测结果（App Group + Keychain + 真实 API）
+    @State private var e2eShareSourcesProbeText: String = ""
+
     // MARK: - Body
 
     var body: some Scene {
@@ -42,8 +45,19 @@ struct ReSourcerApp: App {
                             self.isLoggedIn = true
                             LocalStorageService.shared.syncServersToAppGroupIfNeeded()
                             Self.resumeBackgroundUploads(using: service)
+                            runE2EShareSourcesProbeIfNeeded()
                         }
                     )
+                }
+            }
+            .overlay(alignment: .topLeading) {
+                if !e2eShareSourcesProbeText.isEmpty {
+                    Text(e2eShareSourcesProbeText)
+                        .font(.system(size: 1))
+                        .foregroundStyle(.clear)
+                        .accessibilityIdentifier("e2eShareSourcesProbe")
+                        .accessibilityValue(e2eShareSourcesProbeText)
+                        .allowsHitTesting(false)
                 }
             }
             .withGlassAlerts()
@@ -56,6 +70,7 @@ struct ReSourcerApp: App {
                 checkExistingLogin()
                 applyE2EPendingDownloadIfNeeded()
                 consumePendingDownloadHandoff()
+                runE2EShareSourcesProbeIfNeeded()
             }
             .onReceive(NotificationCenter.default.publisher(for: .themeDidChange)) { _ in
                 themePreference = LocalStorageService.shared.getAppSettings().darkModePreference
@@ -137,15 +152,51 @@ struct ReSourcerApp: App {
               let key = env["E2E_API_KEY"], !key.isEmpty else {
             return false
         }
-        let server = Server(name: "E2E", baseURL: url, apiKey: key)
-        _ = LocalStorageService.shared.addServer(server)
+        var server: Server
+        if let existing = LocalStorageService.shared.getServers().first(where: { $0.baseURL == url }) {
+            server = existing.with(name: "E2E", apiKey: key)
+            _ = LocalStorageService.shared.updateServer(server)
+        } else {
+            server = Server(name: "E2E", baseURL: url, apiKey: key)
+            _ = LocalStorageService.shared.addServer(server)
+        }
         _ = LocalStorageService.shared.setCurrentServer(server.id)
+        LocalStorageService.shared.saveActiveURL(url, forServerId: server.id)
         LocalStorageService.shared.setLoggedIn(true)
+        LocalStorageService.shared.syncServersToAppGroupIfNeeded()
         guard let service = APIService.create(for: server) else { return false }
         self.apiService = service
         self.isLoggedIn = true
         Self.resumeBackgroundUploads(using: service)
         return true
+    }
+
+    /// UITest：沿 Share Extension 路径（App Group 服务器 + Keychain apiKey + 活跃 URL）拉真实源文件夹
+    private func runE2EShareSourcesProbeIfNeeded() {
+        let env = ProcessInfo.processInfo.environment
+        guard env["E2E_SHARE_SOURCES_PROBE"] == "1" else { return }
+        LocalStorageService.shared.syncServersToAppGroupIfNeeded()
+        Task {
+            guard let server = ShareBridge.currentServer() else {
+                await MainActor.run { e2eShareSourcesProbeText = "ERROR:no-server" }
+                return
+            }
+            if server.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                await MainActor.run { e2eShareSourcesProbeText = "ERROR:empty-api-key" }
+                return
+            }
+            let label = ShareBridge.sharePickerLabel(for: server)
+            do {
+                let paths = try await ShareUploadClient.loadSourceFoldersTryingCandidates(for: server)
+                let active = ShareBridge.effectiveBaseURL(for: server)
+                let payload = "OK:\(paths.count)|\(active)|\(label)|\(paths.joined(separator: ","))"
+                await MainActor.run { e2eShareSourcesProbeText = payload }
+            } catch {
+                await MainActor.run {
+                    e2eShareSourcesProbeText = "ERROR:\(error.localizedDescription)"
+                }
+            }
+        }
     }
 
     /// UITest：`E2E_PENDING_DOWNLOAD_URL` 注入待预填链接（模拟 Share Extension 交接）

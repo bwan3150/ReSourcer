@@ -1726,7 +1726,8 @@ struct VideoPreviewContent: View {
         let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
         timeObserver = avPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak avPlayer] time in
             Task { @MainActor in
-                currentTime = time.seconds
+                let elapsed = NowPlayingController.sanitizedTime(time.seconds)
+                currentTime = elapsed
                 if let item = avPlayer?.currentItem {
                     let dur = item.duration.seconds
                     if dur.isFinite && dur > 0 {
@@ -1734,7 +1735,7 @@ struct VideoPreviewContent: View {
                     }
                 }
                 NowPlayingController.shared.updatePlaybackProgress(
-                    elapsed: time.seconds,
+                    elapsed: elapsed,
                     duration: duration,
                     isPlaying: isPlaying
                 )
@@ -1767,10 +1768,11 @@ struct VideoPreviewContent: View {
     }
 
     private func seekTo(_ position: TimeInterval) {
-        currentTime = position
-        player?.seek(to: CMTime(seconds: position, preferredTimescale: 600))
+        let safe = NowPlayingController.sanitizedTime(position)
+        currentTime = safe
+        player?.seek(to: CMTime(seconds: safe, preferredTimescale: 600))
         NowPlayingController.shared.updatePlaybackProgress(
-            elapsed: position,
+            elapsed: safe,
             duration: duration,
             isPlaying: isPlaying
         )
@@ -2013,7 +2015,8 @@ struct AudioPreviewContent: View {
         let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
         timeObserver = avPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak avPlayer] time in
             Task { @MainActor in
-                currentTime = time.seconds
+                let elapsed = NowPlayingController.sanitizedTime(time.seconds)
+                currentTime = elapsed
                 if let item = avPlayer?.currentItem {
                     let dur = item.duration.seconds
                     if dur.isFinite && dur > 0 {
@@ -2021,7 +2024,7 @@ struct AudioPreviewContent: View {
                     }
                 }
                 NowPlayingController.shared.updatePlaybackProgress(
-                    elapsed: time.seconds,
+                    elapsed: elapsed,
                     duration: duration,
                     isPlaying: isPlaying
                 )
@@ -2054,10 +2057,11 @@ struct AudioPreviewContent: View {
     }
 
     private func seekTo(_ position: TimeInterval) {
-        currentTime = position
-        player?.seek(to: CMTime(seconds: position, preferredTimescale: 600))
+        let safe = NowPlayingController.sanitizedTime(position)
+        currentTime = safe
+        player?.seek(to: CMTime(seconds: safe, preferredTimescale: 600))
         NowPlayingController.shared.updatePlaybackProgress(
-            elapsed: position,
+            elapsed: safe,
             duration: duration,
             isPlaying: isPlaying
         )

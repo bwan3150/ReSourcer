@@ -15,14 +15,36 @@ actor ShareUploadClient {
     private let upload: UploadService
     private let server: Server
 
-    init(server: Server) throws {
-        guard let baseURL = server.url else {
+    init(server: Server, baseURLOverride: String? = nil, timeoutInterval: TimeInterval = 20) throws {
+        let urlString = baseURLOverride ?? ShareBridge.effectiveBaseURL(for: server)
+        guard let baseURL = URL(string: urlString), baseURL.host != nil else {
             throw APIError.invalidURL
         }
-        self.server = server
-        let nm = NetworkManager(baseURL: baseURL, apiKey: server.apiKey, timeoutInterval: 60)
+        guard !server.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw APIError.unauthorized
+        }
+        self.server = server.with(baseURL: urlString)
+        let nm = NetworkManager(baseURL: baseURL, apiKey: server.apiKey, timeoutInterval: timeoutInterval)
         self.networkManager = nm
         self.upload = UploadService(networkManager: nm, apiKey: server.apiKey)
+    }
+
+    /// 按活跃地址 → 主/备用顺序探测，成功则把可用地址写回 App Group
+    static func loadSourceFoldersTryingCandidates(for server: Server) async throws -> [String] {
+        let candidates = ShareBridge.connectionURLCandidates(for: server)
+        guard !candidates.isEmpty else { throw APIError.invalidURL }
+        var lastError: Error = APIError.invalidURL
+        for urlString in candidates {
+            do {
+                let client = try ShareUploadClient(server: server, baseURLOverride: urlString, timeoutInterval: 12)
+                let paths = try await client.sourceFolders()
+                ShareBridge.syncActiveURL(urlString, forServerId: server.id)
+                return paths
+            } catch {
+                lastError = error
+            }
+        }
+        throw lastError
     }
 
     /// 源文件夹列表（当前 + 备用）
@@ -30,7 +52,7 @@ actor ShareUploadClient {
         let response: SourceFoldersResponse = try await networkManager.request(.configSources)
         var paths = [response.current]
         paths.append(contentsOf: response.backups.filter { $0 != response.current })
-        return paths
+        return paths.filter { !$0.isEmpty }
     }
 
     /// 指定源下的一级子文件夹

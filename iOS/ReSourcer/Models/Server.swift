@@ -76,7 +76,19 @@ struct Server: Identifiable, Codable, Equatable {
 
     /// 显示用的简短 URL（去掉 http:// 前缀）
     var displayURL: String {
-        baseURL
+        Self.displayURL(from: baseURL)
+    }
+
+    /// 分享扩展 / 选择器：名称 + URL，便于区分公网与局域网
+    var sharePickerLabel: String {
+        let urlPart = displayURL
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return urlPart }
+        return "\(trimmed) · \(urlPart)"
+    }
+
+    static func displayURL(from raw: String) -> String {
+        raw
             .replacingOccurrences(of: "http://", with: "")
             .replacingOccurrences(of: "https://", with: "")
     }

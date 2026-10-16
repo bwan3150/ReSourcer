@@ -214,15 +214,16 @@ struct ServerConnectView: View {
                     .frame(width: 44, height: 44)
                     .glassBackground(in: Circle())
 
-                // 服务器信息
+                // 服务器信息：名称 + URL（公网/局域网可辨）
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-                    Text(server.name)
+                    Text(server.name.isEmpty ? server.displayURL : server.name)
                         .font(.headline)
                         .foregroundStyle(.primary)
 
                     Text(server.displayURL)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("serverRowURL-\(server.id)")
                 }
 
                 Spacer()
