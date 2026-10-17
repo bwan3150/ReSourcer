@@ -37,6 +37,7 @@
 		C1000036233F0001 /* BackgroundSkipNonPlayableUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000036233F0000 /* BackgroundSkipNonPlayableUITests.swift */; };
 		C1000037233F0001 /* ShareLinkHandoffUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000037233F0000 /* ShareLinkHandoffUITests.swift */; };
 		C1000038233F0001 /* ShareOriginalFormatUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000038233F0000 /* ShareOriginalFormatUITests.swift */; };
+		C1000039233F0001 /* ShareOpenLaunchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000039233F0000 /* ShareOpenLaunchUITests.swift */; };
 		4C1D717EE8BDFF4B003707D2 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E698E88935756D992DB0E55 /* AboutView.swift */; };
 		5BA764DFEB45D4ADAE38CC6A /* MetricsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF085BEB183121E3B39A0477 /* MetricsService.swift */; };
 		8B6571A01BF18BCAF39FCD63 /* ServerMetricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C09E79295A8E45EF0CDF20D /* ServerMetricsView.swift */; };
@@ -142,6 +143,7 @@
 		C1000036233F0000 /* BackgroundSkipNonPlayableUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundSkipNonPlayableUITests.swift; sourceTree = "<group>"; };
 		C1000037233F0000 /* ShareLinkHandoffUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareLinkHandoffUITests.swift; sourceTree = "<group>"; };
 		C1000038233F0000 /* ShareOriginalFormatUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareOriginalFormatUITests.swift; sourceTree = "<group>"; };
+		C1000039233F0000 /* ShareOpenLaunchUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareOpenLaunchUITests.swift; sourceTree = "<group>"; };
 		4C09E79295A8E45EF0CDF20D /* ServerMetricsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ServerMetricsView.swift; sourceTree = "<group>"; };
 		649E6184143302EFD3D570DE /* MetricsModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MetricsModels.swift; sourceTree = "<group>"; };
 		7E698E88935756D992DB0E55 /* AboutView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
@@ -480,6 +482,7 @@
 				C1000036233F0000 /* BackgroundSkipNonPlayableUITests.swift */,
 				C1000037233F0000 /* ShareLinkHandoffUITests.swift */,
 				C1000038233F0000 /* ShareOriginalFormatUITests.swift */,
+				C1000039233F0000 /* ShareOpenLaunchUITests.swift */,
 			);
 			path = ReSourcerUITests;
 			sourceTree = "<group>";
@@ -808,6 +811,7 @@
 				C1000036233F0001 /* BackgroundSkipNonPlayableUITests.swift in Sources */,
 				C1000037233F0001 /* ShareLinkHandoffUITests.swift in Sources */,
 				C1000038233F0001 /* ShareOriginalFormatUITests.swift in Sources */,
+				C1000039233F0001 /* ShareOpenLaunchUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
