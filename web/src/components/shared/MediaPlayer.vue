@@ -43,18 +43,20 @@
             :alt="fileName"
             class="max-w-[100vw] max-h-[100vh] object-contain select-none"
             draggable="false"
-            :class="{ 'opacity-0': livePlaying }"
+            :class="{ 'opacity-0': livePlaying && liveVideoReady }"
           />
           <video
             v-if="liveVideoSrc"
             ref="liveVideoEl"
             :src="liveVideoSrc"
             class="absolute inset-0 w-full h-full object-contain"
-            :class="{ 'opacity-0': !livePlaying }"
+            :class="{ 'opacity-0': !(livePlaying && liveVideoReady) }"
             muted
             playsinline
             loop
             preload="metadata"
+            @loadeddata="liveVideoReady = true"
+            @error="liveVideoReady = false"
           />
           <div
             v-if="liveVideoSrc"
@@ -227,6 +229,8 @@ const emit = defineEmits(['prev', 'next', 'ended', 'toggle-advance-mode', 'open-
 const videoEl = ref(null)
 const liveVideoEl = ref(null)
 const livePlaying = ref(false)
+/** 配对 MOV 尚未出帧时保持静帧可见，避免悬停后白屏 */
+const liveVideoReady = ref(false)
 const contentArea = ref(null)
 const pdfViewer = ref(null)
 const playing = ref(false)
@@ -288,7 +292,11 @@ function startLivePlayback() {
   if (!props.liveVideoSrc || !liveVideoEl.value) return
   livePlaying.value = true
   liveVideoEl.value.currentTime = 0
-  liveVideoEl.value.play()?.catch(() => {})
+  liveVideoEl.value.play()?.then(() => {
+    liveVideoReady.value = liveVideoEl.value.readyState >= 2
+  }).catch(() => {
+    livePlaying.value = false
+  })
 }
 
 function stopLivePlayback() {

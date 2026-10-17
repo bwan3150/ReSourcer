@@ -1545,27 +1545,48 @@ struct ImagePreviewContent: View {
     @State private var gifLoaded = false
 
     var body: some View {
-        let contentURL: URL? = if let uuid = file.uuid {
-            apiService.preview.getContentURL(
-                uuid: uuid,
-                baseURL: apiService.baseURL,
-                apiKey: apiService.apiKey
-            )
-        } else {
-            apiService.preview.getContentURL(
+        // HEIC/HEIF/AVIF：浏览器/部分 ImageIO 路径不识别 Orientation；用服务端大缩略图（已转正）。
+        // 原文件不变，下载仍走 content。
+        let previewURL: URL? = {
+            let ext = file.extension.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "."))
+            let needsOrientedThumb = ["heic", "heif", "avif"].contains(ext)
+            if needsOrientedThumb {
+                if let uuid = file.uuid {
+                    return apiService.preview.getThumbnailURL(
+                        uuid: uuid,
+                        size: 1600,
+                        baseURL: apiService.baseURL,
+                        apiKey: apiService.apiKey
+                    )
+                }
+                return apiService.preview.getThumbnailURL(
+                    for: file.path,
+                    size: 1600,
+                    baseURL: apiService.baseURL,
+                    apiKey: apiService.apiKey
+                )
+            }
+            if let uuid = file.uuid {
+                return apiService.preview.getContentURL(
+                    uuid: uuid,
+                    baseURL: apiService.baseURL,
+                    apiKey: apiService.apiKey
+                )
+            }
+            return apiService.preview.getContentURL(
                 for: file.path,
                 baseURL: apiService.baseURL,
                 apiKey: apiService.apiKey
             )
-        }
+        }()
 
         GeometryReader { geometry in
             if file.isGif {
                 // GIF: 使用 UIKit 的 UIImageView 播放动画
-                gifPreview(url: contentURL, in: geometry)
+                gifPreview(url: previewURL, in: geometry)
             } else {
                 // 普通图片: 使用 AsyncImage
-                staticImagePreview(url: contentURL, in: geometry)
+                staticImagePreview(url: previewURL, in: geometry)
             }
         }
     }
