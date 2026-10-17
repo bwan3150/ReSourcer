@@ -401,6 +401,8 @@ mod tests {
                     modified_at: modified.clone(),
                     indexed_at: modified,
                     source_url: None,
+            live_video_uuid: None,
+            live_video_path: None,
                 };
                 crate::indexer::storage::upsert_file(&file).expect("upsert");
                 names.push(name);

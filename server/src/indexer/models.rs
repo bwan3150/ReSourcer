@@ -16,6 +16,12 @@ pub struct IndexedFile {
     pub modified_at: String,
     pub indexed_at: String,
     pub source_url: Option<String>,
+    /// 实况照片配对视频 UUID（同目录同 stem 的 `.mov`）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub live_video_uuid: Option<String>,
+    /// 实况照片配对视频路径（按路径识别；缩略图仍懒生成）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub live_video_path: Option<String>,
 }
 
 /// 索引文件夹记录

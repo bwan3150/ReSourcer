@@ -27,14 +27,48 @@
         :style="contentTransform"
         class="will-change-transform"
       >
-        <!-- Image / GIF -->
-        <img
+        <!-- Image / GIF（实况：悬停/按住播配对视频） -->
+        <div
           v-if="type === 'image' || type === 'gif'"
-          :src="src"
-          :alt="fileName"
-          class="max-w-[100vw] max-h-[100vh] object-contain select-none"
-          draggable="false"
-        />
+          class="relative max-w-[100vw] max-h-[100vh]"
+          @pointerdown="onLivePressStart"
+          @pointerup="onLivePressEnd"
+          @pointerleave="onLivePressEnd"
+          @pointercancel="onLivePressEnd"
+          @mouseenter="onLiveHoverStart"
+          @mouseleave="onLiveHoverEnd"
+        >
+          <img
+            :src="src"
+            :alt="fileName"
+            class="max-w-[100vw] max-h-[100vh] object-contain select-none"
+            draggable="false"
+            :class="{ 'opacity-0': livePlaying }"
+          />
+          <video
+            v-if="liveVideoSrc"
+            ref="liveVideoEl"
+            :src="liveVideoSrc"
+            class="absolute inset-0 w-full h-full object-contain"
+            :class="{ 'opacity-0': !livePlaying }"
+            muted
+            playsinline
+            loop
+            preload="metadata"
+          />
+          <div
+            v-if="liveVideoSrc"
+            class="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/45 text-white text-xs font-semibold pointer-events-none"
+            data-testid="live-photo-badge"
+          >
+            <!-- LIVE 标记：图标 only，禁止 emoji -->
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+            </svg>
+            <span>LIVE</span>
+          </div>
+        </div>
 
         <!-- Video -->
         <video
@@ -182,6 +216,8 @@ const props = defineProps({
   hasNext: { type: Boolean, default: false },
   autoplay: { type: Boolean, default: true },
   coverUrl: { type: String, default: '' },
+  /** 实况照片配对视频 URL；空串表示非实况 */
+  liveVideoSrc: { type: String, default: '' },
   /** 'autoNext' | 'repeatCurrent' — chrome tap toggles this */
   advanceMode: { type: String, default: 'repeatCurrent' },
 })
@@ -189,6 +225,8 @@ const props = defineProps({
 const emit = defineEmits(['prev', 'next', 'ended', 'toggle-advance-mode', 'open-queue-panel'])
 
 const videoEl = ref(null)
+const liveVideoEl = ref(null)
+const livePlaying = ref(false)
 const contentArea = ref(null)
 const pdfViewer = ref(null)
 const playing = ref(false)
@@ -246,6 +284,49 @@ const contentTransform = computed(() => ({
   transformOrigin: 'center center',
 }))
 
+function startLivePlayback() {
+  if (!props.liveVideoSrc || !liveVideoEl.value) return
+  livePlaying.value = true
+  liveVideoEl.value.currentTime = 0
+  liveVideoEl.value.play()?.catch(() => {})
+}
+
+function stopLivePlayback() {
+  livePlaying.value = false
+  if (liveVideoEl.value) {
+    liveVideoEl.value.pause()
+    liveVideoEl.value.currentTime = 0
+  }
+}
+
+function onLiveHoverStart() {
+  // 桌面：悬停播放（与 iOS 按住对齐的「预览实况」）
+  if (window.matchMedia('(hover: hover)').matches) {
+    startLivePlayback()
+  }
+}
+
+function onLiveHoverEnd() {
+  if (window.matchMedia('(hover: hover)').matches) {
+    stopLivePlayback()
+  }
+}
+
+function onLivePressStart(e) {
+  if (!props.liveVideoSrc) return
+  if (e.button != null && e.button !== 0) return
+  // 触摸 / 无悬停设备：按住播放
+  if (!window.matchMedia('(hover: hover)').matches) {
+    startLivePlayback()
+  }
+}
+
+function onLivePressEnd() {
+  if (!window.matchMedia('(hover: hover)').matches) {
+    stopLivePlayback()
+  }
+}
+
 // Reset on src change
 watch(() => props.src, async () => {
   playing.value = false
@@ -255,6 +336,7 @@ watch(() => props.src, async () => {
   buffering.value = false
   audioCover.value = null
   controlsVisible.value = true
+  stopLivePlayback()
   resetZoom()
   // Load audio cover
   if (props.type === 'audio' && props.coverUrl) {

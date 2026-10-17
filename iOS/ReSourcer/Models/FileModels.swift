@@ -93,12 +93,21 @@ struct FileInfo: Identifiable, Codable, Equatable {
     /// 下载来源 URL（仅下载的文件有值）
     let sourceUrl: String?
 
+    /// 实况照片配对视频 UUID（同 stem 的 `.mov`）
+    let liveVideoUuid: String?
+
+    /// 实况照片配对视频路径
+    let liveVideoPath: String?
+
     // MARK: - Identifiable
 
     /// UUID 优先作为 ID，兼容旧 API 时回退到 path
     var id: String { uuid ?? path }
 
     // MARK: - Computed Properties
+
+    /// 是否为实况照片（有配对 MOV）
+    var isLivePhoto: Bool { liveVideoUuid != nil || liveVideoPath != nil }
 
     /// 是否为图片
     var isImage: Bool { fileType == .image }
@@ -378,6 +387,8 @@ struct IndexedFile: Codable {
     let modifiedAt: String
     let indexedAt: String
     let sourceUrl: String?
+    let liveVideoUuid: String?
+    let liveVideoPath: String?
 }
 
 /// 索引文件分页响应
@@ -424,7 +435,9 @@ extension IndexedFile {
             width: nil,
             height: nil,
             duration: nil,
-            sourceUrl: sourceUrl
+            sourceUrl: sourceUrl,
+            liveVideoUuid: liveVideoUuid,
+            liveVideoPath: liveVideoPath
         )
     }
 }

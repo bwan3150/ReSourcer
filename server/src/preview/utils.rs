@@ -527,6 +527,170 @@ pub fn extract_pdf_thumbnail(pdf_path: &Path) -> Result<image::DynamicImage> {
     Ok(image::DynamicImage::ImageRgb8(img))
 }
 
+// ============================================================================
+// EXIF / HEIF Orientation → 像素转正（不改原文件）
+// ============================================================================
+
+/// 读取图片方向标记（1–8）。无标记或失败时返回 1（正向）。
+/// 优先 exiftool（HEIC/JPEG 通用）；JPEG 再回退内置 APP1 解析。
+pub fn probe_image_orientation(path: &Path) -> u8 {
+    if let Some(v) = orientation_via_exiftool(path) {
+        return v;
+    }
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    if matches!(ext.as_str(), "jpg" | "jpeg") {
+        if let Ok(bytes) = fs::read(path) {
+            if let Some(v) = orientation_from_jpeg_exif(&bytes) {
+                return v;
+            }
+        }
+    }
+    1
+}
+
+fn orientation_via_exiftool(path: &Path) -> Option<u8> {
+    let exiftool = which_exiftool()?;
+    let output = Command::new(exiftool)
+        .args(["-n", "-s3", "-Orientation"])
+        .arg(path)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let text = String::from_utf8_lossy(&output.stdout);
+    let v: u8 = text.trim().parse().ok()?;
+    if (1..=8).contains(&v) {
+        Some(v)
+    } else {
+        None
+    }
+}
+
+fn which_exiftool() -> Option<PathBuf> {
+    for candidate in [
+        "exiftool",
+        "/opt/homebrew/bin/exiftool",
+        "/usr/local/bin/exiftool",
+        "/usr/bin/exiftool",
+    ] {
+        let p = PathBuf::from(candidate);
+        if candidate == "exiftool" {
+            if Command::new("exiftool").arg("-ver").output().ok()?.status.success() {
+                return Some(p);
+            }
+        } else if p.exists() {
+            return Some(p);
+        }
+    }
+    None
+}
+
+/// 按 EXIF Orientation 把像素转成「正向显示」；orientation==1 时原样返回。
+pub fn apply_exif_orientation(img: image::DynamicImage, orientation: u8) -> image::DynamicImage {
+    match orientation {
+        2 => img.fliph(),
+        3 => img.rotate180(),
+        4 => img.flipv(),
+        5 => img.rotate90().fliph(),
+        6 => img.rotate90(),
+        7 => img.rotate270().fliph(),
+        8 => img.rotate270(),
+        _ => img,
+    }
+}
+
+/// 探测方向并转正（缩略图生成入口）。
+pub fn orient_image_for_display(path: &Path, img: image::DynamicImage) -> image::DynamicImage {
+    let orientation = probe_image_orientation(path);
+    if orientation <= 1 {
+        return img;
+    }
+    apply_exif_orientation(img, orientation)
+}
+
+/// 从 JPEG APP1 Exif 读取 Orientation（tag 0x0112）。
+fn orientation_from_jpeg_exif(data: &[u8]) -> Option<u8> {
+    if data.len() < 4 || data[0] != 0xFF || data[1] != 0xD8 {
+        return None;
+    }
+    let mut i = 2usize;
+    while i + 4 <= data.len() {
+        if data[i] != 0xFF {
+            break;
+        }
+        let marker = data[i + 1];
+        if marker == 0xD9 || marker == 0xDA {
+            break;
+        }
+        if i + 4 > data.len() {
+            break;
+        }
+        let len = u16::from_be_bytes([data[i + 2], data[i + 3]]) as usize;
+        if len < 2 || i + 2 + len > data.len() {
+            break;
+        }
+        let segment = &data[i + 4..i + 2 + len];
+        i += 2 + len;
+        // APP1 + "Exif\0\0"
+        if marker == 0xE1 && segment.len() >= 14 && &segment[0..6] == b"Exif\0\0" {
+            return orientation_from_tiff(&segment[6..]);
+        }
+    }
+    None
+}
+
+fn orientation_from_tiff(tiff: &[u8]) -> Option<u8> {
+    if tiff.len() < 8 {
+        return None;
+    }
+    let le = match &tiff[0..2] {
+        b"II" => true,
+        b"MM" => false,
+        _ => return None,
+    };
+    let read_u16 = |off: usize| -> Option<u16> {
+        let b = tiff.get(off..off + 2)?;
+        Some(if le {
+            u16::from_le_bytes([b[0], b[1]])
+        } else {
+            u16::from_be_bytes([b[0], b[1]])
+        })
+    };
+    let read_u32 = |off: usize| -> Option<u32> {
+        let b = tiff.get(off..off + 4)?;
+        Some(if le {
+            u32::from_le_bytes([b[0], b[1], b[2], b[3]])
+        } else {
+            u32::from_be_bytes([b[0], b[1], b[2], b[3]])
+        })
+    };
+    let ifd0 = read_u32(4)? as usize;
+    let count = read_u16(ifd0)? as usize;
+    for n in 0..count {
+        let entry = ifd0 + 2 + n * 12;
+        let tag = read_u16(entry)?;
+        if tag != 0x0112 {
+            continue;
+        }
+        let typ = read_u16(entry + 2)?;
+        // SHORT (3) or LONG (4); value fits in the 4-byte value field
+        let val = if typ == 3 {
+            read_u16(entry + 8)? as u8
+        } else {
+            read_u32(entry + 8)? as u8
+        };
+        if (1..=8).contains(&val) {
+            return Some(val);
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -748,5 +912,52 @@ tile_vertical_offset=0
         })?;
         let _ = fs::remove_file(&temp_output);
         Ok(img)
+    }
+
+    #[test]
+    fn jpeg_orientation_6_probe_and_rotate_to_portrait() {
+        let path = fixture("orient6_landscape_sensor.jpg");
+        if !path.exists() {
+            eprintln!("skip: missing fixture {}", path.display());
+            return;
+        }
+        let orientation = probe_image_orientation(&path);
+        assert_eq!(orientation, 6, "fixture must declare Orientation=6");
+
+        let raw = image::open(&path).expect("open jpeg");
+        assert_eq!((raw.width(), raw.height()), (120, 80));
+
+        let oriented = orient_image_for_display(&path, raw);
+        assert_eq!(
+            (oriented.width(), oriented.height()),
+            (80, 120),
+            "Orientation=6 must become portrait pixels"
+        );
+        // Red bar was on the right of landscape sensor buffer; after Orientation=6
+        // (rotate 90° CW) it becomes the bottom strip of the portrait image.
+        let rgb = oriented.to_rgb8();
+        let bottom = rgb.get_pixel(40, 115);
+        let top = rgb.get_pixel(40, 5);
+        assert!(
+            bottom[0] > 180 && bottom[1] < 80,
+            "bottom strip should be red after orient, got {:?}",
+            bottom
+        );
+        assert!(
+            top[2] > 150,
+            "top strip should stay blue-ish, got {:?}",
+            top
+        );
+    }
+
+    #[test]
+    fn apply_orientation_6_rotates_without_file() {
+        let img = image::DynamicImage::ImageRgb8(image::RgbImage::from_pixel(
+            10,
+            4,
+            image::Rgb([1, 2, 3]),
+        ));
+        let out = apply_exif_orientation(img, 6);
+        assert_eq!((out.width(), out.height()), (4, 10));
     }
 }

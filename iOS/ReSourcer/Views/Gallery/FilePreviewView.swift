@@ -187,7 +187,11 @@ struct FilePreviewView: View {
                 fileContentView(for: file)
                     .id(file.id)
                     .ignoresSafeArea()
-                    .longPressToDismiss { dismiss() }
+                    // 实况照片：按住播放配对视频，不触发退出预览
+                    .modifier(ConditionalLongPressDismiss(
+                        enabled: !file.isLivePhoto,
+                        onDismiss: { dismiss() }
+                    ))
 
                 if showControls {
                     VStack {
@@ -393,12 +397,21 @@ struct FilePreviewView: View {
     private func fileContentView(for file: FileInfo) -> some View {
         switch file.fileType {
         case .image, .gif:
-            ImagePreviewContent(
-                file: file,
-                apiService: apiService,
-                onTap: { toggleControls() },
-                onSwipe: { direction in handleImageSwipe(direction: direction) }
-            )
+            if file.isLivePhoto {
+                LivePhotoPreviewContent(
+                    file: file,
+                    apiService: apiService,
+                    onTap: { toggleControls() },
+                    onSwipe: { direction in handleImageSwipe(direction: direction) }
+                )
+            } else {
+                ImagePreviewContent(
+                    file: file,
+                    apiService: apiService,
+                    onTap: { toggleControls() },
+                    onSwipe: { direction in handleImageSwipe(direction: direction) }
+                )
+            }
         case .video:
             VideoPreviewContent(
                 file: file,
@@ -1456,7 +1469,9 @@ struct FilePreviewView: View {
                 width: file.width,
                 height: file.height,
                 duration: file.duration,
-                sourceUrl: file.sourceUrl
+                sourceUrl: file.sourceUrl,
+                liveVideoUuid: file.liveVideoUuid,
+                liveVideoPath: file.liveVideoPath
             )
             if let idx = playlist.firstIndex(where: { $0.uuid == uuid }) {
                 playlist[idx] = updated

@@ -66,6 +66,7 @@
             :type="previewFile.fileType"
             :file-name="previewFile.fileName"
             :cover-url="coverSrc"
+            :live-video-src="liveVideoSrc"
             :advance-mode="advanceMode"
             :show-nav="true"
             :has-prev="canGoPrev"
@@ -434,7 +435,7 @@ import UploadArea from '../components/gallery/UploadArea.vue'
 import TagEditor from '../components/gallery/TagEditor.vue'
 import ConfirmDialog from '../components/shared/ConfirmDialog.vue'
 import { Folder, ChevronRight, X, Pencil, FolderInput, RefreshCw, Info, Download, FolderPlus, Trash2, CheckSquare, Share2 } from 'lucide-vue-next'
-import { contentUrl, thumbnailUrl } from '../api/preview'
+import { contentUrl, thumbnailUrl, liveVideoUrl } from '../api/preview'
 import { useCurrentFolder } from '../composables/useCurrentFolder'
 import { usePrivacy } from '../composables/usePrivacy'
 import * as indexerApi from '../api/indexer'
@@ -522,6 +523,7 @@ function apiPlaylistMode() {
 }
 const contentSrc = computed(() => previewFile.value ? contentUrl(previewFile.value) : '')
 const coverSrc = computed(() => previewFile.value ? thumbnailUrl(previewFile.value, 600) : '')
+const liveVideoSrc = computed(() => previewFile.value ? liveVideoUrl(previewFile.value) : '')
 const mediaPlayer = ref(null)
 function isMediaType() {
   return ['video', 'audio'].includes(previewFile.value?.fileType)

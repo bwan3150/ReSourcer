@@ -8,6 +8,7 @@ use super::persist::{load_persisted_thumbnail, store_persisted_thumbnail};
 use super::utils::{
     extract_audio_cover, extract_clip_thumbnail, extract_heif_thumbnail,
     extract_image_thumbnail_ffmpeg, extract_pdf_thumbnail, extract_video_first_frame,
+    orient_image_for_display,
 };
 
 /// GET /api/preview/thumbnail?path=<file_path>&size=<size>
@@ -96,6 +97,14 @@ pub async fn get_thumbnail(query: web::Query<std::collections::HashMap<String, S
                 extract_image_thumbnail_ffmpeg(path, size)?
             }
         }
+    };
+
+    // 按 EXIF/HEIF Orientation 转正像素后再缩略（不改原文件）。
+    // ffmpeg / image::open 常输出传感器朝向，导致竖拍缩略图相对相册逆时针 90°。
+    let img = if is_image || HEIF_EXTENSIONS.contains(&extension.as_str()) {
+        orient_image_for_display(path, img)
+    } else {
+        img
     };
 
     // 生成缩略图 (保持宽高比)

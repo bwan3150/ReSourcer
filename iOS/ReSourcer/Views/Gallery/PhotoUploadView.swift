@@ -26,6 +26,9 @@ struct PHPickerWrapper: UIViewControllerRepresentable {
         config.selectionLimit = maxSelection
         config.filter = .any(of: [.images, .videos])
         config.selection = .ordered
+        // 关键：系统默认 .compatible 会把 HEIC 转成 JPEG。
+        // .current 保留相册里的原始表示；再经 PHAssetResource 取原字节 + 实况配对 MOV。
+        config.preferredAssetRepresentationMode = .current
 
         let picker = PHPickerViewController(configuration: config)
         picker.delegate = context.coordinator
@@ -473,19 +476,25 @@ struct PhotoUploadFloatingView: View {
                 break
             }
             do {
-                let pendingFile = try await exportFile(for: item)
+                // 一个相册条目可能对应多个文件（静帧 HEIC + 实况配对 MOV）
+                let pendingFiles = try await exportFiles(for: item)
+                guard !pendingFiles.isEmpty else {
+                    failedCount += 1
+                    currentProgress = i + 1
+                    continue
+                }
 
-                if chunkThreshold > 0 && pendingFile.data.count > chunkThreshold {
-                    // 大文件：分片上传（服务端合并）
-                    _ = try await apiService.upload.uploadFileChunked(
-                        fileName: pendingFile.fileName,
-                        data: pendingFile.data,
-                        to: folder,
-                        chunkSize: chunkThreshold
-                    )
-                } else {
-                    // 小文件：原有直传
-                    _ = try await apiService.upload.uploadFiles([pendingFile], to: folder)
+                for pendingFile in pendingFiles {
+                    if chunkThreshold > 0 && pendingFile.data.count > chunkThreshold {
+                        _ = try await apiService.upload.uploadFileChunked(
+                            fileName: pendingFile.fileName,
+                            data: pendingFile.data,
+                            to: folder,
+                            chunkSize: chunkThreshold
+                        )
+                    } else {
+                        _ = try await apiService.upload.uploadFiles([pendingFile], to: folder)
+                    }
                 }
                 uploadedItems.append(item)
             } catch {
@@ -563,13 +572,13 @@ struct PhotoUploadFloatingView: View {
 
     // MARK: - 导出待上传文件
 
-    /// 把条目导出为待上传文件
-    private func exportFile(for item: UploadItem) async throws -> PendingUploadFile {
+    /// 把条目导出为待上传文件列表（实况照片含配对 MOV）
+    private func exportFiles(for item: UploadItem) async throws -> [PendingUploadFile] {
         switch item {
         case .photoAsset(let assetId):
             return try await exportViaObjC(assetId: assetId)
         case .file(let url):
-            return try await exportLocalFile(at: url)
+            return [try await exportLocalFile(at: url)]
         }
     }
 
@@ -589,15 +598,15 @@ struct PhotoUploadFloatingView: View {
         )
     }
 
-    /// 通过 Objective-C PhotoExporter 导出 asset（绕过 Swift 6 线程限制）
-    private func exportViaObjC(assetId: String) async throws -> PendingUploadFile {
+    /// 通过 Objective-C PhotoExporter 导出 asset 原始字节（含实况配对视频）
+    private func exportViaObjC(assetId: String) async throws -> [PendingUploadFile] {
         try await withCheckedThrowingContinuation { continuation in
-            PhotoExporter.exportAsset(withIdentifier: assetId) { result, error in
+            PhotoExporter.exportUploadResources(withIdentifier: assetId) { results, error in
                 if let error = error {
                     continuation.resume(throwing: error)
                     return
                 }
-                guard let result = result else {
+                guard let results, !results.isEmpty else {
                     continuation.resume(throwing: NSError(
                         domain: "PhotoUpload", code: -1,
                         userInfo: [NSLocalizedDescriptionKey: "导出结果为空"]
@@ -605,12 +614,14 @@ struct PhotoUploadFloatingView: View {
                     return
                 }
 
-                let file = PendingUploadFile(
-                    fileName: result.fileName,
-                    data: result.data,
-                    mimeType: result.mimeType
-                )
-                continuation.resume(returning: file)
+                let files = results.map { result in
+                    PendingUploadFile(
+                        fileName: result.fileName,
+                        data: result.data,
+                        mimeType: result.mimeType
+                    )
+                }
+                continuation.resume(returning: files)
             }
         }
     }

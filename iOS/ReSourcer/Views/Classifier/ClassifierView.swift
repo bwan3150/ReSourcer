@@ -1131,7 +1131,9 @@ struct ClassifierView: View {
                         width: file.width,
                         height: file.height,
                         duration: file.duration,
-                        sourceUrl: file.sourceUrl
+                        sourceUrl: file.sourceUrl,
+                        liveVideoUuid: file.liveVideoUuid,
+                        liveVideoPath: file.liveVideoPath
                     )
                 }
                 showRenameAlert = false

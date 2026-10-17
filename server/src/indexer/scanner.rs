@@ -181,6 +181,8 @@ pub fn scan_folder(folder_path: &str, source_folder: &str, skip_mark_missing: bo
             modified_at: file.modified_at.clone(),
             indexed_at: now.clone(),
             source_url: None,
+            live_video_uuid: None,
+            live_video_path: None,
         };
 
         if let Err(e) = storage::fast_upsert_file_with_conn(&tx, &indexed_file) {
@@ -378,6 +380,8 @@ pub fn scan_source_folder(source_folder: &str) -> Result<ScanResult, Box<dyn std
                 modified_at,
                 indexed_at: now.clone(),
                 source_url: None,
+            live_video_uuid: None,
+            live_video_path: None,
             };
 
             let _ = storage::fast_upsert_file_with_conn(&conn, &indexed_file);
@@ -464,6 +468,8 @@ pub fn index_single_file(file_path: &str, source_folder: &str, source_url: Optio
         modified_at,
         indexed_at: now.clone(),
         source_url: source_url.map(|s| s.to_string()),
+            live_video_uuid: None,
+            live_video_path: None,
     };
 
     storage::upsert_file(&indexed_file)?;

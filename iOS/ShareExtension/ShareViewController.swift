@@ -84,20 +84,52 @@ final class ShareViewController: UIViewController {
                     continue
                 }
 
-                // 视频：优先原始文件表示（HEVC/MOV 等），勿经转码路径
-                if let staged = await loadOriginalMediaFile(
+                let hasImage = Self.imageTypeIdentifiers.contains {
+                    provider.hasItemConformingToTypeIdentifier($0)
+                }
+                let hasVideo = Self.videoTypeIdentifiers.contains {
+                    provider.hasItemConformingToTypeIdentifier($0)
+                }
+                let isLivePhotoUTI = Self.livePhotoTypeIdentifiers.contains {
+                    provider.hasItemConformingToTypeIdentifier($0)
+                }
+
+                // 实况照片：同一 provider 常同时符合 image + movie（或 com.apple.live-photo）。
+                // 必须两者都取，且静帧优先 public.heic，不能先取视频后 continue 丢掉 HEIC。
+                if isLivePhotoUTI || (hasImage && hasVideo) {
+                    if let still = await loadOriginalMediaFile(
+                        from: provider,
+                        preferredTypes: Self.imageTypeIdentifiers
+                    ) {
+                        payload.fileURLs.append(still)
+                    } else if let raw = await loadOriginalImageBytes(from: provider) {
+                        payload.imageItems.append(raw)
+                    }
+                    if let video = await loadOriginalMediaFile(
+                        from: provider,
+                        preferredTypes: Self.videoTypeIdentifiers
+                    ) {
+                        payload.fileURLs.append(video)
+                    }
+                    continue
+                }
+
+                // 纯视频：优先原始文件表示（HEVC/MOV），勿经转码路径
+                if hasVideo,
+                   let staged = await loadOriginalMediaFile(
                     from: provider,
                     preferredTypes: Self.videoTypeIdentifiers
-                ) {
+                   ) {
                     payload.fileURLs.append(staged)
                     continue
                 }
 
-                // 图片：优先 HEIC/HEIF 等具体类型的文件表示，再回退通用 image
-                if let staged = await loadOriginalMediaFile(
+                // 纯图片：优先 HEIC/HEIF 等具体类型，再回退通用 image
+                if hasImage,
+                   let staged = await loadOriginalMediaFile(
                     from: provider,
                     preferredTypes: Self.imageTypeIdentifiers
-                ) {
+                   ) {
                     payload.fileURLs.append(staged)
                     continue
                 }
@@ -125,10 +157,12 @@ final class ShareViewController: UIViewController {
         return payload
     }
 
-    /// 图片 UTType：具体格式优先于泛型 `public.image`
+    /// 图片 UTType：具体格式优先于泛型 `public.image`（HEIC 必须排在 JPEG 前）
     private static let imageTypeIdentifiers: [String] = [
         UTType.heic.identifier,
         UTType.heif.identifier,
+        "public.heic",
+        "public.heif",
         UTType.jpeg.identifier,
         UTType.png.identifier,
         UTType.gif.identifier,
@@ -144,6 +178,12 @@ final class ShareViewController: UIViewController {
         UTType.movie.identifier,
         UTType.video.identifier,
         UTType.audiovisualContent.identifier,
+    ]
+
+    /// 实况照片容器 UTI（系统可能单独声明）
+    private static let livePhotoTypeIdentifiers: [String] = [
+        "com.apple.live-photo",
+        "com.apple.private.live-photo",
     ]
 
     /// 用 `loadFileRepresentation` 拿到系统提供的原始临时文件并拷进 staging
