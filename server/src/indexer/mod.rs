@@ -2,6 +2,7 @@
 pub mod models;
 pub mod storage;
 pub mod scanner;
+pub mod live_photo;
 mod handlers;
 
 use actix_web::web;

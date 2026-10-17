@@ -525,5 +525,21 @@ pub fn map_file_row(row: &rusqlite::Row) -> Result<IndexedFile, rusqlite::Error>
         modified_at: row.get(9)?,
         indexed_at: row.get(10)?,
         source_url: row.get(11)?,
+        live_video_uuid: None,
+        live_video_path: None,
     })
 }
+
+/// 同目录全部已索引文件（用于实况照片 stem 配对；不含分页）
+pub fn list_files_in_folder(folder_path: &str) -> Result<Vec<IndexedFile>, rusqlite::Error> {
+    let conn = get_connection()?;
+    let mut stmt = conn.prepare(
+        "SELECT uuid, fingerprint, current_path, folder_path, file_name, file_type, extension, file_size, created_at, modified_at, indexed_at, source_url
+         FROM file_index WHERE folder_path = ?1 AND current_path IS NOT NULL",
+    )?;
+    let files = stmt
+        .query_map(rusqlite::params![folder_path], map_file_row)?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(files)
+}
+

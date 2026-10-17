@@ -187,7 +187,11 @@ struct FilePreviewView: View {
                 fileContentView(for: file)
                     .id(file.id)
                     .ignoresSafeArea()
-                    .longPressToDismiss { dismiss() }
+                    // 实况照片：按住播放配对视频，不触发退出预览
+                    .modifier(ConditionalLongPressDismiss(
+                        enabled: !file.isLivePhoto,
+                        onDismiss: { dismiss() }
+                    ))
 
                 if showControls {
                     VStack {
@@ -393,12 +397,21 @@ struct FilePreviewView: View {
     private func fileContentView(for file: FileInfo) -> some View {
         switch file.fileType {
         case .image, .gif:
-            ImagePreviewContent(
-                file: file,
-                apiService: apiService,
-                onTap: { toggleControls() },
-                onSwipe: { direction in handleImageSwipe(direction: direction) }
-            )
+            if file.isLivePhoto {
+                LivePhotoPreviewContent(
+                    file: file,
+                    apiService: apiService,
+                    onTap: { toggleControls() },
+                    onSwipe: { direction in handleImageSwipe(direction: direction) }
+                )
+            } else {
+                ImagePreviewContent(
+                    file: file,
+                    apiService: apiService,
+                    onTap: { toggleControls() },
+                    onSwipe: { direction in handleImageSwipe(direction: direction) }
+                )
+            }
         case .video:
             VideoPreviewContent(
                 file: file,
@@ -1456,7 +1469,9 @@ struct FilePreviewView: View {
                 width: file.width,
                 height: file.height,
                 duration: file.duration,
-                sourceUrl: file.sourceUrl
+                sourceUrl: file.sourceUrl,
+                liveVideoUuid: file.liveVideoUuid,
+                liveVideoPath: file.liveVideoPath
             )
             if let idx = playlist.firstIndex(where: { $0.uuid == uuid }) {
                 playlist[idx] = updated
@@ -1530,27 +1545,27 @@ struct ImagePreviewContent: View {
     @State private var gifLoaded = false
 
     var body: some View {
-        let contentURL: URL? = if let uuid = file.uuid {
-            apiService.preview.getContentURL(
-                uuid: uuid,
-                baseURL: apiService.baseURL,
-                apiKey: apiService.apiKey
-            )
-        } else {
-            apiService.preview.getContentURL(
+        // iOS ImageIO 对真机 HEIC Orientation 正常；预览走原片 content（不改文件）。
+        let previewURL: URL? = {
+            if let uuid = file.uuid {
+                return apiService.preview.getContentURL(
+                    uuid: uuid,
+                    baseURL: apiService.baseURL,
+                    apiKey: apiService.apiKey
+                )
+            }
+            return apiService.preview.getContentURL(
                 for: file.path,
                 baseURL: apiService.baseURL,
                 apiKey: apiService.apiKey
             )
-        }
+        }()
 
         GeometryReader { geometry in
             if file.isGif {
-                // GIF: 使用 UIKit 的 UIImageView 播放动画
-                gifPreview(url: contentURL, in: geometry)
+                gifPreview(url: previewURL, in: geometry)
             } else {
-                // 普通图片: 使用 AsyncImage
-                staticImagePreview(url: contentURL, in: geometry)
+                staticImagePreview(url: previewURL, in: geometry)
             }
         }
     }
@@ -1595,49 +1610,56 @@ struct ImagePreviewContent: View {
 
     @ViewBuilder
     private func staticImagePreview(url: URL?, in geometry: GeometryProxy) -> some View {
-        AsyncImage(url: url) { phase in
-            switch phase {
-            case .empty:
-                ZStack {
-                    CachedThumbnailView(
-                        url: apiService.preview.getThumbnailURL(
-                            for: file.path,
-                            size: 300,
-                            baseURL: apiService.baseURL,
-                            apiKey: apiService.apiKey
-                        )
-                    ) { thumb in
-                        thumb
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .blur(radius: 8)
-                    } placeholder: {
-                        Color.clear
+        // ZStack 居中：GeometryReader 默认 topLeading，单层 AsyncImage+aspectFit 会偏裁
+        ZStack {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .empty:
+                    ZStack {
+                        CachedThumbnailView(
+                            url: file.thumbnailURL(apiService: apiService, size: 300)
+                                ?? apiService.preview.getThumbnailURL(
+                                    for: file.path,
+                                    size: 300,
+                                    baseURL: apiService.baseURL,
+                                    apiKey: apiService.apiKey
+                                )
+                        ) { thumb in
+                            thumb
+                                .resizable()
+                                .scaledToFit()
+                                .blur(radius: 8)
+                        } placeholder: {
+                            Color.clear
+                        }
+
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(1.2)
                     }
 
-                    ProgressView()
-                        .tint(.white)
-                        .scaleEffect(1.2)
+                case .success(let image):
+                    // 明确宽高提议：避免 AsyncImage 固有尺寸在 GeometryReader 里偏裁
+                    image
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+
+                case .failure:
+                    VStack(spacing: AppTheme.Spacing.lg) {
+                        Image(systemName: "photo.badge.exclamationmark")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.white.opacity(0.5))
+                        Text("图片加载失败")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+
+                @unknown default:
+                    EmptyView()
                 }
-
-            case .success(let image):
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-
-            case .failure:
-                VStack(spacing: AppTheme.Spacing.lg) {
-                    Image(systemName: "photo.badge.exclamationmark")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.white.opacity(0.5))
-                    Text("图片加载失败")
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.7))
-                }
-
-            @unknown default:
-                EmptyView()
             }
+            .frame(maxWidth: geometry.size.width, maxHeight: geometry.size.height)
         }
         .frame(width: geometry.size.width, height: geometry.size.height)
         .contentShape(Rectangle())

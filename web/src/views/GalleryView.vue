@@ -66,6 +66,7 @@
             :type="previewFile.fileType"
             :file-name="previewFile.fileName"
             :cover-url="coverSrc"
+            :live-video-src="liveVideoSrc"
             :advance-mode="advanceMode"
             :show-nav="true"
             :has-prev="canGoPrev"
@@ -203,7 +204,7 @@
             <!-- Single action row: download / share / move / rename / delete -->
             <div class="shrink-0 border-t border-base-300 p-2 flex gap-1" data-testid="file-info-actions">
               <a
-                :href="contentSrc"
+                :href="downloadSrc"
                 download
                 class="btn btn-ghost btn-sm btn-square flex-1"
                 data-testid="file-info-download"
@@ -434,7 +435,7 @@ import UploadArea from '../components/gallery/UploadArea.vue'
 import TagEditor from '../components/gallery/TagEditor.vue'
 import ConfirmDialog from '../components/shared/ConfirmDialog.vue'
 import { Folder, ChevronRight, X, Pencil, FolderInput, RefreshCw, Info, Download, FolderPlus, Trash2, CheckSquare, Share2 } from 'lucide-vue-next'
-import { contentUrl, thumbnailUrl } from '../api/preview'
+import { contentUrl, thumbnailUrl, liveVideoUrl } from '../api/preview'
 import { useCurrentFolder } from '../composables/useCurrentFolder'
 import { usePrivacy } from '../composables/usePrivacy'
 import * as indexerApi from '../api/indexer'
@@ -520,8 +521,24 @@ function apiPlaylistMode() {
   if (listLoopEnabled.value) return 'list_loop'
   return 'sequential'
 }
-const contentSrc = computed(() => previewFile.value ? contentUrl(previewFile.value) : '')
+/** HEIC/HEIF/AVIF：浏览器无法解码原片，且 Orientation 依赖服务端转正后的 JPEG 缩略图。原文件仍可下载。 */
+function previewDisplayUrl(file) {
+  if (!file) return ''
+  const ext = String(file.extension || file.fileName || '')
+    .toLowerCase()
+    .replace(/^\./, '')
+    .split('.')
+    .pop()
+  if (['heic', 'heif', 'avif'].includes(ext)) {
+    return thumbnailUrl(file, 1600)
+  }
+  return contentUrl(file)
+}
+const contentSrc = computed(() => previewDisplayUrl(previewFile.value))
+/** 下载始终指向原文件（含未转码 HEIC），与预览用的转正缩略图分离 */
+const downloadSrc = computed(() => previewFile.value ? contentUrl(previewFile.value) : '')
 const coverSrc = computed(() => previewFile.value ? thumbnailUrl(previewFile.value, 600) : '')
+const liveVideoSrc = computed(() => previewFile.value ? liveVideoUrl(previewFile.value) : '')
 const mediaPlayer = ref(null)
 function isMediaType() {
   return ['video', 'audio'].includes(previewFile.value?.fileType)
@@ -760,7 +777,7 @@ function openFileInfo() {
 async function sharePreviewFile() {
   const file = previewFile.value
   if (!file) return
-  const url = contentSrc.value
+  const url = downloadSrc.value || contentSrc.value
   const title = file.fileName || fileMeta.value?.filename || 'file'
   try {
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {

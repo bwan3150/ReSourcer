@@ -51,7 +51,7 @@ pub struct FoldersResponse {
 
 /// 缩略图生成算法版本。客户端在请求 URL 上附带 `tv=<version>`，
 /// 用于在服务端修图逻辑变更后使浏览器 / App 本地缩略图缓存失效。
-pub const THUMBNAIL_VERSION: &str = "2";
+pub const THUMBNAIL_VERSION: &str = "3";
 
 /// 需要走 HEIF 专用解码（含 tile grid 拼合）的扩展名
 pub const HEIF_EXTENSIONS: &[&str] = &["heic", "heif", "avif"];

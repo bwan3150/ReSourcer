@@ -131,19 +131,30 @@ pub async fn files(
             });
         }
 
-        // 从索引分页返回
+        // 从索引分页返回，并挂上实况配对 / 藏配对 MOV
         match storage::get_files_paginated(
             &folder_path, offset, limit,
             file_type.as_deref(),
             sort.as_deref(),
         ) {
-            Ok((files, total)) => FilesResult::Ok(PaginatedFilesResponse {
-                files,
-                total,
-                offset,
-                limit,
-                has_more: offset + limit < total,
-            }),
+            Ok((files, total)) => {
+                let peers = storage::list_files_in_folder(&folder_path).unwrap_or_default();
+                let paired_hidden = peers
+                    .iter()
+                    .filter(|f| crate::indexer::live_photo::is_live_paired_video(f, &peers))
+                    .count() as i64;
+                let files = crate::indexer::live_photo::enrich_and_filter_live_photos(
+                    files, &peers, true,
+                );
+                let total = (total - paired_hidden).max(0);
+                FilesResult::Ok(PaginatedFilesResponse {
+                    files,
+                    total,
+                    offset,
+                    limit,
+                    has_more: offset + limit < total,
+                })
+            }
             Err(e) => FilesResult::Err(format!("查询失败: {}", e)),
         }
     }).await
@@ -168,7 +179,15 @@ pub async fn file_by_uuid(
         .map_err(|e| actix_web::error::ErrorInternalServerError(format!("数据库错误: {}", e)))?;
 
     match result {
-        Some(file) => Ok(HttpResponse::Ok().json(file)),
+        Some(file) => {
+            let peers = storage::list_files_in_folder(&file.folder_path).unwrap_or_default();
+            let mut files = crate::indexer::live_photo::enrich_and_filter_live_photos(
+                vec![file],
+                &peers,
+                false, // 单文件查询不藏自身
+            );
+            Ok(HttpResponse::Ok().json(files.pop().unwrap()))
+        }
         None => Err(actix_web::error::ErrorNotFound("文件未找到")),
     }
 }

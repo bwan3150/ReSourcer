@@ -120,7 +120,9 @@ struct UploadTask: Identifiable, Codable, Equatable {
             width: nil,
             height: nil,
             duration: nil,
-            sourceUrl: nil
+            sourceUrl: nil,
+            liveVideoUuid: nil,
+            liveVideoPath: nil
         )
     }
 }

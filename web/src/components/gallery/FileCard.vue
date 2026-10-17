@@ -44,6 +44,18 @@
         </div>
       </div>
 
+      <!-- LIVE 标记（实况配对）；图标 only -->
+      <div
+        v-if="isLive"
+        class="absolute top-1 left-1 z-10 flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-black/55 text-white text-[10px] font-semibold"
+        data-testid="live-photo-card-badge"
+      >
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+        </svg>
+        LIVE
+      </div>
       <!-- File type badge -->
       <div class="absolute top-1 right-1 badge badge-sm" :class="typeBadgeClass">
         {{ file.extension?.replace('.', '').toUpperCase() }}
@@ -82,6 +94,7 @@ const isGif = computed(() => props.file.fileType === 'gif')
 const isVideo = computed(() => props.file.fileType === 'video')
 const isPdf = computed(() => props.file.fileType === 'pdf')
 const isAudio = computed(() => props.file.fileType === 'audio')
+const isLive = computed(() => !!(props.file.liveVideoUuid || props.file.liveVideoPath))
 const hasThumb = computed(() => isImage.value || isGif.value || isVideo.value || isPdf.value || isAudio.value)
 
 const cachedThumb = ref(null)
