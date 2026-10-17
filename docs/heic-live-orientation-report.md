@@ -52,6 +52,14 @@ iOS：`Color.black` + overlay + `scaledToFit` + `frame(maxWidth/Height: .infinit
 
 ## 3. Share ← Photos 真分享
 
+### 服务端落盘证据（本轮）
+- `9E36B80F-IMG_LIVE.HEIC` — `ftyp` brand **`heic`**，1452294 bytes  
+- 同 stem `9E36B80F-IMG_LIVE.MOV` — `ftyp` brand **`qt  `**，3754408 bytes；`live_video_uuid=5ab442ef-…`  
+- enrich：`photoAuth=2` → `source=e2e-companion`（**known=1**，非 `photos-pairedVideo`）  
+- 证据图：`share-photos-07-server-ok.png`（API 摘要 + ReSourcer 画廊，**非**系统照片 App）  
+- JSON：`photos-share-server-proof.json`；日志：`photos-share-heic-mov.log`  
+- still≠hold：`ios-live-photo-still.png` / `ios-live-photo-hold.png` MD5 不同；hold 含 LIVE 计时条  
+
 ### 已证明
 - UITest `PhotosShareLiveHEICUITests`：系统相册 → Share Sheet → ReSourcer  
 - 服务端可收到 **HEIC**（`ftypheic` 魔数）  

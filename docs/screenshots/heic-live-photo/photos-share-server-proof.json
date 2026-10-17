@@ -1,0 +1,14 @@
+{
+  "heic_file": "9E36B80F-IMG_LIVE.HEIC",
+  "heic_uuid": "30e60403-7572-4e17-b942-cd3eaf2b83e3",
+  "heic_ftyp_brand": "heic",
+  "heic_bytes": 1452294,
+  "live_video_path": "/private/tmp/resourcer-heic-live-e2e/src/9E36B80F-IMG_LIVE.MOV",
+  "live_video_uuid": "5ab442ef-e041-46ec-99bb-568cee931b33",
+  "mov_ftyp_brand": "qt  ",
+  "mov_bytes": 3754408,
+  "enrich_source": "e2e-companion",
+  "photoAuth": 2,
+  "known_in_scope": 1,
+  "note": "Simulator Share Extension photoAuth=denied; MOV via App Group companion \u2014 not photos-pairedVideo"
+}
