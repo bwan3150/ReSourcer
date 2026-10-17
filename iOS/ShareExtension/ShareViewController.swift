@@ -584,9 +584,6 @@ struct ShareURLDestinationView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
-                Text("将打开主 App 下载页并预填链接，不会自动检测或开始下载。")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
             }
 
             Section("目标") {
