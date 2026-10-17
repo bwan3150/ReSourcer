@@ -1545,27 +1545,8 @@ struct ImagePreviewContent: View {
     @State private var gifLoaded = false
 
     var body: some View {
-        // HEIC/HEIF/AVIF：浏览器/部分 ImageIO 路径不识别 Orientation；用服务端大缩略图（已转正）。
-        // 原文件不变，下载仍走 content。
+        // iOS ImageIO 对真机 HEIC Orientation 正常；预览走原片 content（不改文件）。
         let previewURL: URL? = {
-            let ext = file.extension.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "."))
-            let needsOrientedThumb = ["heic", "heif", "avif"].contains(ext)
-            if needsOrientedThumb {
-                if let uuid = file.uuid {
-                    return apiService.preview.getThumbnailURL(
-                        uuid: uuid,
-                        size: 1600,
-                        baseURL: apiService.baseURL,
-                        apiKey: apiService.apiKey
-                    )
-                }
-                return apiService.preview.getThumbnailURL(
-                    for: file.path,
-                    size: 1600,
-                    baseURL: apiService.baseURL,
-                    apiKey: apiService.apiKey
-                )
-            }
             if let uuid = file.uuid {
                 return apiService.preview.getContentURL(
                     uuid: uuid,
@@ -1582,10 +1563,8 @@ struct ImagePreviewContent: View {
 
         GeometryReader { geometry in
             if file.isGif {
-                // GIF: 使用 UIKit 的 UIImageView 播放动画
                 gifPreview(url: previewURL, in: geometry)
             } else {
-                // 普通图片: 使用 AsyncImage
                 staticImagePreview(url: previewURL, in: geometry)
             }
         }
@@ -1631,49 +1610,54 @@ struct ImagePreviewContent: View {
 
     @ViewBuilder
     private func staticImagePreview(url: URL?, in geometry: GeometryProxy) -> some View {
-        AsyncImage(url: url) { phase in
-            switch phase {
-            case .empty:
-                ZStack {
-                    CachedThumbnailView(
-                        url: apiService.preview.getThumbnailURL(
-                            for: file.path,
-                            size: 300,
-                            baseURL: apiService.baseURL,
-                            apiKey: apiService.apiKey
-                        )
-                    ) { thumb in
-                        thumb
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .blur(radius: 8)
-                    } placeholder: {
-                        Color.clear
+        // ZStack 居中：GeometryReader 默认 topLeading，单层 AsyncImage+aspectFit 会偏裁
+        ZStack {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .empty:
+                    ZStack {
+                        CachedThumbnailView(
+                            url: file.thumbnailURL(apiService: apiService, size: 300)
+                                ?? apiService.preview.getThumbnailURL(
+                                    for: file.path,
+                                    size: 300,
+                                    baseURL: apiService.baseURL,
+                                    apiKey: apiService.apiKey
+                                )
+                        ) { thumb in
+                            thumb
+                                .resizable()
+                                .scaledToFit()
+                                .blur(radius: 8)
+                        } placeholder: {
+                            Color.clear
+                        }
+
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(1.2)
                     }
 
-                    ProgressView()
-                        .tint(.white)
-                        .scaleEffect(1.2)
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFit()
+
+                case .failure:
+                    VStack(spacing: AppTheme.Spacing.lg) {
+                        Image(systemName: "photo.badge.exclamationmark")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.white.opacity(0.5))
+                        Text("图片加载失败")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+
+                @unknown default:
+                    EmptyView()
                 }
-
-            case .success(let image):
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-
-            case .failure:
-                VStack(spacing: AppTheme.Spacing.lg) {
-                    Image(systemName: "photo.badge.exclamationmark")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.white.opacity(0.5))
-                    Text("图片加载失败")
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.7))
-                }
-
-            @unknown default:
-                EmptyView()
             }
+            .frame(maxWidth: geometry.size.width, maxHeight: geometry.size.height)
         }
         .frame(width: geometry.size.width, height: geometry.size.height)
         .contentShape(Rectangle())

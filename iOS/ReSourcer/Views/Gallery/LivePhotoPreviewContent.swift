@@ -2,8 +2,8 @@
 //  LivePhotoPreviewContent.swift
 //  ReSourcer
 //
-//  实况照片预览：优先 PHLivePhotoView；合成失败时回退静帧（大缩略图，已按 Orientation 转正）+ 按住播配对 MOV。
-//  原生 LIVE 标记（SF Symbol，无 emoji）。
+//  实况照片预览：PHLivePhotoView（按住播放）；合成失败时回退静帧+MOV。
+//  LIVE 标记：安全区下方、左上（对齐系统相册），Liquid Glass。
 //
 
 import SwiftUI
@@ -31,53 +31,38 @@ struct LivePhotoPreviewContent: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                if let livePhoto {
-                    LivePhotoViewRepresentable(livePhoto: livePhoto)
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                } else if let still = fallbackStill {
-                    FallbackLivePhotoView(
-                        still: still,
-                        videoURL: fallbackVideoURL,
-                        isPlaying: $isPlayingFallback,
-                        size: geometry.size
-                    )
-                } else if loadFailed {
-                    VStack(spacing: AppTheme.Spacing.lg) {
-                        Image(systemName: "livephoto.slash")
-                            .font(.system(size: 48))
-                            .foregroundStyle(.white.opacity(0.5))
-                        Text("实况照片加载失败")
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.7))
-                    }
-                } else {
-                    ProgressView()
-                        .tint(.white)
-                        .scaleEffect(1.2)
-                }
-
-                // 原生 LIVE 标记：图标 only，禁止 emoji
-                if livePhoto != nil || fallbackStill != nil {
-                    VStack {
-                        HStack {
-                            Spacer()
-                            Label {
-                                Text("LIVE")
-                                    .font(.caption.weight(.semibold))
-                            } icon: {
-                                Image(systemName: "livephoto")
-                            }
-                            .labelStyle(.titleAndIcon)
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(.black.opacity(0.45), in: Capsule())
-                            .accessibilityIdentifier("livePhotoBadge")
-                            .padding(.trailing, AppTheme.Spacing.md)
-                            .padding(.top, AppTheme.Spacing.md)
+                // 媒体：强制占满 GeometryReader 并居中 aspect-fit（GeometryReader 默认 topLeading 会把内容顶到左上/偏右裁切）
+                Group {
+                    if let livePhoto {
+                        LivePhotoViewRepresentable(livePhoto: livePhoto)
+                    } else if let still = fallbackStill {
+                        FallbackLivePhotoView(
+                            still: still,
+                            videoURL: fallbackVideoURL,
+                            isPlaying: $isPlayingFallback
+                        )
+                    } else if loadFailed {
+                        VStack(spacing: AppTheme.Spacing.lg) {
+                            Image(systemName: "livephoto.slash")
+                                .font(.system(size: 48))
+                                .foregroundStyle(.white.opacity(0.5))
+                            Text("实况照片加载失败")
+                                .font(.subheadline)
+                                .foregroundStyle(.white.opacity(0.7))
                         }
-                        Spacer()
+                    } else {
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(1.2)
                     }
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height)
+
+                if livePhoto != nil || fallbackStill != nil {
+                    LivePhotoBadge()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .safeAreaPadding(.top, 8)
+                        .padding(.leading, AppTheme.Spacing.md)
                 }
             }
             .contentShape(Rectangle())
@@ -118,57 +103,23 @@ struct LivePhotoPreviewContent: View {
             try stillData.write(to: stillPath)
             try videoData.write(to: videoPath)
 
-            // 尝试系统实况合成（真机相册导出的 HEIC+MOV 带 Content Identifier）
             if let photo = try? await requestLivePhoto(imageURL: stillPath, videoURL: videoPath) {
                 try? FileManager.default.removeItem(at: stillPath)
-                // 保留 videoPath 无用；PHLivePhoto 已内嵌
                 try? FileManager.default.removeItem(at: videoPath)
                 await MainActor.run { livePhoto = photo }
                 return
             }
 
-            // 回退：服务端大缩略图（已按 Orientation 转正）+ 配对视频按住播放
-            let orientedStill = await loadOrientedStillImage()
-                ?? UIImage(data: stillData)
+            // 回退：UIImage 解码静帧（真机 HEIC Orientation 由 ImageIO 处理）+ 配对视频
+            let stillImage = UIImage(data: stillData)
             try? FileManager.default.removeItem(at: stillPath)
             await MainActor.run {
-                fallbackStill = orientedStill
+                fallbackStill = stillImage
                 fallbackVideoURL = videoPath
-                if orientedStill == nil {
-                    loadFailed = true
-                }
+                if stillImage == nil { loadFailed = true }
             }
         } catch {
-            await MainActor.run {
-                loadFailed = true
-            }
-        }
-    }
-
-    /// 大图预览用服务端 tv 缩略图（HEIC Orientation 常不被 ImageIO 识别；服务端已用 exiftool 转正）
-    private func loadOrientedStillImage() async -> UIImage? {
-        let url: URL?
-        if let uuid = file.uuid {
-            url = apiService.preview.getThumbnailURL(
-                uuid: uuid,
-                size: 1600,
-                baseURL: apiService.baseURL,
-                apiKey: apiService.apiKey
-            )
-        } else {
-            url = apiService.preview.getThumbnailURL(
-                for: file.path,
-                size: 1600,
-                baseURL: apiService.baseURL,
-                apiKey: apiService.apiKey
-            )
-        }
-        guard let url else { return nil }
-        do {
-            let data = try await download(url)
-            return UIImage(data: data)
-        } catch {
-            return nil
+            await MainActor.run { loadFailed = true }
         }
     }
 
@@ -252,43 +203,95 @@ struct LivePhotoPreviewContent: View {
     }
 }
 
-/// UIKit 包装：系统 PHLivePhotoView（按住播放 / 松手停）
-struct LivePhotoViewRepresentable: UIViewRepresentable {
-    let livePhoto: PHLivePhoto
+// MARK: - LIVE 标记（系统相册：左上、安全区下、Liquid Glass）
 
-    func makeUIView(context: Context) -> PHLivePhotoView {
-        let view = PHLivePhotoView()
-        view.contentMode = .scaleAspectFit
-        view.livePhoto = livePhoto
-        view.isMuted = false
-        return view
-    }
-
-    func updateUIView(_ uiView: PHLivePhotoView, context: Context) {
-        if uiView.livePhoto !== livePhoto {
-            uiView.livePhoto = livePhoto
+private struct LivePhotoBadge: View {
+    var body: some View {
+        Label {
+            Text("LIVE")
+                .font(.caption.weight(.semibold))
+        } icon: {
+            Image(systemName: "livephoto")
         }
+        .labelStyle(.titleAndIcon)
+        .foregroundStyle(.primary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .glassBackground(in: Capsule())
+        .accessibilityIdentifier("livePhotoBadge")
     }
 }
 
-/// 无 Content Identifier 时的回退：静帧 + AVPlayer 按住播放
+/// UIKit：PHLivePhotoView 常忽略 contentMode 而填满裁切；按 livePhoto.size 算 aspect-fit 框再居中。
+struct LivePhotoViewRepresentable: UIViewRepresentable {
+    let livePhoto: PHLivePhoto
+
+    func makeUIView(context: Context) -> LivePhotoAspectFitContainer {
+        let container = LivePhotoAspectFitContainer()
+        container.backgroundColor = .clear
+        let view = PHLivePhotoView()
+        view.contentMode = .scaleAspectFit
+        view.backgroundColor = .clear
+        view.livePhoto = livePhoto
+        view.isMuted = false
+        container.liveView = view
+        container.addSubview(view)
+        context.coordinator.container = container
+        return container
+    }
+
+    func updateUIView(_ uiView: LivePhotoAspectFitContainer, context: Context) {
+        uiView.liveView?.livePhoto = livePhoto
+        uiView.liveView?.contentMode = .scaleAspectFit
+        uiView.setNeedsLayout()
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator {
+        var container: LivePhotoAspectFitContainer?
+    }
+}
+
+final class LivePhotoAspectFitContainer: UIView {
+    var liveView: PHLivePhotoView?
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard let liveView else { return }
+        let photoSize = liveView.livePhoto?.size ?? .zero
+        guard photoSize.width > 0, photoSize.height > 0, bounds.width > 0, bounds.height > 0 else {
+            liveView.frame = bounds
+            return
+        }
+        let scale = min(bounds.width / photoSize.width, bounds.height / photoSize.height)
+        let fitted = CGSize(width: photoSize.width * scale, height: photoSize.height * scale)
+        liveView.frame = CGRect(
+            x: (bounds.width - fitted.width) / 2,
+            y: (bounds.height - fitted.height) / 2,
+            width: fitted.width,
+            height: fitted.height
+        )
+    }
+}
+
+/// 回退：静帧 aspect-fit 居中 + AVPlayer
 private struct FallbackLivePhotoView: View {
     let still: UIImage
     let videoURL: URL?
     @Binding var isPlaying: Bool
-    let size: CGSize
 
     var body: some View {
         ZStack {
             Image(uiImage: still)
                 .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: size.width, height: size.height)
+                .scaledToFit()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .opacity(isPlaying ? 0 : 1)
 
             if let videoURL, isPlaying {
                 FallbackVideoPlayer(url: videoURL)
-                    .frame(width: size.width, height: size.height)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
     }
@@ -309,7 +312,7 @@ private struct FallbackVideoPlayer: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ vc: AVPlayerViewController, context: Context) {
-        if vc.player?.currentItem?.asset !== AVURLAsset(url: url) {
+        if (vc.player?.currentItem?.asset as? AVURLAsset)?.url != url {
             let player = AVPlayer(url: url)
             vc.player = player
             player.play()
