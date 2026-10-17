@@ -401,26 +401,112 @@ final class ShareViewController: UIViewController {
                 ShareDestinationPreference(serverId: serverId, sourceFolder: source, subfolder: "")
             )
         }
-        if let deepLink = ShareBridge.downloadDeepLink(
+        // 冷启动时主 App 读 App Group：先刷盘再拉起，避免竞态丢 pending
+        AppGroup.defaults.synchronize()
+
+        guard let deepLink = ShareBridge.downloadDeepLink(
             url: handoff.url,
             serverId: handoff.serverId,
             sourceFolder: handoff.sourceFolder
-        ) {
-            openHostURL(deepLink)
+        ) else {
+            finishExtension()
+            return
         }
-        finishExtension()
+
+        // 先发起打开，再延后 completeRequest；立刻结束扩展会取消尚未完成的 openURL
+        openHostURL(deepLink) { [weak self] in
+            self?.finishExtension()
+        }
     }
 
-    private func openHostURL(_ url: URL) {
-        let selector = sel_registerName("openURL:")
-        var responder: UIResponder? = self
-        while let cur = responder {
-            if cur.responds(to: selector) {
-                cur.perform(selector, with: url)
-                return
+    /// 拉起宿主 App（自定义 scheme）。参考国内分享扩展常见做法：
+    /// 1) UIApplication.open  2) responder `openURL:`  3) `extensionContext.open`
+    /// 禁止在 open 完成前调用 `completeRequest`。
+    private func openHostURL(_ url: URL, completion: @escaping () -> Void) {
+        if openURLViaSharedApplication(url) || openURLViaResponderChain(url) {
+            // 给系统一点时间切换到宿主；过早 complete 会导致「写了 pending 但不跳转」
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                completion()
             }
-            responder = cur.next
+            return
         }
+
+        // 官方 API：对含自定义 URL scheme 的宿主 App，部分系统版本可用
+        if let context = extensionContext {
+            context.open(url) { success in
+                if success {
+                    completion()
+                    return
+                }
+                // open 失败时仍再试一次响应链（部分机型第一次链未就绪）
+                if self.openURLViaSharedApplication(url) || self.openURLViaResponderChain(url) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        completion()
+                    }
+                } else {
+                    // pending 已写入 App Group：结束扩展，用户手动打开仍可消费；此处不谎称已拉起
+                    completion()
+                }
+            }
+            return
+        }
+
+        completion()
+    }
+
+    /// 经 KVC / perform 取 `UIApplication.shared` 再 `open`（扩展内无直接 shared API；微信/QQ 同类路径）
+    @discardableResult
+    private func openURLViaSharedApplication(_ url: URL) -> Bool {
+        let application = resolveSharedApplication()
+        guard let application else { return false }
+        application.open(url, options: [:], completionHandler: nil)
+        return true
+    }
+
+    private func resolveSharedApplication() -> UIApplication? {
+        if let app = UIApplication.value(forKeyPath: "sharedApplication") as? UIApplication {
+            return app
+        }
+        let selector = NSSelectorFromString("sharedApplication")
+        guard UIApplication.responds(to: selector),
+              let unmanaged = UIApplication.perform(selector),
+              let app = unmanaged.takeUnretainedValue() as? UIApplication else {
+            return nil
+        }
+        return app
+    }
+
+    /// 沿 responder / window 链找到 UIApplication，或对响应 `openURL:` 的对象执行选择子
+    @discardableResult
+    private func openURLViaResponderChain(_ url: URL) -> Bool {
+        let openSelector = sel_registerName("openURL:")
+        var opened = false
+
+        func walk(_ start: UIResponder?) {
+            var responder = start
+            while let cur = responder {
+                if let application = cur as? UIApplication {
+                    application.open(url, options: [:], completionHandler: nil)
+                    opened = true
+                    return
+                }
+                if cur.responds(to: openSelector) {
+                    cur.perform(openSelector, with: url)
+                    opened = true
+                    // 继续向上：部分链上会有「假响应」对象，尽量打到 UIApplication
+                }
+                responder = cur.next
+            }
+        }
+
+        walk(self)
+        if !opened {
+            walk(view.window)
+        }
+        if !opened, let parent = parent {
+            walk(parent)
+        }
+        return opened
     }
 
     private func finishExtension() {

@@ -14,6 +14,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        // 冷启动经自定义 scheme 进入时，尽早把下载交接写入 App Group（早于 SwiftUI onOpenURL）
+        if let url = launchOptions?[.url] as? URL,
+           let handoff = ShareBridge.parseDownloadDeepLink(url) {
+            ShareBridge.setPendingDownload(handoff)
+        }
         // 预配置播放会话（实际激活在开始播放时；此处仅设 category，避免抢占）
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
@@ -25,6 +30,19 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         _ = BackgroundUploadManager.shared
         BackgroundUploadManager.shared.resumePendingFinalizations()
         return true
+    }
+
+    func application(
+        _ app: UIApplication,
+        open url: URL,
+        options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+    ) -> Bool {
+        if let handoff = ShareBridge.parseDownloadDeepLink(url) {
+            ShareBridge.setPendingDownload(handoff)
+            NotificationCenter.default.post(name: .shareDownloadPrefillRequested, object: nil)
+            return true
+        }
+        return false
     }
 
     func application(

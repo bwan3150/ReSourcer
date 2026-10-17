@@ -43,6 +43,9 @@ struct ReSourcerApp: App {
     @State private var showSharePrivacyUnlock = false
     @State private var pendingShareHandoff: SharePendingDownloadHandoff?
 
+    /// 从前台/后台切换时再消费一次 Share pending（扩展只拉起未带深链时的兜底）
+    @Environment(\.scenePhase) private var scenePhase
+
     // MARK: - Body
 
     var body: some Scene {
@@ -169,6 +172,10 @@ struct ReSourcerApp: App {
             }
             .onOpenURL { url in
                 handleOpenURL(url)
+            }
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active else { return }
+                Task { await consumePendingDownloadHandoffAsync() }
             }
         }
     }
