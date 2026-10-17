@@ -31,46 +31,50 @@ struct LivePhotoPreviewContent: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // 媒体：满框居中 aspect-fit（GeometryReader 默认 topLeading 会偏裁）
-                Group {
-                    if let livePhoto {
-                        // 外框按 livePhoto.size 算死 aspect-fit 尺寸；ZStack 默认居中。
-                        // PHLivePhotoView 常无视 contentMode，不能只靠填满父视图 + scaleAspectFit。
-                        let photo = livePhoto.size
-                        let fitted: CGSize = {
-                            guard photo.width > 1, photo.height > 1 else {
-                                return geometry.size
+                // 黑底 + overlay 居中 aspect-fit（与 ImagePreviewContent 同一套路）
+                Color.black
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .overlay {
+                        Group {
+                            if let livePhoto {
+                                let photo = livePhoto.size
+                                let fitted: CGSize = {
+                                    guard photo.width > 1, photo.height > 1 else {
+                                        return geometry.size
+                                    }
+                                    let scale = min(
+                                        geometry.size.width / photo.width,
+                                        geometry.size.height / photo.height
+                                    )
+                                    return CGSize(
+                                        width: photo.width * scale,
+                                        height: photo.height * scale
+                                    )
+                                }()
+                                LivePhotoViewRepresentable(livePhoto: livePhoto)
+                                    .frame(width: fitted.width, height: fitted.height)
+                            } else if let still = fallbackStill {
+                                FallbackLivePhotoView(
+                                    still: still,
+                                    videoURL: fallbackVideoURL,
+                                    isPlaying: $isPlayingFallback
+                                )
+                            } else if loadFailed {
+                                VStack(spacing: AppTheme.Spacing.lg) {
+                                    Image(systemName: "livephoto.slash")
+                                        .font(.system(size: 48))
+                                        .foregroundStyle(.white.opacity(0.5))
+                                    Text("实况照片加载失败")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.white.opacity(0.7))
+                                }
+                            } else {
+                                ProgressView()
+                                    .tint(.white)
+                                    .scaleEffect(1.2)
                             }
-                            let scale = min(
-                                geometry.size.width / photo.width,
-                                geometry.size.height / photo.height
-                            )
-                            return CGSize(width: photo.width * scale, height: photo.height * scale)
-                        }()
-                        LivePhotoViewRepresentable(livePhoto: livePhoto)
-                            .frame(width: fitted.width, height: fitted.height)
-                    } else if let still = fallbackStill {
-                        FallbackLivePhotoView(
-                            still: still,
-                            videoURL: fallbackVideoURL,
-                            isPlaying: $isPlayingFallback
-                        )
-                    } else if loadFailed {
-                        VStack(spacing: AppTheme.Spacing.lg) {
-                            Image(systemName: "livephoto.slash")
-                                .font(.system(size: 48))
-                                .foregroundStyle(.white.opacity(0.5))
-                            Text("实况照片加载失败")
-                                .font(.subheadline)
-                                .foregroundStyle(.white.opacity(0.7))
                         }
-                    } else {
-                        ProgressView()
-                            .tint(.white)
-                            .scaleEffect(1.2)
                     }
-                }
-                .frame(width: geometry.size.width, height: geometry.size.height)
 
                 if livePhoto != nil || fallbackStill != nil {
                     // 父级 FilePreviewView 对媒体层 ignoresSafeArea，safeAreaPadding 会变成 0；

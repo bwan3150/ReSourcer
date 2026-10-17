@@ -25,12 +25,14 @@
     >
       <div
         :style="contentTransform"
-        class="will-change-transform"
+        class="will-change-transform w-full h-full flex items-center justify-center"
       >
-        <!-- Image / GIF（实况：悬停/按住播配对视频） -->
+        <!-- Image / GIF（实况：悬停/按住播配对视频）
+             必须相对父容器 max-w/h-full，禁止 100vw/100vh——预览区在侧栏右侧，
+             用视口单位会把图撑破容器并被顶栏裁切、视觉上「左空右切」。 -->
         <div
           v-if="type === 'image' || type === 'gif'"
-          class="relative max-w-[100vw] max-h-[100vh]"
+          class="relative flex items-center justify-center max-w-full max-h-full w-full h-full"
           @pointerdown="onLivePressStart"
           @pointerup="onLivePressEnd"
           @pointerleave="onLivePressEnd"
@@ -41,7 +43,7 @@
           <img
             :src="src"
             :alt="fileName"
-            class="max-w-[100vw] max-h-[100vh] object-contain select-none"
+            class="max-w-full max-h-full w-auto h-auto object-contain select-none"
             draggable="false"
             :class="{ 'opacity-0': livePlaying && liveVideoReady }"
           />
@@ -77,7 +79,7 @@
           v-else-if="type === 'video'"
           ref="videoEl"
           :src="src"
-          class="max-w-[100vw] max-h-[100vh] object-contain"
+          class="max-w-full max-h-full w-auto h-auto object-contain"
           preload="auto"
           playsinline
           @loadedmetadata="onMetadata"
@@ -253,7 +255,11 @@ let dragStartX = 0, dragStartY = 0, panStartX = 0, panStartY = 0
 const hasControls = computed(() => ['video', 'audio'].includes(props.type))
 const zoomable = computed(() => ['image', 'gif', 'video'].includes(props.type))
 
-const bgClass = computed(() => effectiveTheme.value === 'dark' ? 'bg-black' : 'bg-white')
+// 图片/视频预览一律黑底，letterbox 与「左空右切」可一眼分辨；主题浅色只影响非媒体页
+const bgClass = computed(() => {
+  if (['image', 'gif', 'video'].includes(props.type)) return 'bg-black'
+  return effectiveTheme.value === 'dark' ? 'bg-black' : 'bg-white'
+})
 const modeIcon = computed(() =>
   props.advanceMode === 'repeatCurrent' ? Repeat1 : Repeat,
 )
