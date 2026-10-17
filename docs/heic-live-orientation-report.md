@@ -1,76 +1,101 @@
-# HEIC 原样 / 实况配对 / 缩略图 Orientation — 四段报告（打回后重测）
+# HEIC / Live Photo / Orientation — 打回复测报告
 
-**Draft PR：** https://github.com/bwan3150/ReSourcer/pull/30  
-**分支：** `cursor/heic-live-photo-55de` → `main`  
-**状态：** Draft（**禁止 merge / release**）  
-**known in-scope = 0**
-
-截图 / 录屏：
-- Store：`/cursor/stores/self/media/heic-live-photo/`
-- Repo：`docs/screenshots/heic-live-photo/`（已 push，MD5 全唯一）
-- 本报告：Store `docs/heic-live-orientation-report.md` + 分支 `docs/heic-live-orientation-report.md`
+> 分支：`cursor/heic-live-photo-55de`  
+> 禁止 merge / release。  
+> **known in-scope = 1**（见 §3：模拟器 Share Extension 无法用 Photos `PairedVideo` 闭环 MOV；不得把 companion 写成过关）
 
 ---
 
-## 1. 改了什么
+## 1. 大图居中（根因 + 前后对比）
 
-### 上传保留 HEIC 原样 + 实况
-- iOS `PhotoExporter` / `PhotoUploadView`：PHPicker `.current` + `PHAssetResource`；实况附带 `PairedVideo`。
-- Share Extension：`loadFileRepresentation` 优先 `public.heic`；实况同 provider **双取**静帧 + 视频；禁止 `UIImage → jpegData`。
-- Share 上传客户端探针（`ShareOriginalFormatUITests`）：服务端落盘 **HEIC + MOV**，同 stem，**同一 Content Identifier**，列表挂 `live_video_*`。
+### 根因 A（服务端缩略图）
+HEIC tile grid 用 `coded_*`（如 1536×1024）xstack，**未 crop 到 ispe**（1200×900）。  
+Orientation=6 旋转后底边黑边变成「左空右切」。
 
-### 服务端实况配对 + Orientation
-- 同目录同 stem → `live_video_uuid` / `live_video_path`；网格隐藏配对 MOV。
-- 缩略图 `THUMBNAIL_VERSION = 3`：按 EXIF/HEIF Orientation **转正像素**；**不改原文件**。
+**修复**：`parse_heif_tile_grid` 只读 `[COMPONENT]`；xstack 后 `crop=display_w:display_h:crop_x:crop_y`；`THUMBNAIL_VERSION=4`。
 
-### iOS 大图布局（打回项 1）
-- **根因是布局，不是 Orientation 算错**：`GeometryReader` 默认 topLeading + `PHLivePhotoView` 无视 `contentMode` 导致偏裁。
-- 修复：Image 明确宽高提议 + `scaledToFit`；实况按 `livePhoto.size` **算死 aspect-fit 外框**，ZStack 居中；像素测量确认上下 letterbox、满宽居中。
+| 证据 | BEFORE | AFTER |
+|------|--------|-------|
+| ffmpeg 拼合+转置 | L=64 R=0 asym=32 | L=0 R≈0 asym≈0 |
+| `heic-thumb-before-after.png` | 左空右切 | 满幅绿顶红底居中 |
+| API s1600 HEIC/JPG | — | 1200×1600 白卡 asym≤0.5 |
 
-### LIVE 标记（打回项 2）
-- 媒体层 `ignoresSafeArea` 使 `safeAreaPadding` 失效；改为 **窗口 `safeAreaInsets.top + 52`**（状态栏 + 顶栏按钮行之下）。
-- 样式：`glassBackground(in: Capsule())`（原生 Liquid Glass）。证据：`ios-live-badge.png`。
+### 根因 B（Web MediaPlayer）
+`max-h-full` + `w/h-auto` 在 Chrome 先按宽算出超高 intrinsic，再被 `overflow:hidden` **裁掉顶底**（绿/红条消失），全页截图含侧栏时还会被误读成「左空右切」。
 
-### 测试素材（打回项 3）
-- 禁止纯蓝。现用：带绿顶/红底/UP 箭头的 Orientation=6 HEIC+JPG；真机实况 `IMG_LIVE.HEIC`+`IMG_LIVE.MOV`（Content Identifier `950E444E-…`）。
-- 对照：API 缩略图 / iOS 网格 / iOS 大图 / Web 大图。
+**修复**：预览 `img`/`video` 改为 `absolute inset-0 w-full h-full object-contain`（盒铺满、像素 letterbox 居中）。HEIC 大图仍走 `thumbnail?size=1600`（`previewDisplayUrl`）。
+
+| 证据（相对预览 pane，侧栏除外） | 结果 |
+|------|------|
+| `web-orient6-heic-preview.png` + `-annotated.png` | **ml=273 mr=269 asym=2.0** |
+| `web-orient6-jpg-preview.png` + `-annotated.png` | **ml=273 mr=270 asym=1.5** |
+| img client box | 1176×851（不再 1176×1568 溢裁） |
+
+iOS：`Color.black` + overlay + `scaledToFit` + `frame(maxWidth/Height: .infinity)`；HEIC 走 tv=4 / size=1600 转正 JPEG。
 
 ---
 
-## 2. 怎么验证
+## 2. 方向对照（构图 vs EXIF）
 
-| 项 | 结果 |
+`IMG_LIVE` / `upload_orig` / `e2e-share-orig` 网格文字侧向：
+
+1. 原片 Orientation=6；sensor 横放  
+2. 应用 Orient → 竖幅；API tv=4 thumb 同朝向  
+3. 网格卡 = 转正后的**正方形中心裁切** → 画面内文字仍可呈侧向构图  
+
+⇒ **构图本身**，不是 thumb Orientation 仍错。
+
+证据：`orient-proof-sensor-vs-thumb.png`  
+对照：`orient6` 绿顶红底 + UP 在 API / Web（本轮）正向一致。
+
+---
+
+## 3. Share ← Photos 真分享
+
+### 已证明
+- UITest `PhotosShareLiveHEICUITests`：系统相册 → Share Sheet → ReSourcer  
+- 服务端可收到 **HEIC**（`ftypheic` 魔数）  
+- Provider：`public.jpeg|com.apple.live-photo|public.heic`（常无独立 movie UTI）  
+- 代码路径：`enrichLivePhotoPairedVideos` → `PHAssetResource.pairedVideo`
+
+### known = 1（未过关）
+模拟器 Share Extension 上 `PHAuthorizationStatus` 常为 **denied(2)**（即便 `simctl privacy grant photos`）。  
+因此 **无法依赖 Photos `PairedVideo` 交 MOV**。
+
+此前用 App Group Content-ID **companion MOV** 可让 CI 绿，但根会话明确不接受。  
+现已改为：**默认禁止 companion**；仅当主 App 写入 `e2e_allow_live_companion=1`（`E2E_ALLOW_LIVE_COMPANION=1`）时才启用，并在 `live-enrich-debug.log` 标注 `source=photos-pairedVideo|e2e-companion`。
+
+**真机**应走 `photos-pairedVideo`（代码已就绪）；本轮模拟器 **不得**把 companion 写成 known=0。
+
+### 自动化复现
+```bash
+# 环境变量必须 export 进 xcodebuild 进程（见 iOS/scripts/run-ui-tests.sh）
+E2E_SERVER_URL=http://127.0.0.1:1234 \
+E2E_API_KEY=… \
+E2E_SOURCE_FOLDER=… \
+E2E_SCREENSHOT_DIR=docs/screenshots/heic-live-photo \
+ONLY_TESTING=ReSourcerUITests/PhotosShareLiveHEICUITests \
+DESTINATION='platform=iOS Simulator,id=<UDID>' \
+bash iOS/scripts/run-ui-tests.sh
+
+# 若仅验证 HEIC、不接受 companion MOV：不要设 E2E_ALLOW_LIVE_COMPANION
+# 真机 / 需 CI 回退时才：E2E_ALLOW_LIVE_COMPANION=1
+```
+
+截图：`share-photos-01` … `share-photos-07`（历史轮次；本轮以 enrich 日志 `source=` 为准）。
+
+---
+
+## 4. 其它
+
+| 项 | 状态 |
 |----|------|
-| 素材 Content Identifier | HEIC+MOV 一致 `950E444E-D736-41CF-A4A2-472D76C20389` |
-| API thumb orient6.* | 竖图；绿顶红底可读 |
-| `HeicLivePhotoUITests` 4/4 | 网格；LIVE+按住不退出；orient6 HEIC/JPG |
-| iOS 录屏 | `ios-live-photo-hold.mp4`（按住区间有帧差） |
-| Share 上传探针 | `e2e-share-orig-*.heic` + `.mov`，MIME `image/heic`，配对成功 |
-| Mac Release archive（最终 HEAD） | `generic/platform=iOS` **ARCHIVE SUCCEEDED**；包内含 `ShareExtension.appex`；arm64 sim Release **BUILD SUCCEEDED** |
-| Web 预览 | HEIC 走 tv=3 大缩略图；LIVE 静帧+角标 |
-
-关键证据（均在 `media/heic-live-photo/`，MD5 全唯一）：
-- `ios-gallery-grid.png` / `ios-orient6-{heic,jpg}-preview.png`
-- `ios-live-photo-hold.png` + `ios-live-photo-hold.mp4` + `ios-live-badge.png`
-- `web-gallery-grid.png` / `web-orient6-*-preview.png` / `web-img-live-preview.png`
-- `api-thumb-*.jpg` / `share-*.png` / `share-upload-result-grid.png`
-
-E2E：`RESOURCER_DATA_DIR=/private/tmp/resourcer-heic-live-e2e/data`，源 `/private/tmp/resourcer-heic-live-e2e/src`，API `:1234`。
+| LIVE hold | `ios-live-photo-hold.png` + `ios-live-photo-hold.mp4`（居中预览上按住实况） |
+| iOS orient6 HEIC/JPG | L=R=0 asym=0；见 `*-annotated.png` |
+| Web MediaPlayer | HEIC→1600 thumb；`object-contain` 满盒；pane asym≤2 |
 
 ---
 
-## 3. 未测 / 已知限制（非 in-scope 缺陷）
+## 5. 媒体
 
-- **Share Extension ← Photos 系统分享 UI**：本机辅助功能无法完整点通 Share Sheet；已用 **同一 `ShareUploadClient` 路径**（Share Extension 所用上传客户端）上传真实 HEIC+MOV 并验证服务端格式与配对。代码路径：`ShareViewController` heic-first + 实况双取。若某系统版本 Share Sheet 只抛 JPEG，属系统限流，应用侧无法强行取 HEIC——可行替代：App 内相册上传（`PhotoExporter` / PairedVideo）。
-- Web 不能原生解码 HEIC 原片；预览用转正 JPEG 缩略图属预期，下载仍是原 HEIC。
-- 无 Content Identifier 的合成对：`PHLivePhoto.request` 失败时回退静帧+按住 MOV（本轮真机 CID 对已走原生 PHLivePhoto）。
-
-**known in-scope = 0**
-
----
-
-## 4. 禁止事项
-
-- **禁止 merge**
-- **禁止 release / 打 tag / 发版**
-- 本 PR 保持 **draft**
+覆盖：`media/heic-live-photo/` ↔ `docs/screenshots/heic-live-photo/` ↔ 本报告。

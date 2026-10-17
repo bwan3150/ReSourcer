@@ -80,9 +80,29 @@ pub struct HeifTile {
 /// HEIF tile grid（iPhone 等高分辨率 HEIC 常用）
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HeifTileGrid {
+    /// tile 拼合后的编码画布尺寸（常为 tile 对齐后的 padded 尺寸）
     pub coded_width: u32,
     pub coded_height: u32,
+    /// 实际可见/显示区域（ispe），可能小于 coded_*；无标记时等于 coded_*
+    pub display_width: u32,
+    pub display_height: u32,
+    /// 显示区域相对编码画布的偏移（horizontal_offset / vertical_offset）
+    pub crop_x: u32,
+    pub crop_y: u32,
     pub tiles: Vec<HeifTile>,
+}
+
+impl HeifTileGrid {
+    /// 编码画布大于显示区域时需要 crop，否则 xstack 会留下黑边，
+    /// 再叠加 Orientation 旋转后表现为大图「左空右切」。
+    pub fn needs_display_crop(&self) -> bool {
+        self.display_width > 0
+            && self.display_height > 0
+            && (self.display_width < self.coded_width
+                || self.display_height < self.coded_height
+                || self.crop_x > 0
+                || self.crop_y > 0)
+    }
 }
 
 /// 解析 `ffprobe -show_stream_groups` 输出中的 Tile Grid。
@@ -92,8 +112,13 @@ pub fn parse_heif_tile_grid(probe_output: &str) -> Option<HeifTileGrid> {
 
     let mut in_group = false;
     let mut group_is_tile = false;
+    let mut in_component = false;
     let mut coded_width: u32 = 0;
     let mut coded_height: u32 = 0;
+    let mut display_width: u32 = 0;
+    let mut display_height: u32 = 0;
+    let mut crop_x: u32 = 0;
+    let mut crop_y: u32 = 0;
     let mut tiles: Vec<HeifTile> = Vec::new();
 
     let mut in_sub = false;
@@ -107,16 +132,36 @@ pub fn parse_heif_tile_grid(probe_output: &str) -> Option<HeifTileGrid> {
             "[STREAM_GROUP]" => {
                 in_group = true;
                 group_is_tile = false;
+                in_component = false;
                 coded_width = 0;
                 coded_height = 0;
+                display_width = 0;
+                display_height = 0;
+                crop_x = 0;
+                crop_y = 0;
                 tiles.clear();
             }
             "[/STREAM_GROUP]" => {
                 if in_group && group_is_tile && tiles.len() > 1 {
                     tiles.sort_by_key(|t| t.stream_index);
+                    // 无 width/height 时退回 coded 尺寸（无 padding）
+                    let dw = if display_width > 0 {
+                        display_width
+                    } else {
+                        coded_width
+                    };
+                    let dh = if display_height > 0 {
+                        display_height
+                    } else {
+                        coded_height
+                    };
                     let candidate = HeifTileGrid {
                         coded_width,
                         coded_height,
+                        display_width: dw,
+                        display_height: dh,
+                        crop_x,
+                        crop_y,
                         tiles: tiles.clone(),
                     };
                     let replace = match &best {
@@ -132,6 +177,13 @@ pub fn parse_heif_tile_grid(probe_output: &str) -> Option<HeifTileGrid> {
                 }
                 in_group = false;
                 group_is_tile = false;
+                in_component = false;
+            }
+            "[COMPONENT]" if in_group => {
+                in_component = true;
+            }
+            "[/COMPONENT]" => {
+                in_component = false;
             }
             "[SUBCOMPONENT]" => {
                 in_sub = true;
@@ -154,13 +206,32 @@ pub fn parse_heif_tile_grid(probe_output: &str) -> Option<HeifTileGrid> {
             _ if in_group => {
                 if let Some(rest) = line.strip_prefix("type=") {
                     group_is_tile = rest == "Tile Grid";
-                } else if let Some(rest) = line.strip_prefix("coded_width=") {
-                    if let Ok(v) = rest.parse() {
-                        coded_width = v;
-                    }
-                } else if let Some(rest) = line.strip_prefix("coded_height=") {
-                    if let Ok(v) = rest.parse() {
-                        coded_height = v;
+                } else if in_component && !in_sub {
+                    // 只读 COMPONENT 级尺寸；STREAM 内 width/coded_width=512 会污染 pad 检测
+                    if let Some(rest) = line.strip_prefix("coded_width=") {
+                        if let Ok(v) = rest.parse() {
+                            coded_width = v;
+                        }
+                    } else if let Some(rest) = line.strip_prefix("coded_height=") {
+                        if let Ok(v) = rest.parse() {
+                            coded_height = v;
+                        }
+                    } else if let Some(rest) = line.strip_prefix("width=") {
+                        if let Ok(v) = rest.parse::<u32>() {
+                            display_width = v;
+                        }
+                    } else if let Some(rest) = line.strip_prefix("height=") {
+                        if let Ok(v) = rest.parse::<u32>() {
+                            display_height = v;
+                        }
+                    } else if let Some(rest) = line.strip_prefix("horizontal_offset=") {
+                        if let Ok(v) = rest.parse() {
+                            crop_x = v;
+                        }
+                    } else if let Some(rest) = line.strip_prefix("vertical_offset=") {
+                        if let Ok(v) = rest.parse() {
+                            crop_y = v;
+                        }
                     }
                 } else if in_sub {
                     if let Some(rest) = line.strip_prefix("stream_index=") {
@@ -217,9 +288,13 @@ pub fn build_xstack_layout(tiles: &[HeifTile]) -> String {
 pub fn extract_heif_thumbnail(image_path: &Path, max_size: u32) -> Result<image::DynamicImage> {
     if let Some(grid) = probe_heif_tile_grid(image_path) {
         eprintln!(
-            "[thumbnail] HEIF tile grid {}x{} ({} tiles) → 拼合解码 ({:?})",
+            "[thumbnail] HEIF tile grid coded={}x{} display={}x{}+{}+{} ({} tiles) → 拼合解码 ({:?})",
             grid.coded_width,
             grid.coded_height,
+            grid.display_width,
+            grid.display_height,
+            grid.crop_x,
+            grid.crop_y,
             grid.tiles.len(),
             image_path
         );
@@ -228,7 +303,7 @@ pub fn extract_heif_thumbnail(image_path: &Path, max_size: u32) -> Result<image:
     extract_image_thumbnail_ffmpeg(image_path, max_size)
 }
 
-/// 用 ffmpeg xstack 按探测到的偏移拼合 tile，再缩放到目标尺寸
+/// 用 ffmpeg xstack 按探测到的偏移拼合 tile，裁掉 coded padding，再缩放到目标尺寸
 fn extract_heif_tiled_thumbnail(
     image_path: &Path,
     grid: &HeifTileGrid,
@@ -252,6 +327,14 @@ fn extract_heif_tiled_thumbnail(
         grid.tiles.len(),
         layout
     );
+    // HEIF tile 对齐常把画布 pad 到 tile 边界（如 1200x900 → 1536x1024）。
+    // 若不 crop 到 ispe 显示区，黑边会在 Orientation 旋转后变成「左空右切」。
+    if grid.needs_display_crop() {
+        filter.push_str(&format!(
+            ",crop={}:{}:{}:{}",
+            grid.display_width, grid.display_height, grid.crop_x, grid.crop_y
+        ));
+    }
     if max_size > 0 {
         filter.push_str(&format!(
             ",scale={}:{}:force_original_aspect_ratio=decrease",
@@ -749,6 +832,9 @@ height=720
         let grid = parse_heif_tile_grid(sample_probe_tiled()).expect("tile grid");
         assert_eq!(grid.coded_width, 2560);
         assert_eq!(grid.coded_height, 1440);
+        assert_eq!(grid.display_width, 2560);
+        assert_eq!(grid.display_height, 1440);
+        assert!(!grid.needs_display_crop());
         assert_eq!(grid.tiles.len(), 4);
         assert_eq!(
             grid.tiles[0],
@@ -767,6 +853,85 @@ height=720
             }
         );
         assert_eq!(build_xstack_layout(&grid.tiles), "0_0|1280_0|0_720|1280_720");
+    }
+
+    fn sample_probe_tiled_padded() -> &'static str {
+        // 真实 iPhone/sips HEIC：coded 按 tile 对齐 pad，ispe 为较小显示区
+        r#"
+[STREAM_GROUP]
+index=0
+id=0x7
+nb_streams=6
+type=Tile Grid
+[COMPONENT]
+nb_tiles=6
+coded_width=1536
+coded_height=1024
+horizontal_offset=0
+vertical_offset=0
+width=1200
+height=900
+[SUBCOMPONENT]
+stream_index=0
+tile_horizontal_offset=0
+tile_vertical_offset=0
+[/SUBCOMPONENT]
+[SUBCOMPONENT]
+stream_index=1
+tile_horizontal_offset=512
+tile_vertical_offset=0
+[/SUBCOMPONENT]
+[SUBCOMPONENT]
+stream_index=2
+tile_horizontal_offset=1024
+tile_vertical_offset=0
+[/SUBCOMPONENT]
+[SUBCOMPONENT]
+stream_index=3
+tile_horizontal_offset=0
+tile_vertical_offset=512
+[/SUBCOMPONENT]
+[SUBCOMPONENT]
+stream_index=4
+tile_horizontal_offset=512
+tile_vertical_offset=512
+[/SUBCOMPONENT]
+[SUBCOMPONENT]
+stream_index=5
+tile_horizontal_offset=1024
+tile_vertical_offset=512
+[/SUBCOMPONENT]
+[/COMPONENT]
+DISPOSITION:default=1
+[/STREAM_GROUP]
+"#
+    }
+
+    #[test]
+    fn parse_padded_tile_grid_needs_display_crop() {
+        let grid = parse_heif_tile_grid(sample_probe_tiled_padded()).expect("padded grid");
+        assert_eq!(grid.coded_width, 1536);
+        assert_eq!(grid.coded_height, 1024);
+        assert_eq!(grid.display_width, 1200);
+        assert_eq!(grid.display_height, 900);
+        assert_eq!(grid.crop_x, 0);
+        assert_eq!(grid.crop_y, 0);
+        assert!(grid.needs_display_crop());
+        assert_eq!(grid.tiles.len(), 6);
+    }
+
+    #[test]
+    fn parse_ignores_stream_tile_dimensions_inside_group() {
+        // -show_streams 会把单 tile 的 width/coded_width=512 打进同一段输出；
+        // 不可覆盖 COMPONENT 的 ispe/coded 尺寸。
+        let polluted = format!(
+            "{}\n[STREAM]\nindex=0\ncoded_width=512\ncoded_height=512\nwidth=512\nheight=512\n[/STREAM]\n",
+            sample_probe_tiled_padded()
+        );
+        let grid = parse_heif_tile_grid(&polluted).expect("padded grid");
+        assert_eq!(grid.coded_width, 1536);
+        assert_eq!(grid.display_width, 1200);
+        assert!(grid.needs_display_crop());
     }
 
     #[test]

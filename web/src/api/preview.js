@@ -2,7 +2,7 @@ import { getApiKey } from '../composables/useAuth'
 import { getServerUrl } from '../composables/useServer'
 
 /** Bump when server thumbnail algorithm changes so IndexedDB / HTTP caches refresh. */
-export const THUMBNAIL_VERSION = '3'
+export const THUMBNAIL_VERSION = '4'
 
 export function thumbnailUrl(file, size = 300) {
   const base = getServerUrl()

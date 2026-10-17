@@ -1662,9 +1662,11 @@ struct ImagePreviewContent: View {
                         }
 
                     case .success(let image):
+                        // 明确占满 overlay 坐标系再 scaledToFit，避免固有尺寸导致视觉偏裁
                         image
                             .resizable()
                             .scaledToFit()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                     case .failure:
                         VStack(spacing: AppTheme.Spacing.lg) {
@@ -1675,16 +1677,21 @@ struct ImagePreviewContent: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.white.opacity(0.7))
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                     @unknown default:
                         EmptyView()
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .contentShape(Rectangle())
             .zoomPanGesture(scale: $scale)
             .pageSwipeGesture(isEnabled: scale <= 1.0, onSwipe: onSwipe)
             .onTapGesture(count: 1, perform: onTap)
+            .onChange(of: url) { _, _ in
+                scale = 1.0
+            }
     }
 }
 

@@ -43,6 +43,8 @@
 		<key>NSExtensionPrincipalClass</key>
 		<string>$(PRODUCT_MODULE_NAME).ShareViewController</string>
 	</dict>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>从系统相册分享实况照片时，需要读取配对视频以完整上传 HEIC+MOV</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>需要访问局域网以连接群晖等本地 ReSourcer 服务器并加载源文件夹</string>
 	<key>NSAppTransportSecurity</key>

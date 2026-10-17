@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { installGalleryMocks, seedAuth, FILES } from './helpers/mockApi.js'
 
 /** Keep in sync with web/src/api/preview.js THUMBNAIL_VERSION and server THUMBNAIL_VERSION. */
-const EXPECTED_TV = '3'
+const EXPECTED_TV = '4'
 
 /**
  * Web UI E2E：确认画廊仍走客户端缩略图缓存 + `tv=`，

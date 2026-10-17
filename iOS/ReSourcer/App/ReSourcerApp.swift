@@ -302,6 +302,18 @@ struct ReSourcerApp: App {
         LocalStorageService.shared.saveActiveURL(url, forServerId: server.id)
         LocalStorageService.shared.setLoggedIn(true)
         LocalStorageService.shared.syncServersToAppGroupIfNeeded()
+        // Share Extension 默认目标：E2E_SOURCE_FOLDER → App Group lastDestination
+        if let source = env["E2E_SOURCE_FOLDER"] ?? env["RESOURCER_E2E_SOURCE"],
+           !source.isEmpty {
+            ShareBridge.saveLastDestination(
+                ShareDestinationPreference(
+                    serverId: server.id,
+                    sourceFolder: source,
+                    subfolder: ""
+                )
+            )
+            AppGroup.defaults.synchronize()
+        }
         guard let service = APIService.create(for: server) else { return false }
         self.apiService = service
         self.isLoggedIn = true
@@ -314,6 +326,14 @@ struct ReSourcerApp: App {
         let env = ProcessInfo.processInfo.environment
         guard env["E2E_SHARE_SOURCES_PROBE"] == "1" else { return }
         LocalStorageService.shared.syncServersToAppGroupIfNeeded()
+        // 预置实况配对 MOV：仅当显式允许 companion 时写入开关 + 文件。
+        // Photos→Share 真验收应优先走 PairedVideo；companion 不得默认可过关。
+        if env["E2E_ALLOW_LIVE_COMPANION"] == "1" {
+            AppGroup.defaults.set("1", forKey: "e2e_allow_live_companion")
+            Self.seedE2ELiveCompanionMOVIfNeeded(env: env)
+        } else {
+            AppGroup.defaults.removeObject(forKey: "e2e_allow_live_companion")
+        }
         Task {
             guard let server = ShareBridge.currentServer() else {
                 await MainActor.run { e2eShareSourcesProbeText = "ERROR:no-server" }
@@ -334,6 +354,27 @@ struct ReSourcerApp: App {
                     e2eShareSourcesProbeText = "ERROR:\(error.localizedDescription)"
                 }
             }
+        }
+    }
+
+    /// 把 IMG_LIVE.MOV 拷进 App Group，供 Share Extension 在相册授权失败时按 Content Identifier 配对。
+    private static func seedE2ELiveCompanionMOVIfNeeded(env: [String: String]) {
+        guard let destDir = AppGroup.e2eLiveCompanionDirectoryURL else { return }
+        let candidates: [String] = [
+            env["E2E_LIVE_MOV_PATH"],
+            env["E2E_SOURCE_FOLDER"].map { $0 + "/IMG_LIVE.MOV" },
+            env["E2E_SOURCE_FOLDER"].map { $0 + "/IMG_LIVE.mov" },
+        ].compactMap { $0 }
+        guard let srcPath = candidates.first(where: { FileManager.default.fileExists(atPath: $0) }) else { return }
+        let src = URL(fileURLWithPath: srcPath)
+        // 固定名 + Content Identifier 名（与样例 HEIC 一致）
+        let copies = [
+            destDir.appendingPathComponent("IMG_LIVE.MOV"),
+            destDir.appendingPathComponent("950E444E-D736-41CF-A4A2-472D76C20389.MOV"),
+        ]
+        for dest in copies {
+            try? FileManager.default.removeItem(at: dest)
+            try? FileManager.default.copyItem(at: src, to: dest)
         }
     }
 

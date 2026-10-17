@@ -28,11 +28,13 @@
         class="will-change-transform w-full h-full flex items-center justify-center"
       >
         <!-- Image / GIF（实况：悬停/按住播配对视频）
-             必须相对父容器 max-w/h-full，禁止 100vw/100vh——预览区在侧栏右侧，
-             用视口单位会把图撑破容器并被顶栏裁切、视觉上「左空右切」。 -->
+             img 用 w/h-full + object-contain：盒铺满容器，像素在盒内 letterbox 居中。
+             不要用 max-h-full + w/h-auto——Chrome 会先按宽算出超高 intrinsic，再被
+             overflow 裁掉顶底（绿/红条消失），视觉上像「只剩中间」或「右偏」。
+             禁止 100vw/100vh——预览在侧栏右侧。 -->
         <div
           v-if="type === 'image' || type === 'gif'"
-          class="relative flex items-center justify-center max-w-full max-h-full w-full h-full"
+          class="relative w-full h-full"
           @pointerdown="onLivePressStart"
           @pointerup="onLivePressEnd"
           @pointerleave="onLivePressEnd"
@@ -43,7 +45,7 @@
           <img
             :src="src"
             :alt="fileName"
-            class="max-w-full max-h-full w-auto h-auto object-contain select-none"
+            class="absolute inset-0 m-auto block w-full h-full object-contain select-none"
             draggable="false"
             :class="{ 'opacity-0': livePlaying && liveVideoReady }"
           />
@@ -51,7 +53,7 @@
             v-if="liveVideoSrc"
             ref="liveVideoEl"
             :src="liveVideoSrc"
-            class="absolute inset-0 w-full h-full object-contain"
+            class="absolute inset-0 m-auto w-full h-full object-contain"
             :class="{ 'opacity-0': !(livePlaying && liveVideoReady) }"
             muted
             playsinline

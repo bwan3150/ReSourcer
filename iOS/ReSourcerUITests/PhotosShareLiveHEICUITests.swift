@@ -24,7 +24,7 @@ final class PhotosShareLiveHEICUITests: XCTestCase {
         let serverURL = server!
         let apiKey = key!
 
-        // 先确保主 App 已登录（Share Extension 读 App Group / 已存凭证）
+        // 先确保主 App 已登录，并沿 Share 同路径探针确认 App Group 源文件夹可读
         let app = XCUIApplication()
         app.launchEnvironment["E2E_SERVER_URL"] = serverURL
         app.launchEnvironment["E2E_API_KEY"] = apiKey
@@ -32,10 +32,28 @@ final class PhotosShareLiveHEICUITests: XCTestCase {
             app.launchEnvironment["E2E_SOURCE_FOLDER"] = source
         }
         app.launchEnvironment["E2E_SKIP_ONBOARDING"] = "1"
+        app.launchEnvironment["E2E_SHARE_SOURCES_PROBE"] = "1"
+        // 默认禁止 App Group companion：验收必须走 Photos PairedVideo。
+        // 仅当显式 E2E_ALLOW_LIVE_COMPANION=1 时才允许模拟器 CI 回退。
+        if env["E2E_ALLOW_LIVE_COMPANION"] == "1" {
+            app.launchEnvironment["E2E_ALLOW_LIVE_COMPANION"] = "1"
+        }
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
-        // 等进到主页
         _ = app.tabBars.firstMatch.waitForExistence(timeout: 15)
+        let probe = app.descendants(matching: .any)["e2eShareSourcesProbe"]
+        if probe.waitForExistence(timeout: 20) {
+            var value = ""
+            let deadline = Date().addingTimeInterval(20)
+            while Date() < deadline {
+                value = probe.value as? String ?? probe.label
+                if value.hasPrefix("OK:") || value.hasPrefix("ERROR:") { break }
+                RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+            }
+            XCTAssertTrue(value.hasPrefix("OK:"), "App Group must expose source folders before Photos share; got \(value)")
+        }
+        // 再给一次同步窗口，确保 Extension 进程能读到 App Group / Keychain
+        RunLoop.current.run(until: Date().addingTimeInterval(1.5))
         saveShot(app: app, name: "share-photos-01-app-ready")
         app.terminate()
 
@@ -124,27 +142,69 @@ final class PhotosShareLiveHEICUITests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.8))
         }
         XCTAssertTrue(tappedExt, "ReSourcer not found in Share Sheet — enable Share Extension in More")
-        RunLoop.current.run(until: Date().addingTimeInterval(3.0))
+        // Share Extension 拉 PairedVideo 会触发相册权限框；必须点「允许」否则 enrich 直接 skip
+        for _ in 0..<8 {
+            for label in ["允许访问所有照片", "Allow Access to All Photos", "允许", "Allow", "好", "OK"] {
+                let b = spring.buttons[label].firstMatch
+                if b.waitForExistence(timeout: 0.4), b.isHittable { b.tap() }
+                let b2 = photos.buttons[label].firstMatch
+                if b2.exists, b2.isHittable { b2.tap() }
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.35))
+        }
+        RunLoop.current.run(until: Date().addingTimeInterval(2.0))
         saveShot(app: photos, name: "share-photos-05-extension")
 
-        // Extension 内点上传/完成（中英文）
+        // Extension：等源文件夹加载出来再点「开始上传」（此前常因 App Group 未同步而按钮灰掉）
         let extApp = XCUIApplication(bundleIdentifier: "app.resourcer.apple.ShareExtension")
-        let uploadLabels = ["上传", "Upload", "开始上传", "发送", "Send", "完成", "Done"]
-        for _ in 0..<15 {
-            for label in uploadLabels {
-                let b = extApp.buttons[label].firstMatch
-                if b.exists, b.isHittable {
-                    b.tap()
-                    break
-                }
-                let b2 = photos.buttons[label].firstMatch
-                if b2.exists, b2.isHittable {
-                    b2.tap()
-                    break
-                }
+        _ = extApp.wait(for: .runningForeground, timeout: 8)
+        for label in ["允许访问所有照片", "Allow Access to All Photos", "允许", "Allow"] {
+            let b = spring.buttons[label].firstMatch
+            if b.waitForExistence(timeout: 1.0), b.isHittable { b.tap() }
+            let b2 = extApp.buttons[label].firstMatch
+            if b2.exists, b2.isHittable { b2.tap() }
+        }
+        let sourceStatus = extApp.descendants(matching: .any)["shareSourceFoldersStatus"]
+        let sourcePicker = extApp.descendants(matching: .any)["shareServerPicker"]
+        let loadDeadline = Date().addingTimeInterval(25)
+        while Date() < loadDeadline {
+            // 源文件夹状态消失或服务器选择器可点，说明 bootstrap 走完
+            if sourcePicker.exists && (!sourceStatus.exists || !(sourceStatus.label.contains("无可用") || sourceStatus.label.contains("加载"))) {
+                break
             }
+            if !sourceStatus.exists { break }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        }
+        saveShot(app: photos, name: "share-photos-05b-sources-ready")
+
+        let uploadLabels = ["开始上传", "上传", "Upload", "发送", "Send", "完成", "Done"]
+        var tappedUpload = false
+        for _ in 0..<20 {
+            for label in uploadLabels {
+                let candidates = [
+                    extApp.buttons[label].firstMatch,
+                    photos.buttons[label].firstMatch,
+                    spring.buttons[label].firstMatch,
+                ]
+                for b in candidates {
+                    if b.exists, b.isHittable, b.isEnabled {
+                        b.tap()
+                        tappedUpload = true
+                        break
+                    }
+                }
+                if tappedUpload { break }
+            }
+            if tappedUpload { break }
             RunLoop.current.run(until: Date().addingTimeInterval(1.0))
             saveShot(app: photos, name: "share-photos-06-uploading")
+        }
+        XCTAssertTrue(tappedUpload, "Start Upload must become enabled after source folders load")
+        // 等上传完成 / 扩展关闭
+        for _ in 0..<20 {
+            RunLoop.current.run(until: Date().addingTimeInterval(1.0))
+            saveShot(app: photos, name: "share-photos-06-uploading")
+            if !extApp.exists { break }
         }
 
         // 轮询服务端：新增 HEIC，且魔数为 heic，并有配对 MOV
@@ -177,13 +237,28 @@ final class PhotosShareLiveHEICUITests: XCTestCase {
         }
 
         XCTAssertNotNil(foundHEIC, "Server should receive a new HEIC from Photos share")
-        let heicName = foundHEIC!
+        guard let heicName = foundHEIC else { return }
         // 校验魔数
         let magic = try fetchMagic(serverURL: serverURL, apiKey: apiKey, folder: source, fileName: heicName)
         XCTAssertTrue(
             magic.contains("heic") || magic.contains("mif1") || magic.contains("heif") || magic.contains("msf1"),
             "Stored file must remain HEIC family, got magic=\(magic) file=\(heicName)"
         )
+        // 再扫一次索引（配对 MOV 可能稍后入库）
+        if foundMOV == nil {
+            RunLoop.current.run(until: Date().addingTimeInterval(3))
+            let files = try listFiles(serverURL: serverURL, apiKey: apiKey, folder: source)
+            let stem = (heicName as NSString).deletingPathExtension
+            for f in files {
+                let name = (f["file_name"] as? String) ?? ""
+                if name.lowercased() == "\(stem.lowercased()).mov" {
+                    foundMOV = name
+                }
+                if name == heicName, f["live_video_path"] != nil || f["live_video_uuid"] != nil {
+                    foundMOV = foundMOV ?? (f["live_video_path"] as? String) ?? "paired"
+                }
+            }
+        }
         XCTAssertNotNil(
             foundMOV,
             "HEIC live share must include paired MOV (stem match or live_video_*); heic=\(heicName)"
