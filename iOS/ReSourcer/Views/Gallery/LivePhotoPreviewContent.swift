@@ -34,15 +34,21 @@ struct LivePhotoPreviewContent: View {
                 // 媒体：满框居中 aspect-fit（GeometryReader 默认 topLeading 会偏裁）
                 Group {
                     if let livePhoto {
-                        // 用 SwiftUI aspectRatio 约束外框，避免 PHLivePhotoView 无视 contentMode 填满裁切
-                        LivePhotoViewRepresentable(livePhoto: livePhoto)
-                            .aspectRatio(
-                                livePhoto.size.width > 0 && livePhoto.size.height > 0
-                                    ? livePhoto.size.width / livePhoto.size.height
-                                    : 3 / 4,
-                                contentMode: .fit
+                        // 外框按 livePhoto.size 算死 aspect-fit 尺寸；ZStack 默认居中。
+                        // PHLivePhotoView 常无视 contentMode，不能只靠填满父视图 + scaleAspectFit。
+                        let photo = livePhoto.size
+                        let fitted: CGSize = {
+                            guard photo.width > 1, photo.height > 1 else {
+                                return geometry.size
+                            }
+                            let scale = min(
+                                geometry.size.width / photo.width,
+                                geometry.size.height / photo.height
                             )
-                            .frame(maxWidth: geometry.size.width, maxHeight: geometry.size.height)
+                            return CGSize(width: photo.width * scale, height: photo.height * scale)
+                        }()
+                        LivePhotoViewRepresentable(livePhoto: livePhoto)
+                            .frame(width: fitted.width, height: fitted.height)
                     } else if let still = fallbackStill {
                         FallbackLivePhotoView(
                             still: still,
@@ -69,9 +75,10 @@ struct LivePhotoPreviewContent: View {
                 if livePhoto != nil || fallbackStill != nil {
                     // 父级 FilePreviewView 对媒体层 ignoresSafeArea，safeAreaPadding 会变成 0；
                     // 显式用窗口安全区把 LIVE 放到状态栏下方（对齐系统相册）。
+                    // 状态栏 + 顶栏返回按钮行之下（约 44pt），避免叠时钟/返回键
                     LivePhotoBadge()
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                        .padding(.top, Self.statusBarInset + 8)
+                        .padding(.top, Self.statusBarInset + 52)
                         .padding(.leading, AppTheme.Spacing.md)
                 }
             }
@@ -270,16 +277,18 @@ private struct FallbackLivePhotoView: View {
     @Binding var isPlaying: Bool
 
     var body: some View {
-        ZStack {
-            Image(uiImage: still)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .opacity(isPlaying ? 0 : 1)
+        GeometryReader { geo in
+            ZStack {
+                Image(uiImage: still)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .opacity(isPlaying ? 0 : 1)
 
-            if let videoURL, isPlaying {
-                FallbackVideoPlayer(url: videoURL)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if let videoURL, isPlaying {
+                    FallbackVideoPlayer(url: videoURL)
+                        .frame(width: geo.size.width, height: geo.size.height)
+                }
             }
         }
     }
