@@ -1639,9 +1639,11 @@ struct ImagePreviewContent: View {
                     }
 
                 case .success(let image):
+                    // 明确宽高提议：避免 AsyncImage 固有尺寸在 GeometryReader 里偏裁
                     image
                         .resizable()
                         .scaledToFit()
+                        .frame(width: geometry.size.width, height: geometry.size.height)
 
                 case .failure:
                     VStack(spacing: AppTheme.Spacing.lg) {

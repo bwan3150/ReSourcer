@@ -31,10 +31,18 @@ struct LivePhotoPreviewContent: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // 媒体：强制占满 GeometryReader 并居中 aspect-fit（GeometryReader 默认 topLeading 会把内容顶到左上/偏右裁切）
+                // 媒体：满框居中 aspect-fit（GeometryReader 默认 topLeading 会偏裁）
                 Group {
                     if let livePhoto {
+                        // 用 SwiftUI aspectRatio 约束外框，避免 PHLivePhotoView 无视 contentMode 填满裁切
                         LivePhotoViewRepresentable(livePhoto: livePhoto)
+                            .aspectRatio(
+                                livePhoto.size.width > 0 && livePhoto.size.height > 0
+                                    ? livePhoto.size.width / livePhoto.size.height
+                                    : 3 / 4,
+                                contentMode: .fit
+                            )
+                            .frame(maxWidth: geometry.size.width, maxHeight: geometry.size.height)
                     } else if let still = fallbackStill {
                         FallbackLivePhotoView(
                             still: still,
@@ -59,9 +67,11 @@ struct LivePhotoPreviewContent: View {
                 .frame(width: geometry.size.width, height: geometry.size.height)
 
                 if livePhoto != nil || fallbackStill != nil {
+                    // 父级 FilePreviewView 对媒体层 ignoresSafeArea，safeAreaPadding 会变成 0；
+                    // 显式用窗口安全区把 LIVE 放到状态栏下方（对齐系统相册）。
                     LivePhotoBadge()
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                        .safeAreaPadding(.top, 8)
+                        .padding(.top, Self.statusBarInset + 8)
                         .padding(.leading, AppTheme.Spacing.md)
                 }
             }
@@ -77,6 +87,16 @@ struct LivePhotoPreviewContent: View {
         .task(id: file.id) {
             await loadLivePhoto()
         }
+    }
+
+    /// 媒体层常 ignoresSafeArea，不能依赖 GeometryReader.safeAreaInsets
+    private static var statusBarInset: CGFloat {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let inset = scenes
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)?
+            .safeAreaInsets.top
+        return inset ?? scenes.first?.windows.first?.safeAreaInsets.top ?? 54
     }
 
     private func loadLivePhoto() async {
@@ -222,56 +242,24 @@ private struct LivePhotoBadge: View {
     }
 }
 
-/// UIKit：PHLivePhotoView 常忽略 contentMode 而填满裁切；按 livePhoto.size 算 aspect-fit 框再居中。
+/// UIKit：外层由 SwiftUI `.aspectRatio(..., .fit)` 约束；此处铺满该外框。
 struct LivePhotoViewRepresentable: UIViewRepresentable {
     let livePhoto: PHLivePhoto
 
-    func makeUIView(context: Context) -> LivePhotoAspectFitContainer {
-        let container = LivePhotoAspectFitContainer()
-        container.backgroundColor = .clear
+    func makeUIView(context: Context) -> PHLivePhotoView {
         let view = PHLivePhotoView()
         view.contentMode = .scaleAspectFit
         view.backgroundColor = .clear
+        view.clipsToBounds = true
         view.livePhoto = livePhoto
         view.isMuted = false
-        container.liveView = view
-        container.addSubview(view)
-        context.coordinator.container = container
-        return container
+        return view
     }
 
-    func updateUIView(_ uiView: LivePhotoAspectFitContainer, context: Context) {
-        uiView.liveView?.livePhoto = livePhoto
-        uiView.liveView?.contentMode = .scaleAspectFit
-        uiView.setNeedsLayout()
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    final class Coordinator {
-        var container: LivePhotoAspectFitContainer?
-    }
-}
-
-final class LivePhotoAspectFitContainer: UIView {
-    var liveView: PHLivePhotoView?
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        guard let liveView else { return }
-        let photoSize = liveView.livePhoto?.size ?? .zero
-        guard photoSize.width > 0, photoSize.height > 0, bounds.width > 0, bounds.height > 0 else {
-            liveView.frame = bounds
-            return
-        }
-        let scale = min(bounds.width / photoSize.width, bounds.height / photoSize.height)
-        let fitted = CGSize(width: photoSize.width * scale, height: photoSize.height * scale)
-        liveView.frame = CGRect(
-            x: (bounds.width - fitted.width) / 2,
-            y: (bounds.height - fitted.height) / 2,
-            width: fitted.width,
-            height: fitted.height
-        )
+    func updateUIView(_ uiView: PHLivePhotoView, context: Context) {
+        uiView.livePhoto = livePhoto
+        uiView.contentMode = .scaleAspectFit
+        uiView.clipsToBounds = true
     }
 }
 

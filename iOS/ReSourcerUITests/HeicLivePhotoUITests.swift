@@ -45,6 +45,22 @@ final class HeicLivePhotoUITests: XCTestCase {
         app.launch()
     }
 
+    func testGalleryGridShowsOrientedThumbs() throws {
+        // 网格缩略图：竖拍 HEIC / Orientation JPG / 实况应可见且方向可读
+        let heic = try requireUUID(named: "orient6.HEIC")
+        let jpg = try requireUUID(named: "orient6.jpg")
+        let live = try requireUUID(named: "IMG_LIVE.HEIC")
+        XCTAssertTrue(app.descendants(matching: .any)["fileGridItem-\(heic)"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.descendants(matching: .any)["fileGridItem-\(jpg)"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["fileGridItem-\(live)"].exists)
+        // 配对 MOV 不应单独出现在网格
+        let movCards = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier CONTAINS 'fileGridItem' AND label CONTAINS[c] %@", "IMG_LIVE.MOV")
+        )
+        XCTAssertEqual(movCards.count, 0, "paired MOV must be hidden from gallery grid")
+        saveScreenshot(name: "ios-gallery-grid")
+    }
+
     func testLivePhotoShowsLIVEBadgeAndHoldDoesNotDismiss() throws {
         let liveName = "IMG_LIVE.HEIC"
         let uuid = try requireUUID(named: liveName)
@@ -53,20 +69,23 @@ final class HeicLivePhotoUITests: XCTestCase {
         let badge = app.descendants(matching: .any)["livePhotoBadge"]
         XCTAssertTrue(badge.waitForExistence(timeout: 25), "LIVE badge should appear for paired HEIC+MOV")
 
-        // 不得停在「实况照片加载失败」
+        // 不得停在「实况照片加载失败」——须走 PHLivePhoto 或仍可按住的静帧路径
         let fail = app.staticTexts["实况照片加载失败"]
-        XCTAssertFalse(fail.exists, "Live Photo must load (PHLivePhoto or still+MOV fallback)")
+        XCTAssertFalse(fail.exists, "Live Photo must load (PHLivePhoto preferred)")
 
         let capsule = app.descendants(matching: .any)["previewFileNameCapsule"]
         XCTAssertTrue(capsule.waitForExistence(timeout: 8), "preview chrome visible")
         assertPreviewFileNameContains("IMG_LIVE")
 
-        // 按住画面中部：实况应播放且不退出预览
+        // 静帧大图（LIVE 标记在安全区下、不叠状态栏）
+        saveScreenshot(name: "ios-live-photo-still")
+
+        // 按住画面中部：实况应播放且不退出预览；松手后仍在预览
         let frame = app.windows.firstMatch.frame
         let center = CGPoint(x: frame.midX, y: frame.midY)
         let hold = app.coordinate(withNormalizedOffset: .zero)
             .withOffset(CGVector(dx: center.x, dy: center.y))
-        hold.press(forDuration: 1.2)
+        hold.press(forDuration: 1.8)
 
         XCTAssertTrue(
             capsule.waitForExistence(timeout: 3),
@@ -75,21 +94,22 @@ final class HeicLivePhotoUITests: XCTestCase {
         XCTAssertTrue(badge.exists, "LIVE badge remains after hold")
         XCTAssertFalse(fail.exists, "hold must not leave failed state")
 
-        attachScreenshot(name: "ios-live-photo-hold")
+        saveScreenshot(name: "ios-live-photo-hold")
     }
 
     func testOrientedPortraitHEICOpensUpright() throws {
         let uuid = try requireUUID(named: "orient6.HEIC")
         openGridItem(uuid: uuid)
         assertPreviewFileNameContains("orient6")
-        attachScreenshot(name: "ios-orient6-heic-preview")
+        // 绿顶红底标签应完整居中可见（aspect-fit，非右偏裁切）
+        saveScreenshot(name: "ios-orient6-heic-preview")
     }
 
     func testOrientedPortraitJPEGOpensUpright() throws {
         let uuid = try requireUUID(named: "orient6.jpg")
         openGridItem(uuid: uuid)
         assertPreviewFileNameContains("orient6")
-        attachScreenshot(name: "ios-orient6-jpg-preview")
+        saveScreenshot(name: "ios-orient6-jpg-preview")
     }
 
     // MARK: - Grid / preview helpers (FileMetadataUITests pattern)
@@ -192,11 +212,20 @@ final class HeicLivePhotoUITests: XCTestCase {
         return json
     }
 
-    private func attachScreenshot(name: String) {
+    private func saveScreenshot(name: String) {
         let shot = XCUIScreen.main.screenshot()
         let attachment = XCTAttachment(screenshot: shot)
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+
+        let png = shot.pngRepresentation
+        let env = ProcessInfo.processInfo.environment
+        let dirPath = env["E2E_SCREENSHOT_DIR"]
+            ?? env["TEST_RUNNER_E2E_SCREENSHOT_DIR"]
+            ?? NSTemporaryDirectory()
+        let dir = URL(fileURLWithPath: dirPath, isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? png.write(to: dir.appendingPathComponent("\(name).png"))
     }
 }
