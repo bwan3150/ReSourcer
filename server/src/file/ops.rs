@@ -214,6 +214,8 @@ mod tests {
                 modified_at: now.clone(),
                 indexed_at: now,
                 source_url: None,
+            live_video_uuid: None,
+            live_video_path: None,
             };
             crate::indexer::storage::upsert_file(&file).expect("upsert");
             uuid

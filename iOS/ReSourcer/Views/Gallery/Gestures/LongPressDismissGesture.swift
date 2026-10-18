@@ -76,3 +76,17 @@ extension View {
         ))
     }
 }
+
+/// 实况照片等场景可关闭长按退出，避免与按住播放冲突。
+struct ConditionalLongPressDismiss: ViewModifier {
+    let enabled: Bool
+    let onDismiss: () -> Void
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.longPressToDismiss(onDismiss: onDismiss)
+        } else {
+            content
+        }
+    }
+}

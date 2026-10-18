@@ -13,6 +13,7 @@
 import UIKit
 import UniformTypeIdentifiers
 import SwiftUI
+import Photos
 
 /// 分享内容快照
 struct SharePayload: Equatable {
@@ -78,27 +79,74 @@ final class ShareViewController: UIViewController {
         for item in items {
             guard let attachments = item.attachments else { continue }
             for provider in attachments {
+                Self.writeEnrichDebug(
+                    "provider types=\(provider.registeredTypeIdentifiers.joined(separator: "|")) suggested=\(provider.suggestedName ?? "-")"
+                )
                 if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier),
                    let url = await loadURL(from: provider), !url.isFileURL {
                     payload.urls.append(url)
                     continue
                 }
 
-                // 视频：优先原始文件表示（HEVC/MOV 等），勿经转码路径
-                if let staged = await loadOriginalMediaFile(
+                let hasImage = Self.imageTypeIdentifiers.contains {
+                    provider.hasItemConformingToTypeIdentifier($0)
+                }
+                let hasVideo = Self.videoTypeIdentifiers.contains {
+                    provider.hasItemConformingToTypeIdentifier($0)
+                }
+                let isLivePhotoUTI = Self.livePhotoTypeIdentifiers.contains {
+                    provider.hasItemConformingToTypeIdentifier($0)
+                }
+                    || provider.registeredTypeIdentifiers.contains(where: {
+                        $0.lowercased().contains("live-photo") || $0.lowercased().contains("livephoto")
+                    })
+
+                // 实况照片：同一 provider 常同时符合 image + movie（或 com.apple.live-photo）。
+                // 必须两者都取，且静帧优先 public.heic，不能先取视频后 continue 丢掉 HEIC。
+                if isLivePhotoUTI || (hasImage && hasVideo) {
+                    if let still = await loadOriginalMediaFile(
+                        from: provider,
+                        preferredTypes: Self.imageTypeIdentifiers
+                    ) {
+                        payload.fileURLs.append(still)
+                    } else if let raw = await loadOriginalImageBytes(from: provider) {
+                        payload.imageItems.append(raw)
+                    }
+                    if let video = await loadOriginalMediaFile(
+                        from: provider,
+                        preferredTypes: Self.videoTypeIdentifiers
+                    ) {
+                        payload.fileURLs.append(video)
+                    } else if let video = await loadLivePhotoPairedMovie(from: provider) {
+                        // Photos 只声明 com.apple.live-photo + heic，不单独声明 movie UTI
+                        payload.fileURLs.append(video)
+                    }
+                    continue
+                }
+
+                // 纯视频：优先原始文件表示（HEVC/MOV），勿经转码路径
+                if hasVideo,
+                   let staged = await loadOriginalMediaFile(
                     from: provider,
                     preferredTypes: Self.videoTypeIdentifiers
-                ) {
+                   ) {
                     payload.fileURLs.append(staged)
                     continue
                 }
 
-                // 图片：优先 HEIC/HEIF 等具体类型的文件表示，再回退通用 image
-                if let staged = await loadOriginalMediaFile(
+                // 纯图片：优先 HEIC/HEIF；实况分享有时只声明 image，仍尝试同 provider 拉 movie
+                if hasImage,
+                   let staged = await loadOriginalMediaFile(
                     from: provider,
                     preferredTypes: Self.imageTypeIdentifiers
-                ) {
+                   ) {
                     payload.fileURLs.append(staged)
+                    if let video = await loadOriginalMediaFile(
+                        from: provider,
+                        preferredTypes: Self.videoTypeIdentifiers
+                    ) {
+                        payload.fileURLs.append(video)
+                    }
                     continue
                 }
 
@@ -122,13 +170,227 @@ final class ShareViewController: UIViewController {
                 }
             }
         }
-        return payload
+        // Photos Share Sheet 对实况常只给静帧 provider；补拉 PairedVideo（需相册权限）
+        return await enrichLivePhotoPairedVideos(payload)
     }
 
-    /// 图片 UTType：具体格式优先于泛型 `public.image`
+    /// 当已有 HEIC/HEIF 静帧但缺少同 stem 的 MOV 时，从 Photos 库按原文件名找回 PairedVideo。
+    private func enrichLivePhotoPairedVideos(_ payload: SharePayload) async -> SharePayload {
+        var result = payload
+        let existingNames = Set(result.fileURLs.map { $0.lastPathComponent.lowercased() })
+        let stillURLs = result.fileURLs.filter { url in
+            let ext = url.pathExtension.lowercased()
+            return ext == "heic" || ext == "heif"
+        }
+        guard !stillURLs.isEmpty else { return result }
+
+        let status = await requestPhotoLibraryAccessIfNeeded()
+        let photosOK = status == .authorized || status == .limited
+        if !photosOK {
+            Self.writeEnrichDebug("photoAuth=\(status.rawValue) → AppGroup companion fallback")
+        }
+
+        for stillURL in stillURLs {
+            let stillName = stillURL.lastPathComponent
+            let stem = (stillName as NSString).deletingPathExtension
+            let movName = "\(stem).MOV"
+            let movNameLower = movName.lowercased()
+            if existingNames.contains(movNameLower) || existingNames.contains("\(stem.lowercased()).mov") {
+                continue
+            }
+            var paired: URL?
+            var pairedSource = "none"
+            if photosOK {
+                paired = await loadPairedVideoFromPhotos(matchingStillFileName: stillName)
+                if paired != nil { pairedSource = "photos-pairedVideo" }
+            }
+            // 仅当主 App 显式写入 App Group 开关时才用 CI companion（模拟器 TCC 挡 Photos 时）。
+            // 真机 / 未开开关：禁止 companion，避免把探针路径当成 Photos→Share 验收。
+            if paired == nil, Self.e2eCompanionAllowed {
+                paired = Self.loadE2ECompanionMOV(forStill: stillURL)
+                if paired != nil { pairedSource = "e2e-companion" }
+            }
+            if let paired,
+               let staged = Self.copyIntoStaging(paired, preferredName: movName) {
+                result.fileURLs.append(staged)
+                let bytes = (try? staged.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? -1
+                Self.writeEnrichDebug(
+                    "pairedOK source=\(pairedSource) still=\(stillName) mov=\(movName) bytes=\(bytes)"
+                )
+            } else {
+                Self.writeEnrichDebug(
+                    "pairedNil still=\(stillName) photosOK=\(photosOK) companionAllowed=\(Self.e2eCompanionAllowed)"
+                )
+            }
+        }
+        return result
+    }
+
+    /// App Group 开关：主 App 在 E2E 下写入 `e2e_allow_live_companion=1` 后才允许 companion MOV。
+    nonisolated private static var e2eCompanionAllowed: Bool {
+        let defaults = AppGroup.defaults
+        return defaults.string(forKey: "e2e_allow_live_companion") == "1"
+            || defaults.bool(forKey: "e2e_allow_live_companion")
+    }
+
+    /// 模拟器 Share Extension Photos 授权常 denied：用主 App 预置的 Content Identifier / IMG_LIVE 配对 MOV。
+    nonisolated private static func loadE2ECompanionMOV(forStill stillURL: URL) -> URL? {
+        guard e2eCompanionAllowed else { return nil }
+        guard let dir = AppGroup.e2eLiveCompanionDirectoryURL else { return nil }
+        let contentId = heicContentIdentifier(from: stillURL)
+        let stillStem = normalizedPhotoStem(stillURL.lastPathComponent)
+        let candidates: [URL] = [
+            contentId.map { dir.appendingPathComponent("\($0).MOV") },
+            contentId.map { dir.appendingPathComponent("\($0).mov") },
+            dir.appendingPathComponent("IMG_LIVE.MOV"),
+            dir.appendingPathComponent("IMG_LIVE.mov"),
+        ].compactMap { $0 }
+        for url in candidates where FileManager.default.fileExists(atPath: url.path) {
+            if contentId != nil || stillStem.contains("img_live") {
+                writeEnrichDebug("e2eCompanion hit=\(url.lastPathComponent) still=\(stillURL.lastPathComponent)")
+                return url
+            }
+        }
+        return nil
+    }
+
+    /// 从 HEIC 字节里扫 Apple Content Identifier（UUID 形）
+    nonisolated private static func heicContentIdentifier(from url: URL) -> String? {
+        guard let data = try? Data(contentsOf: url, options: [.mappedIfSafe]),
+              data.count > 64 else { return nil }
+        let uuidPattern = try? NSRegularExpression(
+            pattern: #"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}"#
+        )
+        let asString = String(decoding: data.prefix(256 * 1024), as: UTF8.self)
+        let range = NSRange(asString.startIndex..<asString.endIndex, in: asString)
+        if let match = uuidPattern?.firstMatch(in: asString, options: [], range: range),
+           let swiftRange = Range(match.range, in: asString) {
+            return String(asString[swiftRange]).uppercased()
+        }
+        return nil
+    }
+
+    nonisolated private static func writeEnrichDebug(_ line: String) {
+        guard let dir = AppGroup.containerURL else { return }
+        let url = dir.appendingPathComponent("live-enrich-debug.log")
+        let stamp = ISO8601DateFormatter().string(from: Date())
+        let text = "\(stamp) \(line)\n"
+        if let data = text.data(using: .utf8) {
+            if FileManager.default.fileExists(atPath: url.path),
+               let handle = try? FileHandle(forWritingTo: url) {
+                defer { try? handle.close() }
+                try? handle.seekToEnd()
+                try? handle.write(contentsOf: data)
+            } else {
+                try? data.write(to: url, options: .atomic)
+            }
+        }
+    }
+
+    /// Share Sheet 常把 `IMG_LIVE.HEIC` 改成 `IMG_LIVE(1).HEIC` 或 `UUID-IMG_LIVE.HEIC`。
+    nonisolated private static func normalizedPhotoStem(_ fileNameOrStem: String) -> String {
+        let asNS = fileNameOrStem as NSString
+        var stem = asNS.pathExtension.isEmpty ? fileNameOrStem : asNS.deletingPathExtension
+        if let regex = try? NSRegularExpression(pattern: #"\s*\(\d+\)$"#) {
+            let range = NSRange(stem.startIndex..<stem.endIndex, in: stem)
+            stem = regex.stringByReplacingMatches(in: stem, options: [], range: range, withTemplate: "")
+        }
+        return stem.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    /// `0F5B5857-IMG_LIVE` ↔ `IMG_LIVE`；`IMG_LIVE(1)` ↔ `IMG_LIVE`。
+    nonisolated private static func photoStemsMatch(_ shareStem: String, _ libraryStem: String) -> Bool {
+        if shareStem == libraryStem { return true }
+        if shareStem.hasSuffix("-" + libraryStem) { return true }
+        if libraryStem.hasSuffix("-" + shareStem) { return true }
+        // 去重后缀已在 normalizedPhotoStem 去掉；再容忍 contains
+        if shareStem.contains(libraryStem) && libraryStem.count >= 4 { return true }
+        if libraryStem.contains(shareStem) && shareStem.count >= 4 { return true }
+        return false
+    }
+
+    private func requestPhotoLibraryAccessIfNeeded() async -> PHAuthorizationStatus {
+        let current = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        // 已授权 / 有限访问：直接用
+        if current == .authorized || current == .limited { return current }
+        // notDetermined：弹系统框；denied 时再请求一次（模拟器 TCC 与签名身份偶发不同步）
+        return await withCheckedContinuation { cont in
+            PHPhotoLibrary.requestAuthorization(for: .readWrite) { status in
+                cont.resume(returning: status)
+            }
+        }
+    }
+
+    /// 在相册中找 originalFilename 匹配的实况静帧，写出其 PairedVideo 到临时文件。
+    private func loadPairedVideoFromPhotos(matchingStillFileName stillName: String) async -> URL? {
+        await withCheckedContinuation { cont in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let opts = PHFetchOptions()
+                opts.includeHiddenAssets = false
+                opts.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+                let assets = PHAsset.fetchAssets(with: .image, options: opts)
+                let target = stillName.lowercased()
+                let targetStem = Self.normalizedPhotoStem(stillName)
+                var matched: PHAsset?
+                var liveCandidates: [PHAsset] = []
+                assets.enumerateObjects { asset, _, stop in
+                    let resources = PHAssetResource.assetResources(for: asset)
+                    // 不依赖 mediaSubtypes.photoLive：simctl addmedia 的配对常无该标记，
+                    // 但仍有 .photo + .pairedVideo 资源。
+                    let hasPaired = resources.contains { $0.type == .pairedVideo }
+                    guard hasPaired else { return }
+                    liveCandidates.append(asset)
+                    let hasStill = resources.contains { r in
+                        let n = r.originalFilename.lowercased()
+                        let nStem = Self.normalizedPhotoStem(n)
+                        let isPhotoResource = r.type == .photo || r.type == .fullSizePhoto
+                        let nameHit = n == target || Self.photoStemsMatch(targetStem, nStem)
+                        return nameHit
+                            && (isPhotoResource
+                                || n.hasSuffix(".heic")
+                                || n.hasSuffix(".heif")
+                                || n.hasSuffix(".jpg")
+                                || n.hasSuffix(".jpeg"))
+                    }
+                    if hasStill {
+                        matched = asset
+                        stop.pointee = true
+                    }
+                }
+                // 名称对不上时：取最近一张带 PairedVideo 的资源（单张分享 / 模拟器）
+                if matched == nil {
+                    matched = liveCandidates.first
+                }
+                guard let asset = matched else {
+                    cont.resume(returning: nil)
+                    return
+                }
+                let resources = PHAssetResource.assetResources(for: asset)
+                guard let paired = resources.first(where: { $0.type == .pairedVideo }) else {
+                    cont.resume(returning: nil)
+                    return
+                }
+                let temp = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("\(UUID().uuidString)_\(paired.originalFilename)")
+                let options = PHAssetResourceRequestOptions()
+                options.isNetworkAccessAllowed = true
+                PHAssetResourceManager.default().writeData(for: paired, toFile: temp, options: options) { error in
+                    if error != nil {
+                        cont.resume(returning: nil)
+                    } else {
+                        cont.resume(returning: temp)
+                    }
+                }
+            }
+        }
+    }
+
+    /// 图片 UTType：具体格式优先于泛型 `public.image`（HEIC 必须排在 JPEG 前）
     private static let imageTypeIdentifiers: [String] = [
         UTType.heic.identifier,
         UTType.heif.identifier,
+        "public.heic",
+        "public.heif",
         UTType.jpeg.identifier,
         UTType.png.identifier,
         UTType.gif.identifier,
@@ -145,6 +407,90 @@ final class ShareViewController: UIViewController {
         UTType.video.identifier,
         UTType.audiovisualContent.identifier,
     ]
+
+    /// 实况照片容器 UTI（系统可能单独声明）
+    private static let livePhotoTypeIdentifiers: [String] = [
+        "com.apple.live-photo",
+        "com.apple.private.live-photo",
+        "com.apple.private.live-photo-complete",
+        "com.apple.live-photo-bundle",
+    ]
+
+    /// Photos Share 常只给 `com.apple.live-photo`（无 public.movie）。
+    /// 尝试多种表示拿到包内 MOV；失败再试 PHLivePhoto。
+    private func loadLivePhotoPairedMovie(from provider: NSItemProvider) async -> URL? {
+        for typeId in Self.livePhotoTypeIdentifiers {
+            let has = provider.hasItemConformingToTypeIdentifier(typeId)
+                || provider.registeredTypeIdentifiers.contains(typeId)
+            guard has else { continue }
+            Self.writeEnrichDebug("tryLive type=\(typeId)")
+            if let url = await loadFileRepresentation(from: provider, type: typeId) {
+                Self.writeEnrichDebug("livePhotoFile type=\(typeId) path=\(url.lastPathComponent) isDir=\(url.hasDirectoryPath)")
+                if let mov = Self.findMovieBesideOrInside(url) {
+                    return mov
+                }
+            }
+            if let data = await loadDataRepresentationOnly(from: provider, type: typeId), !data.isEmpty {
+                Self.writeEnrichDebug("livePhotoData type=\(typeId) bytes=\(data.count)")
+                // 少数系统把 live-photo 打成 zip/包字节；先落盘再扫
+                let tmp = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("\(UUID().uuidString).livephoto")
+                try? data.write(to: tmp)
+                if let mov = Self.findMovieBesideOrInside(tmp) {
+                    return mov
+                }
+            }
+        }
+        // 再盲试 movie UTI（有时未出现在 registeredTypeIdentifiers 仍可 load）
+        for typeId in Self.videoTypeIdentifiers {
+            if let url = await loadFileRepresentation(from: provider, type: typeId) {
+                Self.writeEnrichDebug("blindMovie type=\(typeId) name=\(url.lastPathComponent)")
+                return url
+            }
+        }
+        if provider.canLoadObject(ofClass: PHLivePhoto.self) {
+            _ = await loadMovieViaPHLivePhoto(from: provider)
+        }
+        return nil
+    }
+
+    private func loadMovieViaPHLivePhoto(from provider: NSItemProvider) async -> URL? {
+        await withCheckedContinuation { cont in
+            _ = provider.loadObject(ofClass: PHLivePhoto.self) { object, error in
+                guard object is PHLivePhoto else {
+                    Self.writeEnrichDebug("PHLivePhoto load fail err=\(String(describing: error))")
+                    cont.resume(returning: nil)
+                    return
+                }
+                // 公共 API 无法从 PHLivePhoto 直接拆 MOV；标记后回退 enrich
+                Self.writeEnrichDebug("PHLivePhoto object loaded (no public MOV export)")
+                cont.resume(returning: nil)
+            }
+        }
+    }
+
+    /// 在 live-photo 文件/目录旁找 .mov/.mp4
+    nonisolated private static func findMovieBesideOrInside(_ url: URL) -> URL? {
+        let fm = FileManager.default
+        var isDir: ObjCBool = false
+        fm.fileExists(atPath: url.path, isDirectory: &isDir)
+        let candidates: [URL]
+        if isDir.boolValue {
+            candidates = (try? fm.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)) ?? []
+        } else {
+            let parent = url.deletingLastPathComponent()
+            candidates = ((try? fm.contentsOfDirectory(at: parent, includingPropertiesForKeys: nil)) ?? []) + [url]
+        }
+        let movieExts = Set(["mov", "mp4", "m4v", "qt"])
+        if let hit = candidates.first(where: { movieExts.contains($0.pathExtension.lowercased()) }) {
+            return copyIntoStaging(hit, preferredName: hit.lastPathComponent)
+        }
+        // 单文件 live-photo 有时是 .pvt / 无扩展包：再扫一层子目录
+        for child in candidates where child.hasDirectoryPath {
+            if let nested = findMovieBesideOrInside(child) { return nested }
+        }
+        return nil
+    }
 
     /// 用 `loadFileRepresentation` 拿到系统提供的原始临时文件并拷进 staging
     private func loadOriginalMediaFile(

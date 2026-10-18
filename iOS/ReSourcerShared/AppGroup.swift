@@ -43,6 +43,15 @@ enum AppGroup {
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
+
+    /// E2E / 模拟器：主 App 预置的实况配对 MOV（按 Content Identifier 或固定名）。
+    /// Share Extension 在 Photos 授权被拒时用于补齐 PairedVideo。
+    static var e2eLiveCompanionDirectoryURL: URL? {
+        guard let base = containerURL else { return nil }
+        let dir = base.appendingPathComponent("E2ELiveCompanions", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
 }
 
 // MARK: - Share 偏好（服务器 / 源 / 子文件夹）

@@ -369,7 +369,7 @@ enum APIEndpoint {
 // MARK: - String URL 编码扩展
 /// 缩略图 URL 缓存破坏版本（与 PreviewService.thumbnailVersion 保持一致）
 enum APIThumbnailVersion {
-    static let current = "2"
+    static let current = "4"
 }
 
 extension String {

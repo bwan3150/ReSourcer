@@ -25,23 +25,63 @@
     >
       <div
         :style="contentTransform"
-        class="will-change-transform"
+        class="will-change-transform w-full h-full flex items-center justify-center"
       >
-        <!-- Image / GIF -->
-        <img
+        <!-- Image / GIF（实况：悬停/按住播配对视频）
+             img 用 w/h-full + object-contain：盒铺满容器，像素在盒内 letterbox 居中。
+             不要用 max-h-full + w/h-auto——Chrome 会先按宽算出超高 intrinsic，再被
+             overflow 裁掉顶底（绿/红条消失），视觉上像「只剩中间」或「右偏」。
+             禁止 100vw/100vh——预览在侧栏右侧。 -->
+        <div
           v-if="type === 'image' || type === 'gif'"
-          :src="src"
-          :alt="fileName"
-          class="max-w-[100vw] max-h-[100vh] object-contain select-none"
-          draggable="false"
-        />
+          class="relative w-full h-full"
+          @pointerdown="onLivePressStart"
+          @pointerup="onLivePressEnd"
+          @pointerleave="onLivePressEnd"
+          @pointercancel="onLivePressEnd"
+          @mouseenter="onLiveHoverStart"
+          @mouseleave="onLiveHoverEnd"
+        >
+          <img
+            :src="src"
+            :alt="fileName"
+            class="absolute inset-0 m-auto block w-full h-full object-contain select-none"
+            draggable="false"
+            :class="{ 'opacity-0': livePlaying && liveVideoReady }"
+          />
+          <video
+            v-if="liveVideoSrc"
+            ref="liveVideoEl"
+            :src="liveVideoSrc"
+            class="absolute inset-0 m-auto w-full h-full object-contain"
+            :class="{ 'opacity-0': !(livePlaying && liveVideoReady) }"
+            muted
+            playsinline
+            loop
+            preload="metadata"
+            @loadeddata="liveVideoReady = true"
+            @error="liveVideoReady = false"
+          />
+          <div
+            v-if="liveVideoSrc"
+            class="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/45 text-white text-xs font-semibold pointer-events-none"
+            data-testid="live-photo-badge"
+          >
+            <!-- LIVE 标记：图标 only，禁止 emoji -->
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+            </svg>
+            <span>LIVE</span>
+          </div>
+        </div>
 
         <!-- Video -->
         <video
           v-else-if="type === 'video'"
           ref="videoEl"
           :src="src"
-          class="max-w-[100vw] max-h-[100vh] object-contain"
+          class="max-w-full max-h-full w-auto h-auto object-contain"
           preload="auto"
           playsinline
           @loadedmetadata="onMetadata"
@@ -182,6 +222,8 @@ const props = defineProps({
   hasNext: { type: Boolean, default: false },
   autoplay: { type: Boolean, default: true },
   coverUrl: { type: String, default: '' },
+  /** 实况照片配对视频 URL；空串表示非实况 */
+  liveVideoSrc: { type: String, default: '' },
   /** 'autoNext' | 'repeatCurrent' — chrome tap toggles this */
   advanceMode: { type: String, default: 'repeatCurrent' },
 })
@@ -189,6 +231,10 @@ const props = defineProps({
 const emit = defineEmits(['prev', 'next', 'ended', 'toggle-advance-mode', 'open-queue-panel'])
 
 const videoEl = ref(null)
+const liveVideoEl = ref(null)
+const livePlaying = ref(false)
+/** 配对 MOV 尚未出帧时保持静帧可见，避免悬停后白屏 */
+const liveVideoReady = ref(false)
 const contentArea = ref(null)
 const pdfViewer = ref(null)
 const playing = ref(false)
@@ -211,7 +257,11 @@ let dragStartX = 0, dragStartY = 0, panStartX = 0, panStartY = 0
 const hasControls = computed(() => ['video', 'audio'].includes(props.type))
 const zoomable = computed(() => ['image', 'gif', 'video'].includes(props.type))
 
-const bgClass = computed(() => effectiveTheme.value === 'dark' ? 'bg-black' : 'bg-white')
+// 图片/视频预览一律黑底，letterbox 与「左空右切」可一眼分辨；主题浅色只影响非媒体页
+const bgClass = computed(() => {
+  if (['image', 'gif', 'video'].includes(props.type)) return 'bg-black'
+  return effectiveTheme.value === 'dark' ? 'bg-black' : 'bg-white'
+})
 const modeIcon = computed(() =>
   props.advanceMode === 'repeatCurrent' ? Repeat1 : Repeat,
 )
@@ -246,6 +296,53 @@ const contentTransform = computed(() => ({
   transformOrigin: 'center center',
 }))
 
+function startLivePlayback() {
+  if (!props.liveVideoSrc || !liveVideoEl.value) return
+  livePlaying.value = true
+  liveVideoEl.value.currentTime = 0
+  liveVideoEl.value.play()?.then(() => {
+    liveVideoReady.value = liveVideoEl.value.readyState >= 2
+  }).catch(() => {
+    livePlaying.value = false
+  })
+}
+
+function stopLivePlayback() {
+  livePlaying.value = false
+  if (liveVideoEl.value) {
+    liveVideoEl.value.pause()
+    liveVideoEl.value.currentTime = 0
+  }
+}
+
+function onLiveHoverStart() {
+  // 桌面：悬停播放（与 iOS 按住对齐的「预览实况」）
+  if (window.matchMedia('(hover: hover)').matches) {
+    startLivePlayback()
+  }
+}
+
+function onLiveHoverEnd() {
+  if (window.matchMedia('(hover: hover)').matches) {
+    stopLivePlayback()
+  }
+}
+
+function onLivePressStart(e) {
+  if (!props.liveVideoSrc) return
+  if (e.button != null && e.button !== 0) return
+  // 触摸 / 无悬停设备：按住播放
+  if (!window.matchMedia('(hover: hover)').matches) {
+    startLivePlayback()
+  }
+}
+
+function onLivePressEnd() {
+  if (!window.matchMedia('(hover: hover)').matches) {
+    stopLivePlayback()
+  }
+}
+
 // Reset on src change
 watch(() => props.src, async () => {
   playing.value = false
@@ -255,6 +352,7 @@ watch(() => props.src, async () => {
   buffering.value = false
   audioCover.value = null
   controlsVisible.value = true
+  stopLivePlayback()
   resetZoom()
   // Load audio cover
   if (props.type === 'audio' && props.coverUrl) {

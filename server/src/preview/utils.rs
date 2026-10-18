@@ -80,9 +80,29 @@ pub struct HeifTile {
 /// HEIF tile grid（iPhone 等高分辨率 HEIC 常用）
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HeifTileGrid {
+    /// tile 拼合后的编码画布尺寸（常为 tile 对齐后的 padded 尺寸）
     pub coded_width: u32,
     pub coded_height: u32,
+    /// 实际可见/显示区域（ispe），可能小于 coded_*；无标记时等于 coded_*
+    pub display_width: u32,
+    pub display_height: u32,
+    /// 显示区域相对编码画布的偏移（horizontal_offset / vertical_offset）
+    pub crop_x: u32,
+    pub crop_y: u32,
     pub tiles: Vec<HeifTile>,
+}
+
+impl HeifTileGrid {
+    /// 编码画布大于显示区域时需要 crop，否则 xstack 会留下黑边，
+    /// 再叠加 Orientation 旋转后表现为大图「左空右切」。
+    pub fn needs_display_crop(&self) -> bool {
+        self.display_width > 0
+            && self.display_height > 0
+            && (self.display_width < self.coded_width
+                || self.display_height < self.coded_height
+                || self.crop_x > 0
+                || self.crop_y > 0)
+    }
 }
 
 /// 解析 `ffprobe -show_stream_groups` 输出中的 Tile Grid。
@@ -92,8 +112,13 @@ pub fn parse_heif_tile_grid(probe_output: &str) -> Option<HeifTileGrid> {
 
     let mut in_group = false;
     let mut group_is_tile = false;
+    let mut in_component = false;
     let mut coded_width: u32 = 0;
     let mut coded_height: u32 = 0;
+    let mut display_width: u32 = 0;
+    let mut display_height: u32 = 0;
+    let mut crop_x: u32 = 0;
+    let mut crop_y: u32 = 0;
     let mut tiles: Vec<HeifTile> = Vec::new();
 
     let mut in_sub = false;
@@ -107,16 +132,36 @@ pub fn parse_heif_tile_grid(probe_output: &str) -> Option<HeifTileGrid> {
             "[STREAM_GROUP]" => {
                 in_group = true;
                 group_is_tile = false;
+                in_component = false;
                 coded_width = 0;
                 coded_height = 0;
+                display_width = 0;
+                display_height = 0;
+                crop_x = 0;
+                crop_y = 0;
                 tiles.clear();
             }
             "[/STREAM_GROUP]" => {
                 if in_group && group_is_tile && tiles.len() > 1 {
                     tiles.sort_by_key(|t| t.stream_index);
+                    // 无 width/height 时退回 coded 尺寸（无 padding）
+                    let dw = if display_width > 0 {
+                        display_width
+                    } else {
+                        coded_width
+                    };
+                    let dh = if display_height > 0 {
+                        display_height
+                    } else {
+                        coded_height
+                    };
                     let candidate = HeifTileGrid {
                         coded_width,
                         coded_height,
+                        display_width: dw,
+                        display_height: dh,
+                        crop_x,
+                        crop_y,
                         tiles: tiles.clone(),
                     };
                     let replace = match &best {
@@ -132,6 +177,13 @@ pub fn parse_heif_tile_grid(probe_output: &str) -> Option<HeifTileGrid> {
                 }
                 in_group = false;
                 group_is_tile = false;
+                in_component = false;
+            }
+            "[COMPONENT]" if in_group => {
+                in_component = true;
+            }
+            "[/COMPONENT]" => {
+                in_component = false;
             }
             "[SUBCOMPONENT]" => {
                 in_sub = true;
@@ -154,13 +206,32 @@ pub fn parse_heif_tile_grid(probe_output: &str) -> Option<HeifTileGrid> {
             _ if in_group => {
                 if let Some(rest) = line.strip_prefix("type=") {
                     group_is_tile = rest == "Tile Grid";
-                } else if let Some(rest) = line.strip_prefix("coded_width=") {
-                    if let Ok(v) = rest.parse() {
-                        coded_width = v;
-                    }
-                } else if let Some(rest) = line.strip_prefix("coded_height=") {
-                    if let Ok(v) = rest.parse() {
-                        coded_height = v;
+                } else if in_component && !in_sub {
+                    // 只读 COMPONENT 级尺寸；STREAM 内 width/coded_width=512 会污染 pad 检测
+                    if let Some(rest) = line.strip_prefix("coded_width=") {
+                        if let Ok(v) = rest.parse() {
+                            coded_width = v;
+                        }
+                    } else if let Some(rest) = line.strip_prefix("coded_height=") {
+                        if let Ok(v) = rest.parse() {
+                            coded_height = v;
+                        }
+                    } else if let Some(rest) = line.strip_prefix("width=") {
+                        if let Ok(v) = rest.parse::<u32>() {
+                            display_width = v;
+                        }
+                    } else if let Some(rest) = line.strip_prefix("height=") {
+                        if let Ok(v) = rest.parse::<u32>() {
+                            display_height = v;
+                        }
+                    } else if let Some(rest) = line.strip_prefix("horizontal_offset=") {
+                        if let Ok(v) = rest.parse() {
+                            crop_x = v;
+                        }
+                    } else if let Some(rest) = line.strip_prefix("vertical_offset=") {
+                        if let Ok(v) = rest.parse() {
+                            crop_y = v;
+                        }
                     }
                 } else if in_sub {
                     if let Some(rest) = line.strip_prefix("stream_index=") {
@@ -217,9 +288,13 @@ pub fn build_xstack_layout(tiles: &[HeifTile]) -> String {
 pub fn extract_heif_thumbnail(image_path: &Path, max_size: u32) -> Result<image::DynamicImage> {
     if let Some(grid) = probe_heif_tile_grid(image_path) {
         eprintln!(
-            "[thumbnail] HEIF tile grid {}x{} ({} tiles) → 拼合解码 ({:?})",
+            "[thumbnail] HEIF tile grid coded={}x{} display={}x{}+{}+{} ({} tiles) → 拼合解码 ({:?})",
             grid.coded_width,
             grid.coded_height,
+            grid.display_width,
+            grid.display_height,
+            grid.crop_x,
+            grid.crop_y,
             grid.tiles.len(),
             image_path
         );
@@ -228,7 +303,7 @@ pub fn extract_heif_thumbnail(image_path: &Path, max_size: u32) -> Result<image:
     extract_image_thumbnail_ffmpeg(image_path, max_size)
 }
 
-/// 用 ffmpeg xstack 按探测到的偏移拼合 tile，再缩放到目标尺寸
+/// 用 ffmpeg xstack 按探测到的偏移拼合 tile，裁掉 coded padding，再缩放到目标尺寸
 fn extract_heif_tiled_thumbnail(
     image_path: &Path,
     grid: &HeifTileGrid,
@@ -252,6 +327,14 @@ fn extract_heif_tiled_thumbnail(
         grid.tiles.len(),
         layout
     );
+    // HEIF tile 对齐常把画布 pad 到 tile 边界（如 1200x900 → 1536x1024）。
+    // 若不 crop 到 ispe 显示区，黑边会在 Orientation 旋转后变成「左空右切」。
+    if grid.needs_display_crop() {
+        filter.push_str(&format!(
+            ",crop={}:{}:{}:{}",
+            grid.display_width, grid.display_height, grid.crop_x, grid.crop_y
+        ));
+    }
     if max_size > 0 {
         filter.push_str(&format!(
             ",scale={}:{}:force_original_aspect_ratio=decrease",
@@ -527,6 +610,170 @@ pub fn extract_pdf_thumbnail(pdf_path: &Path) -> Result<image::DynamicImage> {
     Ok(image::DynamicImage::ImageRgb8(img))
 }
 
+// ============================================================================
+// EXIF / HEIF Orientation → 像素转正（不改原文件）
+// ============================================================================
+
+/// 读取图片方向标记（1–8）。无标记或失败时返回 1（正向）。
+/// 优先 exiftool（HEIC/JPEG 通用）；JPEG 再回退内置 APP1 解析。
+pub fn probe_image_orientation(path: &Path) -> u8 {
+    if let Some(v) = orientation_via_exiftool(path) {
+        return v;
+    }
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    if matches!(ext.as_str(), "jpg" | "jpeg") {
+        if let Ok(bytes) = fs::read(path) {
+            if let Some(v) = orientation_from_jpeg_exif(&bytes) {
+                return v;
+            }
+        }
+    }
+    1
+}
+
+fn orientation_via_exiftool(path: &Path) -> Option<u8> {
+    let exiftool = which_exiftool()?;
+    let output = Command::new(exiftool)
+        .args(["-n", "-s3", "-Orientation"])
+        .arg(path)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let text = String::from_utf8_lossy(&output.stdout);
+    let v: u8 = text.trim().parse().ok()?;
+    if (1..=8).contains(&v) {
+        Some(v)
+    } else {
+        None
+    }
+}
+
+fn which_exiftool() -> Option<PathBuf> {
+    for candidate in [
+        "exiftool",
+        "/opt/homebrew/bin/exiftool",
+        "/usr/local/bin/exiftool",
+        "/usr/bin/exiftool",
+    ] {
+        let p = PathBuf::from(candidate);
+        if candidate == "exiftool" {
+            if Command::new("exiftool").arg("-ver").output().ok()?.status.success() {
+                return Some(p);
+            }
+        } else if p.exists() {
+            return Some(p);
+        }
+    }
+    None
+}
+
+/// 按 EXIF Orientation 把像素转成「正向显示」；orientation==1 时原样返回。
+pub fn apply_exif_orientation(img: image::DynamicImage, orientation: u8) -> image::DynamicImage {
+    match orientation {
+        2 => img.fliph(),
+        3 => img.rotate180(),
+        4 => img.flipv(),
+        5 => img.rotate90().fliph(),
+        6 => img.rotate90(),
+        7 => img.rotate270().fliph(),
+        8 => img.rotate270(),
+        _ => img,
+    }
+}
+
+/// 探测方向并转正（缩略图生成入口）。
+pub fn orient_image_for_display(path: &Path, img: image::DynamicImage) -> image::DynamicImage {
+    let orientation = probe_image_orientation(path);
+    if orientation <= 1 {
+        return img;
+    }
+    apply_exif_orientation(img, orientation)
+}
+
+/// 从 JPEG APP1 Exif 读取 Orientation（tag 0x0112）。
+fn orientation_from_jpeg_exif(data: &[u8]) -> Option<u8> {
+    if data.len() < 4 || data[0] != 0xFF || data[1] != 0xD8 {
+        return None;
+    }
+    let mut i = 2usize;
+    while i + 4 <= data.len() {
+        if data[i] != 0xFF {
+            break;
+        }
+        let marker = data[i + 1];
+        if marker == 0xD9 || marker == 0xDA {
+            break;
+        }
+        if i + 4 > data.len() {
+            break;
+        }
+        let len = u16::from_be_bytes([data[i + 2], data[i + 3]]) as usize;
+        if len < 2 || i + 2 + len > data.len() {
+            break;
+        }
+        let segment = &data[i + 4..i + 2 + len];
+        i += 2 + len;
+        // APP1 + "Exif\0\0"
+        if marker == 0xE1 && segment.len() >= 14 && &segment[0..6] == b"Exif\0\0" {
+            return orientation_from_tiff(&segment[6..]);
+        }
+    }
+    None
+}
+
+fn orientation_from_tiff(tiff: &[u8]) -> Option<u8> {
+    if tiff.len() < 8 {
+        return None;
+    }
+    let le = match &tiff[0..2] {
+        b"II" => true,
+        b"MM" => false,
+        _ => return None,
+    };
+    let read_u16 = |off: usize| -> Option<u16> {
+        let b = tiff.get(off..off + 2)?;
+        Some(if le {
+            u16::from_le_bytes([b[0], b[1]])
+        } else {
+            u16::from_be_bytes([b[0], b[1]])
+        })
+    };
+    let read_u32 = |off: usize| -> Option<u32> {
+        let b = tiff.get(off..off + 4)?;
+        Some(if le {
+            u32::from_le_bytes([b[0], b[1], b[2], b[3]])
+        } else {
+            u32::from_be_bytes([b[0], b[1], b[2], b[3]])
+        })
+    };
+    let ifd0 = read_u32(4)? as usize;
+    let count = read_u16(ifd0)? as usize;
+    for n in 0..count {
+        let entry = ifd0 + 2 + n * 12;
+        let tag = read_u16(entry)?;
+        if tag != 0x0112 {
+            continue;
+        }
+        let typ = read_u16(entry + 2)?;
+        // SHORT (3) or LONG (4); value fits in the 4-byte value field
+        let val = if typ == 3 {
+            read_u16(entry + 8)? as u8
+        } else {
+            read_u32(entry + 8)? as u8
+        };
+        if (1..=8).contains(&val) {
+            return Some(val);
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -585,6 +832,9 @@ height=720
         let grid = parse_heif_tile_grid(sample_probe_tiled()).expect("tile grid");
         assert_eq!(grid.coded_width, 2560);
         assert_eq!(grid.coded_height, 1440);
+        assert_eq!(grid.display_width, 2560);
+        assert_eq!(grid.display_height, 1440);
+        assert!(!grid.needs_display_crop());
         assert_eq!(grid.tiles.len(), 4);
         assert_eq!(
             grid.tiles[0],
@@ -603,6 +853,85 @@ height=720
             }
         );
         assert_eq!(build_xstack_layout(&grid.tiles), "0_0|1280_0|0_720|1280_720");
+    }
+
+    fn sample_probe_tiled_padded() -> &'static str {
+        // 真实 iPhone/sips HEIC：coded 按 tile 对齐 pad，ispe 为较小显示区
+        r#"
+[STREAM_GROUP]
+index=0
+id=0x7
+nb_streams=6
+type=Tile Grid
+[COMPONENT]
+nb_tiles=6
+coded_width=1536
+coded_height=1024
+horizontal_offset=0
+vertical_offset=0
+width=1200
+height=900
+[SUBCOMPONENT]
+stream_index=0
+tile_horizontal_offset=0
+tile_vertical_offset=0
+[/SUBCOMPONENT]
+[SUBCOMPONENT]
+stream_index=1
+tile_horizontal_offset=512
+tile_vertical_offset=0
+[/SUBCOMPONENT]
+[SUBCOMPONENT]
+stream_index=2
+tile_horizontal_offset=1024
+tile_vertical_offset=0
+[/SUBCOMPONENT]
+[SUBCOMPONENT]
+stream_index=3
+tile_horizontal_offset=0
+tile_vertical_offset=512
+[/SUBCOMPONENT]
+[SUBCOMPONENT]
+stream_index=4
+tile_horizontal_offset=512
+tile_vertical_offset=512
+[/SUBCOMPONENT]
+[SUBCOMPONENT]
+stream_index=5
+tile_horizontal_offset=1024
+tile_vertical_offset=512
+[/SUBCOMPONENT]
+[/COMPONENT]
+DISPOSITION:default=1
+[/STREAM_GROUP]
+"#
+    }
+
+    #[test]
+    fn parse_padded_tile_grid_needs_display_crop() {
+        let grid = parse_heif_tile_grid(sample_probe_tiled_padded()).expect("padded grid");
+        assert_eq!(grid.coded_width, 1536);
+        assert_eq!(grid.coded_height, 1024);
+        assert_eq!(grid.display_width, 1200);
+        assert_eq!(grid.display_height, 900);
+        assert_eq!(grid.crop_x, 0);
+        assert_eq!(grid.crop_y, 0);
+        assert!(grid.needs_display_crop());
+        assert_eq!(grid.tiles.len(), 6);
+    }
+
+    #[test]
+    fn parse_ignores_stream_tile_dimensions_inside_group() {
+        // -show_streams 会把单 tile 的 width/coded_width=512 打进同一段输出；
+        // 不可覆盖 COMPONENT 的 ispe/coded 尺寸。
+        let polluted = format!(
+            "{}\n[STREAM]\nindex=0\ncoded_width=512\ncoded_height=512\nwidth=512\nheight=512\n[/STREAM]\n",
+            sample_probe_tiled_padded()
+        );
+        let grid = parse_heif_tile_grid(&polluted).expect("padded grid");
+        assert_eq!(grid.coded_width, 1536);
+        assert_eq!(grid.display_width, 1200);
+        assert!(grid.needs_display_crop());
     }
 
     #[test]
@@ -748,5 +1077,52 @@ tile_vertical_offset=0
         })?;
         let _ = fs::remove_file(&temp_output);
         Ok(img)
+    }
+
+    #[test]
+    fn jpeg_orientation_6_probe_and_rotate_to_portrait() {
+        let path = fixture("orient6_landscape_sensor.jpg");
+        if !path.exists() {
+            eprintln!("skip: missing fixture {}", path.display());
+            return;
+        }
+        let orientation = probe_image_orientation(&path);
+        assert_eq!(orientation, 6, "fixture must declare Orientation=6");
+
+        let raw = image::open(&path).expect("open jpeg");
+        assert_eq!((raw.width(), raw.height()), (120, 80));
+
+        let oriented = orient_image_for_display(&path, raw);
+        assert_eq!(
+            (oriented.width(), oriented.height()),
+            (80, 120),
+            "Orientation=6 must become portrait pixels"
+        );
+        // Red bar was on the right of landscape sensor buffer; after Orientation=6
+        // (rotate 90° CW) it becomes the bottom strip of the portrait image.
+        let rgb = oriented.to_rgb8();
+        let bottom = rgb.get_pixel(40, 115);
+        let top = rgb.get_pixel(40, 5);
+        assert!(
+            bottom[0] > 180 && bottom[1] < 80,
+            "bottom strip should be red after orient, got {:?}",
+            bottom
+        );
+        assert!(
+            top[2] > 150,
+            "top strip should stay blue-ish, got {:?}",
+            top
+        );
+    }
+
+    #[test]
+    fn apply_orientation_6_rotates_without_file() {
+        let img = image::DynamicImage::ImageRgb8(image::RgbImage::from_pixel(
+            10,
+            4,
+            image::Rgb([1, 2, 3]),
+        ));
+        let out = apply_exif_orientation(img, 6);
+        assert_eq!((out.width(), out.height()), (4, 10));
     }
 }
