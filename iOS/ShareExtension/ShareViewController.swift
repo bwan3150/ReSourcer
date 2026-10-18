@@ -768,7 +768,7 @@ final class ShareViewController: UIViewController {
     /// 拉起宿主 App（自定义 scheme）。参考国内分享扩展常见做法：
     /// 1) UIApplication.open  2) responder `openURL:`  3) `extensionContext.open`
     /// 禁止在 open 完成前调用 `completeRequest`。
-    private func openHostURL(_ url: URL, completion: @escaping () -> Void) {
+    private func openHostURL(_ url: URL, completion: @escaping @Sendable () -> Void) {
         if openURLViaSharedApplication(url) || openURLViaResponderChain(url) {
             // 给系统一点时间切换到宿主；过早 complete 会导致「写了 pending 但不跳转」
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
@@ -779,7 +779,7 @@ final class ShareViewController: UIViewController {
 
         // 官方 API：对含自定义 URL scheme 的宿主 App，部分系统版本可用
         if let context = extensionContext {
-            context.open(url) { success in
+            context.open(url) { [self] success in
                 if success {
                     completion()
                     return
