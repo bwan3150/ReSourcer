@@ -14,6 +14,10 @@ Environment=HOME=/opt/re-sourcer
 # 卷，例如群晖 /volume1/docker/re-sourcer 或 QNAP /share/re-sourcer-data。
 # 不设置时行为与旧版一致——数据仍会落在 WorkingDirectory 下，随程序目录一起被清空。
 Environment=RESOURCER_DATA_DIR=/change/me/to/a/persistent/volume
+# NAS 开机时数据卷可能晚于 network.target 才挂上：等卷上的标记文件出现再启动。
+# 标记文件需要手动建一次：touch <数据目录>/.resourcer-data（setup.sh 会自动建）
+ExecStartPre=/bin/sh -c 'until [ -f "/change/me/to/a/persistent/volume/.resourcer-data" ]; do sleep 2; done'
+TimeoutStartSec=300
 # ====================================
 
 Restart=on-failure

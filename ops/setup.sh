@@ -184,6 +184,8 @@ create_dirs() {
     mkdir -p "${INSTALL_DIR}/tmp"
     # config/、sqlite/、backups/ 由程序自己在 DATA_DIR 下创建（含迁移逻辑），这里只是先建好挂载点
     mkdir -p "${DATA_DIR}"
+    # 标记文件：systemd 启动前等它出现，确认数据卷已经挂上（见 install_service）
+    touch "${DATA_DIR}/.resourcer-data"
 
     info "  ${INSTALL_DIR}/           # program (safe to wipe/reinstall)"
     info "  ├── re-sourcer           # server binary"
@@ -224,6 +226,10 @@ After=network.target
 
 [Service]
 Type=simple
+# NAS 开机时数据卷往往晚于 network.target 才挂上；没挂上就启动会读不到网页端、
+# 还可能在根分区的空目录里新建一套空库。等卷上的标记文件出现再启动。
+ExecStartPre=/bin/sh -c 'until [ -f "${DATA_DIR}/.resourcer-data" ]; do sleep 2; done'
+TimeoutStartSec=300
 ExecStart=${INSTALL_DIR}/re-sourcer
 WorkingDirectory=${INSTALL_DIR}
 # TMPDIR: PyInstaller (yt-dlp) extracts .so files to TMPDIR at runtime.
